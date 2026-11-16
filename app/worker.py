@@ -389,6 +389,7 @@ def video_dict(row: dict[str, Any]) -> dict[str, Any]:
         "genre": row.get("genre") or _UNSORTED,
         "genre_manual": bool(row.get("genre_manual")),
         "status": row.get("status") or "new",
+        "source_id": row.get("source_id"),
         "is_live": False,  # only search results know it (discover sets True), Review n1
     }
 

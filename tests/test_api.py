@@ -815,7 +815,9 @@ def test_db_backed_reads_and_simple_actions(env):
         "genre_manual",
         "status",
         "is_live",
+        "source_id",
     }
+    assert inbox[0]["source_id"] == sid
     src = a.get_sources()[0]
     assert src["new_count"] == 1 and src["enabled"] is True
     assert a.set_genre("abcdefghijk", "Hardcore") == {"ok": True}
