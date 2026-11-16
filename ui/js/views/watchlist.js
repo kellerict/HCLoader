@@ -22,8 +22,10 @@
   const flash = new Set(); // Zeilen, die beim nächsten Zeichnen kurz aufleuchten
   let run = null; // {total, done} – laufende Prüfung (total = 0: von aussen gestartet, Umfang unbekannt)
 
-  const FIELDS = ['type', 'name', 'url_or_query', 'default_genre', 'enabled', 'auto_download', 'max_entries'];
-  const payload = (s) => FIELDS.reduce((o, k) => { o[k] = s[k]; return o; }, s.id != null ? { id: s.id } : {});
+  const FIELDS = ['type', 'name', 'url_or_query', 'default_genre', 'enabled', 'auto_download', 'max_entries', 'newest_last'];
+  /** «Neueste stehen hinten» gibt es nur bei Playlists. */
+  const reversed = (s) => s.type === 'playlist' && !!s.newest_last;
+  const payload = (s) => FIELDS.reduce((o, k) => { o[k] = k === 'newest_last' ? reversed(s) : s[k]; return o; }, s.id != null ? { id: s.id } : {});
   const backoff = () => (HC.status && HC.status.backoff && HC.status.backoff.active ? HC.status.backoff : null);
   const busy = () => checking.size > 0 || pending.size > 0;
   /** Warum «Prüfen» gerade nicht geht (Text für den Tooltip) oder ''. */
@@ -42,7 +44,7 @@
       <td>${ui.toggle(s.enabled, `data-k="enabled" title="${esc(t('watchlist.col_active'))}"`)}</td>
       <td class="clip"><div class="cell-title"><div><b title="${esc(`${t('source_type.' + s.type)} · ${s.name}`)}">${esc(s.name)}</b>${err
     ? `<small class="src-err" title="${esc(`${t('watchlist.error_title')}: ${err}`)}">${I.warn}<span>${esc(err)}</span></small>`
-    : `<small title="${esc(s.url_or_query)}">${esc(s.url_or_query)}</small>`}</div></div></td>
+    : `<small class="${reversed(s) ? 'has-rev' : ''}">${reversed(s) ? `<span class="wl-rev" title="${esc(t('watchlist.rev_title'))}">${I.up}${t('watchlist.rev_short')}</span>` : ''}<span title="${esc(s.url_or_query)}">${esc(s.url_or_query)}</span></small>`}</div></div></td>
       <td class="mono">${esc(t('source_type.' + s.type))}</td>
       <td>${s.default_genre ? ui.genreDot(s.default_genre) : `<span class="unit">${t('watchlist.genre_auto')}</span>`}</td>
       <td><span class="okline" title="${esc(t(s.auto_download ? 'watchlist.auto_title_on' : 'watchlist.auto_title_off'))}">${ui.toggle(s.auto_download, 'data-k="auto_download"')}<span class="toggle-label">${t(s.auto_download ? 'watchlist.auto_on' : 'watchlist.auto_off')}</span></span></td>
@@ -122,7 +124,7 @@
   /* ---------- Dialog: Quelle anlegen / bearbeiten ---------- */
   function edit(src) {
     const isNew = !src;
-    const s = Object.assign({ type: 'channel', name: '', url_or_query: '', default_genre: null, enabled: true, auto_download: false, max_entries: HC.settings.values.schedule.entries_per_source }, src);
+    const s = Object.assign({ type: 'channel', name: '', url_or_query: '', default_genre: null, enabled: true, auto_download: false, newest_last: false, max_entries: HC.settings.values.schedule.entries_per_source }, src);
     const genres = HC.genres.names().filter((g) => g !== 'Unsortiert');
     if (s.default_genre && !genres.includes(s.default_genre)) genres.push(s.default_genre);
     const err = (k) => `<div class="field-error" data-e="${k}" hidden></div>`;
@@ -133,6 +135,8 @@
       <div class="frow"><label class="lbl">${t('watchlist.f_name')}</label><input class="input" data-f="name" value="${esc(s.name)}" placeholder="${esc(t('watchlist.ph_name'))}" maxlength="120" autocomplete="off">${err('name')}</div>
       <div class="frow"><label class="lbl" data-l="url">${t('watchlist.f_url')}</label><input class="input mono" data-f="url_or_query" value="${esc(s.url_or_query)}" spellcheck="false" autocomplete="off">
         <div class="fhint" data-h="url"></div>${err('url_or_query')}</div>
+      <div class="frow" data-only="playlist" hidden><label class="check"><input type="checkbox" data-f="newest_last"${s.newest_last ? ' checked' : ''}>${t('watchlist.f_newest_last')}</label>
+        <div class="fhint indent">${t('watchlist.hint_newest_last')}</div>${err('newest_last')}</div>
       <div class="frow inline">
         <div style="flex:1;min-width:0"><label class="lbl">${t('watchlist.f_genre')}</label>
           <select class="select" data-f="default_genre"><option value="">${t('watchlist.genre_auto_long')}</option>${genres.map((g) => `<option${s.default_genre === g ? ' selected' : ''}>${esc(g)}</option>`).join('')}</select>${err('default_genre')}</div>
@@ -168,6 +172,7 @@
           $('[data-l=url]', m).textContent = t(type === 'search' ? 'watchlist.f_query' : 'watchlist.f_url');
           $('[data-f=url_or_query]', m).placeholder = t('watchlist.ph_' + type);
           $('[data-h=url]', m).textContent = t('watchlist.hint_' + type);
+          $$('[data-only]', m).forEach((n) => { n.hidden = n.dataset.only !== type; });
           $('[data-h=auto]', m).textContent = t(segVal(m, 'auto') === '1' ? 'watchlist.hint_auto' : 'watchlist.hint_inbox');
         };
         m.addEventListener('click', (e) => {
@@ -192,7 +197,7 @@
         const out = Object.assign({}, s, {
           type: segVal(m, 'type'), name: val('name').value.trim(), url_or_query: val('url_or_query').value.trim(),
           default_genre: val('default_genre').value || null, max_entries: max === '' ? null : +max,
-          enabled: val('enabled').checked, auto_download: segVal(m, 'auto') === '1',
+          enabled: val('enabled').checked, auto_download: segVal(m, 'auto') === '1', newest_last: val('newest_last').checked,
         });
         ui.busy(okBtn, true);
         const r = await HC.bridge.safe('save_source', payload(out));

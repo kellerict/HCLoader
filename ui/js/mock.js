@@ -286,11 +286,11 @@
     { id: 3, type: 'channel', name: 'Distortion Unit', url_or_query: 'https://www.youtube.com/@distortionunit', default_genre: 'Uptempo', enabled: true, auto_download: false, max_entries: 30, last_checked: isoAt(1, 21, 42) },
     { id: 4, type: 'channel', name: 'Rave Archive CH', url_or_query: 'https://www.youtube.com/@ravearchivech', default_genre: null, enabled: true, auto_download: false, max_entries: 50, last_checked: isoAt(1, 21, 43) },
     { id: 5, type: 'search', name: 'Frenchcore Livesets', url_or_query: 'frenchcore liveset', default_genre: 'Hardcore', enabled: true, auto_download: false, max_entries: 20, last_checked: isoAt(1, 21, 44) },
-    { id: 6, type: 'playlist', name: 'Hard Classics Playlist', url_or_query: 'https://www.youtube.com/playlist?list=PLhardclassics', default_genre: 'Hardcore', enabled: false, auto_download: false, max_entries: 30, last_checked: isoAt(6, 3, 0) },
+    { id: 6, type: 'playlist', name: 'Hard Classics Playlist', url_or_query: 'https://www.youtube.com/playlist?list=PLhardclassics', default_genre: 'Hardcore', enabled: false, auto_download: false, max_entries: 30, newest_last: true, last_checked: isoAt(6, 3, 0) },
     { id: 7, type: 'search', name: 'Uptempo Podcasts', url_or_query: 'uptempo podcast mix', default_genre: 'Uptempo', enabled: true, auto_download: false, max_entries: 15, last_checked: isoAt(1, 21, 45) },
   ];
   /* new_count = Treffer dieser Quelle, die noch im Eingang liegen (wie api.get_sources). */
-  const sourceView = (x) => Object.assign(clone(x), { new_count: VIDEOS.filter((v) => v.status === 'inbox' && v.source_id === x.id).length });
+  const sourceView = (x) => Object.assign({ newest_last: false }, clone(x), { new_count: VIDEOS.filter((v) => v.status === 'inbox' && v.source_id === x.id).length });
   let nextSourceId = 8;
   let BLACKLIST = [
     { channel_id: 'UCreact0001', channel_name: 'Reaction Bros', added: isoDay(34) },
@@ -681,7 +681,7 @@
         if (!(Number.isInteger(src.max_entries) && src.max_entries >= 1 && src.max_entries <= 200)) errors.max_entries = 'Ganze Zahl zwischen 1 und 200 erwartet.';
         if (src.default_genre && !settings.genres.items.some((g) => g.name === src.default_genre)) errors.default_genre = 'Dieses Genre gibt es nicht (mehr).';
         if (Object.keys(errors).length) return { ok: false, errors };
-        const fields = { type: src.type, name, url_or_query: url, default_genre: src.default_genre || null, enabled: !!src.enabled, auto_download: !!src.auto_download, max_entries: src.max_entries };
+        const fields = { type: src.type, name, url_or_query: url, default_genre: src.default_genre || null, enabled: !!src.enabled, auto_download: !!src.auto_download, max_entries: src.max_entries, newest_last: src.type === 'playlist' && !!src.newest_last };
         let s = SOURCES.find((x) => x.id === src.id);
         if (s) Object.assign(s, fields);
         else { s = Object.assign({ id: nextSourceId++, last_checked: null }, fields); SOURCES.push(s); }

@@ -48,6 +48,7 @@ _SOURCE_FIELDS = (
     "enabled",
     "auto_download",
     "max_entries",
+    "newest_last",
     "last_checked",
 )
 
@@ -107,8 +108,17 @@ def _m2_queue(conn: sqlite3.Connection) -> None:
     )
 
 
+def _m3_newest_last(conn: sqlite3.Connection) -> None:
+    """Phase 4: playlist option "newest videos are at the end" (list the last N, reversed)."""
+    conn.execute("ALTER TABLE sources ADD COLUMN newest_last INTEGER NOT NULL DEFAULT 0")
+
+
 # Append new steps at the end; never edit existing ones. Step i upgrades version i -> i+1.
-MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [_m1_initial, _m2_queue]
+MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [
+    _m1_initial,
+    _m2_queue,
+    _m3_newest_last,
+]
 # statuses a user may put into the download queue (enqueue / retry)
 ENQUEUEABLE = ("new", "inbox", "failed")
 
@@ -472,12 +482,13 @@ class Database:
         enabled: bool = True,
         auto_download: bool = False,
         max_entries: int = 30,
+        newest_last: bool = False,
     ) -> int:
         if type not in SOURCE_TYPES:
             raise ValueError(f"Ungültiger Quellentyp: {type}")
         cur = self.execute(
             "INSERT INTO sources(type,name,url_or_query,default_genre,enabled,auto_download,"
-            "max_entries) VALUES (?,?,?,?,?,?,?)",
+            "max_entries,newest_last) VALUES (?,?,?,?,?,?,?,?)",
             (
                 type,
                 name,
@@ -486,6 +497,7 @@ class Database:
                 int(enabled),
                 int(auto_download),
                 max_entries,
+                int(newest_last),
             ),
         )
         return int(cur.lastrowid)
@@ -505,7 +517,7 @@ class Database:
             raise ValueError(f"Unbekannte Felder: {', '.join(sorted(bad))}")
         if not fields:
             return
-        for k in ("enabled", "auto_download"):
+        for k in ("enabled", "auto_download", "newest_last"):
             if k in fields:
                 fields[k] = int(bool(fields[k]))
         sets = ", ".join(f"{k}=?" for k in fields)

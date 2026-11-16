@@ -782,6 +782,7 @@ class Api:
             "enabled": bool(s.get("enabled")),
             "auto_download": bool(s.get("auto_download")),
             "max_entries": s.get("max_entries"),
+            "newest_last": bool(s.get("newest_last")),
             "last_checked": s.get("last_checked"),
             "new_count": self._db.count_videos(status="inbox", source_id=s["id"]),
         }

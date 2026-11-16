@@ -522,11 +522,22 @@ class YtClient:
         info = self._metadata_call("search", f"ytsearch{int(n)}:{full_query}", opts, settings)
         return [normalize_entry(e) for e in info.get("entries") or [] if e and e.get("id")]
 
-    def list_source(self, url: str, max_entries: int | None = None) -> list[dict[str, Any]]:
+    def list_source(
+        self, url: str, max_entries: int | None = None, *, newest_last: bool = False
+    ) -> list[dict[str, Any]]:
+        """Flat listing, newest first. `newest_last`: the source appends new videos at the end
+        (playlists); the last `max_entries` are returned in reverse order. yt-dlp then has to
+        page through the whole playlist (~100 entries per request, `sleep_interval_requests`
+        between pages), see docs/decisions.md."""
         settings = self.settings
-        max_entries = max_entries or settings.schedule.entries_per_source
+        max_entries = int(max_entries or settings.schedule.entries_per_source)
         opts = build_ydl_opts(settings, "list")
-        opts["playlistend"] = int(max_entries)
+        if newest_last:
+            # PlaylistEntries slice "-1:-N:-1" = last N items, last one first (checked against
+            # yt_dlp/utils/_utils.py; playlistreverse is ignored with lazy_playlist)
+            opts["playlist_items"] = f"-1:-{max_entries}:-1"
+        else:
+            opts["playlistend"] = max_entries
         info = self._metadata_call("list", normalize_source_url(url), opts, settings)
         entries = [normalize_entry(e) for e in info.get("entries") or [] if e and e.get("id")]
         return entries[: int(max_entries)]

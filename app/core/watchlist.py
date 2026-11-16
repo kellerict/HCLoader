@@ -3,7 +3,8 @@
 Pure core logic: `client` is a `YtClient` (or a fake with `list_source`/`search`), so nothing here
 imports yt-dlp. Every request goes through the client and therefore through the throttle.
 
-Per source the flat listing (newest first) is walked in order and stops at the first video that
+Per source the flat listing (newest first; playlists with `newest_last` are read from the end,
+reversed) is walked in order and stops at the first video that
 is already known in the DB (`break_on_existing`, SPEC §3.2). New videos are stored with the genre
 of the source (or keyword detection); those that pass the filters land in the inbox (or in the
 download queue for `auto_download` sources), the others stay `new` and are not shown in the inbox.
@@ -142,6 +143,8 @@ def validate_source(
         "enabled": bool(data.get("enabled", True)),
         "auto_download": bool(data.get("auto_download", False)),
         "max_entries": max_entries,
+        # only meaningful for playlists (they append new videos at the end); forced off otherwise
+        "newest_last": stype == "playlist" and bool(data.get("newest_last", False)),
     }, {}
 
 
@@ -225,7 +228,10 @@ def check_source(
     if stype == "search":
         entries = client.search(target, max_entries)
     else:
-        entries = client.list_source(target, max_entries)
+        if source.get("newest_last") and stype == "playlist":
+            entries = client.list_source(target, max_entries, newest_last=True)
+        else:
+            entries = client.list_source(target, max_entries)
 
     res = SourceCheck(sid)
     genre_names = {g.name for g in settings.genres.items}
