@@ -42,11 +42,21 @@ WINDOW_MIN_SIZE = (1100, 700)
 WINDOW_BG = "#08080a"
 
 
+# Marker in the user agent: tells bridge.js it runs inside the app (wait for the real API instead
+# of falling back to the mock). Not a query string: pywebview hands the file URL to .NET
+# System.Uri, and the .NET Framework treats "?host=..." of a file: URL as part of the file name
+# (ERR_FILE_NOT_FOUND in WebView2).
+UA_MARKER = "HCLoader-App"
+USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+    f"Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0 {UA_MARKER}/1"
+)
+
+
 def ui_url() -> str:
-    """`ui/index.html` as file URL; `?host=pywebview` tells bridge.js to wait for the real API
-    instead of falling back to the mock (pywebview injects its API only after page load)."""
+    """`ui/index.html` as plain file URL (no query, see USER_AGENT)."""
     index = Path(__file__).resolve().parents[1] / "ui" / "index.html"
-    return index.as_uri() + "?host=pywebview"
+    return index.as_uri()
 
 
 def _bring_to_front(window) -> None:
@@ -146,7 +156,8 @@ def _run_gui() -> int:
     activation.start()
     api.start()
     try:
-        webview.start()
+        log.info("UI: %s", ui_url())
+        webview.start(user_agent=USER_AGENT)
     finally:
         # R2-n4: shut the services down first, then stop answering "show" requests; a second
         # start in between finds the (still held) single-instance lock and just exits

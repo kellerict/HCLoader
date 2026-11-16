@@ -48,6 +48,7 @@ def test_run_gui_creates_window_and_wires_api(monkeypatch):
         return created["window"]
 
     def start(*a, **kw):
+        seen["user_agent"] = kw.get("user_agent", "")
         win = created["window"]
         win.events.loaded.fire()
         # a second start while the window is open brings it to the front
@@ -67,11 +68,10 @@ def test_run_gui_creates_window_and_wires_api(monkeypatch):
     assert (created["width"], created["height"]) == (1440, 900)
     assert created["min_size"] == (1100, 700)
     assert created["background_color"] == "#08080a"
-    assert created["url"].startswith("file://") and created["url"].endswith(
-        "ui/index.html?host=pywebview"
-    )
+    assert created["url"].startswith("file://") and created["url"].endswith("ui/index.html")
+    assert "HCLoader-App/" in seen["user_agent"]
     assert isinstance(created["js_api"], Api)
-    assert seen == {"activation_file": True, "activated": True}
+    assert seen["activation_file"] is True and seen["activated"] is True
     assert created["window"].actions == ["restore", "show"]
     assert not activation_file().exists()  # cleaned up on exit
 

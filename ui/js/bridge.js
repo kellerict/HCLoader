@@ -6,7 +6,7 @@
    denselben Methodennamen und Datenformen.
 
    Mock erzwingen:  index.html?mock=1
-   app/main.py lädt index.html?host=pywebview: dann wird auf die echte API gewartet
+   app/main.py lädt index.html (User-Agent mit «HCLoader-App/») bzw. Tests ?host=pywebview: dann wird auf die echte API gewartet
    (pywebview injiziert sie erst nach dem Laden). Kommt sie innert LIVE_WAIT_MS nicht, gibt es
    KEINEN Mock, sondern den Zustand "error" (app.js zeigt «Verbindung zum Backend fehlgeschlagen»
    mit Neu-laden-Knopf); es wird weiter gewartet und bei später API sauber live gestartet.
@@ -212,7 +212,8 @@
   /* "Live" erst, wenn die API-Funktionen wirklich da sind (pywebview legt api:{} früher an). */
   const hasApi = () => !!(window.pywebview && window.pywebview.api && typeof window.pywebview.api.get_settings === 'function');
   const forceMock = /[?&]mock(=1|&|$)/.test(location.search);
-  const hosted = /[?&]host=pywebview(&|$)/.test(location.search);
+  /* In der App: Kennung im User-Agent (app/main.py USER_AGENT); ?host=pywebview bleibt für Tests. */
+  const hosted = /[?&]host=pywebview(&|$)/.test(location.search) || /\bHCLoader-App\//.test(navigator.userAgent);
 
   const bridge = (HC.bridge = {
     live: false,

@@ -197,3 +197,17 @@ def test_settings_moved_task_offers_recreate(browser):
     assert page.evaluate(SWITCH) is True
     assert not errors
     page.close()
+
+
+def test_app_user_agent_marks_hosted_mode(browser):
+    """The app marks itself via the user agent (no query: .NET Uri breaks file URLs with '?')."""
+    from app.main import USER_AGENT
+
+    page = browser.new_page(user_agent=USER_AGENT)
+    page.goto(INDEX.as_uri())
+    page.wait_for_function("window.HC && HC.bridge")
+    assert page.evaluate("HC.bridge.hosted") is True
+    plain = browser.new_page()
+    plain.goto(INDEX.as_uri())
+    plain.wait_for_function("window.HC && HC.bridge")
+    assert plain.evaluate("HC.bridge.hosted") is False
