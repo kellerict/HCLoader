@@ -9,9 +9,13 @@ Schlüssel = Englisch, snake_case. UI-Labels kommen aus `ui/js/i18n.js`. Änderu
 | | `log_level` | str | `INFO` | DEBUG, INFO, WARNING, ERROR |
 | | `confirm_delete` | bool | true | |
 | `search` (Filter & Keywords) | `results_count` | int | 30 | 1–100 |
+| | `append_year` | bool | true | Bei Jahr-Filter Jahreszahl an Suchbegriff anhängen |
 | `filters` (Filter & Keywords) | `min_duration` | int (s) | 600 | ≥ 0 |
 | | `max_duration` | int (s) | 0 | ≥ 0, 0 = unbegrenzt, sonst ≥ min_duration |
-| | `upload_period` | str | `all` | all, 7d, 30d, 1y |
+| | `upload_period` | str | `all` | all, 7d, 30d, 1y, year, custom |
+| | `upload_year` | int | 0 | 0 = nicht gesetzt, sonst 2005–aktuelles Jahr; Pflicht bei `year` |
+| | `upload_from` | str | `""` | `YYYY-MM-DD` oder leer (für `custom`) |
+| | `upload_to` | str | `""` | `YYYY-MM-DD` oder leer, ≥ upload_from |
 | | `include_keywords` | list[str] | SPEC §4 | |
 | | `exclude_keywords` | list[str] | SPEC §4 | |
 | | `match_description` | bool | false | |
@@ -55,3 +59,9 @@ Schlüssel = Englisch, snake_case. UI-Labels kommen aus `ui/js/i18n.js`. Änderu
 | `maintenance` (Wartung) | `check_updates_on_start` | bool | true | max. 1×/Tag |
 
 Bridge (`ui/js/bridge.js`): `get_settings()` → `{values, defaults}`; `save_settings(values)` → `{ok: true}` oder `{ok: false, errors: {"section.key": "Meldung"}}`; `reset_settings(section?)`.
+
+## Phase 3 – Jahr-/Zeitraum-Filter (Entscheid)
+- Flache Suche liefert Datum nur ungefähr (`youtubetab:approximate_date`, aus "vor X Jahren").
+- `year`: Video besteht, wenn die Jahreszahl als eigenes Wort im Titel steht ODER das (ungefähre) Upload-Jahr == Jahr ist (bei ungefährem Datum ±1 Jahr toleriert). Unbekanntes Datum und kein Jahr im Titel → verwerfen.
+- `custom`: Upload-Datum innerhalb [from, to]; bei ungefährem Datum ±1 Jahr Toleranz an den Rändern; unbekannt → verwerfen.
+- Suche: `search(query, {genre?, year?})` – Backend hängt Genre-Suchbegriffe (SPEC §3.1) und bei `append_year` die Jahreszahl an.

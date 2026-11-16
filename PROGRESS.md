@@ -14,8 +14,8 @@ Cloud-Session (Linux-Container). Abweichend von `build-all.md`: alle Phasen auf 
 | Phase | Status | Branch | PR | Tag |
 |---|---|---|---|---|
 | 1 – Gerüst & Kern-Download | **abgeschlossen** (QA bestanden bis auf extern blockierten Smoke; Review Runde 2: N1/N2 behoben) | claude/compassionate-thompson-zgetlu | – | – |
-| 2 – GUI-Grundgerüst | UI fertig; Integration (api.py, Fenster) in Arbeit | claude/compassionate-thompson-zgetlu | – | – |
-| 3 – Entdecken & Downloads | offen | | | |
+| 2 – GUI-Grundgerüst | **abgeschlossen** (QA bestanden, Review freigegeben, 12 Minor → Phase 3) | claude/compassionate-thompson-zgetlu | – | – |
+| 3 – Entdecken & Downloads | in Arbeit | | | |
 | 4 – Watchlist & Zeitplan | offen | | | |
 | 5 – Bibliothek, Protokoll, Feinschliff | offen | | | |
 
@@ -51,3 +51,4 @@ Offene Review-Punkte (docs/reviews/phase-1.md, Runde 2)
 - 2026-11-16 – UI aufgeteilt + Feinschliff fertig (a7b359c)
 - 2026-11-16 – QA Phase 1 + Nach-Review gestartet; Phase-2-Integration gestartet
 - 2026-11-16 – QA Phase 1 BESTANDEN (Smoke extern blockiert); Review Runde 2 → N1/N2 behoben → Phase 1 abgeschlossen
+- 2026-11-16 – Phase 2: Integration (86de529), QA BESTANDEN, Review FREIGEGEBEN → abgeschlossen; Phase 3 gestartet
