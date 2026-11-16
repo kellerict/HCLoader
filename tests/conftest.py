@@ -83,6 +83,8 @@ def _home(tmp_path, monkeypatch):
     monkeypatch.setenv("HCLOADER_HOME", str(tmp_path / "home"))
     # default target %USERPROFILE%\Music\HCLoader: the queue preflight writes a probe file
     monkeypatch.setenv("USERPROFILE", str(tmp_path / "profile"))
+    # never open a modal Windows MessageBox in tests (it blocked the Windows CI for hours)
+    monkeypatch.setenv("HCLOADER_NO_DIALOG", "1")
 
 
 @pytest.fixture

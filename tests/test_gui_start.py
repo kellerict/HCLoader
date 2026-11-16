@@ -100,7 +100,21 @@ def test_run_gui_start_error_is_visible(monkeypatch, capsys):
     monkeypatch.setattr(app_main, "sys", types.SimpleNamespace(platform="win32", stderr=sys.stderr))
     user32 = types.SimpleNamespace(MessageBoxW=lambda hwnd, text, title, flags: boxes.append(text))
     monkeypatch.setattr(ctypes, "windll", types.SimpleNamespace(user32=user32), raising=False)
+    monkeypatch.setattr(app_main, "_dialog_allowed", lambda: True)  # as under pythonw
 
     assert app_main.run_gui() == app_main.EXIT_FAILED
     assert "database is locked" in capsys.readouterr().err
     assert len(boxes) == 1 and "HCLoader konnte nicht gestartet werden" in boxes[0]
+
+
+def test_fatal_dialog_only_without_console(monkeypatch):
+    """A modal MessageBox only under pythonw (no console) and never with HCLOADER_NO_DIALOG."""
+    import sys
+
+    assert app_main._dialog_allowed() is False  # conftest sets HCLOADER_NO_DIALOG
+    monkeypatch.delenv("HCLOADER_NO_DIALOG")
+    monkeypatch.setattr(sys, "executable", r"C:\App\python\python.exe")
+    monkeypatch.setattr(sys, "stderr", object())
+    assert app_main._dialog_allowed() is False  # console run: stderr is enough
+    monkeypatch.setattr(sys, "executable", r"C:\App\python\pythonw.exe")
+    assert app_main._dialog_allowed() is True

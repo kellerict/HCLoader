@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -62,17 +63,29 @@ def _bring_to_front(window) -> None:
         pass
 
 
+def _dialog_allowed() -> bool:
+    if os.environ.get("HCLOADER_NO_DIALOG"):
+        return False
+    return (
+        sys.stderr is None
+        or getattr(sys, "frozen", False)
+        or sys.executable.lower().endswith("pythonw.exe")
+    )
+
+
 def show_fatal(message: str) -> None:
     """Make a start error visible: under pythonw there is no console (n4).
 
-    Always stderr + log; on Windows additionally a MessageBox (ctypes, no extra dependency).
+    Always stderr + log; on Windows additionally a MessageBox (ctypes, no extra dependency) -
+    but only without a console (pythonw: `sys.stderr` is None) and never when
+    `HCLOADER_NO_DIALOG` is set (tests/CI: a modal box would block forever).
     """
     log.critical("%s", message)
     try:
         print(message, file=sys.stderr)
     except Exception:  # pythonw: sys.stderr may be None
         pass
-    if sys.platform == "win32":
+    if sys.platform == "win32" and _dialog_allowed():
         try:
             import ctypes
 
@@ -97,6 +110,9 @@ def run_gui() -> int:
 
 def _run_gui() -> int:
     """pywebview window with the js_api bridge (app/api.py) and background services."""
+    from .core import portable
+
+    portable.prepare_gui_start()  # Mark of the Web on pythonnet DLLs (portable ZIP)
     try:
         import webview
     except ImportError:
