@@ -86,7 +86,10 @@ def setup_logging(
     if _live_handler not in root.handlers:
         _live_handler.setFormatter(fmt)
         root.addHandler(_live_handler)
-    if console and not any(getattr(h, "_hcloader_console", False) for h in root.handlers):
+    if console:
+        # Replace an existing console handler so it always writes to the current sys.stderr.
+        for h in [h for h in root.handlers if getattr(h, "_hcloader_console", False)]:
+            root.removeHandler(h)
         ch = logging.StreamHandler()
         ch.setFormatter(fmt)
         ch._hcloader_console = True  # type: ignore[attr-defined]

@@ -89,7 +89,7 @@ class Shooter:
         self.page.mouse.move(1180, 4)  # keep hover effects out of the picture
         self.page.screenshot(path=str(path), animations="disabled")
         self.written.append(path)
-        print(f"  {path.relative_to(ROOT)}")
+        print(f"  {path.relative_to(ROOT) if path.is_relative_to(ROOT) else path}")
 
     def clear_toasts(self) -> None:
         self.page.evaluate("document.querySelector('#toasts').replaceChildren()")
