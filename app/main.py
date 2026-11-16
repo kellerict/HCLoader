@@ -40,16 +40,72 @@ def _reset_interrupted(db: Database) -> None:
         log.warning("%d unterbrochene Downloads auf 'failed' gesetzt", n)
 
 
+WINDOW_TITLE = "HCLoader"
+WINDOW_SIZE = (1440, 900)
+WINDOW_MIN_SIZE = (1100, 700)
+WINDOW_BG = "#08080a"
+
+
+def ui_url() -> str:
+    """`ui/index.html` as file URL; `?host=pywebview` tells bridge.js to wait for the real API
+    instead of falling back to the mock (pywebview injects its API only after page load)."""
+    index = Path(__file__).resolve().parents[1] / "ui" / "index.html"
+    return index.as_uri() + "?host=pywebview"
+
+
+def _bring_to_front(window) -> None:
+    """Restore and show the window (second start, SPEC §2)."""
+    for step in (window.restore, window.show):
+        try:
+            step()
+        except Exception:
+            log.debug("Fenster: %s fehlgeschlagen", step, exc_info=True)
+    try:  # Windows focus rules: briefly topmost so the window really comes forward
+        window.on_top = True
+        window.on_top = False
+    except Exception:
+        pass
+
+
 def run_gui() -> int:
-    """Open the UI prototype in pywebview if available (full bridge follows in Phase 2)."""
+    """pywebview window with the js_api bridge (app/api.py) and background services."""
     try:
         import webview
     except ImportError:
         print("pywebview ist nicht installiert (pip install pywebview).", file=sys.stderr)
         return EXIT_FAILED
-    index = Path(__file__).resolve().parents[1] / "ui" / "index.html"
-    webview.create_window("HCLoader", index.as_uri(), width=1280, height=820)
-    webview.start()
+    from .api import Api
+    from .instance import ActivationServer
+
+    settings, _ = config.load_with_warnings()
+    setup_logging(settings.general.log_level)
+    st = binaries.status()
+    log.info(
+        "HCLoader gestartet · yt-dlp %s · Deno %s · ffmpeg %s · Plugin %s",
+        st["yt_dlp_version"] or "FEHLT",
+        st["deno_version"] or "FEHLT",
+        st["ffmpeg_version"] or "FEHLT",
+        st["bgutil_version"] or "FEHLT",
+    )
+    api = Api()  # logs config warnings itself
+    window = webview.create_window(
+        WINDOW_TITLE,
+        url=ui_url(),
+        js_api=api,
+        width=WINDOW_SIZE[0],
+        height=WINDOW_SIZE[1],
+        min_size=WINDOW_MIN_SIZE,
+        background_color=WINDOW_BG,
+    )
+    api.attach_window(window)
+    activation = ActivationServer(lambda: _bring_to_front(window))
+    activation.start()
+    api.start()
+    try:
+        webview.start()
+    finally:
+        activation.stop()
+        api.shutdown()
     return EXIT_OK
 
 
@@ -126,7 +182,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return EXIT_USAGE
     instance = locks.acquire_single_instance()
     if instance is None:
-        print("HCLoader läuft bereits.", file=sys.stderr)
+        from .instance import request_activation
+
+        if not request_activation():
+            print("HCLoader läuft bereits.", file=sys.stderr)
         return EXIT_OK
     try:
         # only while no download run is active (a headless run may be downloading right now)

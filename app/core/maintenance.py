@@ -165,7 +165,7 @@ def check_updates(
     fetch: Callable[[str], dict[str, Any]] = _default_fetch,
     installed: dict[str, str | None] | None = None,
 ) -> dict[str, Any]:
-    """Latest PyPI versions vs. installed. -> {ok, available, packages:{ytdlp:{...}, plugin:{...}}}"""
+    """Latest PyPI versions vs. installed -> {ok, available, packages: {ytdlp, plugin}}."""
     installed = installed or installed_versions()
     packages: dict[str, dict[str, Any]] = {}
     try:

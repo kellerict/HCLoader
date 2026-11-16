@@ -6,6 +6,9 @@
    denselben Methodennamen und Datenformen.
 
    Mock erzwingen:  index.html?mock=1
+   app/main.py lädt index.html?host=pywebview: dann wird auf die echte API gewartet
+   (pywebview injiziert sie erst nach dem Laden), der Mock springt erst nach LIVE_WAIT_MS ein.
+   Methoden/Events mit Phase-Status: docs/bridge-api.md
 
    ---------------------------------------------------------------------
    AUFRUFE  UI -> Python        HC.bridge.call('name', ...args) -> Promise
@@ -107,10 +110,13 @@
   'use strict';
   const HC = (window.HC = window.HC || {});
   const handlers = {};
-  const WAIT_MS = 1200; // so lange auf "pywebviewready" warten, bevor der Mock einspringt
+  const WAIT_MS = 1200; // Browser ohne pywebview: so lange warten, bevor der Mock einspringt
+  const LIVE_WAIT_MS = 30000; // in pywebview (?host=pywebview): Geduld beim langsamen Start
 
-  const hasApi = () => !!(window.pywebview && window.pywebview.api);
+  /* "Live" erst, wenn die API-Funktionen wirklich da sind (pywebview legt api:{} früher an). */
+  const hasApi = () => !!(window.pywebview && window.pywebview.api && typeof window.pywebview.api.get_settings === 'function');
   const forceMock = /[?&]mock(=1|&|$)/.test(location.search);
+  const hosted = /[?&]host=pywebview(&|$)/.test(location.search);
 
   const bridge = (HC.bridge = {
     live: false,
@@ -123,8 +129,11 @@
         const go = (live) => { bridge.live = live; bridge._resolved = true; resolve(live ? 'live' : 'mock'); };
         if (forceMock) return go(false);
         if (hasApi()) return go(true);
-        const timer = setTimeout(() => go(hasApi()), WAIT_MS);
-        window.addEventListener('pywebviewready', () => { clearTimeout(timer); go(true); }, { once: true });
+        let done = false;
+        const finish = (live) => { if (done) return; done = true; clearTimeout(timer); clearInterval(poll); go(live); };
+        const timer = setTimeout(() => finish(hasApi()), hosted ? LIVE_WAIT_MS : WAIT_MS);
+        const poll = setInterval(() => { if (hasApi()) finish(true); }, 100);
+        window.addEventListener('pywebviewready', () => finish(true), { once: true });
       });
       return bridge._ready;
     },

@@ -455,7 +455,11 @@ def parse_settings(values: dict[str, Any]) -> tuple[Settings | None, dict[str, s
 
 def _duplicate_genre_errors(values: dict[str, Any]) -> dict[str, str]:
     """Point duplicate genre names at the offending row: {"genres.items.<i>.name": ...}."""
-    items = (values.get("genres") or {}).get("items") if isinstance(values.get("genres"), dict) else None
+    items = (
+        (values.get("genres") or {}).get("items")
+        if isinstance(values.get("genres"), dict)
+        else None
+    )
     if not isinstance(items, list):
         return {}
     out: dict[str, str] = {}
