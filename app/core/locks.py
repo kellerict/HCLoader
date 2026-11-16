@@ -27,7 +27,7 @@ import re
 import sys
 import threading
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
@@ -43,6 +43,7 @@ SINGLE_INSTANCE = "single-instance"
 RUN_LOCK = "run"
 WATCHLIST_LOCK = "watchlist"
 THROTTLE_LOCK = "throttle"
+METADATA_LOCK = "metadata"
 MUTEX_NAMESPACES = ("Global\\", "Local\\")
 
 
@@ -202,6 +203,7 @@ def cross_process_lock(
     poll: float = 0.05,
     cancel: threading.Event | None = None,
     path: Path | None = None,
+    on_timeout: Callable[[], BaseException] | None = None,
 ) -> Iterator[bool]:
     """Blocking OS file lock for short critical sections shared by all HCLoader processes.
 
@@ -209,6 +211,8 @@ def cross_process_lock(
     process dies. Yields True if the lock is held. After `timeout` seconds (or if the lock file
     is unusable) it yields False instead of blocking the user forever - callers then continue
     without cross-process protection (logged). `cancel` aborts the wait (yields False).
+    With `on_timeout`, a timeout or cancel raises `on_timeout()` instead (an unusable lock
+    file still yields False).
     """
     lock_path = path or (config.app_home() / "locks" / f"{name}.lock")
     fh: Any = None
@@ -225,6 +229,9 @@ def cross_process_lock(
                 held = True
                 break
             if (cancel is not None and cancel.is_set()) or time.monotonic() >= deadline:
+                if on_timeout is not None:
+                    fh.close()
+                    raise on_timeout()
                 log.warning("Prozess-Lock «%s» nicht erhalten – fahre ohne fort", name)
                 break
             time.sleep(poll)

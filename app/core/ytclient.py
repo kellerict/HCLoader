@@ -460,6 +460,8 @@ class YtClient:
                 )
                 with yt_dlp.YoutubeDL(opts) as ydl:
                     with self.throttle.metadata_lock(cancel_event=cancel_event):
+                        # R2-m1: a search may have run while we waited for the lock
+                        self.throttle.request_spacing(cancel_event)
                         if on_request:
                             on_request()
                         ie_result = ydl.extract_info(url, download=False, process=False)
@@ -467,6 +469,10 @@ class YtClient:
                         raise YtClientError("Keine Daten von yt-dlp erhalten")
                     if ie_result.get("_type") == "playlist":
                         raise YtClientError("Keine einzelne Video-URL (Playlist erkannt)")
+                    if ie_result.get("_type") not in (None, "video"):  # R2-n1: url/url_transparent
+                        raise YtClientError(
+                            "Kein direktes Video (Verweis, z.B. Trailer eines Bezahlvideos)"
+                        )
                     info = ydl.process_ie_result(ie_result, download=True)
                     if info is None:
                         raise YtClientError("Keine Daten von yt-dlp erhalten")

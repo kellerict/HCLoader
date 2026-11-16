@@ -5,6 +5,24 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
 
 ## [Unreleased]
 
+### Added
+- Phase 4 Backend: Watchlist (`core/watchlist.py`: inkrementelle Prüfung bis zum ersten bekannten
+  Video, Filter, Eingang bzw. Auto-Download, Backoff bricht den Lauf ab), API `save_source`,
+  `check_sources` (Events `source`, `watchlist_done`), `get_inbox`, In-App-Intervall
+  (`WatchlistScheduler`, `Status.next_check`), Headless-Lauf `--headless --run-watchlist`
+  (`app/headless.py`, Exit-Codes 0/1/2/3/4, ein `headless`-Run-Eintrag, PO-Token-Server selbst
+  starten/stoppen, `max_downloads_per_run`), Watchlist-Lock.
+- Aufgabenplanung per XML (`StartWhenAvailable`, Akku erlaubt, `IgnoreNew`, 6 h; Review Phase 2 n6).
+
+### Changed
+- Review Phase 1: **N3** Mutex im Namensraum `Global\` (Rückfall `Local\`, dann Datei-Lock);
+  **N5** Request-Abstand, Suchzähler und Backoff-Eskalation prozessübergreifend (DB-State unter
+  Datei-Lock).
+- Review Phase 3 Runde 2: **R2-m1** Request-Abstand nach dem Warten auf den Metadaten-Lock erneut
+  erzwungen; **R2-n1** `url`/`url_transparent` werden abgelehnt; **R2-n2** Metadaten-Lock
+  prozessübergreifend; **R2-n3** `redact` für `@` im Passwort und Proxys ohne Schema; **R2-n4**
+  Shutdown vor `activation.stop()`; n5/n7 zurückgestellt (docs/decisions.md).
+
 ### Fixed
 - Review Phase 3:
   - **M1** Das Genre aus dem Such-Chip bleibt bis in Datei, TCON, Zielordner und DB erhalten:

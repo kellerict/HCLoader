@@ -1274,3 +1274,144 @@ def test_m5_shutdown_closes_db_only_after_queue_thread(env):
     b._db.upsert_video({"id": "abcdefghijk", "title": "Mix", "status": "downloading"})
     assert b.shutdown() is False
     assert closed == [] and b._db.get_video("abcdefghijk")["status"] == "queued"
+
+
+# ------------------------------------------------------------------ Phase 4: watchlist
+
+
+class ListClient(NullClient):
+    def __init__(self, entries=None, error=None):
+        self.entries, self.error = entries or {}, error
+
+    def list_source(self, url, max_entries=None):
+        if self.error:
+            raise self.error
+        return list(self.entries.get(url, []))
+
+
+def _wait_watchlist_done(a, window, n=1):
+    import time
+
+    for _ in range(200):
+        a._bus.flush(2)
+        if len(window.events_of("watchlist_done")) >= n:
+            return
+        time.sleep(0.02)
+    raise AssertionError("watchlist_done fehlt")
+
+
+def test_save_source_validates_and_persists(env):
+    a = env.make()
+    res = a.save_source({"type": "channel", "name": "", "url_or_query": "https://x.com/a"})
+    assert res["ok"] is False and set(res["errors"]) == {"name", "url_or_query"}
+    ok = a.save_source(
+        {
+            "type": "channel",
+            "name": "DJ",
+            "url_or_query": "https://www.youtube.com/@dj",
+            "default_genre": "Hardcore",
+            "max_entries": 12,
+            "auto_download": True,
+        }
+    )
+    assert ok["ok"] and ok["source"]["max_entries"] == 12 and ok["source"]["auto_download"] is True
+    assert set(ok["source"]) == {
+        "id", "type", "name", "url_or_query", "default_genre", "enabled", "auto_download",
+        "max_entries", "last_checked", "new_count",
+    }  # fmt: skip
+    sid = ok["source"]["id"]
+    # edit (extra UI fields ignored), toggle enabled
+    upd = a.save_source({**ok["source"], "enabled": False, "new_count": 99, "name": "DJ2"})
+    assert upd["ok"] and upd["source"]["enabled"] is False and upd["source"]["name"] == "DJ2"
+    assert len(a.get_sources()) == 1 and a.get_sources()[0]["id"] == sid
+    dup = a.save_source(
+        {"type": "channel", "name": "B", "url_or_query": "https://www.youtube.com/@dj"}
+    )
+    assert "existiert bereits" in dup["errors"]["url_or_query"]
+    assert a.save_source({**ok["source"], "id": 999})["ok"] is False
+    assert a.save_source("x")["ok"] is False
+
+
+def test_check_sources_runs_job_with_events_and_inbox(env):
+    a = env.make(
+        client_factory=lambda: ListClient(
+            {
+                "https://www.youtube.com/@dj": [
+                    {
+                        "id": "newvideo001",
+                        "title": "Hardcore Mix",
+                        "duration": 3600,
+                        "channel_id": "UC1",
+                    }
+                ]
+            }
+        )
+    )
+    sid = a.save_source(
+        {"type": "channel", "name": "DJ", "url_or_query": "https://www.youtube.com/@dj"}
+    )["source"]["id"]
+    res = a.check_sources(None)
+    assert res == {"ok": True, "started": 1}
+    _wait_watchlist_done(a, env.window)
+    src = [e for e in env.window.events_of("source") if e["id"] == sid]
+    assert [e["checking"] for e in src] == [True, False] and src[1]["new_count"] == 1
+    assert src[1]["last_checked"]
+    assert env.window.events_of("watchlist_done")[-1] == {"checked": 1, "found": 1}
+    assert [v["id"] for v in a.get_inbox()] == ["newvideo001"]
+    assert a.get_status()["inbox_count"] == 1
+    assert a._db.list_runs()[0]["kind"] == "watchlist"
+    a._wl_worker.stop()
+
+
+def test_check_sources_refusals_and_empty(env):
+    a = env.make()
+    assert a.check_sources(None) == {"ok": True, "started": 0}
+    assert a.check_sources("x")["ok"] is False and a.check_sources(["a"])["ok"] is False
+    a.save_source({"type": "search", "name": "S", "url_or_query": "hardcore"})
+    a._throttle.trigger_backoff("429")
+    res = a.check_sources(None)
+    assert res["ok"] is False and "Backoff aktiv bis" in res["error"] and res["started"] == 0
+
+
+def test_check_during_headless_run_is_refused_by_watchlist_lock(env):
+    a = env.make(watchlist_lock=lambda: None, client_factory=lambda: ListClient())
+    a.save_source({"type": "search", "name": "S", "url_or_query": "hardcore"})
+    assert a.check_sources(None)["started"] == 1
+    _wait_watchlist_done(a, env.window)
+    assert env.window.events_of("watchlist_done")[-1] == {"checked": 0, "found": 0}
+    assert any("anderen Lauf" in t["msg"] for t in env.window.events_of("toast"))
+    assert env.window.events_of("source") == []
+
+
+def test_backoff_during_check_aborts_and_toasts(env):
+    from datetime import UTC, datetime, timedelta
+
+    from app.core.throttle import BackoffActive
+
+    exc = BackoffActive(datetime.now(UTC) + timedelta(hours=6))
+    a = env.make(client_factory=lambda: ListClient(error=exc))
+    a.save_source({"type": "channel", "name": "A", "url_or_query": "https://www.youtube.com/@a"})
+    a.save_source({"type": "channel", "name": "B", "url_or_query": "https://www.youtube.com/@b"})
+    a.check_sources(None)
+    _wait_watchlist_done(a, env.window)
+    assert len([e for e in env.window.events_of("source") if e["checking"]]) == 1
+    assert env.window.events_of("watchlist_done")[-1]["found"] == 0
+    assert a._db.list_runs()[0]["note"].startswith("Backoff")
+
+
+def test_in_app_next_feeds_status_and_scheduler_triggers(env):
+    a = env.make(schedule_options={"start_delay": 0})
+    assert a.get_status()["next_check"] is None  # no source yet
+    a.save_source({"type": "search", "name": "S", "url_or_query": "hardcore"})
+    assert a.get_status()["next_check"] is not None
+    # settings: in_app_check off -> nothing planned
+    v = a.get_settings()["values"]
+    v["schedule"]["in_app_check"] = False
+    assert a.save_settings(v)["ok"] and a.get_status()["next_check"] is None
+    v["schedule"]["in_app_check"] = True
+    a.save_settings(v)
+    started = []
+    a._submit_check = lambda ids: started.append(ids)
+    assert a._wl_sched.check_now() is True and started == [None]
+    a._throttle.trigger_backoff("429")
+    assert a._wl_sched.check_now() is False and a._wl_sched.next_check() > a._wl_sched._clock()

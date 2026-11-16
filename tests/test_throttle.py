@@ -467,3 +467,97 @@ def test_metadata_lock_waits_for_release(db):
         order.append("search")
     th.join()
     assert order == ["download extraction done", "search"]
+
+
+# ------------------------------------------------------------------ N5 / R2: cross-process state
+
+
+def test_request_spacing_is_shared_through_the_db(db):
+    """N5: a second Throttle (= second process) keeps the spacing to the first one's request."""
+    ft = FakeTime()
+    a, _ = make(db, ft, sleep_requests=3)
+    b, _ = make(db, ft, sleep_requests=3)
+    a.before_request("list")
+    b.before_request("list")
+    assert ft.slept == [3]
+    assert db.get_state("last_request")
+
+
+def test_search_counter_is_shared_through_the_db(db):
+    ft = FakeTime()
+    a, _ = make(db, ft, max_searches_per_hour=2, sleep_requests=0)
+    b, _ = make(db, ft, max_searches_per_hour=2, sleep_requests=0)
+    a.before_request("search")
+    b.before_request("search")
+    with pytest.raises(LimitReached):
+        a.before_request("search")
+
+
+def test_clock_set_back_does_not_wait_forever(db):
+    ft = FakeTime()
+    t, _ = make(db, ft, sleep_requests=3)
+    t.before_request("list")
+    ft.advance(hours=-5)
+    t.before_request("list")
+    assert ft.slept == [3]
+
+
+def test_r2m1_request_spacing_after_waiting_for_the_metadata_lock(db):
+    """A download reserves its slot, a search goes out while it waits for the metadata lock:
+    after getting the lock the download must again keep `sleep_requests` to that search."""
+    ft = FakeTime()
+    t, _ = make(db, ft, sleep_requests=3)
+    t.before_request("download", count_attempt=True)  # slot reserved
+    t.request_spacing()  # nothing since -> no extra wait
+    assert ft.slept == []
+    import threading
+
+    searcher = threading.Thread(target=lambda: t.before_request("search"))
+    searcher.start()  # the search (other thread) goes out first, 3 s after the download's slot
+    searcher.join()
+    assert ft.slept == [3]
+    ft.slept.clear()
+    with t.metadata_lock():
+        t.request_spacing()  # download now: spacing to the search again
+    assert ft.slept == [3]
+    assert t.downloads_this_run() == 1  # not counted again
+
+
+def test_r2m1_real_threads_search_during_download_wait(db):
+    import threading
+
+    ft = FakeTime()
+    t, _ = make(db, ft, sleep_requests=3)
+    t.before_request("download", count_attempt=True)
+    got_lock = threading.Event()
+    done = threading.Event()
+
+    def download():
+        with t.metadata_lock():
+            got_lock.set()
+            t.request_spacing()
+        done.set()
+
+    with t.metadata_lock():
+        th = threading.Thread(target=download)
+        th.start()
+        t.before_request("search")  # download is waiting for the lock meanwhile
+        assert not got_lock.is_set()
+        searched_at = ft.now
+    assert done.wait(5)
+    th.join()
+    assert (ft.now - searched_at).total_seconds() >= 3
+
+
+def test_r2n2_metadata_lock_is_cross_process(db, tmp_path):
+    from app.core import locks
+    from app.core.throttle import MetadataBusy
+
+    t, _ = make(db)
+    with locks.cross_process_lock(locks.METADATA_LOCK):  # "another process" holds it
+        with pytest.raises(MetadataBusy):
+            with t.metadata_lock(timeout=0.2, poll=0.02):
+                pass
+        assert not t.metadata_busy()  # the thread lock was released again
+    with t.metadata_lock(timeout=1):
+        pass

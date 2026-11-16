@@ -187,10 +187,11 @@ def _run(
                     notes.append(queue.blocked()[1])
         # SPEC §5: a successful run resets the backoff escalation (never lifts an active backoff)
         throttle.finish_run(res.checked > 0 and not res.backoff)
-        if throttle.backoff_until() is not None:
+        until_now = throttle.backoff_until()
+        if until_now is not None or res.backoff:
             code = EXIT_BLOCKED
             if not any(n.startswith("Backoff") for n in notes):
-                notes.append(f"Backoff bis {format_until(throttle.backoff_until())}")
+                notes.append(f"Backoff bis {format_until(until_now)}")
         elif errors:
             code = EXIT_FAILED
         return code

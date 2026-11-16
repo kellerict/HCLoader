@@ -109,6 +109,7 @@ class Throttle:
         # read-modify-write runs under a cross-process file lock (`_xlock`), so a GUI search
         # and a headless watchlist run keep the request spacing and count searches together.
         self._xdepth = 0
+        self._local = threading.local()  # last slot written by this thread (request_spacing)
         # Guards read-modify-write sequences (counters, backoff, request spacing). Re-entrant:
         # public methods call each other. Held across the request sleep on purpose, so requests
         # of different threads run serially with the configured spacing.
@@ -325,9 +326,31 @@ class Throttle:
                 # a clock set back must not produce an endless wait
                 wait = min(cfg.sleep_requests - since, float(cfg.sleep_requests))
                 self._wait(wait, cancel_event)
-            self.db.set_state(K_LAST_REQUEST, self._now().isoformat())
+            stamp = self._now().isoformat()
+            self.db.set_state(K_LAST_REQUEST, stamp)
+            self._local.slot = stamp
             if count_attempt:
                 self.register_download()
+
+    def request_spacing(self, cancel_event: threading.Event | None = None) -> None:
+        """Re-enforce `sleep_requests` after waiting for the metadata lock (R2-m1), without
+        counting anything. A download reserves its request slot in `before_request` and only then
+        waits for the metadata lock; if another request (a search) went out meanwhile, the
+        spacing to it is waited out here. No wait if this thread's slot is still the latest."""
+        with self._xlock(cancel_event):
+            cfg = self.cfg
+            raw = self.db.get_state(K_LAST_REQUEST)
+            last = self._last_request()
+            if (
+                last is not None
+                and raw != getattr(self._local, "slot", None)
+                and (cfg.sleep_requests > 0)
+            ):
+                since = (self._now() - last).total_seconds()
+                self._wait(min(cfg.sleep_requests - since, float(cfg.sleep_requests)), cancel_event)
+                stamp = self._now().isoformat()
+                self.db.set_state(K_LAST_REQUEST, stamp)
+                self._local.slot = stamp
 
     @contextmanager
     def metadata_lock(
@@ -351,7 +374,19 @@ class Throttle:
             if deadline is not None and time.monotonic() >= deadline:
                 raise MetadataBusy
         try:
-            yield
+            # R2-n2: also exclusive across processes (GUI search vs. headless watchlist run)
+            left = 3600.0 if deadline is None else max(0.0, deadline - time.monotonic())
+            with locks.cross_process_lock(
+                locks.METADATA_LOCK,
+                timeout=left,
+                cancel=cancel_event,
+                on_timeout=lambda: (
+                    WaitCancelled()
+                    if cancel_event is not None and cancel_event.is_set()
+                    else MetadataBusy()
+                ),
+            ):
+                yield
         finally:
             self._meta_lock.release()
 

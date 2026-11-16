@@ -284,3 +284,57 @@ Kurze Notizen zu Architekturentscheiden (Datum, Entscheid, Grund).
   Dateien von Einträgen mit Status `queued`, `downloading` **und** `failed`: Fehlgeschlagene
   stehen sichtbar in der Warteschlange und sollen beim manuellen Wiederholen fortsetzen
   (Netzwerkfehler behalten `.part` bewusst).
+
+## 2026-11-16 – Watchlist, In-App-Intervall, Headless (Phase 4)
+
+- **Prüfung:** `core/watchlist.py`. Pro Quelle wird die flache Liste (neueste zuerst) bis zum ersten
+  bekannten Video gelesen (DB `is_known`, jeder Status). Kanal-Root geht auf `/videos`
+  (`ytclient.normalize_source_url`). **Suchquellen** überspringen Bekanntes nur, ohne Abbruch: die
+  Relevanz-Reihenfolge ist nicht chronologisch. Offen: Playlists hängen neue Videos standardmässig
+  hinten an; mit `max_entries` werden nur die ersten N gelesen (Playlist ggf. «neueste zuerst» sortieren).
+- Neue Videos: bestehen sie die Filter → `inbox` bzw. (Auto-Download) `DownloadQueue.enqueue(auto=True)`;
+  sonst `new`. `auto=True` ist keine Nutzeraktion (hebt das Lauf-Limit und einen Client-Fehler nicht auf).
+  `runs.found` = neu gespeicherte Videos (nicht nur die im Eingang).
+- **Backoff/Fehler:** `BackoffActive` oder `rate_limited` bricht den ganzen Lauf ab (Notiz beginnt mit
+  «Backoff»); `state.watchlist_last_run` wird dann nicht gesetzt, damit nach dem Backoff erneut geprüft wird.
+  Ein anderer Fehler (Netz, Quelle gelöscht, Suchlimit) zählt als Fehler der Quelle, der Lauf geht weiter.
+- **Watchlist-Lock** (`locks.acquire_watchlist_lock`): ein Check zur Zeit, GUI-Intervall gegen Headless.
+  Der Headless-Lauf hält Lauf- **und** Watchlist-Lock; der GUI-Check nur den Watchlist-Lock (Prüfen darf
+  parallel zu einem GUI-Download laufen wie eine Suche, der Metadaten-Lock serialisiert die Requests).
+  Eigener Thread `hcloader-watchlist`, damit Wartungsaufträge nicht warten.
+- **In-App-Intervall:** `worker.WatchlistScheduler` (Tick 30 s). Persistenz `state.watchlist_last_run`
+  (GUI und Headless); ohne Lauf 60 s nach App-Start; nie bei Backoff; `Status.next_check` bekommt
+  `in_app_next`.
+- **Headless:** `app/headless.py`; `DownloadQueue(record_run=False, run_lock=<gehaltener Lock>)` wird
+  direkt (`run_pending`) benutzt, ein einziger `headless`-Run-Eintrag. `finish_run` am Ende
+  (Erfolg = mindestens eine Quelle geprüft, kein Backoff). Kein PO-Token-Server im HTTP-Modus → Abbruch
+  vor dem ersten Request (Exit 1).
+- **N3:** Mutex `Global\HCLoader.<User>.<Name>`, Rückfall `Local\`, dann Datei-Lock. Bekannte Grenze:
+  fällt nur einer von zwei Prozessen auf `Local\` zurück, schliessen sie sich über den Mutex nicht aus.
+- **N5/R2-n2:** `locks.cross_process_lock` (blockierender OS-Datei-Lock mit Timeout, 120 s; danach weiter
+  ohne Schutz + Warnung). Request-Abstand (`state.last_request`), Suchzähler und Backoff-Eskalation
+  laufen darunter (`Throttle._xlock`, re-entrant). Der Metadaten-Lock ist zusätzlich ein Datei-Lock
+  (`locks/metadata.lock`), damit eine GUI-Suche und ein Headless-Lauf nie gleichzeitig Metadaten laden.
+- **R2-m1:** `Throttle.request_spacing()` wird im Download direkt nach dem Metadaten-Lock aufgerufen: Hat
+  seit der Slot-Reservierung ein anderer Thread/Prozess angefragt, wird `sleep_requests` nochmals
+  abgewartet (ohne zu zählen), sonst nichts.
+- **R2-n1:** Nach der Extraktion nur `_type` fehlend/`video`; `url`/`url_transparent` → Fehler
+  «Kein direktes Video …».
+- **R2-n3:** `redact` maskiert bis zum letzten `@` vor dem Host und Proxys ohne Schema mit `user:pass@`.
+- **R2-n4 (Entscheid):** `Api.shutdown()` zuerst, danach `activation.stop()`. Ein zweiter Start in dieser
+  Zeit findet den Single-Instance-Lock und beendet sich still; das Fenster ist zu diesem Zeitpunkt schon
+  geschlossen, ein «Fenster nach vorne» wäre wirkungslos.
+- **Zurückgestellt:** *n5* (CSP `script-src … file:`): braucht einen WebView2-Test unter Windows, geplant
+  Phase 6. *n7* (Datumsanzeige von `schtasks` je Locale, `scheduler._date_formats`): betrifft nur die
+  Anzeige von `next_run`, es gibt den Rückfall auf die gespeicherte Uhrzeit.
+
+## 2026-11-16 – Aufgabenplanung per XML (Review Phase 2 n6)
+
+- **Entscheid:** `schtasks /Create /TN HCLoader-Watchlist /XML <datei> /F`, Datei UTF-16 (mit BOM) in
+  einem Temp-Verzeichnis, danach gelöscht. Einstellungen: `StartWhenAvailable=true` (verpasster Lauf
+  wird nachgeholt), `DisallowStartIfOnBatteries=false`, `StopIfGoingOnBatteries=false`,
+  `MultipleInstancesPolicy=IgnoreNew`, `ExecutionTimeLimit=PT6H`, Trigger täglich `task_time`,
+  `InteractiveToken` (nur bei angemeldetem User, kein Passwort). Aktion: `pythonw.exe` + Wrapper, mit
+  `WorkingDirectory`. Das 261-Zeichen-Limit von `/TR` entfällt.
+- **Grund:** Diese Bedingungen sind per `schtasks`-Parameter nicht setzbar. «Unabhängig von der Anmeldung»
+  bräuchte ein Passwort und wird bewusst nicht angeboten; der `Global\`-Mutex deckt es trotzdem ab.

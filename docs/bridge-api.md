@@ -96,8 +96,9 @@ Aufgaben-Felder unverändert (sie spiegeln den Zustand der Windows-Aufgabe).
   (gleicher Aufruf wie die Verfügbarkeitsprüfung des Plugins, Deno ≥ 2.4.3); HTTP-Modus
   `GET http://127.0.0.1:<port>/ping`. **Kein YouTube-Request.** Das Ergebnis bestimmt
   `status.po_token`, bis sich die Netzwerk-Einstellungen ändern.
-- Aufgabenplanung: `schtasks /Create /SC DAILY /ST HH:MM /TN HCLoader-Watchlist
-  /TR "\"<venv>\pythonw.exe\" \"<repo>\scripts\run_watchlist.pyw\"" /F`; Status über
+- Aufgabenplanung: `schtasks /Create /TN HCLoader-Watchlist /XML <temp.xml> /F` (XML UTF-16: täglich
+  `HH:MM`, `StartWhenAvailable`, kein Akku-Stopp, `IgnoreNew`, 6 h Limit; Aktion
+  `<venv>\pythonw.exe "<repo>\scripts\run_watchlist.pyw"`, Arbeitsverzeichnis = Repo); Status über
   `/Query /TN HCLoader-Watchlist /FO CSV /V` (Spalten lokalisiert → nach Position gelesen);
   `/Delete … /F`. Wurde die Aufgabe ausserhalb gelöscht, gleicht `get_task_status` die Einstellung an
   (nur bei sicherem `registered: false`, nie bei `null`).
@@ -112,7 +113,7 @@ Aufgaben-Felder unverändert (sie spiegeln den Zustand der Windows-Aufgabe).
 |---|---|---|---|
 | `get_last_search()` | – | `{query, effective_query, genre, year, results:[SearchVideo], hidden_count}` \| `null` – aus der DB, ohne Netzwerk | 3 |
 | `search(query, opts)` | Suchtext, `{genre: str\|null, year: int\|null}` | `{ok:true, results:[SearchVideo], effective_query, query, genre, year, hidden_count}` \| `{ok:false, error}` | 3 |
-| `get_inbox()` | – | `[Video]` (Status `inbox`, aus DB) | 2 (lesend) / 4 |
+| `get_inbox()` | – | `[Video]` (Status `inbox`, aus DB; gefüllt durch die Watchlist) | 4 |
 | `enqueue(ids)` | `[id]` | `{ok:true, ids:[übernommen], skipped?: n}` | 3 |
 | `set_video_status(id, status)` | `"ignored"` \| `"new"` | `{ok}` (nicht für queued/downloading/done) | 2 |
 | `set_genre(id, genre)` | Genre-Name aus Settings | `{ok}` | 2 |
@@ -144,10 +145,32 @@ Aufgaben-Felder unverändert (sie spiegeln den Zustand der Windows-Aufgabe).
 
 | Methode | Parameter | Rückgabe | Phase |
 |---|---|---|---|
-| `get_sources()` | – | `[Source]` (aus DB, `new_count` = Eingang je Quelle) | 2 (lesend) / 4 |
-| `save_source(source)` | `Source` ohne `id` = neu | `{ok, source}` \| `{ok:false, errors:{feld}}` | 4 |
-| `delete_source(id)` | | `{ok}` | 2 |
-| `check_sources(ids?)` | `[id]` \| `null` = alle | `{ok, started}` + Events `source`, `watchlist_done` | 4 |
+| `get_sources()` | – | `[Source]` (aus DB, `new_count` = Eingang je Quelle) | 4 |
+| `save_source(source)` | `Source` ohne `id` = neu, mit `id` = ändern (Zusatzfelder wie `last_checked`/`new_count` werden ignoriert) | `{ok:true, source:Source}` \| `{ok:false, errors:{feld:"Meldung"}}` (`{ok:false, error, errors:{}}` wenn die `id` nicht mehr existiert) | 4 |
+| `delete_source(id)` | | `{ok}` | 4 |
+| `check_sources(ids?)` | `[id]` \| `null` = alle aktiven | `{ok:true, started:n}` (n = Anzahl Quellen; 0 = nichts zu tun) \| `{ok:false, error, started:0}` + Events `source`, `watchlist_done` | 4 |
+| `get_inbox()` | – | `[Video]` (Status `inbox`, neueste zuerst) | 4 |
+
+- `save_source`-Feldfehler (deutsch, Schlüssel = Feldname): `name` (Pflicht, max. 120), `url_or_query`
+  (Kanal: `youtube.com/@name`, `/channel/ID`, `/c/name`, `/user/name`, optional `/videos`; Playlist: URL mit
+  `list=`; Suche: nicht leer; doppelte Quelle gleichen Typs wird abgelehnt), `max_entries` (ganze Zahl
+  1–200, leer = `schedule.entries_per_source`), `default_genre` (muss in den Einstellungen existieren,
+  «Unsortiert»/leer = keins), `type`.
+- `check_sources` läuft im eigenen Watchlist-Thread (`hcloader-watchlist`), nicht im Wartungs-Worker; die
+  Quellen werden nacheinander geprüft. Abgelehnt (`ok:false`) bei Backoff («Backoff aktiv bis HH:MM –
+  Prüfung gesperrt»), «Neustart nötig» und laufendem Update. Hält ein Headless-Lauf den Watchlist-Lock,
+  kommt `watchlist_done {checked:0, found:0}` und ein `toast` (warn).
+- Pro Quelle: Beim ersten bereits bekannten Video (DB, jeder Status) wird abgebrochen (Kanal/Playlist;
+  Suchquellen überspringen Bekanntes nur). Neue Videos bekommen `source_id` und das Genre
+  (Quellen-Default > Keyword > Unsortiert). Besteht ein neues Video alle Filter, landet es im Eingang
+  (`inbox`) bzw. bei `auto_download` in der Download-Queue (`queued`; Limits der Queue gelten); sonst
+  bleibt es `new` und erscheint nicht im Eingang. Ein Fehler einer Quelle (`source.error`) bricht den Lauf
+  nicht ab, ein Backoff (429/Bot-Prüfung) schon (`toast` warn).
+- **In-App-Intervall:** solange die App offen ist und `schedule.in_app_check`, prüft ein Zeitgeber alle
+  `schedule.watchlist_interval_hours` alle aktiven Quellen. Der Zeitpunkt der letzten vollständigen
+  Prüfung (GUI oder Headless) steht in `state.watchlist_last_run`; ohne bisherigen Lauf startet die
+  erste Prüfung 60 s nach dem App-Start. Nie während eines Backoffs. `Status.next_check` = Frühestes aus
+  Aufgabenplanung und In-App-Prüfung (bei aktivem Backoff frühestens dessen Ende).
 
 ### Downloads
 
@@ -216,12 +239,15 @@ Status). Ergänzungen der Python-Seite:
   (`download`/`convert`/`tag`), `failed` (`phase:"download"`, `error` gesetzt). `speed` MB/s,
   `eta` s (in der Pause: Restsekunden), `pct` 0–100 (bei `convert`/`tag` 100). `target`: relativer
   Zielordner nach `storage.path_template`, z.B. `Hardcore/Partyraiser/2026/` (Trenner des OS).
+- `Run.kind`: `watchlist` (GUI-Prüfung: `found` = neue Videos, `downloaded` 0, `note` z.B.
+  «Backoff bis 14:30», «2 Quelle(n) mit Fehler»), `headless` (geplanter Lauf: Prüfung **und** Downloads in
+  einem Eintrag; `note` z.B. «Limit pro Lauf erreicht …», «Backoff aktiv bis …»), `manual` (Queue).
 - `Run.kind` der Warteschlange: `manual` (ein Eintrag pro Lauf, `note` = Grund des Abbruchs, z.B.
   Limit/Backoff).
 - `Status.po_token.state`: `inactive` (Modus aus), `error` (Plugin/Deno/Provider-Verzeichnis fehlt,
   HTTP-Server läuft nicht, letzter Test fehlgeschlagen), sonst `active`.
-- `Status.next_check`: nächste Ausführung der Windows-Aufgabe (falls aktiv); ab Phase 4 zusätzlich
-  die In-App-Prüfung (das Früheste gewinnt). `null` = nichts geplant.
+- `Status.next_check`: nächste Ausführung der Windows-Aufgabe (falls aktiv) bzw. der In-App-Prüfung
+  (das Früheste gewinnt). `null` = nichts geplant (auch ohne aktive Quelle).
 - `Status.queue_length`: Videos mit Status `queued`/`downloading`; `inbox_count`: Status `inbox`.
 - `Status.counters`: aus dem Throttle (`downloads_run`, `downloads_day`, `searches_hour`).
 - `Run.kind`: unbekannte Arten aus der DB werden als `manual` gemeldet.
@@ -240,8 +266,8 @@ Status). Ergänzungen der Python-Seite:
 | `done` | `{id, title}` | Download fertig getaggt und verschoben | 3 |
 | `failed` | `{id, title, error}` | Download fehlgeschlagen (bei 429 zusätzlich Backoff → `status`) | 3 |
 | `queue` | `{}` | Warteschlange geändert (auch Sperre/Freigabe) → UI ruft `get_queue()` | 3 |
-| `source` | `{id, checking, last_checked?, new_count?, error?}` | Watchlist-Prüfung | 4 |
-| `watchlist_done` | `{checked, found}` | Watchlist-Lauf beendet | 4 |
+| `source` | `{id, checking, last_checked?, new_count?, error?}` | `checking:true` vor, `checking:false` nach der Prüfung einer Quelle; `new_count` = Eingang dieser Quelle, `error` = deutscher Text | 4 |
+| `watchlist_done` | `{checked, found}` | Watchlist-Lauf beendet; `checked` = bearbeitete Quellen (auch fehlerhafte), `found` = neu gespeicherte Videos | 4 |
 
 ## Download-Queue (Phase 3)
 
@@ -273,3 +299,12 @@ Typische Event-Folge für zwei Einträge A, B:
 
 `YtClient` bekommt in der GUI `worker.WatchdogPotServer(watchdog)` als `pot_server` (extern
 verwaltet, kein zweiter Server auf demselben Port).
+
+## Headless-Lauf (Phase 4)
+
+`python -m app.main --headless --run-watchlist` (= `scripts/run_watchlist.pyw`, Aufgabenplanung):
+Lauf-Lock + Watchlist-Lock, PO-Token-Server (HTTP-Modus) selbst starten/stoppen, alle aktiven Quellen
+prüfen, danach die Queue (Auto-Download und bereits Wartende, `max_downloads_per_run`) sequenziell laden,
+ein `runs`-Eintrag `headless`. Ist die Queue in der GUI pausiert, wird nichts geladen (Notiz).
+Exit-Codes (`app/exitcodes.py`): 0 ok · 1 Fehler (Quelle/Download/PO-Token/unerwartet) · 2 Backoff (beim
+Start aktiv oder im Lauf ausgelöst) · 3 falsche Argumente · 4 anderer Lauf aktiv (Lauf- oder Watchlist-Lock).

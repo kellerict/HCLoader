@@ -59,3 +59,18 @@ def test_logs_never_contain_proxy_credentials(tmp_path):
                 logging.getLogger().removeHandler(x)
                 x.close()
         logging.getLogger().removeHandler(h)
+
+
+def test_redact_unencoded_at_and_scheme_less_proxy():
+    """R2-n3: last '@' before the host counts; user:pass@host:port without scheme is masked."""
+    from app.core.redact import redact
+
+    assert redact("http://user:p@ss@proxy:8080 down") == "http://***@proxy:8080 down"
+    assert redact("proxy user:pa@ss@host:3128 failed") == "proxy ***@host:3128 failed"
+    assert (
+        redact("connect user:secret@10.0.0.1:8080 refused") == "connect ***@10.0.0.1:8080 refused"
+    )
+    # e-mail addresses, plain hosts and URLs without credentials stay untouched
+    assert redact("mail me@example.com now") == "mail me@example.com now"
+    assert redact("Error: host:8080 unreachable") == "Error: host:8080 unreachable"
+    assert redact("https://www.youtube.com/@Name/videos") == "https://www.youtube.com/@Name/videos"

@@ -1,3 +1,5 @@
+import pytest
+
 from app.core import locks
 
 
@@ -84,3 +86,65 @@ def test_windows_mutex_failure_falls_back_to_file(monkeypatch):
     assert lock.acquire() and lock._fh is not None
     monkeypatch.setattr(locks, "_unlock_file", lambda fh: None)
     lock.release()
+
+
+def test_mutex_prefers_global_namespace_with_user_tag(monkeypatch):
+    """N3: Global\\ first (a task in session 0 must see the GUI's lock)."""
+    monkeypatch.setattr(locks, "IS_WINDOWS", True)
+    monkeypatch.setenv("USERNAME", "Pidi Test")
+    names = []
+
+    class K(FakeKernel):
+        def CreateMutexW(self, attrs, owner, name):  # noqa: N802
+            names.append(name)
+            return super().CreateMutexW(attrs, owner, name)
+
+    kernel = K()
+    kernel.existing = set()
+    monkeypatch.setattr(locks, "_kernel32", lambda: kernel)
+    lock = locks.ProcessLock("run")
+    assert lock.acquire()
+    assert names == ["Global\\HCLoader.Pidi_Test.run"]
+    lock.release()
+
+
+def test_mutex_falls_back_to_local_when_global_is_denied(monkeypatch):
+    monkeypatch.setattr(locks, "IS_WINDOWS", True)
+    names = []
+
+    class K(FakeKernel):
+        def CreateMutexW(self, attrs, owner, name):  # noqa: N802
+            names.append(name)
+            if name.startswith("Global\\"):
+                return 0  # ERROR_ACCESS_DENIED
+            return super().CreateMutexW(attrs, owner, name)
+
+    kernel = K()
+    kernel.existing = set()
+    monkeypatch.setattr(locks, "_kernel32", lambda: kernel)
+    lock = locks.ProcessLock("run")
+    assert lock.acquire() and lock._handle == 42
+    assert [n.split(".")[0] for n in names] == ["Global\\HCLoader", "Local\\HCLoader"]
+    lock.release()
+
+
+def test_cross_process_lock_blocks_then_times_out(tmp_path):
+    path = tmp_path / "x.lock"
+    with locks.cross_process_lock("x", path=path) as held:
+        assert held
+        with locks.cross_process_lock("x", path=path, timeout=0.2, poll=0.02) as other:
+            assert other is False  # gave up instead of blocking forever
+        with pytest.raises(KeyError):
+            with locks.cross_process_lock(
+                "x", path=path, timeout=0.1, poll=0.02, on_timeout=lambda: KeyError("busy")
+            ):
+                pass
+    with locks.cross_process_lock("x", path=path, timeout=0.2) as again:
+        assert again
+
+
+def test_watchlist_lock_is_exclusive():
+    first = locks.acquire_watchlist_lock()
+    assert first is not None and locks.acquire_watchlist_lock() is None
+    first.release()
+    assert locks.acquire_watchlist_lock() is not None

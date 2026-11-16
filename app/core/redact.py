@@ -11,13 +11,20 @@ import logging
 import re
 
 # scheme://userinfo@  (userinfo without '/', whitespace or '@'), e.g. socks5://u:p@host
-_USERINFO_RE = re.compile(r"(\b[a-z][a-z0-9+.\-]*://)[^/\s@'\"<>]+@", re.I)
+# R2-n3: greedy up to the LAST '@' before the host, so an unencoded '@' in the password is masked
+_USERINFO_RE = re.compile(r"(\b[a-z][a-z0-9+.\-]*://)[^/\s'\"<>]+@", re.I)
+# proxy without scheme: user:pass@host:port / user:pass@host.tld (needs a ':' in the userinfo, so
+# plain e-mail addresses stay untouched)
+_BARE_RE = re.compile(
+    r"(?<![\w/.@:+-])[^\s/@:'\"<>]+:[^\s/'\"<>]+@(?=[\w-]+(?::\d+|\.[\w-]+))", re.I
+)
 MASK = "***"
 
 
 def redact(text: object) -> str:
     """`text` with credentials in URLs replaced by `***` (`http://***@proxy:8080`)."""
-    return _USERINFO_RE.sub(rf"\1{MASK}@", str(text if text is not None else ""))
+    out = _USERINFO_RE.sub(rf"\1{MASK}@", str(text if text is not None else ""))
+    return _BARE_RE.sub(f"{MASK}@", out)
 
 
 class RedactingFormatter(logging.Formatter):

@@ -523,3 +523,46 @@ def test_ytdlp_gate():
     assert not gate.updating
     with gate.search():
         pass
+
+
+# ------------------------------------------------------------------ in-app watchlist interval
+
+
+def test_watchlist_scheduler_interval_persisted_and_backoff(db):
+    from datetime import UTC, datetime, timedelta
+
+    from app.core import config, watchlist
+    from app.worker import WatchlistScheduler
+
+    settings = config.defaults()
+    settings.schedule.watchlist_interval_hours = 2
+    now = {"t": datetime(2026, 11, 16, 12, 0, tzinfo=UTC)}
+    until = {"t": None}
+
+    class Th:
+        def backoff_until(self):
+            return until["t"]
+
+    fired = []
+    sched = WatchlistScheduler(
+        db, Th(), lambda: settings, lambda: fired.append(1) or True,
+        start_delay=60, clock=lambda: now["t"],
+    )  # fmt: skip
+    assert sched.next_check() is None  # no enabled source
+    db.add_source("search", "S", "hardcore")
+    assert sched.next_check() == now["t"] + timedelta(seconds=60)  # never ran: after the start
+    assert not sched.check_now()
+    now["t"] += timedelta(seconds=61)
+    assert sched.check_now() and fired == [1]
+
+    # last complete check persisted (also by a headless run) -> interval counts from there
+    db.set_state(watchlist.K_LAST_RUN, now["t"].isoformat())
+    assert sched.next_check() == now["t"] + timedelta(hours=2)
+    now["t"] += timedelta(hours=2, minutes=1)
+    until["t"] = now["t"] + timedelta(hours=5)  # backoff: never during, only after it
+    assert not sched.check_now() and sched.next_check() == until["t"]
+    until["t"] = None
+    assert sched.check_now()
+
+    settings.schedule.in_app_check = False
+    assert sched.next_check() is None and not sched.check_now()

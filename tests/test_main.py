@@ -5,9 +5,19 @@ from app.core import ytclient
 from app.core.ytclient import DownloadResult
 
 
-def test_headless_stub(capsys):
+def test_headless_run_without_sources_exits_0_and_writes_run_entry():
+    from app.core import config
+    from app.core.db import Database
+
     assert app_main.main(["--headless", "--run-watchlist"]) == 0
-    assert "Phase 4" in capsys.readouterr().out
+    with Database(config.db_path()) as db:
+        run = db.list_runs()[0]
+    assert run["kind"] == "headless" and run["finished"] and run["errors"] == 0
+
+
+def test_run_watchlist_alone_also_runs(monkeypatch):
+    monkeypatch.setattr("app.headless.run_watchlist", lambda: 7)
+    assert app_main.main(["--run-watchlist"]) == 7
 
 
 def test_headless_without_task(capsys):

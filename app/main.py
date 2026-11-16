@@ -132,8 +132,12 @@ def _run_gui() -> int:
     try:
         webview.start()
     finally:
-        activation.stop()
-        api.shutdown()
+        # R2-n4: shut the services down first, then stop answering "show" requests; a second
+        # start in between finds the (still held) single-instance lock and just exits
+        try:
+            api.shutdown()
+        finally:
+            activation.stop()
     return EXIT_OK
 
 

@@ -977,3 +977,19 @@ def test_n4_clean_error_masks_proxy_credentials():
     text = ytclient._clean_error(exc)
     assert "geheim" not in text and "hans" not in text
     assert "http://***@10.0.0.1:3128" in text
+
+
+def test_r2n1_url_reference_is_refused(client, fake, db):
+    """R2-n1: url/url_transparent (trailer link of a paid video) is never re-extracted."""
+
+    class Ref(fake):
+        def extract_info(self, url, download=True, process=True):
+            if not process:
+                return {**FakeYDL.info, "_type": "url_transparent"}
+            return super().extract_info(url, download, process)
+
+    import app.core.ytclient as yc
+
+    yc.yt_dlp.YoutubeDL = Ref
+    res = client.download(VID)
+    assert res.status == "failed" and "Kein direktes Video" in res.error
