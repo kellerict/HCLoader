@@ -35,8 +35,18 @@ else {
     if ($py) {
         # Prefer 3.13, then 3.12, then the newest installed Python 3 if it is >= 3.12.
         foreach ($sel in @('-3.13', '-3.12', '-3')) {
-            & py $sel -c $versionCheck 2>$null
-            if ($LASTEXITCODE -ne 0) { continue }
+            # PS 5.1: redirected stderr of a native command becomes a terminating error under
+            # ErrorActionPreference=Stop, so probe with a local 'Continue' and catch everything.
+            $probeOk = $false
+            $oldEap = $ErrorActionPreference
+            try {
+                $ErrorActionPreference = 'Continue'
+                & py $sel -c $versionCheck 2>$null | Out-Null
+                $probeOk = ($LASTEXITCODE -eq 0)
+            }
+            catch { $probeOk = $false }
+            finally { $ErrorActionPreference = $oldEap }
+            if (-not $probeOk) { continue }
             & py $sel -m venv $VenvDir
             if ($LASTEXITCODE -eq 0) { $created = $true; break }
         }

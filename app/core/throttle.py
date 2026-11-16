@@ -175,7 +175,14 @@ class Throttle:
         A successful run (at least one real download/request went through) resets the backoff
         escalation (SPEC §5); a failed one leaves the state untouched.
         """
-        if success:
+        if not success:
+            return
+        with self._lock:
+            # Never lift a backoff that is still active (e.g. a 429 warning seen during this
+            # run while the download itself succeeded) - only reset the escalation level.
+            if self.backoff_until() is not None:
+                log.info("Lauf erfolgreich, aber Backoff aktiv - bleibt bestehen")
+                return
             self.reset_backoff()
 
     def clear_backoff_manual(self) -> None:

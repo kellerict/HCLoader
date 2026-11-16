@@ -320,6 +320,16 @@ def test_finish_run_resets_backoff_only_on_success(db):
     assert t.backoff_level() == 0 and t.backoff_until() is None
 
 
+def test_finish_run_keeps_backoff_triggered_during_run(db):
+    """N1: a successful run must not lift a backoff that is still active."""
+    t, ft = make(db)
+    t.start_run()
+    until = t.trigger_backoff("429 als Warnung")
+    t.finish_run(True)
+    assert t.backoff_until() == until
+    assert t.backoff_level() == 1
+
+
 # ------------------------------------------------------------------ thread safety (M3)
 
 
