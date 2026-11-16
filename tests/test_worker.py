@@ -47,7 +47,7 @@ def parse(script):
         {"msg": "Quote \" and ' and \\ backslash"},
         {"msg": "Zeile 1\nZeile 2\r\n\tTab"},
         {"msg": "</script><script>alert(1)</script>"},
-        {"msg": "Line Sep Para"},
+        {"msg": "Line" + chr(0x2028) + "Sep" + chr(0x2029) + "Para"},
         {"msg": "Zürich – Ümlaut ß 🎧"},
         {"msg": "${injection} `backtick`"},
         {"nested": [1, 2.5, None, True, {"a": "b"}]},

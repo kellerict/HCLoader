@@ -15,6 +15,21 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
 - CLI `python -m app.main --smoke <URL>`; Stub für `--headless --run-watchlist`.
 - `scripts/setup.ps1` und `scripts/fetch_binaries.ps1` (venv, deno, ffmpeg, bgutil-Provider, Verknüpfung).
 - README.
+- Phase 2 Integration: `app/api.py` (js_api, Methoden exakt wie `ui/js/bridge.js`), `app/worker.py`
+  (EventBus → `window.mv.emit`, Hintergrund-Worker, `run_session` für Download-Läufe,
+  PO-Token-Watchdog, Live-Log als `log`-Events), `run_gui()` mit pywebview-Fenster
+  (1440×900, min. 1100×700, `#08080a`), Single-Instance-Aktivierung (zweiter Start holt das Fenster
+  nach vorne, `app/instance.py`).
+- Einstellungen speichern/zurücksetzen mit deutschen Feldmeldungen (`section.key`,
+  `genres.items.<i>.<feld>`), sofort wirksam (Throttle, Log-Stufe, PO-Token-Server).
+- Statusleiste mit echten Werten (Versionen, Deno/ffmpeg, PO-Token-Status, Backoff, Zähler, Queue,
+  Eingang, nächste geplante Prüfung).
+- Wartung: yt-dlp & Plugin per pip aktualisieren, tägliche Update-Prüfung (PyPI), DB-Sicherung
+  (`backups/hcloader-<Zeit>.db`), PO-Token-Test ohne YouTube-Request (`app/core/maintenance.py`,
+  `app/core/potoken.py`, `app/core/status.py`).
+- Windows-Aufgabenplanung anlegen/prüfen/entfernen (`app/core/scheduler.py`,
+  `scripts/run_watchlist.pyw`).
+- `docs/bridge-api.md`: Methoden, Rückgaben, Events, Phase-Status.
 
 ### Fixed
 - Review Phase 1: `download()` akzeptiert nur Einzelvideos (Playlist-/Kanal-/Such-URLs werden vor dem Throttle abgelehnt).
@@ -28,3 +43,7 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
 
 ### Changed
 - `yt-dlp[default]` (enthält yt-dlp-ejs) in den Abhängigkeiten.
+- `bridge.js`: Live-Modus erst, wenn die pywebview-API-Funktionen existieren; mit `?host=pywebview`
+  kein Mock-Fallback nach 1,2 s (Wartezeit 30 s).
+- Validierung: Maximaldauer muss ≥ Mindestdauer sein (0 = unbegrenzt); doppelte Genre-Namen werden
+  zusätzlich an der Zeile gemeldet. Live-Log-Einträge tragen optional `ui_level` (z.B. `ok`).

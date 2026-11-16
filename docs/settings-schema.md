@@ -10,7 +10,7 @@ Schlüssel = Englisch, snake_case. UI-Labels kommen aus `ui/js/i18n.js`. Änderu
 | | `confirm_delete` | bool | true | |
 | `search` (Filter & Keywords) | `results_count` | int | 30 | 1–100 |
 | `filters` (Filter & Keywords) | `min_duration` | int (s) | 600 | ≥ 0 |
-| | `max_duration` | int (s) | 0 | ≥ 0, 0 = unbegrenzt |
+| | `max_duration` | int (s) | 0 | ≥ 0, 0 = unbegrenzt, sonst ≥ min_duration |
 | | `upload_period` | str | `all` | all, 7d, 30d, 1y |
 | | `include_keywords` | list[str] | SPEC §4 | |
 | | `exclude_keywords` | list[str] | SPEC §4 | |

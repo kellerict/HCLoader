@@ -52,3 +52,69 @@ Kurze Notizen zu Architekturentscheiden (Datum, Entscheid, Grund).
   Prozessende freigegeben (keine veralteten Lock-Dateien).
 - Der Worker (Phase 3) muss `acquire_run_lock()` für die Dauer eines Laufs halten und am Ende
   `Throttle.finish_run(success)` aufrufen (Backoff-Reset nach erfolgreichem Lauf, SPEC §5).
+
+## 2026-11-16 – Bridge-Threads und Events (Phase 2)
+
+- **Entscheid:** Events an die UI laufen über `worker.EventBus`: `emit()` legt nur in eine Queue,
+  ein einziger Dispatcher-Thread ruft `window.evaluate_js` auf. Lange Operationen (yt-dlp-Update,
+  DB-Backup, PO-Token-Test) laufen in genau einem Hintergrund-Thread (`worker.Worker`, Job-Queue,
+  gleiche Jobs werden zusammengelegt); der pywebview-Aufruf-Thread wartet auf das Future.
+  Kurze `schtasks`-Aufrufe (Timeout 20 s) laufen direkt im Aufruf-Thread.
+- **Grund:** `evaluate_js` blockiert bis der Browser antwortet; im Logging-Handler oder in einem
+  yt-dlp-Hook darf das nie passieren. pywebview startet für jeden js_api-Aufruf ohnehin einen eigenen
+  Thread – der GUI-Thread ist also nie betroffen; der Worker sorgt dafür, dass Update/Backup/Test
+  nicht parallel laufen. Die Download-Queue (Phase 3) bekommt einen eigenen Thread und den Rahmen
+  `worker.run_session()` (Lauf-Lock + `Throttle.finish_run(success)`).
+- Events vor dem `loaded`-Event des Fensters werden verworfen (die UI fragt den Zustand beim Start
+  selbst ab). Logger `pywebview*` und `app.worker*` werden nicht an die UI gestreamt (Rückkopplung).
+
+## 2026-11-16 – Live-Erkennung in bridge.js über `?host=pywebview`
+
+- **Entscheid:** `app/main.py` lädt `ui/index.html?host=pywebview`. Mit diesem Marker wartet
+  `bridge.js` bis 30 s auf die API, ohne Marker springt der Mock wie bisher nach 1,2 s ein.
+  „Live“ gilt erst, wenn `window.pywebview.api.get_settings` eine Funktion ist.
+- **Grund:** pywebview (EdgeChromium) injiziert die API erst nach `NavigationCompleted` in einem
+  eigenen Thread und legt `window.pywebview.api` zuerst leer an. Auf langsamen Rechnern hätte die
+  App sonst kurz Mock-Daten gezeigt bzw. „api.x fehlt“ geworfen.
+
+## 2026-11-16 – Windows-Aufgabe startet einen Wrapper statt `cmd /c cd … &&`
+
+- **Entscheid:** `/TR "\"<venv>\pythonw.exe\" \"<repo>\scripts\run_watchlist.pyw\""`. Der Wrapper
+  setzt Repo-Root auf `sys.path` und als Arbeitsverzeichnis und ruft
+  `app.main.main(["--headless", "--run-watchlist"])`.
+- **Grund:** schtasks kennt kein Arbeitsverzeichnis; `cmd /c` öffnet um 03:00 ein Konsolenfenster
+  und verlängert `/TR` (Limit 261 Zeichen, wird geprüft). `pythonw` + `.pyw` läuft unsichtbar.
+  Der Status wird mit `/Query /FO CSV /V` gelesen; die Spalten sind lokalisiert, deshalb nach
+  Position (1 = Name, 2 = nächste Laufzeit) mit mehreren Datumsformaten und Fallback auf die
+  gespeicherte Uhrzeit. Das Häkchen „Aufgabenplanung nutzen“ im Formular legt die Aufgabe beim
+  Speichern an bzw. entfernt sie; scheitert das, wird nichts gespeichert (Fehler am Feld).
+
+## 2026-11-16 – Update-Prüfung über PyPI, nicht über den Throttle
+
+- **Entscheid:** Die tägliche Update-Prüfung beim Start fragt `https://pypi.org/pypi/<paket>/json`
+  ab (max. 1× pro Kalendertag, Zustand `state.last_update_check`). Das Update selbst ist
+  `<venv-python> -m pip install -U "yt-dlp[default]" bgutil-ytdlp-pot-provider` und wird verweigert,
+  solange ein Download-Lauf den Lauf-Lock hält.
+- **Grund:** Kein YouTube-Verkehr, also kein Fall für den YouTube-Throttle; `pip index versions` ist
+  noch als „experimental“ markiert und langsamer. pip darf yt-dlp nicht ersetzen, während ein
+  Download das Modul benutzt; die neue Version wirkt nach einem Neustart.
+
+## 2026-11-16 – PO-Token-Server gehört dem GUI-Prozess (Watchdog)
+
+- **Entscheid:** Im HTTP-Modus startet `worker.PotWatchdog` den bgutil-Server beim App-Start, prüft
+  ihn jede Minute (Neustart nach Absturz, max. 3 Fehlversuche bis zur nächsten Einstellungsänderung),
+  reagiert sofort auf geänderte Netzwerk-Einstellungen und beendet ihn beim Schliessen.
+  Der PO-Token-Test macht nie einen YouTube-Request (Script: `generate_once.ts --version`, HTTP: `/ping`).
+- **Folge für Phase 3:** `YtClient` startet heute in `_prepare` einen eigenen `PotServer`. Die Queue
+  muss ihm den Server des Watchdogs übergeben (`PotWatchdog.server`), sonst konkurrieren zwei
+  Prozesse um denselben Port.
+
+## 2026-11-16 – Single-Instance-Aktivierung über lokalen Socket
+
+- **Entscheid:** Die laufende GUI lauscht auf `127.0.0.1:<zufälliger Port>` und schreibt Port und
+  Zufalls-Token nach `<app_home>/locks/activation.json`. Ein zweiter Start (Single-Instance-Lock
+  besetzt) sendet `show <token>`, die erste Instanz ruft `window.restore(); window.show()` (plus
+  kurz `on_top`, Windows-Fokusregeln; der zweite Prozess ruft `AllowSetForegroundWindow`) und der
+  zweite Prozess beendet sich.
+- **Grund:** Plattformneutral testbar, keine Named-Pipe-Abhängigkeit (pywin32), Token verhindert,
+  dass andere lokale Prozesse das Fenster per Port-Raten hervorholen.
