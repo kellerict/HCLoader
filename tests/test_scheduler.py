@@ -206,3 +206,17 @@ def test_next_daily():
     assert scheduler.next_daily("10:00", now) == now.replace(hour=10, minute=0)
     assert scheduler.next_daily("09:15", now) == now.replace(hour=9, minute=15) + timedelta(days=1)
     assert scheduler.next_daily("03:00", now).date() == (now + timedelta(days=1)).date()
+
+
+@pytest.mark.parametrize(
+    ("now", "expected"),
+    [
+        (datetime(2026, 11, 16, 2, 0), "2026-11-16T03:30:00"),  # still ahead today
+        (datetime(2026, 11, 16, 3, 30), "2026-11-17T03:30:00"),  # exactly now: tomorrow
+        (datetime(2026, 11, 16, 14, 0), "2026-11-17T03:30:00"),  # past: tomorrow
+    ],
+)
+def test_task_xml_start_boundary_is_next_future_occurrence(now, expected):
+    """n4: a past StartBoundary could start a «missed» run at once (StartWhenAvailable)."""
+    xml = scheduler.task_xml("03:30", now=now)
+    assert f"<StartBoundary>{expected}</StartBoundary>" in xml

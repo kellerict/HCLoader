@@ -288,7 +288,8 @@ Kurze Notizen zu Architekturentscheiden (Datum, Entscheid, Grund).
 ## 2026-11-16 – Watchlist, In-App-Intervall, Headless (Phase 4)
 
 - **Prüfung:** `core/watchlist.py`. Pro Quelle wird die flache Liste (neueste zuerst) bis zum ersten
-  bekannten Video gelesen (DB `is_known`, jeder Status). Kanal-Root geht auf `/videos`
+  bekannten Video gelesen (DB `is_known`, jeder Status; **ersetzt** durch «von dieser Quelle gesehen»,
+  siehe Review Phase 4 M1). Kanal-Root geht auf `/videos`
   (`ytclient.normalize_source_url`). **Suchquellen** überspringen Bekanntes nur, ohne Abbruch: die
   Relevanz-Reihenfolge ist nicht chronologisch. Playlists hängen neue Videos meist hinten an: siehe
   «Playlist-Option Neueste stehen hinten» unten.
@@ -345,7 +346,8 @@ Kurze Notizen zu Architekturentscheiden (Datum, Entscheid, Grund).
   beim ersten bekannten Video ab, neue Videos in langen Playlists wurden nie gesehen.
 - **Lösung:** DB-Migration 3 (`sources.newest_last INTEGER NOT NULL DEFAULT 0`), nur für Typ `playlist`
   (sonst erzwingt `validate_source` `false`). `YtClient.list_source(..., newest_last=True)` setzt
-  `playlist_items = "-1:-N:-1"` (die letzten N, letztes zuerst) statt `playlistend`; damit stimmt der
+  `playlist_items = "-1:-N:-1"` (die letzten N, letztes zuerst; **seit Review Phase 4 m4 eigenes
+  Blättern mit Grenze 2000**, siehe unten) statt `playlistend`; damit stimmt der
   Abbruch beim ersten bekannten Video wieder. Default bleibt `false`.
 - **Gewählte Option (yt-dlp 2026.10.26):** `PlaylistEntries.__getitem__` (`yt_dlp/utils/_utils.py`)
   löst negative Indizes über `len(self)` auf, das ganze Playlist durchläuft (`LazyList`, Seite für Seite);
@@ -407,3 +409,62 @@ Kurze Notizen zu Architekturentscheiden (Datum, Entscheid, Grund).
   (Ausgabe von `/XML` wird nur per Regex nach `<StartBoundary>` gelesen).
 - **Explorer:** `explorer /select,"<pfad>"` als ein String (eine Liste würde als Ganzes gequotet);
   der Exit-Code 1 von Explorer wird ignoriert.
+
+## 2026-11-16 – Review Phase 4: Abbruch pro Quelle, Zeitplan-Kollision, Grenzen
+
+- **M1 – «bekannt» = von dieser Quelle gesehen.** Neue Tabelle `source_videos(source_id, video_id,
+  first_seen)` (DB-Migration 4, PK beider Spalten, `ON DELETE CASCADE`; Übernahme aus
+  `videos.source_id`). Die Watchlist bricht nur bei einem Video ab, das diese Quelle schon gelistet hat,
+  und bei der ersten Prüfung einer Quelle (`last_checked` leer) gar nicht. Fremd bekannte Videos (Suche,
+  andere Quelle) werden verknüpft und übersprungen. Sind sie noch `new` und bestehen sie die Filter,
+  kommen sie in den Eingang bzw. in die Queue. `source_id` wird nur gesetzt, wenn es leer ist, ein
+  manuelles Genre bleibt. Status `inbox`/`done`/`ignored`/… wird nie angefasst.
+  **Grund gegen `source_id == sid`:** Ein Video kann in mehreren Quellen stehen (Kanal + Playlist).
+  `videos.source_id` hält nur die erste. Die zweite Quelle würde dieses Video nie als «eigenes» erkennen
+  und es bei jeder Prüfung neu bewerten. Die Zuordnungstabelle ist eindeutig und kostet wenig.
+- **n8:** Einträge mit `live_status` `is_upcoming`/`is_live` werden weder gespeichert noch verknüpft.
+  Sie werden bei der nächsten Prüfung neu bewertet (dann mit Dauer) und stoppen den Abbruch nicht.
+- **n6:** Neue Auto-Download-Videos werden als `inbox` gespeichert und am Ende der Quelle eingereiht
+  (`enqueue` akzeptiert `inbox`). Endet der Prozess dazwischen, stehen sie sichtbar im Eingang.
+- **n7:** `sources.max_entries` NULL = `schedule.entries_per_source` zum Prüfzeitpunkt. Neue Quellen ohne
+  Wert und `add_channel_source` speichern NULL. Bestehende Zahlen werden nicht migriert.
+- **m4:** Suchquellen max. 100 Einträge (SPEC §3.1, Validierung + Kappung bei der Prüfung).
+  `newest_last` liest die Playlist selbst (`extract_info(process=False)`, Generator, `deque(maxlen=N)`)
+  statt mit `playlist_items "-1:-N:-1"`. `playlist_count` ist nach der ersten Seite bekannt
+  (`_tab.py::_extract_from_tabs` liest «N Videos» aus dem Header, yt-dlp 2026.10.26). Ist er > 2000,
+  kommt der Fehler «Playlist zu lang für Rückwärts-Lesen (n Einträge, max. 2000)», noch vor der ersten
+  Continuation. Fehlt die Zahl, wird nach 2000 Einträgen hart abgebrochen (≈ 20 Seiten). Bei
+  Umleitungen (`_type` ≠ playlist) verarbeitet yt-dlp nur die ersten N. `Throttle.mark_request()` setzt
+  `state.last_request` beim Verlassen des Metadaten-Locks: Der Abstand zählt ab der letzten Seite.
+- **m5:** Kanal-URLs nur Root, `/videos`, `/streams` (andere Tabs liefern Playlists/Regale).
+- **m1:** Headless im HTTP-Modus: Hält die GUI den Single-Instance-Lock und antwortet `/ping` auf
+  `po_token_port`, benutzt der Lauf diesen Server (`headless.SharedPotWatchdog`). Er startet und stoppt
+  ihn nie. Ohne GUI bleibt es beim bisherigen Verhalten: eigener Server, sonst Exit 1. Ein verwaister
+  Server ohne GUI wird bewusst nicht übernommen.
+- **m2:** Jeder vollständige Lauf (GUI und Headless) setzt beim Start `state.watchlist_running_since`
+  und löscht ihn am Ende. Ein Marker, der älter als 6 h ist, gilt als verwaist. Der GUI-Scheduler
+  wartet bis 10 min nach diesem Start. Findet eine **geplante** GUI-Prüfung den Watchlist-Lock belegt,
+  gibt es keinen Toast und kein `watchlist_done`, nur Debug-Log und `WatchlistScheduler.defer()`
+  (+10 min, dann neu bewerten). Eine manuelle Prüfung meldet den Konflikt weiterhin. Umgekehrt endet
+  Headless mit `EXIT_BUSY` und einer Log-Notiz, wenn die GUI-Prüfung läuft. Das ist gewollt, die GUI
+  übernimmt (Auto-Download-Quellen laden über die GUI-Queue).
+- **m3:** `watchlist_last_run` nur bei `checked > 0`. Scheitern alle Quellen ohne Backoff, gilt
+  `state.watchlist_retry_at` = jetzt + 1 h. Ein Erfolg löscht ihn. Bei Backoff/Abbruch bleibt beides
+  unverändert.
+- **n5:** `cancel_event` geht an `search`/`list_source` → Throttle-Wartezeiten, Metadaten-Lock,
+  `newest_last`-Blättern (`WaitCancelled` = Lauf «Abgebrochen», kein Quellenfehler). `shutdown` wartet
+  bis 10 s auf den Watchlist-Thread. Hängt er noch in einem Request, schliesst
+  `watchlist.close_interrupted` den offenen `watchlist`-Run («Abgebrochen (App beendet)») und löscht
+  den Laufmarker.
+- **n1/n2/n3/n4:** `reset_backoff`/`finish_run`/`clear_backoff_manual` unter `_xlock`.
+  `ctypes.get_last_error()` sowie `argtypes`/`restype` (`HANDLE`) für `CreateMutexW`, `ReleaseMutex`
+  und `CloseHandle`. Toast-Text über `redact()`. `StartBoundary` = nächster zukünftiger Termin.
+- **Tests ohne Netz:** Die vom Proxy gemeldeten Verbindungen kamen vom Playwright-Chromium in
+  `tests/test_bridge_js.py`. Er übernahm `HTTPS_PROXY` aus der Umgebung, und seine Hintergrunddienste
+  (Component-Updater, Google-Konto/GCM) bauten CONNECTs zu Google-Hosts auf. Die Prüfung mit `strace`
+  zeigte `accounts.google.com` und `update.googleapis.com`. Kein Test erzeugt eine echte
+  yt-dlp-Extraktion. Chromium startet jetzt ohne Proxy-Variablen und mit `--no-proxy-server`,
+  `--host-resolver-rules=MAP * ~NOTFOUND`, `--disable-background-networking` und
+  `--disable-component-update`. Zusätzlich blockiert eine autouse-Fixture in `tests/conftest.py`
+  `socket.connect`/`connect_ex`/`create_connection`/`getaddrinfo` für alle Nicht-Loopback-Ziele,
+  ausser bei Tests mit Marker `network`.

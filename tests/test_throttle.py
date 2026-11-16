@@ -561,3 +561,23 @@ def test_r2n2_metadata_lock_is_cross_process(db, tmp_path):
         assert not t.metadata_busy()  # the thread lock was released again
     with t.metadata_lock(timeout=1):
         pass
+
+
+@pytest.mark.parametrize("method", ["reset_backoff", "finish_run", "clear_backoff_manual"])
+def test_backoff_writes_run_under_the_cross_process_lock(db, monkeypatch, method):
+    """n1: a backoff triggered by another process between check and reset is never lost."""
+    from contextlib import contextmanager
+
+    from app.core import locks
+
+    t, _ft = make(db)
+    taken = []
+
+    @contextmanager
+    def fake_lock(name, **kw):
+        taken.append(name)
+        yield True
+
+    monkeypatch.setattr(locks, "cross_process_lock", fake_lock)
+    getattr(t, method)(*([True] if method == "finish_run" else []))
+    assert taken == [locks.THROTTLE_LOCK]

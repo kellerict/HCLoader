@@ -129,8 +129,6 @@ def world(tmp_path, monkeypatch):
     settings.network.po_token_mode = "off"
     settings.throttle.max_downloads_per_run = 2
     db = Database(tmp_path / "hc.db")
-    for vid in ("knownAAAAA1", "knownAAAAA2"):  # seen in an earlier check
-        db.upsert_video({"id": vid, "title": vid, "status": "done"})
     ch = db.add_source(
         "channel",
         "DJ Test",
@@ -139,6 +137,10 @@ def world(tmp_path, monkeypatch):
         auto_download=True,
         max_entries=30,
     )
+    for vid in ("knownAAAAA1", "knownAAAAA2"):  # seen in an earlier check of this channel
+        db.upsert_video({"id": vid, "title": vid, "status": "done", "source_id": ch})
+        db.link_source_video(ch, vid)
+    db.mark_source_checked(ch)
     pl = db.add_source("playlist", "Sets", PLAYLIST_URL, max_entries=30)
     ft = FakeTime()
     throttle = Throttle(
@@ -199,6 +201,8 @@ def test_two_runs_incremental_limit_and_run_entries(world):
     r = runs[0]
     assert (r["kind"], r["found"], r["downloaded"], r["errors"]) == ("headless", 6, 2, 0)
     assert r["finished"] and "Limit pro Lauf" in r["note"]
+    # QA Phase 4: no GUI wording in the headless note
+    assert "Rest wird beim nächsten Lauf geladen" in r["note"] and "Fortsetzen" not in r["note"]
 
     # second run: nothing new (both sources stop at the first known video), loads the rest
     FakeYDL.list_urls.clear()

@@ -1292,7 +1292,7 @@ class ListClient(NullClient):
     def __init__(self, entries=None, error=None):
         self.entries, self.error = entries or {}, error
 
-    def list_source(self, url, max_entries=None):
+    def list_source(self, url, max_entries=None, **kw):
         if self.error:
             raise self.error
         return list(self.entries.get(url, []))
@@ -1431,7 +1431,103 @@ def test_in_app_next_feeds_status_and_scheduler_triggers(env):
     v["schedule"]["in_app_check"] = True
     a.save_settings(v)
     started = []
-    a._submit_check = lambda ids: started.append(ids)
-    assert a._wl_sched.check_now() is True and started == [None]
+    a._submit_check = lambda ids, **kw: started.append((ids, kw))
+    assert a._wl_sched.check_now() is True and started == [(None, {"scheduled": True})]
     a._throttle.trigger_backoff("429")
     assert a._wl_sched.check_now() is False and a._wl_sched.next_check() > a._wl_sched._clock()
+
+
+def test_scheduled_check_with_busy_lock_is_silent_and_deferred(env):
+    """Review Phase 4 m2: the headless task holds the watchlist lock - no toast, no
+    watchlist_done, the in-app check waits 10 min and is re-evaluated then."""
+    import time
+
+    a = env.make(watchlist_lock=lambda: None, client_factory=lambda: ListClient())
+    a.save_source({"type": "search", "name": "S", "url_or_query": "hardcore"})
+    assert a._trigger_scheduled_check() is True
+    for _ in range(100):
+        if a._wl_sched._deferred is not None:
+            break
+        time.sleep(0.02)
+    a._bus.flush(2)
+    assert a._wl_sched._deferred is not None
+    assert a._wl_sched.next_check() >= a._wl_sched._deferred
+    assert env.window.events_of("watchlist_done") == [] and env.window.events_of("toast") == []
+
+
+def test_watchlist_failure_toast_is_redacted(env):
+    """n3: an unexpected error text never shows proxy credentials in the toast."""
+
+    def boom():
+        raise RuntimeError("Proxy http://user:geheim@proxy:3128 weg")
+
+    a = env.make(client_factory=boom)
+    a.save_source({"type": "search", "name": "S", "url_or_query": "hardcore"})
+    a.check_sources(None)
+    _wait_watchlist_done(a, env.window)
+    toasts = [t["msg"] for t in env.window.events_of("toast")]
+    assert any("fehlgeschlagen" in t for t in toasts)
+    assert not any("geheim" in t for t in toasts)
+
+
+def test_shutdown_closes_run_of_a_stuck_check(env, monkeypatch):
+    """n5: the cancel event reaches the client; a check stuck in a request gets its run
+    entry finished at shutdown."""
+    import threading
+
+    import app.api as api_mod
+
+    monkeypatch.setattr(api_mod, "WATCHLIST_STOP_TIMEOUT_S", 0.2)
+    entered, release = threading.Event(), threading.Event()
+    got = []
+
+    class Stuck(ListClient):
+        def list_source(self, url, max_entries=None, **kw):
+            got.append(kw.get("cancel_event"))
+            entered.set()
+            release.wait(5)  # ignores the cancel (a request without timeout)
+            return []
+
+    a = env.make(client_factory=lambda: Stuck())
+    a._own_db = False  # keep the DB open for the assertions
+    a.save_source({"type": "channel", "name": "A", "url_or_query": "https://www.youtube.com/@a"})
+    a.check_sources(None)
+    assert entered.wait(5)
+    a.shutdown(queue_timeout=1)
+    try:
+        assert got and got[0] is a._wl_cancel and got[0].is_set()
+        run = [r for r in a._db.list_runs() if r["kind"] == "watchlist"][0]
+        assert run["finished"] and "App beendet" in run["note"]
+    finally:
+        release.set()
+
+
+def test_search_then_channel_to_watchlist_first_check_finds_older_videos(env):
+    """Review Phase 4 M1, end to end through the bridge: a mix found by a search is the 2nd
+    newest video of its channel. «Kanal zur Watchlist» + first check must store the older
+    videos behind it as well, and put the searched mix into the inbox for this source."""
+    channel = "UCabcdefgh123"
+    base = {"channel_id": channel, "channel_name": "DJ", "duration": 3600}
+    listing = [
+        {**base, "id": "newest00001", "title": "Hardcore Mix 4"},
+        {**base, "id": "searched001", "title": "Hardcore Mix 3"},
+        {**base, "id": "older000001", "title": "Hardcore Mix 2"},
+        {**base, "id": "older000002", "title": "Hardcore Mix 1"},
+    ]
+
+    class Client(ListClient):
+        def search(self, query, n=None, *, genre=None, year=None):
+            return [{**listing[1], "live_status": "not_live"}]
+
+    url = f"https://www.youtube.com/channel/{channel}"
+    a = env.make(client_factory=lambda: Client({url: listing}))
+    assert a.search("hardcore")["ok"]
+    assert a._db.get_video("searched001")["status"] == "new"  # stored flat by the search
+    src = a.add_channel_source(channel, "DJ")["source"]
+    assert src["max_entries"] is None
+    assert a.check_sources([src["id"]])["started"] == 1
+    _wait_watchlist_done(a, env.window)
+    assert env.window.events_of("watchlist_done")[-1] == {"checked": 1, "found": 3}
+    inbox = {v["id"] for v in a._db.list_videos(status="inbox", source_id=src["id"])}
+    assert inbox == {"newest00001", "searched001", "older000001", "older000002"}
+    assert a.get_sources()[0]["new_count"] == 4

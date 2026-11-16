@@ -566,3 +566,47 @@ def test_watchlist_scheduler_interval_persisted_and_backoff(db):
 
     settings.schedule.in_app_check = False
     assert sched.next_check() is None and not sched.check_now()
+
+
+def test_watchlist_scheduler_retry_running_marker_and_defer(db):
+    """Review Phase 4 m2/m3: retry 1 h after a run without success, grace period while another
+    process checks (marker) or the lock is busy (defer) - no full interval, no 30-s loop."""
+    from datetime import UTC, datetime, timedelta
+
+    from app.core import config, watchlist
+    from app.worker import WatchlistScheduler
+
+    settings = config.defaults()
+    settings.schedule.watchlist_interval_hours = 24
+    now = {"t": datetime(2026, 11, 16, 12, 0, tzinfo=UTC)}
+
+    class Th:
+        def backoff_until(self):
+            return None
+
+    sched = WatchlistScheduler(
+        db, Th(), lambda: settings, lambda: True, start_delay=60, grace=600,
+        clock=lambda: now["t"],
+    )  # fmt: skip
+    db.add_source("search", "S", "hardcore")
+    last = now["t"] - timedelta(hours=2)
+    db.set_state(watchlist.K_LAST_RUN, last.isoformat())
+    assert sched.next_check() == last + timedelta(hours=24)
+    retry = now["t"] + timedelta(hours=1)
+    db.set_state(watchlist.K_RETRY_AT, retry.isoformat())
+    assert sched.next_check() == retry  # m3: earlier than the interval
+    db.delete_state(watchlist.K_RETRY_AT)
+
+    # m2: another process started a full check 1 min ago -> look again 10 min after its start
+    started = now["t"] - timedelta(minutes=1)
+    db.set_state(watchlist.K_LAST_RUN, (now["t"] - timedelta(hours=25)).isoformat())
+    db.set_state(watchlist.K_RUNNING_SINCE, started.isoformat())
+    assert sched.next_check() == started + timedelta(minutes=10) and not sched.check_now()
+    db.delete_state(watchlist.K_RUNNING_SINCE)
+    assert sched.check_now()
+
+    # busy lock: defer -> 10 min of silence, then due again
+    assert sched.defer() == now["t"] + timedelta(minutes=10)
+    assert not sched.check_now()
+    now["t"] += timedelta(minutes=10)
+    assert sched.check_now()

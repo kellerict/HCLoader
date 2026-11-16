@@ -157,28 +157,47 @@ Aufgaben-Felder unverändert (sie spiegeln den Zustand der Windows-Aufgabe).
 | `get_inbox()` | – | `[Video]` (Status `inbox`, neueste zuerst) | 4 |
 
 - `save_source`-Feldfehler (deutsch, Schlüssel = Feldname): `name` (Pflicht, max. 120), `url_or_query`
-  (Kanal: `youtube.com/@name`, `/channel/ID`, `/c/name`, `/user/name`, optional `/videos`; Playlist: URL mit
-  `list=`; Suche: nicht leer; doppelte Quelle gleichen Typs wird abgelehnt), `max_entries` (ganze Zahl
-  1–200, leer = `schedule.entries_per_source`), `default_genre` (muss in den Einstellungen existieren,
-  «Unsortiert»/leer = keins), `type`.
+  (Kanal: `youtube.com/@name`, `/channel/ID`, `/c/name`, `/user/name`, optional **nur** `/videos` oder
+  `/streams` – `/playlists`, `/releases`, `/featured` usw. werden abgelehnt; Playlist: URL mit `list=`;
+  Suche: nicht leer; doppelte Quelle gleichen Typs wird abgelehnt), `max_entries` (ganze Zahl 1–200, bei
+  **Suchquellen 1–100**), `default_genre` (muss in den Einstellungen existieren, «Unsortiert»/leer =
+  keins), `type`.
+- `Source.max_entries`: `number | null`. **`null` (Feld leer) = Default** `schedule.entries_per_source`
+  zum Zeitpunkt der Prüfung; eine spätere Änderung der Einstellung wirkt also auf diese Quellen.
+  Bestehende Quellen mit Zahl behalten ihren Wert. `add_channel_source` legt neue Kanäle mit `null` an.
+  Bei der Prüfung wird auf 200 (Suche: 100) begrenzt.
 - `Source.newest_last` (bool, Default `false`): nur für Typ `playlist` («Neueste stehen hinten»); bei
   Kanal/Suche erzwingt `save_source` `false`. Die Prüfung liest dann die **letzten** `max_entries` Einträge
-  (neuester zuerst). Dafür muss yt-dlp die ganze Playlist durchblättern (~100 Einträge pro Request,
+  (neuester zuerst). Dafür muss die ganze Playlist durchgeblättert werden (~100 Einträge pro Request,
   500er-Playlist ≈ 5 Requests statt 1, mit `sleep_requests` Pause dazwischen) – Hinweis in der UI-Hilfe.
+  **Grenze 2000 Einträge:** Längere Playlists ergeben den Quellenfehler «Playlist zu lang für
+  Rückwärts-Lesen (n Einträge, max. 2000)» (`source.error`); die Länge steht meist schon nach der
+  ersten Seite fest, sonst wird nach 2000 Einträgen abgebrochen.
 - `check_sources` läuft im eigenen Watchlist-Thread (`hcloader-watchlist`), nicht im Wartungs-Worker; die
   Quellen werden nacheinander geprüft. Abgelehnt (`ok:false`) bei Backoff («Backoff aktiv bis HH:MM –
   Prüfung gesperrt»), «Neustart nötig» und laufendem Update. Hält ein Headless-Lauf den Watchlist-Lock,
-  kommt `watchlist_done {checked:0, found:0}` und ein `toast` (warn).
-- Pro Quelle: Beim ersten bereits bekannten Video (DB, jeder Status) wird abgebrochen (Kanal/Playlist;
-  Suchquellen überspringen Bekanntes nur). Neue Videos bekommen `source_id` und das Genre
-  (Quellen-Default > Keyword > Unsortiert). Besteht ein neues Video alle Filter, landet es im Eingang
-  (`inbox`) bzw. bei `auto_download` in der Download-Queue (`queued`; Limits der Queue gelten); sonst
-  bleibt es `new` und erscheint nicht im Eingang. Ein Fehler einer Quelle (`source.error`) bricht den Lauf
-  nicht ab, ein Backoff (429/Bot-Prüfung) schon (`toast` warn).
+  kommt bei einer **manuellen** Prüfung `watchlist_done {checked:0, found:0}` und ein `toast` (warn); eine
+  **geplante** In-App-Prüfung sendet dann nichts (kein Toast, kein `watchlist_done`) und versucht es nach
+  10 min erneut (`Status.next_check` zeigt diesen Zeitpunkt).
+- Pro Quelle (Review Phase 4 M1): Abgebrochen wird beim ersten Video, das **diese Quelle** schon gesehen
+  hat (Tabelle `source_videos`; Kanal/Playlist; Suchquellen überspringen nur). Bei der **ersten** Prüfung
+  einer Quelle (`last_checked` leer) wird nie abgebrochen. Videos, die nur aus einer Suche oder einer
+  anderen Quelle bekannt sind, werden übersprungen, ohne abzubrechen; sind sie noch `new` und bestehen
+  die Filter, kommen sie für diese Quelle in den Eingang bzw. die Queue (zählen nicht in `found`).
+  Neue Videos bekommen `source_id` (bei bekannten nur, wenn leer) und das Genre (Quellen-Default >
+  Keyword > Unsortiert). Besteht ein neues Video alle Filter, landet es im Eingang (`inbox`) bzw. bei
+  `auto_download` erst im Eingang und gleich danach in der Download-Queue (`queued`; Limits der Queue
+  gelten); sonst bleibt es `new` und erscheint nicht im Eingang. Angekündigte Premieren und laufende
+  Livestreams (`is_upcoming`/`is_live`) werden nicht gespeichert und bei der nächsten Prüfung neu
+  bewertet. Ein Fehler einer Quelle (`source.error`) bricht den Lauf nicht ab, ein Backoff
+  (429/Bot-Prüfung) schon (`toast` warn).
 - **In-App-Intervall:** solange die App offen ist und `schedule.in_app_check`, prüft ein Zeitgeber alle
   `schedule.watchlist_interval_hours` alle aktiven Quellen. Der Zeitpunkt der letzten vollständigen
-  Prüfung (GUI oder Headless) steht in `state.watchlist_last_run`; ohne bisherigen Lauf startet die
-  erste Prüfung 60 s nach dem App-Start. Nie während eines Backoffs. `Status.next_check` = Frühestes aus
+  Prüfung (GUI oder Headless) steht in `state.watchlist_last_run` – nur gesetzt, wenn mindestens eine
+  Quelle erfolgreich geprüft wurde; scheitern alle, wird nach 1 h erneut geprüft
+  (`state.watchlist_retry_at`). Ein laufender vollständiger Lauf (auch Headless) setzt beim Start
+  `state.watchlist_running_since`; die In-App-Prüfung wartet dann 10 min ab dessen Start. Ohne bisherigen
+  Lauf startet die erste Prüfung 60 s nach dem App-Start. Nie während eines Backoffs. `Status.next_check` = Frühestes aus
   Aufgabenplanung und In-App-Prüfung (bei aktivem Backoff frühestens dessen Ende).
 
 ### Downloads
@@ -358,5 +377,9 @@ verwaltet, kein zweiter Server auf demselben Port).
 Lauf-Lock + Watchlist-Lock, PO-Token-Server (HTTP-Modus) selbst starten/stoppen, alle aktiven Quellen
 prüfen, danach die Queue (Auto-Download und bereits Wartende, `max_downloads_per_run`) sequenziell laden,
 ein `runs`-Eintrag `headless`. Ist die Queue in der GUI pausiert, wird nichts geladen (Notiz).
+Ist die GUI offen und antwortet ihr PO-Token-Server auf `/ping` am konfigurierten Port, wird dieser
+mitbenutzt (nicht gestartet, nicht gestoppt); sonst ohne PO-Token-Server Exit 1 wie bisher. Läuft gerade
+die In-App-Prüfung der GUI, endet der Lauf mit Exit 4 (Notiz im Log; die GUI-Prüfung übernimmt).
+Erreicht der Lauf `max_downloads_per_run`, lautet die Notiz «… – Rest wird beim nächsten Lauf geladen».
 Exit-Codes (`app/exitcodes.py`): 0 ok · 1 Fehler (Quelle/Download/PO-Token/unerwartet) · 2 Backoff (beim
 Start aktiv oder im Lauf ausgelöst) · 3 falsche Argumente · 4 anderer Lauf aktiv (Lauf- oder Watchlist-Lock).

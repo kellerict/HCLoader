@@ -10,7 +10,7 @@ from mutagen.id3 import ID3
 from app.core import binaries, config, ytclient
 from app.core.config import Settings
 from app.core.throttle import BackoffActive, LimitReached, Throttle
-from app.core.ytclient import DownloadCancelled, YtClient, build_ydl_opts
+from app.core.ytclient import DownloadCancelled, YtClient, YtClientError, build_ydl_opts
 
 needs_ffmpeg = pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg fehlt")
 VID = "abc123XYZ_-"
@@ -344,32 +344,116 @@ def test_list_source(client, fake):
     assert inst.opts["playlistend"] == 3
 
 
-def test_list_source_newest_last_options(client, fake):
-    fake.info = {"entries": [_entry(i) for i in (7, 6, 5, 4)]}
-    res = client.list_source("https://www.youtube.com/playlist?list=PL1", 4, newest_last=True)
-    assert [r["id"] for r in res] == [f"id{i:09d}" for i in (7, 6, 5, 4)]
-    opts = fake.instances[0].opts
-    assert opts["playlist_items"] == "-1:-4:-1"
-    assert "playlistend" not in opts
-    assert opts["lazy_playlist"] is True and opts["extract_flat"] == "in_playlist"
-    assert opts["sleep_interval_requests"] == client.settings.throttle.sleep_requests
-    client.list_source("https://www.youtube.com/playlist?list=PL1", 4)
-    assert "playlist_items" not in fake.instances[1].opts
+class PagingYDL:
+    """yt-dlp stand-in for `newest_last`: `extract_info(process=False)` returns the first page
+    with a lazy entries generator; `pulled` counts the entries yt-dlp would have paged."""
+
+    total = 8
+    count: int | None = None  # playlist_count from the header (first page)
+    pulled = 0
+    instances: list = []
+
+    def __init__(self, opts):
+        self.opts = opts
+        self.params = dict(opts)
+        PagingYDL.instances.append(self)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def sanitize_info(self, info):
+        return info
+
+    def extract_info(self, url, download=True, process=True):
+        assert not download and not process  # newest_last pages itself
+
+        def gen():
+            for i in range(1, PagingYDL.total + 1):
+                PagingYDL.pulled += 1
+                yield _entry(i)
+
+        return {"_type": "playlist", "playlist_count": PagingYDL.count, "entries": gen()}
+
+
+@pytest.fixture
+def paging(monkeypatch):
+    PagingYDL.total, PagingYDL.count, PagingYDL.pulled, PagingYDL.instances = 8, None, 0, []
+    monkeypatch.setattr(ytclient.yt_dlp, "YoutubeDL", PagingYDL)
+    return PagingYDL
 
 
 @pytest.mark.parametrize(
     ("total", "n", "expected"), [(8, 3, [8, 7, 6]), (2, 3, [2, 1]), (5, 1, [5])]
 )
-def test_newest_last_selection_order_in_real_yt_dlp(client, total, n, expected):
-    """The option string selects the last N items, newest (last) first - with yt-dlp's own
-    PlaylistEntries, no network."""
-    from yt_dlp.utils import PlaylistEntries
+def test_list_source_newest_last_returns_last_n_newest_first(client, paging, total, n, expected):
+    paging.total = total
+    res = client.list_source("https://www.youtube.com/playlist?list=PL1", n, newest_last=True)
+    assert [r["id"] for r in res] == [f"id{i:09d}" for i in expected]
+    opts = paging.instances[0].opts
+    assert "playlist_items" not in opts and "playlistend" not in opts
+    assert opts["lazy_playlist"] is True and opts["extract_flat"] == "in_playlist"
+    assert opts["sleep_interval_requests"] == client.settings.throttle.sleep_requests
 
-    opts = build_ydl_opts(client.settings, "list")
-    opts["playlist_items"] = f"-1:-{n}:-1"
-    ydl = yt_dlp.YoutubeDL({**opts, "quiet": True})
-    entries = PlaylistEntries(ydl, {"entries": iter(range(1, total + 1))})
-    assert [e for _i, e in entries.get_requested_items()] == expected
+
+def test_list_source_plain_uses_playlistend(client, fake):
+    fake.info = {"entries": [_entry(i) for i in (7, 6, 5, 4)]}
+    client.list_source("https://www.youtube.com/playlist?list=PL1", 4)
+    opts = fake.instances[0].opts
+    assert opts["playlistend"] == 4 and "playlist_items" not in opts
+
+
+def test_newest_last_refuses_long_playlist_from_header(client, paging):
+    """m4: playlist_count of the first page > 2000 -> German error before any further page."""
+    paging.count = 2500
+    with pytest.raises(YtClientError, match=r"Playlist zu lang .*2500 Einträge, max\. 2000"):
+        client.list_source("https://www.youtube.com/playlist?list=PL1", 5, newest_last=True)
+    assert paging.pulled == 0
+
+
+def test_newest_last_hard_limit_while_paging(client, paging):
+    """No count in the header: paging stops after NEWEST_LAST_MAX + 1 entries."""
+    paging.total = ytclient.NEWEST_LAST_MAX + 500
+    with pytest.raises(YtClientError, match="Playlist zu lang"):
+        client.list_source("https://www.youtube.com/playlist?list=PL1", 5, newest_last=True)
+    assert paging.pulled == ytclient.NEWEST_LAST_MAX + 1
+
+
+def test_newest_last_cancel_while_paging(client, paging):
+    """n5: the cancel event stops paging (WaitCancelled, no error, no backoff)."""
+    from app.core.throttle import WaitCancelled
+
+    cancel = threading.Event()
+    real = paging.extract_info
+
+    def extract(self, url, download=True, process=True):
+        info = real(self, url, download, process)
+        cancel.set()
+        return info
+
+    paging.extract_info = extract
+    with pytest.raises(WaitCancelled):
+        client.list_source(
+            "https://www.youtube.com/playlist?list=PL1", 5, newest_last=True, cancel_event=cancel
+        )
+    assert paging.pulled == 1  # stops before the next entry (next page) is requested
+
+
+def test_metadata_call_marks_last_request_at_the_end(client, paging, db, throttle):
+    """m4: the request spacing counts from the end of a (multi-page) listing."""
+    stamps = []
+    real = throttle.mark_request
+
+    def mark():
+        stamps.append(paging.pulled)
+        real()
+
+    throttle.mark_request = mark
+    client.list_source("https://www.youtube.com/playlist?list=PL1", 3, newest_last=True)
+    assert stamps == [8]  # after all pages were read, before the lock was released
+    assert db.get_state("last_request")
 
 
 def test_resolve(client, fake):

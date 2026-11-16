@@ -207,7 +207,7 @@ def test_list_videos_filters(db):
 def test_sources_crud(db):
     sid = db.add_source("channel", "Chan", "https://youtube.com/@x", default_genre="Hardcore")
     s = db.get_source(sid)
-    assert s["enabled"] == 1 and s["auto_download"] == 0 and s["max_entries"] == 30
+    assert s["enabled"] == 1 and s["auto_download"] == 0 and s["max_entries"] is None  # n7
     db.update_source(sid, enabled=False, auto_download=True, name="Neu")
     s = db.get_source(sid)
     assert s["enabled"] == 0 and s["auto_download"] == 1 and s["name"] == "Neu"

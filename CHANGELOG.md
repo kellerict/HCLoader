@@ -36,6 +36,25 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
   Shutdown vor `activation.stop()`; n5/n7 zurückgestellt (docs/decisions.md).
 
 ### Fixed
+- Review Phase 4:
+  - **M1** Die Watchlist bricht nur noch bei Videos ab, die **diese Quelle** schon gesehen hat
+    (DB-Migration 4 `source_videos`). Aus einer Suche oder einer anderen Quelle bekannte Videos werden
+    übersprungen und, falls noch `new` und passend, in den Eingang bzw. die Queue gelegt. Die erste
+    Prüfung einer Quelle bricht nie ab.
+  - **m1** Headless (HTTP-Modus) benutzt den PO-Token-Server der offenen GUI mit, statt mit Exit 1 abzubrechen.
+  - **m2** Die geplante In-App-Prüfung zeigt keinen Toast, wenn die Aufgabe gerade prüft, sondern wartet
+    10 min. Der Laufmarker `watchlist_running_since` wird beim Start gesetzt.
+  - **m3** `watchlist_last_run` nur nach mindestens einer erfolgreichen Quelle, sonst neuer Versuch nach 1 h.
+  - **m4** `newest_last` mit harter Grenze von 2000 Einträgen (Fehler «Playlist zu lang …»).
+    Suchquellen max. 100 Einträge. Der Request-Abstand zählt ab dem Ende einer mehrseitigen Liste.
+  - **m5** Kanal-URLs nur Root, `/videos`, `/streams`.
+  - **n1–n8** Backoff-Reset unter Prozess-Lock, Mutex-`restype`/`get_last_error`, Toast maskiert,
+    `StartBoundary` in der Zukunft, Abbruch erreicht laufende Listen und schliesst den Run, Auto-Download
+    zuerst im Eingang, `max_entries` leer = Default aus den Einstellungen, Premieren/Livestreams werden
+    neu bewertet.
+  - QA: Die Headless-Notiz beim Lauf-Limit lautet «Rest wird beim nächsten Lauf geladen».
+  - Tests gehen nie mehr ins Netz: Playwright-Chromium läuft offline, und eine autouse-Sperre für
+    Nicht-Loopback-Verbindungen gilt ausser bei Tests mit Marker `network`.
 - Review Phase 3:
   - **M1** Das Genre aus dem Such-Chip bleibt bis in Datei, TCON, Zielordner und DB erhalten:
     `YtClient._finish` nimmt das gespeicherte, nicht manuelle Genre, wenn die Keywords nichts

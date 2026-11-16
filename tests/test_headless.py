@@ -126,3 +126,63 @@ def test_busy_returns_4_without_touching_locks(env):
     assert run(env, run_lock=lambda: None) == EXIT_BUSY
     assert run(env, run_lock=Held, watchlist_lock=lambda: None) == EXIT_BUSY
     assert Held.released and env[1].list_runs() == []
+
+
+def test_watchlist_busy_note_names_the_gui_check(env, caplog):
+    """m2: the GUI's in-app check holds the watchlist lock -> exit 4 with a log note."""
+    import logging
+
+    class Held:
+        def release(self):
+            pass
+
+    with caplog.at_level(logging.ERROR, logger="hcloader.headless"):
+        assert run(env, run_lock=Held, watchlist_lock=lambda: None) == EXIT_BUSY
+    assert "In-App-Prüfung" in caplog.text
+
+
+class _Lock:
+    def release(self):
+        pass
+
+
+def test_http_mode_uses_the_po_token_server_of_the_running_gui(env, monkeypatch):
+    """m1: GUI open + /ping answers on the configured port -> used, never started/stopped."""
+    settings, db = env
+    settings.network.po_token_mode = "http"
+    settings.network.po_token_port = 4499
+    db.add_source("channel", "A", "https://www.youtube.com/@a")
+    pings = []
+
+    def ping(port):
+        pings.append(port)
+        return True
+
+    from app.core import binaries
+
+    def no_start(self):  # a second server must never be started
+        raise AssertionError("PotServer.start() aufgerufen")
+
+    monkeypatch.setattr(binaries.PotServer, "start", no_start)
+    monkeypatch.setattr(binaries.PotServer, "stop", no_start)
+    code = run(env, run_lock=_Lock, watchlist_lock=_Lock, gui_probe=lambda: True, pot_ping=ping)
+    assert code == EXIT_OK and pings and set(pings) == {4499}
+    r = db.list_runs()[0]
+    assert r["errors"] == 0 and db.get_source(1)["last_checked"]
+
+
+def test_http_mode_without_gui_or_answer_keeps_exit_1(env):
+    settings, db = env
+    settings.network.po_token_mode = "http"
+    db.add_source("channel", "A", "https://www.youtube.com/@a")
+    for gui, answers in ((False, True), (True, False)):
+        code = run(
+            env,
+            run_lock=_Lock,
+            watchlist_lock=_Lock,
+            gui_probe=lambda g=gui: g,
+            pot_ping=lambda port, a=answers: a,
+            watchdog=None if answers else FakeWatchdog(ok=False),
+            pot_wait=0,
+        )
+        assert code == EXIT_FAILED and "PO-Token" in db.list_runs()[0]["note"]

@@ -17,3 +17,5 @@ jobs:
       - run: ruff check .
       - run: ruff format --check .
       - run: pytest -q
+      - name: pytest (network tests – PyPI only, never YouTube)
+        run: pytest -q -m network

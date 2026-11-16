@@ -37,7 +37,7 @@ Nicht-Ziele: kein Streaming/Player, keine Weiterverbreitung, kein Multi-User, ke
 - Quellen: Kanal, Playlist, gespeicherte Suche. Felder: Name, URL/Query, Standard-Genre (optional), aktiv, max. Einträge pro Prüfung (Default 30), zuletzt geprüft, Anzahl neu.
 - "Jetzt prüfen" (einzeln / alle). Neue Treffer, die alle Filter bestehen, landen im **Eingang**.
 - Pro Quelle wählbar: Treffer automatisch herunterladen **oder** nur in den Eingang.
-- Prüfung bricht pro Quelle beim ersten bereits bekannten Video ab (`break_on_existing`-Logik über DB).
+- Prüfung bricht pro Quelle beim ersten Video ab, das **diese Quelle** schon gesehen hat (`break_on_existing`-Logik über DB, Tabelle `source_videos`). Nur aus einer Suche oder einer anderen Quelle bekannte Videos stoppen die Prüfung nicht. Die erste Prüfung einer Quelle bricht nie ab.
 
 ### 3.3 Downloads (Warteschlange)
 - Sequenziell, genau ein aktiver Download.

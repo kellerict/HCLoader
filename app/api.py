@@ -855,8 +855,8 @@ class Api:
     def _check_key(ids: list[int] | None) -> str:
         return "watchlist:all" if ids is None else "watchlist:" + ",".join(map(str, ids))
 
-    def _submit_check(self, ids: list[int] | None) -> None:
-        self._wl_worker.submit(self._check_key(ids), self._do_watchlist, ids)
+    def _submit_check(self, ids: list[int] | None, *, scheduled: bool = False) -> None:
+        self._wl_worker.submit(self._check_key(ids), self._do_watchlist, ids, scheduled=scheduled)
 
     def _trigger_scheduled_check(self) -> bool:
         """In-app interval (WatchlistScheduler): start a full check unless one is queued/running
@@ -864,7 +864,7 @@ class Api:
         if self._watchlist_refusal() or self._wl_worker.busy(self._check_key(None)):
             return False
         log.info("Geplante Watchlist-Prüfung (Intervall in der App)")
-        self._wl_worker.submit(self._check_key(None), self._do_watchlist, None, scheduled=True)
+        self._submit_check(None, scheduled=True)
         return True
 
     def _do_watchlist(self, ids: list[int] | None, *, scheduled: bool = False) -> dict[str, Any]:
