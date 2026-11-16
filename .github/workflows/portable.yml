@@ -55,6 +55,8 @@ jobs:
 
       - name: "Smoke (c): pytest in the embedded Python (dev deps only here, not in the ZIP)"
         timeout-minutes: 15
+        env:
+          HCLOADER_NO_DIALOG: "1"  # never a modal MessageBox in CI (tests/conftest.py sets it too)
         run: |
           # native tools may write to stderr: only exit codes decide (PS 5.1, runner sets 'stop')
           $ErrorActionPreference = 'Continue'
