@@ -187,3 +187,14 @@ Kurze Notizen zu Architekturentscheiden (Datum, Entscheid, Grund).
 - In der GUI bekommt `YtClient` den Server des Watchdogs über `worker.WatchdogPotServer` (fragt immer
   den Watchdog, der den Server nach einem Absturz ersetzen kann). `--smoke` startet weiterhin einen
   eigenen Server (kein Watchdog im CLI-Prozess).
+
+## 2026-11-16 – Thumbnails und Content-Security-Policy (Phase 3, Review Phase 2 m10/n1)
+- Thumbnails sind der einzige externe Abruf der UI. Sie werden direkt vom YouTube-Bild-CDN geladen, aber
+  nur von `https://*.ytimg.com` (`util.safeThumb`, sonst Platzhalter), mit `loading="lazy"` und ohne
+  Referrer. Das ist kein Zugriff auf die YouTube-Seiten oder -API und läuft deshalb nicht über den Throttle;
+  pro Suche höchstens `results_count` kleine Bilder.
+- CSP in `ui/index.html` erlaubt `'unsafe-eval'` in `script-src`: pywebview 6.2.1 spielt Python→JS-Events
+  per `eval()` ein und baut die js_api mit `new Function`. Ohne das fielen alle Events still aus.
+  Inline-Skripte, Inline-Handler und fremde Skriptquellen bleiben blockiert.
+- Im Host-Modus (`?host=pywebview`) gibt es nach 30 s ohne API keinen Mock mehr, sondern einen sichtbaren
+  Fehlerzustand mit „Neu laden“ (Review Phase 2 m9).
