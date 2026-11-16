@@ -17,7 +17,8 @@ Cloud-Session (Linux-Container). Abweichend von `build-all.md`: alle Phasen auf 
 | 2 – GUI-Grundgerüst | **abgeschlossen** (QA bestanden, Review freigegeben, 12 Minor → Phase 3) | claude/compassionate-thompson-zgetlu | – | – |
 | 3 – Entdecken & Downloads | **abgeschlossen** (QA bestanden; Review R1 behoben 00f165c, R2 behoben ba6ccbd) | | | |
 | 4 – Watchlist & Zeitplan | in Arbeit (Backend + UI parallel) | | | |
-| 5 – Bibliothek, Protokoll, Feinschliff | offen | | | |
+| 5 – Bibliothek, Protokoll, Feinschliff | in Arbeit |
+| 6 – Portable (User-Wunsch) | geplant nach Phase 5 | | | |
 
 ## Aktueller Plan
 Phase 1
@@ -40,6 +41,14 @@ Offene Review-Punkte (docs/reviews/phase-1.md, Runde 2)
 - Phase 4: N3 (Mutex `Global\` statt `Local\`, damit geplante Aufgabe in Sitzung 0 ausgeschlossen wird), N5 (Request-Abstand/Suchzähler prozessübergreifend).
 - Nach Ermessen: N4 (.part-Fortsetzen über anderes Format, alte .part aufräumen), N6 (fehlende Prüfsumme nur Warnung), N7, N8, N9 (Video-ID-Validierung).
 
+Phase 6 – Portable (User-Wunsch, Variante 2: komplett portable)
+- Eingebettetes Python (Windows embeddable package, amd64, 3.12/3.13) im App-Ordner `python\`, `._pth` mit `import site` + App-Root, pip via get-pip.
+- Portable-Modus: Benutzerdaten im App-Ordner (`data\`), sobald `portable.txt` existiert (Portable-Build legt sie an); sonst wie bisher %APPDATA%.
+- Starter ohne Konsolenfenster mit relativen Pfaden (z.B. `HCLoader.vbs` → `python\pythonw.exe -m app.main`), optionale Desktop-Verknüpfung.
+- Update-Knopf (pip -U) muss mit dem eingebetteten Python funktionieren; pywebview/pythonnet im Embed-Python prüfen.
+- Aufgabenplanung: Pfad ändert sich beim Verschieben → App erkennt veränderten Pfad und bietet an, die Aufgabe neu anzulegen.
+- `scripts/build_portable.ps1` + GitHub-Actions-Job (windows-latest), der ein fertiges Portable-ZIP als Artefakt baut (deno, ffmpeg, bgutil inklusive; Lizenzen beilegen).
+
 ## Blockiert
 - Smoke-Test (echter Download) – siehe Vorbedingungen.
 
@@ -56,3 +65,4 @@ Offene Review-Punkte (docs/reviews/phase-1.md, Runde 2)
 - 2026-11-16 – Phase 4 gestartet: backend-dev (watchlist, headless, N3/N5/n6), ui-designer (Watchlist/Eingang/Zeitplan)
 - 2026-11-16 – Phase 3 abgeschlossen (R2-Funde in ba6ccbd). Phase-4-Backend fertig (ba6ccbd); UI läuft
 - Offen (Phase 4/5 klären): Playlists hängen neue Videos hinten an → Abbruch beim ersten bekannten Video + max_entries passt schlecht (decisions.md)
+- 2026-11-16 – User wählt Portable-Variante 2 (eingebettetes Python) → als Phase 6 nach Phase 5 eingeplant
