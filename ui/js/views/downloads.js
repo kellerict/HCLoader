@@ -94,6 +94,7 @@
     const pb = $('#q-pause', el);
     pb.innerHTML = `${queue.paused ? I.play : I.pause}${t(queue.paused ? 'downloads.resume' : 'downloads.pause')}`;
     pb.classList.toggle('primary', queue.paused);
+    $('#q-list', el).classList.toggle('paused', queue.paused);
     renderNotice();
     first = false;
   }

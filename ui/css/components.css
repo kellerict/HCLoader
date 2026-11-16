@@ -218,6 +218,10 @@ label.lbl,.lbl{display:block;font:600 11px var(--f-mono);letter-spacing:1.5px;te
 .qitem .thumb{border-radius:var(--radius-sm)}
 .qitem.active{border-color:var(--acid);box-shadow:0 0 0 1px rgba(182,255,0,.3),0 0 26px rgba(182,255,0,.08)}
 .qitem.failed{border-color:rgba(255,59,92,.5)}
+.paused .qitem.active{border-color:var(--warn);box-shadow:0 0 0 1px rgba(255,176,0,.25)}
+.paused .qitem.active .progress .bar{background:var(--warn);opacity:.7}
+.paused .qitem.active .phase{color:var(--warn)}
+.paused .qitem.active .phase::before{background:var(--warn);box-shadow:0 0 6px var(--warn)}
 .qtitle{font-weight:600;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .qinfo{display:flex;gap:16px;font:12px var(--f-mono);color:var(--muted);margin-top:8px;white-space:nowrap;overflow:hidden}
 .qinfo b{color:var(--text);font-weight:600}
