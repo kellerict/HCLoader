@@ -33,7 +33,7 @@ Phase 2
 Hinweise für Phase 3
 - Worker hält Lauf-Lock (`acquire_run_lock`) für die Dauer eines Laufs und ruft am Ende `Throttle.finish_run(success)`.
 - Genre-Chips sollen laut SPEC §3.1 Begriffe an die Suche anhängen (UI filtert derzeit nur).
-- Upload-Zeitraum "benutzerdefiniert" (SPEC §3.1) fehlt noch – als temporärer Filter im Panel ergänzen.
+- Upload-Zeitraum erweitern (User-Wunsch + SPEC §3.1): Werte `year` (Feld `upload_year`) und `custom` (`upload_from`/`upload_to`) in Schema, Filter-Panel und Settings. Flache Suche liefert Datum nur mit `extractor_args youtubetab:approximate_date` (ungefähr, aus "vor X Jahren") → in build_ydl_opts für search/list setzen. Jahr-Filter besteht bei Jahreszahl im Titel ODER ungefährem Upload-Jahr (±1 an Grenzen tolerant); Option "Jahr an Suchbegriff anhängen" (Default an).
 - `po_token_ttl_hours` wird auf ganze Stunden gerundet → Hinweis in GUI.
 
 Offene Review-Punkte (docs/reviews/phase-1.md, Runde 2)
