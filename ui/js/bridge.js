@@ -63,7 +63,7 @@
      get_sources()                      -> [Source]
      save_source(source)                -> {ok, source} | {ok:false, errors:{feld: "Meldung"}}   (id fehlt = neu)
                                            Die UI schickt nur {id?, type, name, url_or_query, default_genre,
-                                           enabled, auto_download, max_entries} (ohne last_checked/new_count).
+                                           enabled, auto_download, max_entries, newest_last} (ohne last_checked/new_count).
                                            errors: Schlüssel = diese Feldnamen -> Meldung am Feld; andere
                                            Schlüssel und ein optionales error (Text) stehen oben im Dialog.
      delete_source(id)                  -> {ok} | {ok:false, error}
@@ -112,7 +112,9 @@
                   die UI zeigt damit im Eingang das Quelle-Badge und den Filter pro Quelle. Fehlt das Feld oder
                   gibt es die Quelle nicht mehr: kein Badge, Gruppe «Ohne Quelle»)}
      Source      {id, type: "channel"|"playlist"|"search", name, url_or_query, default_genre|null,
-                  enabled, auto_download, max_entries, last_checked (ISO|null), new_count}
+                  enabled, auto_download, max_entries, newest_last (bool), last_checked (ISO|null), new_count}
+                  newest_last: nur bei type "playlist" – neue Videos stehen hinten, die Playlist wird von hinten
+                  gelesen. Die UI schickt bei Kanal/Suche immer false und wählt es bei neuen Playlists nicht vor.
                   new_count = Treffer dieser Quelle, die noch im Eingang liegen (Status "inbox")
      QueueItem   {id, video: Video, state: "waiting"|"active"|"failed",
                   phase: "waiting"|"sleep"|"download"|"convert"|"tag",
