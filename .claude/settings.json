@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Read", "Edit", "Write", "Glob", "Grep",
+      "Bash(python:*)", "Bash(python3:*)", "Bash(py:*)",
+      "Bash(.venv/Scripts/python:*)", "Bash(.venv/Scripts/pip:*)",
+      "Bash(.venv/Scripts/pytest:*)", "Bash(.venv/Scripts/ruff:*)",
+      "Bash(pip:*)", "Bash(pytest:*)", "Bash(ruff:*)",
+      "Bash(powershell -ExecutionPolicy Bypass -File scripts/*)",
+      "Bash(pwsh -File scripts/*)",
+      "Bash(git status:*)", "Bash(git diff:*)", "Bash(git log:*)", "Bash(git add:*)",
+      "Bash(git commit:*)", "Bash(git switch:*)", "Bash(git checkout:*)", "Bash(git branch:*)",
+      "Bash(git pull:*)", "Bash(git push origin phase-*)", "Bash(git push origin main --tags)",
+      "Bash(git push --tags)", "Bash(git tag:*)", "Bash(git init:*)", "Bash(git remote:*)",
+      "Bash(gh auth status)", "Bash(gh repo view:*)",
+      "Bash(gh pr create:*)", "Bash(gh pr checks:*)", "Bash(gh pr merge:*)", "Bash(gh pr view:*)",
+      "Bash(gh run:*)",
+      "Bash(ls:*)", "Bash(dir:*)", "Bash(mkdir:*)", "Bash(where:*)", "Bash(which:*)",
+      "WebFetch(domain:github.com)", "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:pypi.org)", "WebFetch(domain:docs.deno.com)", "WebSearch"
+    ],
+    "deny": [
+      "Bash(git push --force:*)", "Bash(git push -f:*)", "Bash(git push origin main)",
+      "Bash(git reset --hard:*)", "Bash(rm -rf /*)", "Bash(rm -rf ~*)",
+      "Bash(Remove-Item -Recurse C:\\*)", "Bash(format:*)",
+      "Read(**/cookies*.txt)", "Read(**/.env)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "python .claude/hooks/format_py.py" }
+        ]
+      }
+    ]
+  }
+}
