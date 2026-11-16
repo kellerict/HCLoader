@@ -503,7 +503,7 @@ body.no-backend nav,body.no-backend main,body.no-backend footer{filter:grayscale
 
 /* ---------- Phase 4: Watchlist, Eingang, Zeitplan ---------- */
 /* Watchlist-Tabelle: bei schmalem Fenster horizontal scrollen statt die Namensspalte zu erdrücken */
-.wl-table{min-width:900px}
+.wl-table{min-width:1030px}
 #wl-notice{margin-bottom:16px}
 .wl-table td .badge{margin:0;border:0;cursor:pointer;display:inline-block;transition:box-shadow var(--t-fast),filter var(--t-fast)}
 .wl-table td .badge:hover{filter:brightness(1.15);box-shadow:0 0 10px var(--accent-glow)}
@@ -547,10 +547,15 @@ tr.checking.has-error td:first-child::before{background:var(--warn)}
 .thumb .src span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .empty p{max-width:460px;margin:0 auto}
 .empty .btn{margin-top:16px}
+.empty .btn svg{width:15px;height:15px;stroke:currentColor;stroke-width:2.2;margin:0}
 
 /* Zeitplan / Statusleiste */
 #sb-next.held{color:var(--warn)}
 #nf-next{white-space:nowrap}
+/* Mindestfenster (1100 px): Statusleiste enger, Herkunft des Termins nur noch im Tooltip */
+@media (max-width:1240px){footer{gap:14px} #sb-next .sb-kind{display:none}}
+/* Schmales Fenster: Typ und Max. ausblenden (stehen im Bearbeiten-Dialog), Rest scrollt horizontal */
+@media (max-width:1300px){.wl-table{min-width:890px} .wl-table th:nth-child(3),.wl-table tr[data-id] td:nth-child(3),.wl-table th:nth-child(6),.wl-table tr[data-id] td:nth-child(6){display:none}}
 .statebox .st-kind{font:600 11px var(--f-mono);letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);border:1px solid var(--line-2);padding:2px 8px;border-radius:var(--radius-sm)}
 .statebox .st-kind:empty{display:none}
 [data-custom=nextCheck]{margin-bottom:22px}

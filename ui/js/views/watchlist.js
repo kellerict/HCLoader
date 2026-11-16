@@ -40,7 +40,7 @@
     const cls = [s.enabled ? '' : 'off', checking.has(s.id) ? 'checking' : '', pending.has(s.id) ? 'pending' : '', err ? 'has-error' : '', flash.has(s.id) ? 'flash' : ''].filter(Boolean).join(' ');
     return `<tr data-id="${s.id}" class="${cls}">
       <td>${ui.toggle(s.enabled, `data-k="enabled" title="${esc(t('watchlist.col_active'))}"`)}</td>
-      <td class="clip"><div class="cell-title"><div><b>${esc(s.name)}</b>${err
+      <td class="clip"><div class="cell-title"><div><b title="${esc(`${t('source_type.' + s.type)} · ${s.name}`)}">${esc(s.name)}</b>${err
     ? `<small class="src-err" title="${esc(`${t('watchlist.error_title')}: ${err}`)}">${I.warn}<span>${esc(err)}</span></small>`
     : `<small title="${esc(s.url_or_query)}">${esc(s.url_or_query)}</small>`}</div></div></td>
       <td class="mono">${esc(t('source_type.' + s.type))}</td>

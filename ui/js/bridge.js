@@ -51,7 +51,7 @@
                                            Upload-Zeitraum «Jahr». Das Backend hängt die Begriffe an
                                            (Genre-Suchbegriffe, Jahr bei search.append_year) und meldet den
                                            tatsächlich gesuchten Text als effective_query zurück.
-     get_inbox()                        -> [Video]
+     get_inbox()                        -> [Video]    Status "inbox"; mit source_id (siehe Video) für Quelle-Badge/-Filter
      enqueue(ids)                       -> {ok:true, ids:[übernommen], skipped?: n}
      set_video_status(id, status)       -> {ok}       status: "ignored" | "new"
      set_genre(id, genre)               -> {ok}
@@ -62,8 +62,17 @@
    Watchlist
      get_sources()                      -> [Source]
      save_source(source)                -> {ok, source} | {ok:false, errors:{feld: "Meldung"}}   (id fehlt = neu)
-     delete_source(id)                  -> {ok}
-     check_sources(ids?)                -> {ok, started}   Fortschritt über Events "source" / "watchlist_done"
+                                           Die UI schickt nur {id?, type, name, url_or_query, default_genre,
+                                           enabled, auto_download, max_entries} (ohne last_checked/new_count).
+                                           errors: Schlüssel = diese Feldnamen -> Meldung am Feld; andere
+                                           Schlüssel und ein optionales error (Text) stehen oben im Dialog.
+     delete_source(id)                  -> {ok} | {ok:false, error}
+     check_sources(ids?)                -> {ok:true, started: n} | {ok:false, error}
+                                           ids fehlt/null = alle aktiven Quellen. started = Anzahl Quellen, die
+                                           geprüft werden (0 = keine aktive Quelle, dann kein Lauf und kein
+                                           "watchlist_done"). {ok:false, error}: Backoff aktiv oder es läuft
+                                           schon eine Prüfung -> Fehler-Toast. Fortschritt über die Events
+                                           "source" / "watchlist_done"; die UI sperrt «Prüfen» bis "watchlist_done".
 
    Downloads
      get_queue()                        -> {paused, items:[QueueItem], blocked_code, blocked_reason}
@@ -98,9 +107,13 @@
                   selbst live und wertet den Text nicht aus), is_live (bool: Livestream, nur bei
                   Suchtreffern true, sonst false),
                   view_count, thumbnail (URL|null – geladen wird nur https://*.ytimg.com), genre, genre_manual,
-                  status: "new"|"inbox"|"queued"|"downloading"|"done"|"ignored"|"failed"}
+                  status: "new"|"inbox"|"queued"|"downloading"|"done"|"ignored"|"failed",
+                  source_id (int|null, optional: Watchlist-Quelle, über die das Video gefunden wurde = Source.id;
+                  die UI zeigt damit im Eingang das Quelle-Badge und den Filter pro Quelle. Fehlt das Feld oder
+                  gibt es die Quelle nicht mehr: kein Badge, Gruppe «Ohne Quelle»)}
      Source      {id, type: "channel"|"playlist"|"search", name, url_or_query, default_genre|null,
                   enabled, auto_download, max_entries, last_checked (ISO|null), new_count}
+                  new_count = Treffer dieser Quelle, die noch im Eingang liegen (Status "inbox")
      QueueItem   {id, video: Video, state: "waiting"|"active"|"failed",
                   phase: "waiting"|"sleep"|"download"|"convert"|"tag",
                   pct (0–100), speed (MB/s), eta (s), error|null, target (relativer Ordner)}
@@ -115,6 +128,11 @@
                   backoff: {active, until (ISO|null), level, remaining_s},
                   next_check (ISO|null), queue_length, queue_paused, inbox_count,
                   counters: {downloads_run, downloads_day, searches_hour}}
+                  next_check = der frühere Termin von In-App-Intervall und Windows-Aufgabe (null = beides aus
+                  bzw. noch nichts geplant). Woher er stammt («App»/«Aufgabe»), leitet die UI aus
+                  schedule.in_app_check / task_scheduler_enabled / task_time ab (HC.schedule in app.js).
+                  inbox_count treibt das Badge in der Navigation: nach jeder Änderung am Eingang (Prüfung,
+                  enqueue, set_video_status) ein "status"-Event schicken.
 
    ---------------------------------------------------------------------
    EVENTS  Python -> UI         window.mv.emit('typ', daten)   (worker.py via evaluate_js)
@@ -131,7 +149,13 @@
      status          Status                            Statusleiste (Backoff, Zähler, PO-Token, nächste Prüfung …)
      log             LogLine                           neue Protokollzeile (Live-Log)
      source          {id, checking, last_checked?, new_count?, error?}   Watchlist-Quelle wird/wurde geprüft
-     watchlist_done  {checked, found}                  Watchlist-Lauf beendet
+                     Start: {id, checking:true}. Ende: {id, checking:false, last_checked, new_count} oder bei
+                     Fehler {id, checking:false, error:"Meldung"} – die UI zeigt die Meldung an der Quelle, bis
+                     sie wieder geprüft wird (nur im Speicher der UI, Source kennt kein Fehlerfeld).
+     watchlist_done  {checked, found}                  Watchlist-Lauf beendet (auch bei Abbruch, z.B. Backoff)
+                     checked = geprüfte Quellen, found = neue Treffer insgesamt (Eingang + automatisch geladen).
+                     Gilt für jeden Lauf (von Hand, In-App-Intervall); die UI gibt danach «Prüfen» wieder frei,
+                     lädt Quellen und Eingang neu und zeigt eine Zusammenfassung als Toast.
      toast           {msg, kind?}                      kind: "ok"|"info"|"warn"|"err"
 
    UI-seitig abonnieren:  HC.bridge.on('progress', fn)

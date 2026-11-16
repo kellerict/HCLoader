@@ -181,13 +181,13 @@
     fx.count($('#sb-day'), s.counters.downloads_day);
     $('#sb-day-max').textContent = th.max_downloads_per_day;
     const nx = HC.schedule.next();
-    $('#sb-next').textContent = HC.schedule.label(nx);
+    $('#sb-next').innerHTML = util.esc(HC.schedule.label(nx, true)) + (nx.at && nx.kind ? `<span class="sb-kind"> · ${util.esc(t('schedule.kind_' + nx.kind))}</span>` : '');
     $('#sb-next').classList.toggle('held', !!nx.at && nx.blocked);
     $('#sb-next').parentElement.title = HC.schedule.title(nx);
 
     fx.count($('#nf-today'), s.counters.downloads_day);
     $('#nf-today-max').textContent = th.max_downloads_per_day;
-    $('#nf-next').textContent = nx.at ? (nx.due ? t('schedule.due') : util.daysAgo(nx.at) === 0 && util.parseDate(nx.at).getDate() === new Date().getDate() ? util.fmtTime(nx.at) : util.fmtWhen(nx.at)) : '–';
+    $('#nf-next').textContent = nx.at ? (nx.due ? t('schedule.due') : util.parseDate(nx.at).toDateString() === new Date().toDateString() ? util.fmtTime(nx.at) : util.fmtWhen(nx.at)) : '–';
 
     setBadge($('#b-inbox'), s.inbox_count || 0);
     setBadge($('#b-queue'), qn);
@@ -213,6 +213,7 @@
     B.on('watchlist_done', (d) => {
       const found = +d.found || 0, errors = wlErrors;
       wlErrors = 0;
+      if (!d.checked && !found && !errors) return; // nichts geprüft (z.B. anderer Lauf aktiv) – das Backend meldet den Grund selbst
       let msg = found ? t(found === 1 ? 'toast.wl_done_found_one' : 'toast.wl_done_found', { found }) : t(d.checked === 1 ? 'toast.wl_done_one' : 'toast.wl_done', { n: d.checked });
       if (errors) msg += ` · ${t(errors === 1 ? 'toast.wl_errors_one' : 'toast.wl_errors', { n: errors })}`;
       HC.ui.toast(msg, errors ? 'warn' : found ? 'ok' : 'info', errors ? 5200 : 0);
