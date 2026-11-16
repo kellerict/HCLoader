@@ -13,8 +13,8 @@ Cloud-Session (Linux-Container). Abweichend von `build-all.md`: alle Phasen auf 
 ## Phasen
 | Phase | Status | Branch | PR | Tag |
 |---|---|---|---|---|
-| 1 – Gerüst & Kern-Download | in Arbeit | claude/compassionate-thompson-zgetlu | – | – |
-| 2 – GUI-Grundgerüst | UI-Teil in Arbeit (parallel) | claude/compassionate-thompson-zgetlu | – | – |
+| 1 – Gerüst & Kern-Download | Code fertig, Review-Fixes drin; QA + Nach-Review laufen | claude/compassionate-thompson-zgetlu | – | – |
+| 2 – GUI-Grundgerüst | UI fertig; Integration (api.py, Fenster) in Arbeit | claude/compassionate-thompson-zgetlu | – | – |
 | 3 – Entdecken & Downloads | offen | | | |
 | 4 – Watchlist & Zeitplan | offen | | | |
 | 5 – Bibliothek, Protokoll, Feinschliff | offen | | | |
@@ -26,9 +26,23 @@ Phase 1
 - UI `ui-designer` (Fable, parallel): Prototyp aufteilen, Fonts lokal, Einstellungen komplett, Effekte verfeinern, `scripts/ui_screenshots.py`
 - Vertrag Settings: `docs/settings-schema.md`
 
+Phase 2
+- UI `ui-designer` (Fable): fertig (a7b359c) – Bridge-Vertrag im Kopf von `ui/js/bridge.js`
+- Integration `integrator` (Opus): worker.py (EventBus), api.py, main.run_gui, Single-Instance, scheduler.py, docs/bridge-api.md
+
+Hinweise für Phase 3
+- Worker hält Lauf-Lock (`acquire_run_lock`) für die Dauer eines Laufs und ruft am Ende `Throttle.finish_run(success)`.
+- Genre-Chips sollen laut SPEC §3.1 Begriffe an die Suche anhängen (UI filtert derzeit nur).
+- Upload-Zeitraum "benutzerdefiniert" (SPEC §3.1) fehlt noch – als temporärer Filter im Panel ergänzen.
+- `po_token_ttl_hours` wird auf ganze Stunden gerundet → Hinweis in GUI.
+
 ## Blockiert
 - Smoke-Test (echter Download) – siehe Vorbedingungen.
 
 ## Log
 - 2026-11-16 – Starter-Dateien eingespielt (`chore: add project spec and agent setup`)
 - 2026-11-16 – Phase 1a + UI gestartet
+- 2026-11-16 – 1a Fundament fertig (1fc49c8), 1b Kern-Download fertig (26a24c2)
+- 2026-11-16 – Review Phase 1: ÄNDERUNGEN NÖTIG (1 Blocker, 5 Major) → behoben
+- 2026-11-16 – UI aufgeteilt + Feinschliff fertig (a7b359c)
+- 2026-11-16 – QA Phase 1 + Nach-Review gestartet; Phase-2-Integration gestartet
