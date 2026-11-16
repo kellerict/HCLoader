@@ -154,6 +154,14 @@ class FilterSettings(_Section):
 
     _clean = field_validator("include_keywords", "exclude_keywords", mode="before")(_clean_list)
 
+    @field_validator("max_duration")
+    @classmethod
+    def _max_duration(cls, v: int, info: Any) -> int:
+        low = info.data.get("min_duration")
+        if v and low is not None and v < low:
+            raise ValueError("Maximum liegt unter der Mindestdauer (0 = unbegrenzt)")
+        return v
+
 
 class GenreItem(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -440,7 +448,27 @@ def parse_settings(values: dict[str, Any]) -> tuple[Settings | None, dict[str, s
     try:
         return Settings.model_validate(values), {}
     except ValidationError as exc:
-        return None, _errors_to_dict(exc)
+        errors = _errors_to_dict(exc)
+        errors.update(_duplicate_genre_errors(values))
+        return None, errors
+
+
+def _duplicate_genre_errors(values: dict[str, Any]) -> dict[str, str]:
+    """Point duplicate genre names at the offending row: {"genres.items.<i>.name": ...}."""
+    items = (values.get("genres") or {}).get("items") if isinstance(values.get("genres"), dict) else None
+    if not isinstance(items, list):
+        return {}
+    out: dict[str, str] = {}
+    seen: set[str] = set()
+    for i, item in enumerate(items):
+        name = item.get("name") if isinstance(item, dict) else None
+        if not isinstance(name, str) or not name.strip():
+            continue
+        key = name.strip().casefold()
+        if key in seen:
+            out[f"genres.items.{i}.name"] = f"Name '{name.strip()}' ist doppelt vergeben"
+        seen.add(key)
+    return out
 
 
 def validate_settings(values: dict[str, Any]) -> dict[str, str]:

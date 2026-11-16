@@ -13,7 +13,7 @@ Cloud-Session (Linux-Container). Abweichend von `build-all.md`: alle Phasen auf 
 ## Phasen
 | Phase | Status | Branch | PR | Tag |
 |---|---|---|---|---|
-| 1 – Gerüst & Kern-Download | Code fertig, Review-Fixes drin; QA + Nach-Review laufen | claude/compassionate-thompson-zgetlu | – | – |
+| 1 – Gerüst & Kern-Download | **abgeschlossen** (QA bestanden bis auf extern blockierten Smoke; Review Runde 2: N1/N2 behoben) | claude/compassionate-thompson-zgetlu | – | – |
 | 2 – GUI-Grundgerüst | UI fertig; Integration (api.py, Fenster) in Arbeit | claude/compassionate-thompson-zgetlu | – | – |
 | 3 – Entdecken & Downloads | offen | | | |
 | 4 – Watchlist & Zeitplan | offen | | | |
@@ -36,6 +36,10 @@ Hinweise für Phase 3
 - Upload-Zeitraum "benutzerdefiniert" (SPEC §3.1) fehlt noch – als temporärer Filter im Panel ergänzen.
 - `po_token_ttl_hours` wird auf ganze Stunden gerundet → Hinweis in GUI.
 
+Offene Review-Punkte (docs/reviews/phase-1.md, Runde 2)
+- Phase 4: N3 (Mutex `Global\` statt `Local\`, damit geplante Aufgabe in Sitzung 0 ausgeschlossen wird), N5 (Request-Abstand/Suchzähler prozessübergreifend).
+- Nach Ermessen: N4 (.part-Fortsetzen über anderes Format, alte .part aufräumen), N6 (fehlende Prüfsumme nur Warnung), N7, N8, N9 (Video-ID-Validierung).
+
 ## Blockiert
 - Smoke-Test (echter Download) – siehe Vorbedingungen.
 
@@ -46,3 +50,4 @@ Hinweise für Phase 3
 - 2026-11-16 – Review Phase 1: ÄNDERUNGEN NÖTIG (1 Blocker, 5 Major) → behoben
 - 2026-11-16 – UI aufgeteilt + Feinschliff fertig (a7b359c)
 - 2026-11-16 – QA Phase 1 + Nach-Review gestartet; Phase-2-Integration gestartet
+- 2026-11-16 – QA Phase 1 BESTANDEN (Smoke extern blockiert); Review Runde 2 → N1/N2 behoben → Phase 1 abgeschlossen
