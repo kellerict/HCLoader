@@ -152,7 +152,10 @@ def test_log_forwarder_level_mapping():
     line = to({**base, "level": "INFO"})
     assert line == {"ts": "1970-01-01T00:00:00+00:00", "level": "info", "msg": "m"}
     assert not LogForwarder.wanted({"logger": "pywebview"})
-    assert not LogForwarder.wanted({"logger": "app.worker"})
+    assert not LogForwarder.wanted({"logger": "app.worker.events"})
+    # m4: worker/watchdog/queue messages are user-visible, only the dispatcher is silent
+    assert LogForwarder.wanted({"logger": "hcloader.worker"})
+    assert worker.log.name == "hcloader.worker"
     assert LogForwarder.wanted({"logger": "hcloader.api"})
 
 
@@ -404,3 +407,47 @@ def test_second_start_requests_activation(monkeypatch):
     finally:
         first.release()
     assert calls == [1]
+
+
+def test_worker_same_key_after_completion_starts_new_job():
+    """n3: the finished job is forgotten before its future resolves."""
+    w = Worker()
+    try:
+        calls = []
+        first = w.submit("k", lambda: calls.append(1) or len(calls))
+        assert first.result(5) == 1
+        second = w.submit("k", lambda: calls.append(1) or len(calls))
+        assert second is not first and second.result(5) == 2
+        assert w.other_job("k") is None
+    finally:
+        w.stop()
+
+
+def test_worker_other_job_reports_running_key():
+    w = Worker()
+    release = threading.Event()
+    started = threading.Event()
+    try:
+        w.submit("update", lambda: started.set() or release.wait(5))
+        assert started.wait(5)
+        assert w.other_job("backup") == "update" and w.other_job("update") is None
+    finally:
+        release.set()
+        w.stop()
+
+
+def test_watchdog_pot_server_proxy():
+    class WD:
+        alive = True
+        server = SimpleNamespace(port=4416)
+
+        def running(self):
+            return self.alive
+
+    wd = WD()
+    proxy = worker.WatchdogPotServer(wd)
+    assert proxy.running() and proxy.start() and proxy.port == 4416
+    wd.alive = False
+    assert not proxy.running()
+    proxy.stop()  # never stops the watchdog's server
+    assert wd.server.port == 4416

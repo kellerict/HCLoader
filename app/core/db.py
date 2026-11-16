@@ -36,6 +36,8 @@ _VIDEO_COLUMNS = (
     "error",
     "first_seen",
     "downloaded_at",
+    "queue_pos",
+    "date_approx",
 )
 _SOURCE_FIELDS = (
     "type",
@@ -89,8 +91,25 @@ def _m1_initial(conn: sqlite3.Connection) -> None:
         conn.execute(statement)
 
 
+def _m2_queue(conn: sqlite3.Connection) -> None:
+    """Phase 3: persistent queue order and the "approximate upload date" flag of flat results."""
+    conn.execute("ALTER TABLE videos ADD COLUMN queue_pos INTEGER")
+    conn.execute("ALTER TABLE videos ADD COLUMN date_approx INTEGER DEFAULT 0")
+    conn.execute("CREATE INDEX idx_videos_queue ON videos(status, queue_pos)")
+    # rows queued before the migration keep their first-seen order
+    conn.execute(
+        "UPDATE videos SET queue_pos = (SELECT COUNT(*) FROM videos v2 "
+        "WHERE v2.status IN ('queued','downloading','failed') "
+        "AND (v2.first_seen < videos.first_seen OR "
+        "(v2.first_seen = videos.first_seen AND v2.id <= videos.id))) "
+        "WHERE status IN ('queued','downloading','failed')"
+    )
+
+
 # Append new steps at the end; never edit existing ones. Step i upgrades version i -> i+1.
-MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [_m1_initial]
+MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [_m1_initial, _m2_queue]
+# statuses a user may put into the download queue (enqueue / retry)
+ENQUEUEABLE = ("new", "inbox", "failed")
 
 
 def _current_version(conn: sqlite3.Connection) -> int:
@@ -192,14 +211,21 @@ class Database:
                 row["status"] = video.get("status") or "new"
                 row["genre_manual"] = int(bool(video.get("genre_manual", 0)))
                 row["first_seen"] = video.get("first_seen") or now_iso()
+                row["date_approx"] = int(bool(video.get("date_approx")))
                 self._check_status(row["status"])
                 cols = ", ".join(row)
                 marks = ", ".join("?" for _ in row)
                 self.execute(f"INSERT INTO videos({cols}) VALUES ({marks})", row.values())
                 return
             updates: dict[str, Any] = {
-                k: video[k] for k in _VIDEO_META_FIELDS if video.get(k) is not None
+                k: video[k] for k in _VIDEO_META_FIELDS if video.get(k) not in (None, "")
             }
+            if "upload_date" in updates:
+                approx = bool(video.get("date_approx"))
+                if approx and existing["upload_date"] and not existing["date_approx"]:
+                    del updates["upload_date"]  # never replace an exact date by an estimate
+                else:
+                    updates["date_approx"] = int(approx)
             if video.get("genre") and not existing["genre_manual"]:
                 updates["genre"] = video["genre"]
             if video.get("source_id") is not None and existing["source_id"] is None:
@@ -263,6 +289,77 @@ class Database:
                 (message,),
             )
             return int(cur.rowcount)
+
+    # -- download queue (status 'queued' + queue_pos = persistent order)
+
+    def _max_queue_pos(self) -> int:
+        row = self.query_one("SELECT MAX(queue_pos) AS m FROM videos")
+        return int((row or {}).get("m") or 0)
+
+    def enqueue(self, ids: Iterable[str]) -> list[str]:
+        """Put known videos with an ENQUEUEABLE status at the end of the queue (in the given
+        order). Returns the ids that were queued; others (unknown, done, ignored, already
+        queued/downloading) are skipped."""
+        out: list[str] = []
+        with self._lock:
+            pos = self._max_queue_pos()
+            for vid in ids:
+                row = self.get_video(vid)
+                if not row or row["status"] not in ENQUEUEABLE or vid in out:
+                    continue
+                pos += 1
+                self.execute(
+                    "UPDATE videos SET status='queued', error=NULL, queue_pos=? WHERE id=?",
+                    (pos, vid),
+                )
+                out.append(vid)
+        return out
+
+    def dequeue(self, video_id: str, status: str = "new") -> None:
+        """Take a video out of the queue (status `status`, no position)."""
+        self._check_status(status)
+        self.execute(
+            "UPDATE videos SET status=?, error=NULL, queue_pos=NULL WHERE id=?",
+            (status, video_id),
+        )
+
+    def next_queued(self) -> dict[str, Any] | None:
+        return self.query_one(
+            "SELECT * FROM videos WHERE status='queued' "
+            "ORDER BY queue_pos IS NULL, queue_pos, first_seen, id LIMIT 1"
+        )
+
+    def list_queue(self) -> list[dict[str, Any]]:
+        """Queue view: downloading first, then queued in order, then failed."""
+        return self.query(
+            "SELECT * FROM videos WHERE status IN ('downloading','queued','failed') ORDER BY "
+            "CASE status WHEN 'downloading' THEN 0 WHEN 'queued' THEN 1 ELSE 2 END, "
+            "queue_pos IS NULL, queue_pos, first_seen, id"
+        )
+
+    def move_in_queue(self, video_id: str, delta: int) -> bool:
+        """Swap a waiting entry with its waiting neighbour (delta -1 = up, +1 = down)."""
+        if delta not in (-1, 1):
+            return False
+        with self._lock:
+            waiting = self.query(
+                "SELECT id, queue_pos FROM videos WHERE status='queued' "
+                "ORDER BY queue_pos IS NULL, queue_pos, first_seen, id"
+            )
+            ids = [r["id"] for r in waiting]
+            if video_id not in ids:
+                return False
+            i = ids.index(video_id)
+            j = i + delta
+            if j < 0 or j >= len(ids):
+                return False
+            # renumber densely (NULL positions from older rows), then swap
+            base = self._max_queue_pos()
+            order = ids[:]
+            order[i], order[j] = order[j], order[i]
+            for n, vid in enumerate(order, start=1):
+                self.execute("UPDATE videos SET queue_pos=? WHERE id=?", (base + n, vid))
+            return True
 
     def delete_video(self, video_id: str) -> None:
         self.execute("DELETE FROM videos WHERE id=?", (video_id,))

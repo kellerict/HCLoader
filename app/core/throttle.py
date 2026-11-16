@@ -103,6 +103,9 @@ class Throttle:
         # Serialises the (long) pause between downloads without blocking searches meanwhile.
         self._dl_lock = threading.Lock()
         self._default_sleep = sleep is time.sleep
+        # Random pause before the next download, rolled once per `last_download_end` value so
+        # that a countdown shown in advance (download_wait) equals the pause actually waited.
+        self._planned_pause: tuple[str, float] | None = None
 
     @property
     def cfg(self) -> Any:
@@ -205,6 +208,15 @@ class Throttle:
     def searches_last_hour(self) -> int:
         return len(self._search_times())
 
+    def search_available_at(self) -> datetime | None:
+        """When the next search is allowed again if the hourly limit is used up, else None."""
+        times = sorted(self._search_times())
+        limit = self.cfg.max_searches_per_hour
+        if len(times) < limit:
+            return None
+        # the oldest search that keeps the count at the limit must drop out of the hour
+        return datetime.fromtimestamp(times[len(times) - limit] + 3600, UTC)
+
     def _wait(self, seconds: float, cancel_event: threading.Event | None) -> None:
         """Sleep `seconds` (injectable); abortable through `cancel_event` -> WaitCancelled."""
         if seconds > 0:
@@ -269,16 +281,37 @@ class Throttle:
             if count_attempt:
                 self.register_download()
 
+    def download_wait(self) -> float:
+        """Seconds left of the random pause before the next download (0 if none).
+
+        The random value is rolled once per end-of-download timestamp and reused by
+        `before_request("download")`, so a countdown shown in advance is exact.
+        """
+        with self._lock:
+            raw = self.db.get_state(K_LAST_DL_END)
+            if not raw:
+                return 0.0
+            try:
+                last_end = datetime.fromisoformat(raw)
+            except ValueError:
+                return 0.0
+            if self._planned_pause is None or self._planned_pause[0] != raw:
+                self._planned_pause = (raw, self.next_download_delay())
+            pause = self._planned_pause[1]
+            return max(0.0, pause - (self._now() - last_end).total_seconds())
+
+    def wait_between_downloads(self, cancel_event: threading.Event | None = None) -> None:
+        """Wait out the pause before the next download now (abortable -> WaitCancelled).
+
+        The download queue calls this before `YtClient.download` so the queue entry stays
+        'queued' during the pause; `before_request("download")` then finds nothing left to wait.
+        """
+        self.check_download()
+        with self._dl_lock:
+            self._wait_between_downloads(cancel_event)
+
     def _wait_between_downloads(self, cancel_event: threading.Event | None) -> None:
-        raw = self.db.get_state(K_LAST_DL_END)
-        if not raw:
-            return
-        try:
-            last_end = datetime.fromisoformat(raw)
-        except ValueError:
-            return
-        pause = self.next_download_delay()
-        wait = pause - (self._now() - last_end).total_seconds()
+        wait = self.download_wait()
         if wait > 0:
             log.info("Pause zwischen Downloads: %.0f s", wait)
             self._wait(wait, cancel_event)

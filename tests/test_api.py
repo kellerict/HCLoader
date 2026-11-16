@@ -98,6 +98,19 @@ class FakeLock:
         pass
 
 
+class NullClient:
+    """Stands in for YtClient: no yt-dlp, no network."""
+
+    def search(self, query, n=None, *, genre=None, year=None):
+        return []
+
+    def download(self, *a, **kw):
+        raise AssertionError("no downloads in API unit tests")
+
+    def close(self):
+        pass
+
+
 @pytest.fixture
 def env():
     """Factory for Api instances sharing one config/db (like two app starts)."""
@@ -136,6 +149,7 @@ def env():
             update_runner=updater,
             update_checker=kw.pop("update_checker", lambda: {"ok": True, "packages": {}}),
             run_lock=lambda: FakeLock() if state.lock_free else None,
+            client_factory=kw.pop("client_factory", NullClient),
             configure_logging=False,
             **kw,
         )
@@ -786,6 +800,7 @@ def test_db_backed_reads_and_simple_actions(env):
         "channel_name",
         "duration",
         "upload_date",
+        "date_approx",
         "view_count",
         "thumbnail",
         "genre",
@@ -832,19 +847,21 @@ def test_library_from_db(env, tmp_path):
 
 
 PLACEHOLDER_CALLS = {
-    "get_last_search": (),
-    "search": ("hardcore",),
-    "enqueue": (["abcdefghijk"],),
-    "add_channel_source": ("UC1", "Kanal"),
     "save_source": ({"name": "x"},),
     "check_sources": (None,),
+    "retag": ("abcdefghijk",),
+    "delete_library_item": ("abcdefghijk",),
+}
+PHASE3_CALLS = {
+    "get_last_search": (),
+    "search": ("hardcore", {"genre": None, "year": None}),
+    "enqueue": (["abcdefghijk"],),
+    "add_channel_source": ("UC1abcdefgh", "Kanal"),
     "get_queue": (),
     "set_queue_paused": (True,),
     "queue_move": ("abcdefghijk", 1),
     "queue_cancel": ("abcdefghijk",),
     "queue_retry": ("abcdefghijk",),
-    "retag": ("abcdefghijk",),
-    "delete_library_item": ("abcdefghijk",),
 }
 
 
@@ -852,18 +869,33 @@ PLACEHOLDER_CALLS = {
 def test_placeholders_are_neutral(env, name):
     res = getattr(env.make(), name)(*PLACEHOLDER_CALLS[name])
     json.dumps(res)
-    if name == "get_last_search":
-        assert res is None
-    elif name == "get_queue":
-        assert res == {"paused": False, "items": []}
-    else:
-        assert res["ok"] is False and res["error"].startswith("Folgt in Phase")
+    assert res["ok"] is False and res["error"].startswith("Folgt in Phase")
+
+
+def test_phase3_methods_on_empty_db(env):
+    a = env.make()
+    assert a.get_last_search() is None
+    assert a.get_queue() == {
+        "paused": False,
+        "items": [],
+        "blocked_reason": None,
+        "blocked_code": None,
+    }
+    assert a.enqueue(["abcdefghijk"]) == {"ok": True, "ids": [], "skipped": 1}
+    for name in ("queue_move", "queue_cancel", "queue_retry"):
+        res = getattr(a, name)(*PHASE3_CALLS[name])
+        assert res["ok"] is False and res["error"], name
+    res = a.search("hardcore", {"genre": None, "year": None})
+    assert res["ok"] is True and res["results"] == []
+    assert a.set_queue_paused(True) == {"ok": True, "paused": True}
+    assert a.get_status()["queue_paused"] is True
 
 
 def test_every_method_json_serializable(env):
     a = env.make()
     args = {
         **PLACEHOLDER_CALLS,
+        **PHASE3_CALLS,
         "save_settings": (a.get_settings()["values"],),
         "reset_settings": (None,),
         "open_path": ("data",),
@@ -880,3 +912,139 @@ def test_every_method_json_serializable(env):
     for name in sorted(_bridge_comment_methods()):
         res = getattr(a, name)(*args.get(name, ()))
         json.dumps(res)
+
+
+# ------------------------------------------------------------------ review minors (phase 3)
+
+
+def test_task_status_unknown_is_not_persisted(env):
+    """m5: schtasks failing for another reason (registered None) never changes the config."""
+    a = env.make()
+    assert a.create_task("03:00")["ok"]
+    env.schtasks.fail = True  # e.g. access denied, not "task not found"
+    st = a.get_task_status()
+    assert st["registered"] is None and "Zugriff verweigert" in st["error"]
+    assert env.make().get_settings()["values"]["schedule"]["task_scheduler_enabled"] is True
+
+
+def test_config_write_errors_are_reported_and_task_not_created(env, monkeypatch):
+    """m8: OSError while saving -> German error; the Windows task is created only after saving."""
+    a = env.make()
+
+    def boom(*args, **kw):
+        raise PermissionError("gesperrt")
+
+    monkeypatch.setattr(config, "save", boom)
+    res = a.create_task("03:00")
+    assert res["ok"] is False and res["error"].startswith("Speichern fehlgeschlagen")
+    assert not any(c[1] == "/Create" for c in env.schtasks.calls)
+    v = a.get_settings()["values"]
+    v["schedule"]["task_scheduler_enabled"] = True
+    res = a.save_settings(v)
+    assert res["ok"] is False and not any(c[1] == "/Create" for c in env.schtasks.calls)
+    res = a.reset_settings()
+    assert res["ok"] is False and res["error"].startswith("Speichern fehlgeschlagen")
+    assert a.remove_task()["ok"] is False
+
+
+def test_failed_task_creation_rolls_config_back(env):
+    a = env.make()
+    env.schtasks.fail = True
+    assert a.create_task("05:00")["ok"] is False
+    sched = env.make().get_settings()["values"]["schedule"]
+    assert sched["task_scheduler_enabled"] is False and sched["task_time"] == "03:00"
+
+
+def test_maintenance_job_refused_while_another_runs(env):
+    """m3: immediate German answer instead of a silent timeout behind a long update."""
+    a = env.make()
+    release = threading.Event()
+    started = threading.Event()
+
+    def slow():
+        started.set()
+        release.wait(5)
+        return {"ok": True}
+
+    fut = a._worker.submit("update", slow)
+    assert started.wait(5)
+    try:
+        res = a.backup_db()
+        assert res == {"ok": False, "error": "Wartung läuft gerade (Update) – bitte später erneut"}
+        res = a.test_po_token()
+        assert res["ok"] is False and res["state"] == "error" and "Update" in res["detail"]
+        assert a.search("hardcore")["error"].startswith("Wartung läuft gerade")
+    finally:
+        release.set()
+    assert fut.result(5) == {"ok": True}
+    assert a.backup_db()["ok"] is True
+
+
+def test_maintenance_job_timeout_is_reported(env, monkeypatch):
+    a = env.make()
+    monkeypatch.setattr(api_mod, "PO_TEST_TIMEOUT_S", 0.05)
+    release = threading.Event()
+    a._probe = lambda mode, port: release.wait(5) and {"ok": True, "state": "active"}
+    try:
+        res = a.test_po_token()
+        assert res["ok"] is False and res["error"].startswith("Zeitüberschreitung")
+    finally:
+        release.set()
+
+
+def test_update_without_loaded_ytdlp_needs_no_restart(env, monkeypatch):
+    """m2: yt-dlp not imported in this process yet -> the update takes effect without restart."""
+    a = env.make()
+    monkeypatch.delitem(sys.modules, "yt_dlp", raising=False)
+    res = a.update_ytdlp()
+    assert res["ok"] and "restart_required" not in res
+    assert a.get_queue()["blocked_code"] is None
+
+
+def test_update_with_loaded_ytdlp_blocks_queue(env, monkeypatch):
+    a = env.make()
+    monkeypatch.setitem(sys.modules, "yt_dlp", types.ModuleType("yt_dlp"))
+    res = a.update_ytdlp()
+    assert res["ok"] and res["restart_required"] is True
+    a._db.upsert_video({"id": "abcdefghijk", "title": "Mix"})
+    a.enqueue(["abcdefghijk"])
+    q = a.get_queue()
+    assert q["blocked_code"] == "restart" and "neu starten" in q["blocked_reason"]
+    flush(a)
+    assert any("neu starten" in t["msg"] for t in env.window.events_of("toast"))
+
+
+def test_add_channel_source(env):
+    a = env.make()
+    res = a.add_channel_source("UCabcdefgh123", "Partyraiser")
+    assert res["ok"] and res["source"]["type"] == "channel"
+    assert res["source"]["url_or_query"] == "https://www.youtube.com/channel/UCabcdefgh123"
+    assert res["source"]["max_entries"] == 30 and res["source"]["name"] == "Partyraiser"
+    again = a.add_channel_source("UCabcdefgh123", "x")
+    assert again["ok"] is False and "bereits" in again["error"]
+    assert a.add_channel_source("../evil", "x")["ok"] is False
+
+
+def test_search_validates_options_and_query(env):
+    a = env.make()
+    seen = []
+
+    class Client:
+        def search(self, query, n=None, *, genre=None, year=None):
+            seen.append((query, genre, year))
+            return []
+
+        def close(self):
+            pass
+
+    a._client_factory = Client
+    assert a.search("  ")["ok"] is False
+    res = a.search("hardcore", {"genre": "Polka", "year": 1800})
+    assert res["ok"] and seen[-1] == ("hardcore", None, None)
+    res = a.search("hardcore", {"genre": "Uptempo", "year": "2024"})
+    assert seen[-1] == ("hardcore", "Uptempo", 2024)
+    assert res["effective_query"].startswith("hardcore uptempo") and res[
+        "effective_query"
+    ].endswith("2024")
+    last = a.get_last_search()
+    assert last["query"] == "hardcore" and last["genre"] == "Uptempo" and last["year"] == 2024

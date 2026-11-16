@@ -118,3 +118,72 @@ Kurze Notizen zu Architekturentscheiden (Datum, Entscheid, Grund).
   zweite Prozess beendet sich.
 - **Grund:** Plattformneutral testbar, keine Named-Pipe-Abhängigkeit (pywin32), Token verhindert,
   dass andere lokale Prozesse das Fenster per Port-Raten hervorholen.
+
+## 2026-11-16 – Download-Warteschlange (Phase 3)
+
+- **Entscheid:** `worker.DownloadQueue` hat einen eigenen Daemon-Thread (nicht der Wartungs-Worker),
+  genau ein aktiver Download. Wahrheit ist die DB: Status `queued` + neue Spalte `videos.queue_pos`
+  (Migration 2) für die Reihenfolge; `failed` bleibt sichtbar, bis wiederholt oder entfernt.
+  „Pausiert“ steht in `state.queue_paused` und überlebt Neustarts.
+- **Lauf:** Ein Lauf (`run_session`: Lauf-Lock, Lauf-Zähler, `Throttle.finish_run(success)`,
+  `runs`-Eintrag `manual`) dauert, solange ohne Unterbrechung geladen wird; er endet bei leerer
+  Queue, Pause, Sperre oder Programmende. Lauf-Limit erreicht → Rest bleibt `queued`, die Queue
+  wartet auf eine Nutzeraktion (Fortsetzen = `set_queue_paused(false)` oder neues `enqueue`).
+  Tageslimit und Backoff heben sich von selbst auf (Prüfung alle 30 s bzw. sofort nach
+  `clear_backoff`/Speichern der Einstellungen). Ein 429 im Lauf löst den Backoff aus (ytclient) und
+  beendet den Lauf, kein Retry.
+- **Pause zwischen Downloads:** Die Queue wartet sie *vor* `YtClient.download` selbst ab
+  (`Throttle.wait_between_downloads`), damit der Eintrag `queued` bleibt (Absturz während der Pause
+  ≠ „Unterbrochen“) und Abbrechen/Pausieren die Wartezeit sofort beendet. Die Zufallspause wird pro
+  Download-Ende einmal gewürfelt (`Throttle.download_wait()`); so ist der Countdown im
+  `progress`-Event `sleep` exakt, und `before_request("download")` findet nichts mehr zu warten.
+  Wird der wartende Eintrag abgebrochen, gilt die Restpause für den nächsten (YouTube schonen).
+- **Pausieren** lässt einen laufenden Download fertig laden, bricht aber eine laufende Throttle-Pause
+  ab. **Abbrechen** eines aktiven Downloads setzt den Eintrag auf `new` (Teildateien bleiben für
+  später); beim Programmende wird abgebrochen und der Eintrag bleibt `queued`.
+- **Grund:** SPEC §3.3/§5; Downloads dürfen Wartungsaufträge nicht blockieren und umgekehrt.
+
+## 2026-11-16 – Suche: eigener Such-Worker, alle Treffer mit `filter_reason`
+
+- **Entscheid:** `search` läuft in einem zweiten `Worker` (`hcloader-search`); der pywebview-Thread
+  wartet (max. 180 s). Eine Suche darf parallel zu einem laufenden Download stattfinden: Beide gehen
+  durch denselben thread-sicheren Throttle (Backoff, Suchen/Stunde, `sleep_requests`-Abstand
+  zwischen allen Requests); die lange Pause zwischen Downloads blockiert Suchen nicht (eigener Lock).
+  Während eines yt-dlp-Updates wird die Suche sofort abgelehnt, umgekehrt verweigert das Update,
+  solange eine Suche läuft.
+- Das Backend liefert **alle** Treffer mit DB-Status und `filter_reason` (leer = besteht die
+  gespeicherten Filter, sonst deutscher Grund aus `filters.passes`, Blacklist und Status
+  eingeschlossen; `opts.year` ersetzt dabei den gespeicherten Zeitraum) plus `hidden_count`.
+  Die UI filtert zusätzlich live clientseitig mit temporären Werten.
+- Alle Treffer werden in der DB gespeichert (neu: Status `new`, nie Statusänderung bestehender
+  Zeilen) mit Genre: manuell > Keyword > Genre-Chip der Suche > Unsortiert. Ein ungefähres Datum aus
+  der flachen Suche überschreibt nie ein exaktes (`date_approx`). Die letzte Suche (Text,
+  `effective_query`, Genre, Jahr, IDs) steht in `state.last_search`; `get_last_search` baut sie
+  ohne Netzwerk mit aktuellen Status neu auf.
+- **Grund:** Die UI braucht die Treffer auch bei temporär gelockerten Filtern; serverseitige Gründe
+  machen ausgeblendete Treffer erklärbar. YouTube-Last ist dieselbe (ein flacher Request).
+
+## 2026-11-16 – yt-dlp erst bei Bedarf laden, „Neustart nötig“ nach Update (Review m2)
+
+- **Entscheid:** `app/main.py`, `app/api.py` und `app/worker.py` importieren `ytclient` nicht auf
+  Modulebene (nur `run_smoke`, erste Suche, erster Download-Lauf). Meldet ein Update `changed` und
+  ist `yt_dlp` zu diesem Zeitpunkt im Prozess geladen, blockiert die Queue
+  (`blocked_code: "restart"`) und die Suche bis zum Neustart; zusätzlich `toast` (warn).
+  Wurde yt-dlp noch nicht geladen, wirkt das Update sofort ohne Neustart.
+- **Grund:** gemischte Modulstände (lazy Extractor-Importe) und unter Windows gesperrte `.pyd`.
+
+## 2026-11-16 – PO-Token-Server: Host, Job Object, belegter Port (Review m11)
+
+- **Entscheid:** `PotServer` startet `main.ts --host 127.0.0.1 --port N`. Laut README von
+  bgutil-ytdlp-pot-provider 2.0.2 (Abschnitt „Server Command Line Options“, lokal in den
+  dist-info-METADATA): `-H, --host <HOST>` … „Defaults to localhost only (`127.0.0.1` and `::1`)“.
+  Der Server-Quellcode liegt lokal nicht vor; das explizite Argument macht die Bindung unabhängig
+  vom Default und identisch mit der Adresse, die wir pingen und yt-dlp geben. `fetch_binaries.ps1`
+  klont den Provider in genau der installierten Plugin-Version, die Option ist also vorhanden.
+- Unter Windows wird der deno-Kindprozess einem Job Object mit `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`
+  zugeordnet (ctypes, best effort): Endet HCLoader hart (Task-Manager, Absturz), schliesst das OS den
+  Job-Handle und beendet deno mit. Antwortet vor dem Start schon etwas auf dem Port, wird das als
+  „fremder oder verwaister PO-Token-Server“ gemeldet und nicht übernommen.
+- In der GUI bekommt `YtClient` den Server des Watchdogs über `worker.WatchdogPotServer` (fragt immer
+  den Watchdog, der den Server nach einem Absturz ersetzen kann). `--smoke` startet weiterhin einen
+  eigenen Server (kein Watchdog im CLI-Prozess).

@@ -160,15 +160,130 @@ def status() -> dict[str, Any]:
     }
 
 
+# --------------------------------------------------------------------------- child processes
+
+
+class KillOnCloseJob:
+    """Windows Job Object with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE (best effort, ctypes).
+
+    A child assigned to it dies together with HCLoader, even after a hard kill (Task Manager,
+    crash): the OS closes the job handle when our process ends. No-op on other systems or if
+    any Win32 call fails (the child then simply is not tied to us).
+    """
+
+    _KILL_ON_JOB_CLOSE = 0x2000
+    _EXTENDED_LIMIT_INFORMATION = 9
+
+    def __init__(self) -> None:
+        self.handle: int | None = None
+        if not IS_WINDOWS:
+            return
+        try:
+            self.handle = self._create()
+        except Exception as exc:  # pragma: no cover - Windows only
+            log.debug("Job Object nicht verfügbar: %s", exc)
+            self.handle = None
+
+    def _create(self) -> int | None:  # pragma: no cover - Windows only
+        import ctypes
+        from ctypes import wintypes
+
+        class IoCounters(ctypes.Structure):
+            _fields_ = [
+                (name, ctypes.c_ulonglong)
+                for name in (
+                    "ReadOperationCount",
+                    "WriteOperationCount",
+                    "OtherOperationCount",
+                    "ReadTransferCount",
+                    "WriteTransferCount",
+                    "OtherTransferCount",
+                )
+            ]
+
+        class BasicLimit(ctypes.Structure):
+            _fields_ = [
+                ("PerProcessUserTimeLimit", wintypes.LARGE_INTEGER),
+                ("PerJobUserTimeLimit", wintypes.LARGE_INTEGER),
+                ("LimitFlags", wintypes.DWORD),
+                ("MinimumWorkingSetSize", ctypes.c_size_t),
+                ("MaximumWorkingSetSize", ctypes.c_size_t),
+                ("ActiveProcessLimit", wintypes.DWORD),
+                ("Affinity", ctypes.c_size_t),
+                ("PriorityClass", wintypes.DWORD),
+                ("SchedulingClass", wintypes.DWORD),
+            ]
+
+        class ExtendedLimit(ctypes.Structure):
+            _fields_ = [
+                ("BasicLimitInformation", BasicLimit),
+                ("IoInfo", IoCounters),
+                ("ProcessMemoryLimit", ctypes.c_size_t),
+                ("JobMemoryLimit", ctypes.c_size_t),
+                ("PeakProcessMemoryUsed", ctypes.c_size_t),
+                ("PeakJobMemoryUsed", ctypes.c_size_t),
+            ]
+
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        k32.CreateJobObjectW.restype = wintypes.HANDLE
+        k32.CreateJobObjectW.argtypes = [ctypes.c_void_p, wintypes.LPCWSTR]
+        k32.SetInformationJobObject.argtypes = [
+            wintypes.HANDLE,
+            ctypes.c_int,
+            ctypes.c_void_p,
+            wintypes.DWORD,
+        ]
+        k32.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+        k32.CloseHandle.argtypes = [wintypes.HANDLE]
+        job = k32.CreateJobObjectW(None, None)
+        if not job:
+            raise OSError(ctypes.get_last_error(), "CreateJobObjectW")
+        info = ExtendedLimit()
+        info.BasicLimitInformation.LimitFlags = self._KILL_ON_JOB_CLOSE
+        if not k32.SetInformationJobObject(
+            job, self._EXTENDED_LIMIT_INFORMATION, ctypes.byref(info), ctypes.sizeof(info)
+        ):
+            err = ctypes.get_last_error()
+            k32.CloseHandle(job)
+            raise OSError(err, "SetInformationJobObject")
+        self._k32 = k32
+        return int(job)
+
+    def assign(self, proc: subprocess.Popen) -> bool:
+        """Tie `proc` to the job. Returns True on success."""
+        if self.handle is None:
+            return False
+        try:  # pragma: no cover - Windows only
+            handle = int(proc._handle)  # type: ignore[attr-defined]
+            if self._k32.AssignProcessToJobObject(self.handle, handle):
+                return True
+            log.debug("AssignProcessToJobObject fehlgeschlagen")
+        except Exception as exc:  # pragma: no cover - Windows only
+            log.debug("Job Object: %s", exc)
+        return False
+
+    def close(self) -> None:
+        """Closing the last handle kills every process still in the job."""
+        handle, self.handle = self.handle, None
+        if handle is not None:  # pragma: no cover - Windows only
+            try:
+                self._k32.CloseHandle(handle)
+            except Exception:
+                pass
+
+
 # --------------------------------------------------------------------------- HTTP provider
 
 
 class PotServer:
     """bgutil provider in HTTP mode as a child process (`deno run ... main.ts --port N`)."""
 
+    HOST = "127.0.0.1"
+
     def __init__(self, port: int) -> None:
         self.port = port
         self._proc: subprocess.Popen[bytes] | None = None
+        self._job: KillOnCloseJob | None = None
 
     @property
     def base_url(self) -> str:
@@ -183,6 +298,10 @@ class PotServer:
             "--allow-ffi=.",
             "--allow-read=.",
             str(Path("..") / "src" / "main.ts"),
+            # bgutil 2.x README: -H/--host, default "localhost only (127.0.0.1 and ::1)".
+            # Explicit IPv4 loopback = exactly the address we ping and hand to yt-dlp.
+            "--host",
+            self.HOST,
             "--port",
             str(self.port),
         ]
@@ -196,6 +315,16 @@ class PotServer:
         if not deno_path().exists() or not provider_dir_ok():
             log.warning("PO-Token-Server nicht startbar: Deno oder Provider-Verzeichnis fehlt")
             return False
+        if self.ping():
+            # Something already answers on our port (an orphaned server of an earlier, hard-
+            # killed HCLoader or a foreign one). Our own start would fail on the port while
+            # /ping still succeeds, so report it instead of pretending to own it.
+            log.error(
+                "Port %s ist bereits belegt (fremder oder verwaister PO-Token-Server) – "
+                "Prozess beenden oder anderen Port wählen",
+                self.port,
+            )
+            return False
         cwd = provider_server_dir() / "node_modules"
         try:
             self._proc = subprocess.Popen(
@@ -208,6 +337,8 @@ class PotServer:
         except OSError as exc:
             log.error("PO-Token-Server konnte nicht gestartet werden: %s", exc)
             return False
+        self._job = KillOnCloseJob()
+        self._job.assign(self._proc)
         if not self.wait_ready():
             log.error("PO-Token-Server antwortet nicht auf /ping (Port %s)", self.port)
             self.stop()
@@ -245,11 +376,16 @@ class PotServer:
 
     def stop(self) -> None:
         proc, self._proc = self._proc, None
-        if proc is None or proc.poll() is not None:
-            return
-        proc.terminate()
+        job, self._job = self._job, None
         try:
-            proc.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-        log.info("PO-Token-Server beendet")
+            if proc is None or proc.poll() is not None:
+                return
+            proc.terminate()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+            log.info("PO-Token-Server beendet")
+        finally:
+            if job is not None:
+                job.close()

@@ -6,6 +6,26 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
 ## [Unreleased]
 
 ### Added
+- Phase 3b Integration Entdecken & Downloads: `search(query, opts)` über einen eigenen
+  Such-Worker (Throttle, deutsche Meldungen inkl. «wieder möglich ab …»), Treffer in der DB
+  (Status `new`, Genre-Erkennung, `filter_reason`, `hidden_count`), `get_last_search` aus der DB;
+  Download-Warteschlange `worker.DownloadQueue` (ein aktiver Download, eigener Thread, Reihenfolge
+  persistent über DB-Migration 2 `videos.queue_pos`/`date_approx`, Pausieren persistent,
+  Verschieben, Abbrechen auch während der Throttle-Pause, manuelles Wiederholen, Lauf-/Tageslimit
+  und Backoff mit `blocked_reason`/`blocked_code`, Lauf-Einträge `manual`); Events `progress`
+  (`sleep` mit Countdown, `download`, `convert`, `tag`), `done`, `failed`, `queue`, `video`;
+  `enqueue`, `add_channel_source`; `Throttle.download_wait()`/`wait_between_downloads()`/
+  `search_available_at()`; Integrationstest Suche → Filter → Queue → Download → Tags → DB.
+- Fixes (Review Phase 2): yt-dlp wird in der GUI erst bei Bedarf importiert, nach einem Update
+  mit geladenem yt-dlp blockiert «Neustart nötig» Queue und Suche (m2); Wartungsaufträge melden
+  sofort «Wartung läuft gerade (…)» bzw. eine Zeitüberschreitung (m3); nur der Event-Dispatcher
+  ist im UI-Log stumm, Worker-/Watchdog-/Queue-Meldungen sind sichtbar (m4);
+  `get_task_status` speichert bei unbekanntem Status nichts und liefert `error` (m5);
+  Speicherfehler der Config werden deutsch gemeldet, die Windows-Aufgabe wird erst nach
+  erfolgreichem Speichern angelegt/entfernt, sonst zurückgerollt (m8); PO-Token-Server mit
+  `--host 127.0.0.1`, Windows Job Object (Kill-on-close) gegen verwaiste deno-Prozesse,
+  belegter Port wird gemeldet statt übernommen (m11); Worker vergisst erledigte Aufträge vor dem
+  Auflösen (n3); Startfehler der GUI landen im Log und unter Windows in einer MessageBox (n4).
 - Phase 3a Backend Entdecken: Einstellungen `search.append_year`, `filters.upload_period` (`year`, `custom`),
   `upload_year`, `upload_from`, `upload_to` mit Validierung; Jahr-/Zeitraum-Filter (Jahr im Titel,
   ungefähres Datum ±1 Jahr) in `filters.passes`; `ytclient.search(query, n, genre=, year=)` und

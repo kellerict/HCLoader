@@ -1,6 +1,7 @@
 import pytest
 
 from app import main as app_main
+from app.core import ytclient
 from app.core.ytclient import DownloadResult
 
 
@@ -33,7 +34,7 @@ def test_smoke_runs_one_download(monkeypatch, capsys, tmp_path):
         def close(self):
             pass
 
-    monkeypatch.setattr(app_main, "YtClient", FakeClient)
+    monkeypatch.setattr(ytclient, "YtClient", FakeClient)
     assert app_main.main(["--smoke", "https://youtu.be/abcdefghijk"]) == 0
     out = capsys.readouterr().out
     assert calls == ["https://youtu.be/abcdefghijk"]
@@ -58,7 +59,7 @@ def test_smoke_exit_codes(monkeypatch, result, code):
         def close(self):
             pass
 
-    monkeypatch.setattr(app_main, "YtClient", FakeClient)
+    monkeypatch.setattr(ytclient, "YtClient", FakeClient)
     assert app_main.run_smoke("u") == code
 
 
@@ -77,7 +78,7 @@ def test_smoke_blocked_by_throttle(monkeypatch, capsys):
         def close(self):
             pass
 
-    monkeypatch.setattr(app_main, "YtClient", FakeClient)
+    monkeypatch.setattr(ytclient, "YtClient", FakeClient)
     assert app_main.run_smoke("u") == app_main.EXIT_BLOCKED
     assert "GESPERRT" in capsys.readouterr().err
 
@@ -98,7 +99,7 @@ def test_smoke_finish_run_resets_backoff_on_done(monkeypatch, tmp_path):
         def close(self):
             pass
 
-    monkeypatch.setattr(app_main, "YtClient", FakeClient)
+    monkeypatch.setattr(ytclient, "YtClient", FakeClient)
     assert app_main.run_smoke("u") == 0 and resets == [1]
     resets.clear()
     FakeClient.download = lambda self, url, **kw: DownloadResult("a", "skipped", skipped=True)

@@ -38,16 +38,73 @@ def test_migration_from_older_version(tmp_path):
     conn.commit()
     conn.close()
 
-    def m2(c):
+    def extra(c):
         c.execute("ALTER TABLE videos ADD COLUMN extra TEXT")
 
+    n = len(dbmod.MIGRATIONS) + 1
     conn = sqlite3.connect(path)
-    assert dbmod.migrate(conn, [*dbmod.MIGRATIONS, m2]) == 2
+    assert dbmod.migrate(conn, [*dbmod.MIGRATIONS, extra]) == n
     cols = [r[1] for r in conn.execute("PRAGMA table_info(videos)")]
-    assert "extra" in cols
+    assert {"extra", "queue_pos", "date_approx"} <= set(cols)
     assert conn.execute("SELECT value FROM state WHERE key='k'").fetchone()[0] == "v"
-    assert dbmod.migrate(conn, [*dbmod.MIGRATIONS, m2]) == 2  # idempotent
+    assert dbmod.migrate(conn, [*dbmod.MIGRATIONS, extra]) == n  # idempotent
     conn.close()
+
+
+def test_migration_2_numbers_existing_queue(tmp_path):
+    path = tmp_path / "v1.db"
+    conn = sqlite3.connect(path)
+    dbmod.migrate(conn, dbmod.MIGRATIONS[:1])
+    for vid, status, seen in [
+        ("b", "queued", "2026-01-02"),
+        ("a", "queued", "2026-01-01"),
+        ("c", "done", "2026-01-03"),
+        ("d", "failed", "2026-01-04"),
+    ]:
+        conn.execute("INSERT INTO videos(id,status,first_seen) VALUES (?,?,?)", (vid, status, seen))
+    conn.commit()
+    conn.close()
+    d = dbmod.Database(path)
+    try:
+        assert d.schema_version() == 2
+        assert d.get_video("c")["queue_pos"] is None
+        assert [r["id"] for r in d.list_queue()] == ["a", "b", "d"]
+        assert d.get_video("a")["date_approx"] == 0
+    finally:
+        d.close()
+
+
+def test_queue_helpers(db):
+    for i in range(4):
+        db.upsert_video({"id": f"v{i}", "title": f"T{i}"})
+    db.upsert_video({"id": "done1", "status": "done"})
+    assert db.enqueue(["v2", "v0", "v1", "v0", "done1", "nope"]) == ["v2", "v0", "v1"]
+    assert db.next_queued()["id"] == "v2"
+    assert db.move_in_queue("v1", -1) is True
+    assert [r["id"] for r in db.list_queue()] == ["v2", "v1", "v0"]
+    assert db.move_in_queue("v2", -1) is False  # already first
+    assert db.move_in_queue("v3", 1) is False  # not queued
+    db.set_status("v2", "failed", error="x")
+    assert [r["id"] for r in db.list_queue()] == ["v1", "v0", "v2"]
+    assert db.enqueue(["v2"]) == ["v2"]  # retry: back to the end of the waiting entries
+    assert db.get_video("v2")["error"] is None
+    assert [r["id"] for r in db.list_queue()] == ["v1", "v0", "v2"]
+    db.dequeue("v0")
+    assert db.get_video("v0")["status"] == "new" and db.get_video("v0")["queue_pos"] is None
+
+
+def test_upsert_keeps_exact_date_over_approximate(db):
+    db.upsert_video({"id": "x", "upload_date": "20240105"})
+    db.upsert_video({"id": "x", "upload_date": "20230101", "date_approx": True})
+    row = db.get_video("x")
+    assert row["upload_date"] == "20240105" and row["date_approx"] == 0
+    db.upsert_video({"id": "y", "upload_date": "20230101", "date_approx": True})
+    assert db.get_video("y")["date_approx"] == 1
+    db.upsert_video({"id": "y", "upload_date": "20230315"})  # full metadata: exact
+    assert db.get_video("y")["upload_date"] == "20230315"
+    assert db.get_video("y")["date_approx"] == 0
+    db.upsert_video({"id": "y", "upload_date": "", "title": ""})  # empty never overwrites
+    assert db.get_video("y")["upload_date"] == "20230315"
 
 
 def test_newer_schema_rejected(tmp_path):
@@ -187,13 +244,13 @@ def test_failing_migration_rolls_back_and_restarts(tmp_path):
     with pytest.raises(sqlite3.OperationalError):
         dbmod.migrate(conn, [*dbmod.MIGRATIONS, bad])
     tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-    assert "half_done" not in tables and "videos" in tables  # step 1 stays, step 2 rolled back
-    assert dbmod._current_version(conn) == 1
+    assert "half_done" not in tables and "videos" in tables  # real steps stay, bad rolled back
+    assert dbmod._current_version(conn) == len(dbmod.MIGRATIONS)
 
     def good(c):
         c.execute("CREATE TABLE half_done(x)")
 
-    assert dbmod.migrate(conn, [*dbmod.MIGRATIONS, good]) == 2
+    assert dbmod.migrate(conn, [*dbmod.MIGRATIONS, good]) == len(dbmod.MIGRATIONS) + 1
     conn.close()
 
 

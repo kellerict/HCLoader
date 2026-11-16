@@ -80,3 +80,27 @@ def test_run_gui_without_pywebview(monkeypatch, capsys):
     monkeypatch.setitem(sys.modules, "webview", None)  # import fails
     assert app_main.run_gui() == app_main.EXIT_FAILED
     assert "pywebview" in capsys.readouterr().err
+
+
+def test_run_gui_start_error_is_visible(monkeypatch, capsys):
+    """n4: under pythonw there is no console -> log + MessageBox (Windows)."""
+    import ctypes
+
+    boxes = []
+    fake = types.ModuleType("webview")
+    monkeypatch.setitem(sys.modules, "webview", fake)
+    monkeypatch.setattr(app_main, "setup_logging", lambda *a, **kw: None)
+
+    def broken(*a, **kw):
+        raise RuntimeError("database is locked")
+
+    import app.api
+
+    monkeypatch.setattr(app.api, "Api", broken)
+    monkeypatch.setattr(app_main, "sys", types.SimpleNamespace(platform="win32", stderr=sys.stderr))
+    user32 = types.SimpleNamespace(MessageBoxW=lambda hwnd, text, title, flags: boxes.append(text))
+    monkeypatch.setattr(ctypes, "windll", types.SimpleNamespace(user32=user32), raising=False)
+
+    assert app_main.run_gui() == app_main.EXIT_FAILED
+    assert "database is locked" in capsys.readouterr().err
+    assert len(boxes) == 1 and "HCLoader konnte nicht gestartet werden" in boxes[0]

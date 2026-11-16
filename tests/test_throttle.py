@@ -366,3 +366,56 @@ def test_concurrent_download_counter_does_not_lose_updates(db):
     for th in threads:
         th.join()
     assert t.downloads_today() == 20 and t.downloads_this_run() == 20
+
+
+# ------------------------------------------------------------------ phase 3 queue helpers
+
+
+def test_download_wait_is_rolled_once_and_used_by_before_request(db):
+    rolls = []
+    ft = FakeTime()
+    t = Throttle(
+        db,
+        ThrottleSettings(sleep_requests=0, sleep_interval=30, max_sleep_interval=120),
+        clock=ft.clock,
+        sleep=ft.sleep,
+        uniform=lambda a, b: rolls.append(1) or 40.0 + len(rolls),
+    )
+    assert t.download_wait() == 0.0  # no download yet
+    t.mark_download_end()
+    ft.advance(seconds=10)
+    assert t.download_wait() == 31.0 and t.download_wait() == 31.0  # same roll
+    t.wait_between_downloads()
+    assert ft.slept == [31.0] and t.download_wait() == 0.0
+    t.before_request("download")  # nothing left to wait
+    assert ft.slept == [31.0] and len(rolls) == 1
+    t.mark_download_end()
+    assert t.download_wait() == 42.0 and len(rolls) == 2  # new end -> new roll
+
+
+def test_wait_between_downloads_checks_limits_and_cancels(db):
+    import threading
+
+    from app.core.throttle import WaitCancelled
+
+    t, ft = make(db, sleep_requests=0, sleep_interval=30, max_sleep_interval=30)
+    t.mark_download_end()
+    ev = threading.Event()
+    ev.set()
+    with pytest.raises(WaitCancelled):
+        t.wait_between_downloads(ev)
+    t.trigger_backoff("429")
+    with pytest.raises(BackoffActive):
+        t.wait_between_downloads()
+
+
+def test_search_available_at(db):
+    t, ft = make(db, sleep_requests=0, max_searches_per_hour=2)
+    assert t.search_available_at() is None
+    t.before_request("search")
+    first = ft.now
+    ft.advance(minutes=10)
+    t.before_request("search")
+    assert t.search_available_at() == first + timedelta(hours=1)
+    with pytest.raises(LimitReached):
+        t.before_request("search")

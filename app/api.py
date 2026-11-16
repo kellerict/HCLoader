@@ -1,8 +1,10 @@
 """js_api bridge for pywebview. Method names = `HC.bridge.call('name')` in ui/js/bridge.js.
 
-Thin by design: validation, persistence, status, scheduler, maintenance live in `app/core/`;
-long operations (update, backup, PO-token test) run in `app/worker.Worker`; events go through
-`app/worker.EventBus`. pywebview runs every js_api call in its own thread, never in the GUI
+Thin by design: validation, persistence, status, scheduler, maintenance, search processing live
+in `app/core/`; long operations run in `app/worker.py` (maintenance jobs in `Worker`, searches
+in a second `Worker`, downloads in `DownloadQueue`); events go through `app/worker.EventBus`.
+yt-dlp is imported lazily (first search/download), never at GUI start (Review m2).
+pywebview runs every js_api call in its own thread, never in the GUI
 thread. Every public method is exposed to JavaScript; internal helpers start with `_` or are
 marked with `@_internal` (pywebview skips `_serializable = False`). Contract: docs/bridge-api.md.
 """
@@ -11,28 +13,48 @@ from __future__ import annotations
 
 import logging
 import re
+import sys
 import threading
 import webbrowser
 from collections.abc import Callable
+from concurrent.futures import TimeoutError as FutureTimeout
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .core import binaries, config, locks, maintenance, potoken, scheduler
+from .core import binaries, config, discover, locks, maintenance, potoken, scheduler
 from .core import status as status_mod
 from .core.config import Settings
 from .core.db import Database
 from .core.logging_setup import setup_logging
 from .core.throttle import Throttle
-from .worker import EventBus, LogForwarder, PotWatchdog, Ticker, Worker, log_ok
+from .worker import (
+    DownloadQueue,
+    EventBus,
+    LogForwarder,
+    PotWatchdog,
+    Ticker,
+    WatchdogPotServer,
+    Worker,
+    log_ok,
+    video_dict,
+)
 
 log = logging.getLogger("hcloader.api")
 
-PHASE3 = "Folgt in Phase 3"
 PHASE4 = "Folgt in Phase 4"
 PHASE5 = "Folgt in Phase 5"
 JOB_TIMEOUT_S = maintenance.UPDATE_TIMEOUT_S + 60
 STATUS_INTERVAL_S = 30.0
+PO_TEST_TIMEOUT_S = 60
+# a flat search is one request (+ request spacing); generous for slow networks / PO token
+SEARCH_TIMEOUT_S = 180
+_JOB_LABELS = {
+    "update": "Update",
+    "update_check": "Update-Prüfung",
+    "backup": "Sicherung",
+    "po_test": "PO-Token-Test",
+}
 _VIDEO_ID_RE = re.compile(r"^[0-9A-Za-z_-]{11}$")
 _RUN_KINDS = ("watchlist", "headless", "manual")
 
@@ -41,22 +63,6 @@ def _internal(fn: Callable) -> Callable:
     """Not exposed to JavaScript (pywebview skips attributes with `_serializable = False`)."""
     fn._serializable = False  # type: ignore[attr-defined]
     return fn
-
-
-def _video(row: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "id": row["id"],
-        "title": row.get("title") or "",
-        "channel_id": row.get("channel_id"),
-        "channel_name": row.get("channel_name") or "",
-        "duration": row.get("duration"),
-        "upload_date": row.get("upload_date"),
-        "view_count": row.get("view_count"),
-        "thumbnail": row.get("thumbnail"),
-        "genre": row.get("genre") or config.UNSORTED,
-        "genre_manual": bool(row.get("genre_manual")),
-        "status": row.get("status") or "new",
-    }
 
 
 def _run(row: dict[str, Any]) -> dict[str, Any]:
@@ -89,6 +95,9 @@ class Api:
         update_runner: Callable[..., dict[str, Any]] | None = None,
         update_checker: Callable[[], dict[str, Any]] | None = None,
         run_lock: Callable[[], Any] | None = None,
+        client_factory: Callable[[], Any] | None = None,
+        throttle: Throttle | None = None,
+        queue_options: dict[str, Any] | None = None,
         configure_logging: bool = True,
     ) -> None:
         self._config_file = config_file or config.config_path()
@@ -99,9 +108,10 @@ class Api:
         self._lock = threading.RLock()
         self._own_db = db is None
         self._db = db or Database(config.db_path())
-        self._throttle = Throttle(self._db, lambda: self._settings.throttle)
+        self._throttle = throttle or Throttle(self._db, lambda: self._settings.throttle)
         self._bus = bus or EventBus()
         self._worker = worker or Worker()
+        self._search_worker = Worker("hcloader-search")
         self._scheduler = task_scheduler or scheduler.TaskScheduler()
         self._watchdog = watchdog or PotWatchdog(lambda: self._settings, on_change=self._push)
         self._logs = LogForwarder(self._bus)
@@ -111,6 +121,17 @@ class Api:
         self._update_runner = update_runner or maintenance.run_update
         self._update_checker = update_checker or maintenance.check_updates
         self._run_lock = run_lock or locks.acquire_run_lock
+        self._client_factory = client_factory or self._make_client
+        self._queue = DownloadQueue(
+            self._db,
+            self._throttle,
+            self._bus,
+            self._client_factory,
+            settings_provider=lambda: self._settings,
+            run_lock=self._run_lock,
+            on_change=self._push,
+            **(queue_options or {}),
+        )
         self._configure_logging = configure_logging
         self._window: Any = None
         self._po_test: tuple[str, int, dict[str, Any]] | None = None
@@ -131,10 +152,11 @@ class Api:
 
     @_internal
     def start(self) -> None:
-        """Background services: live log, PO-token watchdog, status ticker."""
+        """Background services: live log, PO-token watchdog, download queue, status ticker."""
         self._logs.start()
         self._worker.start()
         self._watchdog.start()
+        self._queue.start()
         self._ticker = Ticker(STATUS_INTERVAL_S, self._push)
         self._ticker.start()
 
@@ -143,6 +165,8 @@ class Api:
         self._logs.stop()
         if self._ticker:
             self._ticker.stop()
+        self._queue.stop()
+        self._search_worker.stop()
         self._watchdog.stop()
         self._worker.stop()
         self._bus.close()
@@ -166,6 +190,19 @@ class Api:
     def _cfg(self) -> Settings:
         return self._settings
 
+    def _make_client(self) -> Any:
+        """YtClient for searches and the queue. Imported lazily: yt-dlp is loaded on first use,
+        so an update before that needs no restart (m2). In HTTP mode the watchdog's server is
+        used (never a second one on the same port)."""
+        from .core.ytclient import YtClient
+
+        return YtClient(
+            lambda: self._settings,
+            self._db,
+            self._throttle,
+            pot_server=WatchdogPotServer(self._watchdog),  # type: ignore[arg-type]
+        )
+
     # ================================================================== settings
 
     def get_settings(self) -> dict[str, Any]:
@@ -177,15 +214,20 @@ class Api:
             return {"ok": False, "errors": errors}
         with self._lock:
             old = self._cfg
-            task_errors = self._sync_task(old, parsed)
-            if task_errors:
-                return {"ok": False, "errors": task_errors}
+            # save first: the Windows task is only changed once the config is safely written (m8)
             try:
                 config.save(parsed, self._config_file)
             except OSError as exc:
                 msg = f"Speichern fehlgeschlagen: {exc}"
                 log.error(msg)
                 return {"ok": False, "errors": {"settings": msg}}
+            task_errors = self._sync_task(old, parsed)
+            if task_errors:
+                try:
+                    config.save(old, self._config_file)  # roll back
+                except OSError as exc:
+                    log.error("Einstellungen konnten nicht zurückgesetzt werden: %s", exc)
+                return {"ok": False, "errors": task_errors}
             self._settings = parsed
         self._apply(old, parsed)
         log.info("Einstellungen gespeichert")
@@ -201,7 +243,12 @@ class Api:
             # the scheduled task is OS state: create_task/remove_task change it, a reset does not
             fresh.schedule.task_scheduler_enabled = old.schedule.task_scheduler_enabled
             fresh.schedule.task_time = old.schedule.task_time
-            config.save(fresh, self._config_file)
+            try:
+                config.save(fresh, self._config_file)
+            except OSError as exc:
+                msg = f"Speichern fehlgeschlagen: {exc}"
+                log.error(msg)
+                return {"ok": False, "error": msg}
             self._settings = fresh
         self._apply(old, fresh)
         if section:
@@ -237,14 +284,24 @@ class Api:
         if old.network != new.network:
             self._po_test = None
             self._watchdog.apply()
+        if old.throttle != new.throttle:
+            self._queue.wake()  # limits may allow the queue to continue
         self._push()
 
-    def _persist(self, **schedule: Any) -> None:
+    def _persist(self, **schedule: Any) -> str | None:
+        """Store schedule fields; returns a German error message or None (m8)."""
         with self._lock:
             data = self._cfg.to_dict()
             data["schedule"].update(schedule)
-            self._settings = Settings.model_validate(data)
-            config.save(self._settings, self._config_file)
+            fresh = Settings.model_validate(data)
+            try:
+                config.save(fresh, self._config_file)
+            except OSError as exc:
+                msg = f"Speichern fehlgeschlagen: {exc}"
+                log.error(msg)
+                return msg
+            self._settings = fresh
+            return None
 
     # ================================================================== status / maintenance
 
@@ -264,8 +321,26 @@ class Api:
 
     def get_status(self) -> dict[str, Any]:
         return status_mod.build_status(
-            self._cfg, self._throttle, self._db, po_token=self._po_state(), queue_paused=False
+            self._cfg,
+            self._throttle,
+            self._db,
+            po_token=self._po_state(),
+            queue_paused=self._queue.paused,
         )
+
+    def _job(self, key: str, fn: Callable[[], dict[str, Any]], timeout: float) -> dict[str, Any]:
+        """Run a maintenance job; refuse at once if another one is running (m3)."""
+        other = self._worker.other_job(key)
+        if other is not None:
+            label = _JOB_LABELS.get(other, other)
+            return {"ok": False, "error": f"Wartung läuft gerade ({label}) – bitte später erneut"}
+        try:
+            return self._worker.run(key, fn, timeout=timeout)
+        except FutureTimeout:
+            return {
+                "ok": False,
+                "error": "Zeitüberschreitung – der Auftrag läuft im Hintergrund weiter",
+            }
 
     def get_versions(self) -> dict[str, Any]:
         return maintenance.versions_info(
@@ -275,9 +350,17 @@ class Api:
         )
 
     def update_ytdlp(self) -> dict[str, Any]:
-        return self._worker.run("update", self._do_update, timeout=JOB_TIMEOUT_S)
+        res = self._job("update", self._do_update, JOB_TIMEOUT_S)
+        res.setdefault("output", "")
+        return res
 
     def _do_update(self) -> dict[str, Any]:
+        if self._search_worker.current is not None:
+            return {
+                "ok": False,
+                "error": "Eine Suche läuft gerade – Update danach ausführen.",
+                "output": "",
+            }
         lock = self._run_lock()
         if lock is None:
             return {
@@ -293,6 +376,12 @@ class Api:
             lock.release()
         binaries.clear_cache()
         self._db.set_state(maintenance.K_LAST_UPDATE_CHECK, _now_iso())
+        if result.get("ok") and result.get("changed") and "yt_dlp" in sys.modules:
+            # the old yt-dlp is loaded in this process: mixing it with the new files (lazy
+            # extractor imports) or locked .pyd files on Windows -> no downloads until restart
+            self._queue.set_restart_required()
+            result["restart_required"] = True
+            self._bus.toast("yt-dlp aktualisiert – bitte HCLoader neu starten", "warn")
         if result.get("ok"):
             log_ok(
                 log,
@@ -334,7 +423,7 @@ class Api:
         return res
 
     def backup_db(self) -> dict[str, Any]:
-        return self._worker.run("backup", self._do_backup, timeout=JOB_TIMEOUT_S)
+        return self._job("backup", self._do_backup, JOB_TIMEOUT_S)
 
     def _do_backup(self) -> dict[str, Any]:
         try:
@@ -383,7 +472,10 @@ class Api:
         return {"path": str(chosen[0] if isinstance(chosen, (list, tuple)) else chosen)}
 
     def test_po_token(self) -> dict[str, Any]:
-        return self._worker.run("po_test", self._do_po_test, timeout=60)
+        res = self._job("po_test", self._do_po_test, PO_TEST_TIMEOUT_S)
+        if not res.get("ok") and "state" not in res:  # refused / timed out: same shape
+            res.update(state="error", detail=res.get("error", ""), ms=0)
+        return res
 
     def _do_po_test(self) -> dict[str, Any]:
         net = self._cfg.network
@@ -398,6 +490,7 @@ class Api:
 
     def clear_backoff(self) -> dict[str, Any]:
         self._throttle.clear_backoff_manual()
+        self._queue.wake()
         self._push()
         return {"ok": True}
 
@@ -426,30 +519,47 @@ class Api:
                 "time": sched.task_time,
                 "error": str(exc),
             }
-        if st.registered != sched.task_scheduler_enabled:  # changed outside HCLoader
-            self._persist(task_scheduler_enabled=st.registered)
+        # registered None = unknown (schtasks failed otherwise): never change the config then
+        if st.registered is not None and st.registered != sched.task_scheduler_enabled:
+            err = self._persist(task_scheduler_enabled=st.registered)  # changed outside
+            if err:
+                log.warning("Aufgabenplanung: Abgleich nicht gespeichert (%s)", err)
         return st.to_dict()
 
     def create_task(self, time: str) -> dict[str, Any]:
         try:
-            st = self._scheduler.create(time)
+            hhmm = scheduler.validate_time(time)
+        except scheduler.SchedulerError as exc:
+            return {"ok": False, "error": str(exc)}
+        old = self._cfg.schedule
+        # save first, create the Windows task only after the config is written (m8)
+        err = self._persist(task_scheduler_enabled=True, task_time=hhmm)
+        if err:
+            return {"ok": False, "error": err}
+        try:
+            st = self._scheduler.create(hhmm)
         except scheduler.SchedulerError as exc:
             log.error("Aufgabenplanung: %s", exc)
+            self._persist(
+                task_scheduler_enabled=old.task_scheduler_enabled, task_time=old.task_time
+            )
             return {"ok": False, "error": str(exc)}
-        self._persist(task_scheduler_enabled=True, task_time=scheduler.validate_time(time))
         self._push()
         return {"ok": True, **st.to_dict()}
 
     def remove_task(self) -> dict[str, Any]:
+        old = self._cfg.schedule
+        err = self._persist(task_scheduler_enabled=False)
+        if err:
+            return {"ok": False, "error": err}
         try:
             self._scheduler.delete()
         except scheduler.SchedulerUnavailable as exc:
-            self._persist(task_scheduler_enabled=False)
             return {"ok": False, "error": str(exc)}
         except scheduler.SchedulerError as exc:
             log.error("Aufgabenplanung: %s", exc)
+            self._persist(task_scheduler_enabled=old.task_scheduler_enabled)
             return {"ok": False, "error": str(exc)}
-        self._persist(task_scheduler_enabled=False)
         self._push()
         return {"ok": True, "registered": False}
 
@@ -468,16 +578,64 @@ class Api:
         return {"ok": False, "error": phase}
 
     def get_last_search(self) -> dict[str, Any] | None:
-        return None  # Phase 3
+        return discover.last_search(self._db, self._cfg, video_dict=video_dict)
 
-    def search(self, query: str) -> dict[str, Any]:
-        return self._later(PHASE3)
+    def search(self, query: str, opts: dict[str, Any] | None = None) -> dict[str, Any]:
+        query = str(query or "").strip()
+        if not query:
+            return {"ok": False, "error": "Suchbegriff fehlt"}
+        if self._queue.restart_required:
+            return {"ok": False, "error": "Neustart nötig – yt-dlp wurde aktualisiert"}
+        if self._worker.current == "update":
+            return {"ok": False, "error": "Wartung läuft gerade (Update) – bitte später erneut"}
+        genre, year = discover.clean_options(opts if isinstance(opts, dict) else None, self._cfg)
+        try:
+            return self._search_worker.run(
+                f"search:{query}|{genre}|{year}",
+                self._do_search,
+                query,
+                genre,
+                year,
+                timeout=SEARCH_TIMEOUT_S,
+            )
+        except FutureTimeout:
+            return {"ok": False, "error": "Suche dauert zu lange – bitte später erneut versuchen"}
+
+    def _do_search(self, query: str, genre: str | None, year: int | None) -> dict[str, Any]:
+        from .core.ytclient import build_search_query  # lazy: loads yt-dlp (m2)
+
+        settings = self._cfg
+        effective = build_search_query(query, genre=genre, year=year, settings=settings)
+        client = self._client_factory()
+        try:
+            res = discover.run_search(
+                client,
+                self._db,
+                self._throttle,
+                settings,
+                query,
+                genre=genre,
+                year=year,
+                effective_query=effective,
+                video_dict=video_dict,
+            )
+        finally:
+            client.close()
+        self._push()  # search counter / backoff in the status bar
+        return res
 
     def get_inbox(self) -> list[dict[str, Any]]:
-        return [_video(v) for v in self._db.list_videos(status="inbox")]
+        return [video_dict(v) for v in self._db.list_videos(status="inbox")]
 
     def enqueue(self, ids: list[str]) -> dict[str, Any]:
-        return {**self._later(PHASE3), "ids": []}
+        if not isinstance(ids, (list, tuple)):
+            return {"ok": False, "error": "Ungültige Auswahl", "ids": []}
+        accepted = self._queue.enqueue([str(i) for i in ids])
+        skipped = len(ids) - len(accepted)
+        res: dict[str, Any] = {"ok": True, "ids": accepted}
+        if skipped:
+            res["skipped"] = skipped
+        return res
 
     def set_video_status(self, video_id: str, status: str) -> dict[str, Any]:
         if status not in ("ignored", "new"):
@@ -509,8 +667,21 @@ class Api:
         self._browser(f"https://www.youtube.com/watch?v={video_id}")
         return {"ok": True}
 
-    def add_channel_source(self, channel_id: str, channel_name: str) -> dict[str, Any]:
-        return self._later(PHASE4)
+    def add_channel_source(self, channel_id: str, channel_name: str = "") -> dict[str, Any]:
+        cid = str(channel_id or "").strip()
+        if not re.fullmatch(r"[0-9A-Za-z_-]{3,64}", cid):
+            return {"ok": False, "error": "Ungültige Kanal-ID"}
+        url = f"https://www.youtube.com/channel/{cid}"
+        for s in self.get_sources():
+            if s["url_or_query"].rstrip("/") == url:
+                return {"ok": False, "error": "Kanal ist bereits in der Watchlist", "source": s}
+        name = str(channel_name or "").strip() or cid
+        sid = self._db.add_source(
+            "channel", name, url, max_entries=self._cfg.schedule.entries_per_source
+        )
+        log.info("Kanal zur Watchlist hinzugefügt: %s", name)
+        source = next(s for s in self.get_sources() if s["id"] == sid)
+        return {"ok": True, "source": source}
 
     def block_channel(self, channel_id: str, channel_name: str = "") -> dict[str, Any]:
         if not channel_id:
@@ -553,19 +724,29 @@ class Api:
     # ================================================================== downloads
 
     def get_queue(self) -> dict[str, Any]:
-        return {"paused": False, "items": []}  # Phase 3
+        return self._queue.snapshot()
 
     def set_queue_paused(self, paused: bool) -> dict[str, Any]:
-        return {**self._later(PHASE3), "paused": False}
+        return {"ok": True, "paused": self._queue.set_paused(bool(paused))}
 
     def queue_move(self, video_id: str, delta: int) -> dict[str, Any]:
-        return self._later(PHASE3)
+        try:
+            step = int(delta)
+        except (TypeError, ValueError):
+            return {"ok": False, "error": "Ungültige Richtung"}
+        if self._queue.move(str(video_id), step):
+            return {"ok": True}
+        return {"ok": False, "error": "Nur wartende Einträge lassen sich verschieben"}
 
     def queue_cancel(self, video_id: str) -> dict[str, Any]:
-        return self._later(PHASE3)
+        if self._queue.cancel(str(video_id)):
+            return {"ok": True}
+        return {"ok": False, "error": "Eintrag ist nicht (mehr) in der Warteschlange"}
 
     def queue_retry(self, video_id: str) -> dict[str, Any]:
-        return self._later(PHASE3)
+        if self._queue.retry(str(video_id)):
+            return {"ok": True}
+        return {"ok": False, "error": "Nur fehlgeschlagene Einträge lassen sich wiederholen"}
 
     # ================================================================== library
 

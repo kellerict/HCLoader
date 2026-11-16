@@ -72,6 +72,7 @@ def test_pot_server_command_and_missing_provider():
     srv = binaries.PotServer(4417)
     cmd = srv.command()
     assert cmd[1] == "run" and "--port" in cmd and cmd[-1] == "4417"
+    assert cmd[cmd.index("--host") + 1] == "127.0.0.1"  # m11: loopback only, explicitly
     assert any(a.startswith("--allow-ffi") for a in cmd)
     assert srv.base_url == "http://127.0.0.1:4417"
     assert srv.start() is False  # no deno / provider in the empty bin dir
@@ -149,3 +150,22 @@ def test_pot_server_start_waits_and_stops_on_timeout(monkeypatch, tmp_path):
     srv = binaries.PotServer(4419)
     monkeypatch.setattr(srv, "wait_ready", lambda *a, **k: False)
     assert srv.start() is False and Proc.terminated
+
+
+def test_pot_server_refuses_foreign_server_on_port(monkeypatch, tmp_path):
+    """m11: an orphaned/foreign server answering on the port is reported, not adopted."""
+    monkeypatch.setattr(binaries, "deno_path", lambda: tmp_path / "deno")
+    (tmp_path / "deno").write_text("x")
+    monkeypatch.setattr(binaries, "provider_dir_ok", lambda: True)
+    started = []
+    monkeypatch.setattr(binaries.subprocess, "Popen", lambda *a, **k: started.append(a))
+    srv = binaries.PotServer(4420)
+    monkeypatch.setattr(srv, "ping", lambda: True)
+    assert srv.start() is False and started == []
+
+
+def test_kill_on_close_job_is_noop_off_windows(monkeypatch):
+    monkeypatch.setattr(binaries, "IS_WINDOWS", False)
+    job = binaries.KillOnCloseJob()
+    assert job.handle is None and job.assign(object()) is False
+    job.close()

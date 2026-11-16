@@ -12,7 +12,9 @@ from .core import binaries, config, locks
 from .core.db import Database
 from .core.logging_setup import setup_logging
 from .core.throttle import Throttle, ThrottleError
-from .core.ytclient import DownloadResult, YtClient
+
+# yt-dlp is imported lazily (run_smoke / first search or download in the GUI): an in-app update
+# before that takes effect without restart, and Windows does not lock its .pyd files (m2).
 
 log = logging.getLogger("hcloader")
 
@@ -67,12 +69,45 @@ def _bring_to_front(window) -> None:
         pass
 
 
+def show_fatal(message: str) -> None:
+    """Make a start error visible: under pythonw there is no console (n4).
+
+    Always stderr + log; on Windows additionally a MessageBox (ctypes, no extra dependency).
+    """
+    log.critical("%s", message)
+    try:
+        print(message, file=sys.stderr)
+    except Exception:  # pythonw: sys.stderr may be None
+        pass
+    if sys.platform == "win32":
+        try:
+            import ctypes
+
+            mb_iconerror = 0x10
+            ctypes.windll.user32.MessageBoxW(None, message, "HCLoader", mb_iconerror)  # type: ignore[attr-defined]
+        except Exception:
+            log.debug("MessageBox fehlgeschlagen", exc_info=True)
+
+
 def run_gui() -> int:
+    """GUI start with visible error reporting (log + MessageBox under pythonw)."""
+    try:
+        return _run_gui()
+    except Exception as exc:
+        log.exception("GUI-Start fehlgeschlagen")
+        show_fatal(
+            f"HCLoader konnte nicht gestartet werden:\n\n{exc}\n\n"
+            f"Details im Protokoll: {config.logs_dir()}"
+        )
+        return EXIT_FAILED
+
+
+def _run_gui() -> int:
     """pywebview window with the js_api bridge (app/api.py) and background services."""
     try:
         import webview
     except ImportError:
-        print("pywebview ist nicht installiert (pip install pywebview).", file=sys.stderr)
+        show_fatal("pywebview ist nicht installiert (pip install pywebview).")
         return EXIT_FAILED
     from .api import Api
     from .instance import ActivationServer
@@ -124,6 +159,8 @@ def run_smoke(url: str) -> int:
         st["deno_version"] or "FEHLT",
         st["ffmpeg_version"] or "FEHLT",
     )
+    from .core.ytclient import DownloadResult, YtClient
+
     run_lock = locks.acquire_run_lock()
     if run_lock is None:
         print("Ein anderer Download-Lauf ist aktiv (GUI oder Headless).", file=sys.stderr)
@@ -131,6 +168,7 @@ def run_smoke(url: str) -> int:
     db = Database(config.db_path())
     _reset_interrupted(db)
     throttle = Throttle(db, lambda: settings.throttle)
+    # no GUI watchdog here: the smoke run starts (and stops) its own PO-token server if needed
     client = YtClient(lambda: settings, db, throttle)
     throttle.start_run()
     last = {"key": None}

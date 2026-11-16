@@ -65,6 +65,41 @@ def test_hosted_page_waits_for_late_pywebview_api(browser):
     page.close()
 
 
+def test_hosted_page_without_api_shows_error_instead_of_mock(browser):
+    """Review m9: with ?host=pywebview the UI must never fall back to the mock silently."""
+    page = browser.new_page()
+    errors = []
+    page.on("pageerror", lambda exc: errors.append(str(exc)))
+    page.clock.install()
+    page.goto(INDEX.as_uri() + "?host=pywebview")
+    page.wait_for_function("window.HC && HC.bridge && HC.app")
+    page.clock.run_for(5000)
+    assert page.evaluate("document.querySelector('#fatal')") is None  # still waiting
+    page.clock.run_for(26000)
+    page.wait_for_selector("#fatal", timeout=10000)
+    assert page.evaluate("HC.bridge.failed") is True
+    assert page.evaluate("HC.bridge.live") is False
+    assert page.evaluate("document.body.classList.contains('is-mock')") is False
+    assert page.evaluate("document.getElementById('mock-flag').hidden") is True
+    assert page.is_visible("#fatal-reload")
+    outcome = page.evaluate(
+        "HC.bridge.call('save_settings', {}).then(() => 'resolved', () => 'rejected')"
+    )
+    assert outcome == "rejected"  # nothing is "saved" into the mock
+    # the API arriving late still leads to a clean live start
+    page.evaluate(
+        "window.pywebview = { api: {} };"
+        "for (const [name, fn] of Object.entries(HC.mock.api)) window.pywebview.api[name] = fn;"
+    )
+    page.clock.run_for(3000)
+    page.wait_for_function("document.body.classList.contains('ready')", timeout=10000)
+    assert page.evaluate("HC.bridge.live") is True
+    assert page.evaluate("HC.bridge.failed") is False
+    assert page.evaluate("document.querySelector('#fatal')") is None
+    assert not errors
+    page.close()
+
+
 def test_plain_browser_falls_back_to_mock(browser):
     page, errors = _page(browser, "?nosim")
     page.wait_for_function("document.body.classList.contains('ready')", timeout=10000)
