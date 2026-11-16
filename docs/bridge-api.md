@@ -20,7 +20,9 @@ pywebview exponierten Methoden **genau** den in `bridge.js` dokumentierten entsp
 - **Suche** läuft im eigenen Such-Thread (`Worker("hcloader-search")`, max. 180 s Warten),
   **Downloads** im Thread der `DownloadQueue` (genau ein aktiver Download). Beide gehen durch
   denselben thread-sicheren Throttle; eine Suche während eines Downloads ist erlaubt
-  (Request-Abstand `sleep_requests` gilt über beide). Der pywebview-Thread lädt nie selbst.
+  (Request-Abstand `sleep_requests` gilt über beide), aber nicht während dessen
+  Metadaten-Extraktion (YouTube-Metadaten-Lock, max. 60 s Warten, siehe docs/decisions.md).
+  Der pywebview-Thread lädt nie selbst.
 - yt-dlp wird erst bei der ersten Suche bzw. dem ersten Download-Lauf importiert.
 - **Events Python → UI:** `EventBus.emit(type, data)` (thread-sicher, nicht blockierend) → ein
   Dispatcher-Thread ruft `window.evaluate_js('window.mv && window.mv.emit("type", {json})')` auf.
@@ -126,9 +128,14 @@ Aufgaben-Felder unverändert (sie spiegeln den Zustand der Windows-Aufgabe).
   `Limit «Suchen pro Stunde» erreicht (20/20) – wieder möglich ab 14:05`,
   `YouTube blockiert gerade (429/Bot-Prüfung) – Backoff bis …`,
   `Neustart nötig – yt-dlp wurde aktualisiert`, `Wartung läuft gerade (Update) – bitte später erneut`,
-  `Suche fehlgeschlagen: …`. Uhrzeiten lokal, `HH:MM` heute bzw. `TT.MM. HH:MM`.
+  `Download-Abfrage läuft gerade – bitte gleich erneut versuchen` (ein Download extrahiert seit
+  60 s, die Suche wurde nicht gezählt), `Suche fehlgeschlagen: …` (Zugangsdaten in URLs, z.B.
+  Proxy `user:pass@`, sind als `***@` maskiert). Uhrzeiten lokal, `HH:MM` heute bzw. `TT.MM. HH:MM`.
 - Alle Treffer werden zurückgegeben (UI blendet aus). Jeder Treffer wird in der DB gespeichert
-  (neu = `new`), Genre: manuell > Keyword > Genre-Chip der Suche > „Unsortiert“.
+  (neu = `new`), Genre: manuell > Quellen-Default > Keyword > Genre-Chip der Suche > „Unsortiert“.
+  Dieselbe Reihenfolge gilt beim Download für Datei, TCON und Zielordner (der Chip wird als nicht
+  manuelles Genre gespeichert und greift, wenn kein Keyword passt). Das Genre von Einträgen mit
+  Status `queued`/`downloading`/`done` ändert eine Suche nie.
 - `enqueue`: nimmt Videos mit Status `new`, `inbox`, `failed` (wirkt dann wie Wiederholen); andere
   (unbekannt, `done`, `ignored`, schon in der Queue) werden übersprungen. Sendet `video` (queued)
   je Eintrag, `queue` und `status`. Ein neues `enqueue` beendet die Sperre „Limit pro Lauf“.
@@ -149,7 +156,7 @@ Aufgaben-Felder unverändert (sie spiegeln den Zustand der Windows-Aufgabe).
 | `get_queue()` | – | `{paused, items:[QueueItem], blocked_reason, blocked_code}` | 3 |
 | `set_queue_paused(paused)` | bool | `{ok:true, paused}` | 3 |
 | `queue_move(id, delta)` | `-1` / `+1` | `{ok}` \| `{ok:false, error}` | 3 |
-| `queue_cancel(id)` | | `{ok}` \| `{ok:false, error}` | 3 |
+| `queue_cancel(id)` | | `{ok}` \| `{ok:false, error}` – zu spät: `error:"Download bereits fertig"` | 3 |
 | `queue_retry(id)` | | `{ok}` \| `{ok:false, error}` | 3 |
 
 - Reihenfolge in `items`: aktiver Eintrag (bzw. der Eintrag in der Pause), dann wartende in
@@ -162,13 +169,21 @@ Aufgaben-Felder unverändert (sie spiegeln den Zustand der Windows-Aufgabe).
   | `backoff` | „Backoff aktiv bis 14:30 – Rest bleibt in der Warteschlange“ | selbst bei Ablauf / `clear_backoff` |
   | `day_limit` | „Tageslimit erreicht (25/25) – Rest bleibt in der Warteschlange“ | selbst am nächsten Tag / höheres Limit |
   | `run_limit` | „Limit pro Lauf erreicht (10/10) – Rest bleibt in der Warteschlange; «Fortsetzen» startet einen neuen Lauf“ | `set_queue_paused(false)` oder `enqueue` |
+  | `error` | „Download-Modul (yt-dlp) konnte nicht geladen werden: … – neuer Versuch nach «Fortsetzen», neuen Einträgen oder dem Speichern der Einstellungen“ | `set_queue_paused(false)`, `enqueue`, `save_settings`/`reset_settings` |
+  | `pot` | „PO-Token-Server nicht bereit – Downloads warten, bis er läuft – Rest bleibt in der Warteschlange“ (nach 3 Fehlstarts: „PO-Token-Server startet nicht (mehrere Versuche) – bitte Deno/Provider und Einstellungen › Netzwerk prüfen – Rest …“) | selbst, sobald der Watchdog den Server meldet / Netzwerk-Einstellungen gespeichert |
+  | `target` | „Zielordner nicht erreichbar oder nicht beschreibbar (D:\Musik\HCLoader): … – Rest bleibt in der Warteschlange“ | selbst (Prüfung alle 30 s) / Einstellungen speichern |
   | `busy` | „Ein anderer Download-Lauf ist aktiv (z.B. geplante Prüfung) – wartet“ | selbst |
-  „Pausiert“ ist kein `blocked_code` (Feld `paused`).
+  „Pausiert“ ist kein `blocked_code` (Feld `paused`). Reihenfolge, wenn mehreres zutrifft:
+  `restart`, `backoff`, `day_limit`, `run_limit`, `error`, `pot`/`target`, `busy`.
+  `error`/`pot`/`target` sind lokale Probleme: kein YouTube-Request, nichts gezählt, keine
+  Pause, kein Lauf-Eintrag; die Einträge bleiben `queued` (nie `failed`).
 - `set_queue_paused(true)`: ein laufender Download lädt fertig, eine laufende Throttle-Pause wird
   abgebrochen; der Zustand überlebt Neustarts. `false` setzt auch die Lauf-Limit-Sperre zurück.
 - `queue_move`: nur wartende Einträge (`state: "waiting"`), Tausch mit dem wartenden Nachbarn.
 - `queue_cancel`: wartend/fehlgeschlagen → Status `new` (raus aus der Queue). Aktiv oder in der
-  Pause → Abbruch (Teildateien bleiben), danach ebenfalls `new`; Events `video`, `queue`.
+  Pause → Abbruch (Teildateien bleiben), danach ebenfalls `new`; Events `video`, `queue`. Hat der
+  aktive Download seinen letzten Schritt (Verschieben in die Bibliothek) schon erreicht oder ist
+  er fertig: `{ok:false, error:"Download bereits fertig"}`, der Eintrag wird `done`.
 - `queue_retry`: nur `failed` → hinten an die wartenden Einträge (manuell, SPEC §5).
 
 ### Bibliothek / Protokoll
@@ -189,6 +204,9 @@ Status). Ergänzungen der Python-Seite:
 - `Video.date_approx`: `true`, wenn `upload_date` aus einer flachen Abfrage stammt (ungefähr);
   ein exaktes Datum (nach Download/Auflösen) wird nie durch ein ungefähres ersetzt.
   `Video.upload_date`: `"YYYYMMDD"` oder `null`.
+- `Video.is_live`: `true` nur bei Suchtreffern, die ein Livestream sind (auch in
+  `get_last_search`), sonst `false`. Die UI blendet Livestreams darüber aus, nicht über den Text
+  von `filter_reason`.
 - `SearchVideo` = `Video` + `filter_reason` (`""` = besteht die gespeicherten Filter; sonst z.B.
   „Zu kurz“, „Dauer unbekannt“, „Livestream“, „Kein Include-Keyword“, „Exclude-Keyword: tutorial“,
   „Kanal blockiert“, „Bereits geladen“, „Ignoriert“, „Ausserhalb des Zeitraums“,
@@ -217,7 +235,7 @@ Status). Ergänzungen der Python-Seite:
 | `status` | `Status` | nach `save/reset_settings`, `update_ytdlp`, `test_po_token`, `clear_backoff`, `create/remove_task`, `set_video_status`, `search`, jeder Queue-Änderung, Start/Stopp des PO-Token-Servers, sonst alle 30 s | 2/3 |
 | `log` | `LogLine` | jede Logzeile (ausser Logger `pywebview*`, `app.worker.events`, `urllib3*`) | 2/3 |
 | `toast` | `{msg, kind?}` (`ok`/`info`/`warn`/`err`) | Update verfügbar, „yt-dlp aktualisiert – bitte HCLoader neu starten“ (warn), Platzhalter „Folgt in Phase N“ | 2/3 |
-| `video` | `{id, status, genre}` | `set_video_status`, `set_genre`, `enqueue`, Start/Ende/Abbruch eines Downloads | 2/3 |
+| `video` | `{id, status, genre}` | `set_video_status`, `set_genre`, `enqueue`, Start/Ende/Abbruch eines Downloads, Download vom Throttle abgelehnt oder lokal gesperrt (zurück auf `queued`) | 2/3 |
 | `progress` | `{id, phase, pct, speed, eta}` (+ `sleep_total` bei `sleep`) | Download-Queue: `sleep` einmal zu Beginn der Pause, `download` höchstens ca. 2×/s (Phasenwechsel und 100 % immer), `convert`, `tag` | 3 |
 | `done` | `{id, title}` | Download fertig getaggt und verschoben | 3 |
 | `failed` | `{id, title, error}` | Download fehlgeschlagen (bei 429 zusätzlich Backoff → `status`) | 3 |
@@ -229,14 +247,24 @@ Status). Ergänzungen der Python-Seite:
 
 `app/worker.DownloadQueue` (eigener Thread `hcloader-queue`) startet einen Lauf mit
 `run_session(throttle)` (Lauf-Lock, Lauf-Zähler, am Ende `Throttle.finish_run(success)`, `runs`-Eintrag
-`manual`), sobald Einträge warten und nichts sperrt. Pro Eintrag:
+`manual`), sobald Einträge warten und nichts sperrt. Vor dem Lauf (ohne Lauf-Eintrag):
+Throttle-Sperren, `error`, lokale Vorprüfung (`worker.local_preflight`: im HTTP-Modus läuft der
+PO-Token-Server – beim ersten Start wird bis 20 s auf den Watchdog gewartet –, `<Ziel>/.tmp` ist
+beschreibbar), dann wird der Client erzeugt. Beim Start des Threads werden alte Teildateien
+(> 7 Tage, nicht in der Warteschlange) aus `<Ziel>/.tmp` gelöscht. Pro Eintrag:
 
-1. Sperre prüfen (`Throttle.download_block()`; Lauf-Limit → `run_limit`).
+1. Sperre prüfen (`Throttle.download_block()`; Lauf-Limit → `run_limit`; ab dem zweiten Eintrag
+   auch die lokale Vorprüfung).
 2. Restpause seit dem letzten Download (`Throttle.download_wait()`) ≥ 1 s → Event `progress`
    `{id, phase:"sleep", pct:0, speed:0, eta:<s>, sleep_total:<s>}`, `queue`; Warten abbrechbar.
    Danach wird der nächste Eintrag neu gelesen (Reihenfolge kann sich geändert haben).
-3. `YtClient.download(id, on_progress, cancel_event)` → `video` (downloading), `progress`
-   `download` … `convert` → `tag` → `video` (done) + `done`, bzw. `failed`.
+3. `YtClient.download(id, on_progress, cancel_event, on_commit)` → `video` (downloading), `progress`
+   `download` … `convert` → `tag` → `video` (done) + `done`, bzw. `failed`. `ThrottleError` oder
+   `LocalError` → `video` (queued), Lauf endet mit Sperre (kein `failed`).
+
+Beenden: `Api.shutdown` bricht den aktiven Download ab (Eintrag bleibt `queued`), wartet bis
+60 s auf den Thread und schliesst die DB erst danach; endet er nicht, bleibt die DB bis zum
+Prozessende offen und `downloading` wird `queued`.
 
 Typische Event-Folge für zwei Einträge A, B:
 `queue` · `video{A,downloading}` · `progress{A,download}`… · `progress{A,convert}` ·

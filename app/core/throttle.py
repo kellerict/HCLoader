@@ -13,7 +13,8 @@ import random
 import re
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -58,6 +59,13 @@ class BackoffActive(ThrottleError):
 
 class WaitCancelled(Exception):
     """A pause inside the throttle was aborted through the caller's cancel event."""
+
+
+class MetadataBusy(Exception):
+    """The YouTube metadata lock stayed busy (a download is extracting) - try again shortly."""
+
+    def __init__(self) -> None:
+        super().__init__("Download-Abfrage läuft gerade – bitte gleich erneut versuchen")
 
 
 class LimitReached(ThrottleError):
@@ -106,6 +114,11 @@ class Throttle:
         # Random pause before the next download, rolled once per `last_download_end` value so
         # that a countdown shown in advance (download_wait) equals the pause actually waited.
         self._planned_pause: tuple[str, float] | None = None
+        # Review Phase 3 m4: only one YouTube *metadata* exchange at a time. Searches, lists,
+        # resolves and the extraction part of a download hold it; a download releases it as
+        # soon as the media transfer starts (docs/decisions.md). Never acquired while `_lock`
+        # is held (lock order: metadata lock -> `_lock`).
+        self._meta_lock = threading.Lock()
 
     @property
     def cfg(self) -> Any:
@@ -280,6 +293,35 @@ class Throttle:
             self._last_request = self._now()
             if count_attempt:
                 self.register_download()
+
+    @contextmanager
+    def metadata_lock(
+        self,
+        *,
+        timeout: float | None = None,
+        cancel_event: threading.Event | None = None,
+        poll: float = 0.2,
+    ) -> Iterator[None]:
+        """Hold the YouTube metadata lock (m4). `timeout` (s) -> MetadataBusy; `cancel_event`
+        aborts the wait (WaitCancelled). Real time (time.monotonic), not the injected clock."""
+        deadline = None if timeout is None else time.monotonic() + max(0.0, timeout)
+        while True:
+            step = poll
+            if deadline is not None:
+                step = max(0.0, min(poll, deadline - time.monotonic()))
+            if self._meta_lock.acquire(timeout=step):
+                break
+            if cancel_event is not None and cancel_event.is_set():
+                raise WaitCancelled
+            if deadline is not None and time.monotonic() >= deadline:
+                raise MetadataBusy
+        try:
+            yield
+        finally:
+            self._meta_lock.release()
+
+    def metadata_busy(self) -> bool:
+        return self._meta_lock.locked()
 
     def download_wait(self) -> float:
         """Seconds left of the random pause before the next download (0 if none).

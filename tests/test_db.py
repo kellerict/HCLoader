@@ -278,3 +278,57 @@ def test_reset_interrupted_downloads(db):
     )
     assert db.get_video("v1")["status"] == "done" and db.get_video("v2")["status"] == "queued"
     assert db.reset_interrupted_downloads() == 0
+
+
+# ------------------------------------------------------------------ Review Phase 3 m7 / m5
+
+
+def test_enqueue_is_atomic(db, monkeypatch):
+    for i in ("a1", "a2", "a3"):
+        db.upsert_video(vid(i))
+    real = db.get_video
+    calls = {"n": 0}
+
+    def flaky(video_id):
+        calls["n"] += 1
+        if calls["n"] == 2:
+            raise sqlite3.OperationalError("disk I/O error")
+        return real(video_id)
+
+    monkeypatch.setattr(db, "get_video", flaky)
+    with pytest.raises(sqlite3.OperationalError):
+        db.enqueue(["a1", "a2", "a3"])
+    monkeypatch.setattr(db, "get_video", real)
+    assert [db.get_video(i)["status"] for i in ("a1", "a2", "a3")] == ["new"] * 3
+    assert db.enqueue(["a1", "a2"]) == ["a1", "a2"]  # connection usable afterwards
+
+
+def test_move_in_queue_is_atomic(db, monkeypatch):
+    for i in ("a1", "a2", "a3"):
+        db.upsert_video(vid(i))
+    db.enqueue(["a1", "a2", "a3"])
+    before = {r["id"]: r["queue_pos"] for r in db.list_queue()}
+    real = db.execute
+    calls = {"n": 0}
+
+    def flaky(sql, params=()):
+        if sql.startswith("UPDATE videos SET queue_pos"):
+            calls["n"] += 1
+            if calls["n"] == 2:
+                raise sqlite3.OperationalError("crash mid renumbering")
+        return real(sql, params)
+
+    monkeypatch.setattr(db, "execute", flaky)
+    with pytest.raises(sqlite3.OperationalError):
+        db.move_in_queue("a3", -1)
+    monkeypatch.setattr(db, "execute", real)
+    assert {r["id"]: r["queue_pos"] for r in db.list_queue()} == before
+    assert db.move_in_queue("a3", -1) is True
+    assert [r["id"] for r in db.list_queue()] == ["a1", "a3", "a2"]
+
+
+def test_requeue_downloading(db):
+    db.upsert_video(vid("a1", status="downloading"))
+    db.upsert_video(vid("a2", status="done"))
+    assert db.requeue_downloading() == 1
+    assert db.get_video("a1")["status"] == "queued" and db.get_video("a2")["status"] == "done"

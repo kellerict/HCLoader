@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import unicodedata
 from collections.abc import Iterable, Mapping
@@ -99,6 +100,23 @@ def normalize_date(value: str | None) -> str:
 
 def tmp_dir(target_dir: Path | str) -> Path:
     return Path(target_dir) / ".tmp"
+
+
+def check_writable_dir(folder: Path | str) -> str | None:
+    """Create `folder` if needed and write/delete a probe file. None = ok, else the OS error.
+
+    Used before a download (Review Phase 3 m2): a disconnected drive or a read-only target
+    must block the queue instead of failing every waiting entry.
+    """
+    folder = Path(folder)
+    probe = folder / f".hcloader-write-test-{os.getpid()}"
+    try:
+        folder.mkdir(parents=True, exist_ok=True)
+        probe.write_bytes(b"")
+        probe.unlink()
+    except OSError as exc:
+        return exc.strerror or str(exc) or exc.__class__.__name__
+    return None
 
 
 def sibling(path: Path, suffix: str) -> Path:

@@ -267,6 +267,11 @@ class Shooter:
         page.evaluate("HC.mock.demo.backoff(6)")
         self.settle(300)
         self.shot("downloads-backoff")
+        # Review Phase 3 m2: lokale Sperre (Zielordner weg) – Einträge bleiben wartend
+        page.evaluate("HC.mock.api.clear_backoff().then(() => HC.mock.demo.local('target'))")
+        self.settle(300)
+        self.shot("downloads-target")
+        page.evaluate("HC.mock.demo.local(null)")
 
         # Aufgabenplanung antwortet nicht -> Zustand «unbekannt», Schalter bleibt
         page.evaluate("HC.mock.api.clear_backoff(); HC.mock.demo.taskUnknown()")

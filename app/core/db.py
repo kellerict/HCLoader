@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import sqlite3
 import threading
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Iterator, Sequence
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -191,6 +192,19 @@ class Database:
         rows = self.query(sql, params)
         return rows[0] if rows else None
 
+    @contextmanager
+    def transaction(self) -> Iterator[None]:
+        """BEGIN … COMMIT (ROLLBACK on error) under the connection lock (Review Phase 3 m7).
+        The connection runs in autocommit mode; nested use is not supported."""
+        with self._lock:
+            self._conn.execute("BEGIN")
+            try:
+                yield
+            except BaseException:
+                self._conn.rollback()
+                raise
+            self._conn.commit()
+
     def schema_version(self) -> int:
         with self._lock:
             return _current_version(self._conn)
@@ -290,6 +304,14 @@ class Database:
             )
             return int(cur.rowcount)
 
+    def requeue_downloading(self, message: str | None = None) -> int:
+        """Rows in 'downloading' back to 'queued' (shutdown while a download could not be
+        stopped in time, Review Phase 3 m5). Returns the count."""
+        cur = self.execute(
+            "UPDATE videos SET status='queued', error=? WHERE status='downloading'", (message,)
+        )
+        return int(cur.rowcount)
+
     # -- download queue (status 'queued' + queue_pos = persistent order)
 
     def _max_queue_pos(self) -> int:
@@ -301,7 +323,7 @@ class Database:
         order). Returns the ids that were queued; others (unknown, done, ignored, already
         queued/downloading) are skipped."""
         out: list[str] = []
-        with self._lock:
+        with self.transaction():
             pos = self._max_queue_pos()
             for vid in ids:
                 row = self.get_video(vid)
@@ -341,7 +363,7 @@ class Database:
         """Swap a waiting entry with its waiting neighbour (delta -1 = up, +1 = down)."""
         if delta not in (-1, 1):
             return False
-        with self._lock:
+        with self.transaction():
             waiting = self.query(
                 "SELECT id, queue_pos FROM videos WHERE status='queued' "
                 "ORDER BY queue_pos IS NULL, queue_pos, first_seen, id"

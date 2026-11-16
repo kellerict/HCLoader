@@ -116,6 +116,7 @@
       next_up: 'Als Nächstes', sleeping: 'Pause läuft', sleep_range: 'von {min}–{max} s',
       blocked_wait: 'Wartet – {why}', why_backoff: 'Backoff', why_day: 'Tageslimit', why_run: 'Lauf-Limit', why_paused: 'pausiert',
       why_restart: 'Neustart nötig', why_busy: 'anderer Lauf aktiv',
+      why_pot: 'PO-Token-Server nicht bereit', why_target: 'Zielordner nicht erreichbar', why_error: 'Download-Modul fehlt',
       summary: 'Heute {day}/{day_max} · Lauf {run}/{run_max}',
       steps: 'Laden · Konvertieren · Taggen', unlimited: 'unbegrenzt',
       l_run: 'Dieser Lauf', l_day: 'Heute', l_rate: 'Rate-Limit', l_sleep: 'Pause zw. Downloads',
@@ -131,6 +132,10 @@
       limits_link: 'Limits ändern', new_run: 'Neuen Lauf starten',
       need_restart: '<b>Neustart nötig.</b> yt-dlp wurde aktualisiert – bitte HCLoader neu starten. Die Warteschlange bleibt erhalten.',
       busy: 'Ein anderer Download-Lauf ist aktiv (z.B. die geplante Prüfung). Die Warteschlange wartet, bis er fertig ist.',
+      local_pot: '<b>PO-Token-Server nicht bereit.</b> {rest} bleiben in der Warteschlange und laufen weiter, sobald er läuft.',
+      local_target: '<b>Zielordner nicht erreichbar oder nicht beschreibbar.</b> {rest} bleiben in der Warteschlange und laufen weiter, sobald er wieder verfügbar ist.',
+      local_error: '<b>Download-Modul (yt-dlp) konnte nicht geladen werden.</b> {rest} bleiben in der Warteschlange. Neuer Versuch nach «Fortsetzen», neuen Einträgen oder dem Speichern der Einstellungen.',
+      local_link_pot: 'Netzwerk-Einstellungen', local_link_target: 'Speicherort ändern', local_link_error: 'Wartung',
     },
 
     library: {

@@ -18,12 +18,15 @@ from . import filters
 from .config import UNSORTED, Settings
 from .db import Database
 from .genre import detect_genre
-from .throttle import BackoffActive, LimitReached, Throttle
+from .redact import redact
+from .throttle import BackoffActive, LimitReached, MetadataBusy, Throttle
 
 log = logging.getLogger(__name__)
 
 K_LAST_SEARCH = "last_search"
 MIN_YEAR = 2005
+# M1: the genre of these rows is what the file got (or is about to get); searches leave it alone
+GENRE_LOCKED_STATUSES = ("queued", "downloading", "done")
 
 
 def format_until(until: datetime, now: datetime | None = None) -> str:
@@ -71,10 +74,20 @@ def filter_reason(
 
 
 def _genre_for(
-    entry: Mapping[str, Any], row: Mapping[str, Any] | None, settings: Settings, hint: str | None
+    entry: Mapping[str, Any],
+    row: Mapping[str, Any] | None,
+    settings: Settings,
+    hint: str | None,
+    source_default: str | None = None,
 ) -> str:
+    """manual > source default > keyword > genre chip of the search > Unsortiert.
+
+    The same order `YtClient._finish` applies at download time (it falls back to the stored,
+    non-manual genre = this chip hint when the keywords decide nothing; Review Phase 3 M1)."""
     manual = row.get("genre") if row and row.get("genre_manual") else None
-    genre = detect_genre(entry.get("title"), settings.genres.items, manual=manual)
+    genre = detect_genre(
+        entry.get("title"), settings.genres.items, manual=manual, source_default=source_default
+    )
     # the genre chip of the search implies the genre when no keyword decides (not "manual")
     return hint if genre == UNSORTED and hint else genre
 
@@ -89,6 +102,7 @@ def _result(
     video_dict: Any,
 ) -> dict[str, Any]:
     out = video_dict(dict(row))
+    out["is_live"] = bool(live)  # n1: the UI uses this flag, not the German filter text
     probe = {**out, "live_status": "is_live" if live else None}
     out["filter_reason"] = filter_reason(probe, settings, out["status"], blacklist, year=year)
     return out
@@ -101,27 +115,34 @@ def store_results(
     *,
     genre_hint: str | None,
 ) -> list[str]:
-    """Upsert flat search hits (new rows get status 'new') with detected genre. Returns ids."""
+    """Upsert flat search hits (new rows get status 'new') with detected genre. Returns ids.
+
+    The genre of rows that are queued, downloading or done is never changed by a search
+    (Review Phase 3 M1): library, file folder and TCON must stay consistent."""
     ids: list[str] = []
     for e in entries:
         vid = e.get("id")
         if not vid or vid in ids:
             continue
         row = db.get_video(vid)
-        db.upsert_video(
-            {
-                "id": vid,
-                "title": e.get("title"),
-                "channel_id": e.get("channel_id") or None,
-                "channel_name": e.get("channel_name") or None,
-                "duration": e.get("duration"),
-                "upload_date": e.get("upload_date") or None,
-                "date_approx": bool(e.get("date_approx")),
-                "view_count": e.get("view_count"),
-                "thumbnail": e.get("thumbnail"),
-                "genre": _genre_for(e, row, settings, genre_hint),
-            }
-        )
+        data: dict[str, Any] = {
+            "id": vid,
+            "title": e.get("title"),
+            "channel_id": e.get("channel_id") or None,
+            "channel_name": e.get("channel_name") or None,
+            "duration": e.get("duration"),
+            "upload_date": e.get("upload_date") or None,
+            "date_approx": bool(e.get("date_approx")),
+            "view_count": e.get("view_count"),
+            "thumbnail": e.get("thumbnail"),
+        }
+        if not row or row.get("status") not in GENRE_LOCKED_STATUSES:
+            source_default = None
+            if row and row.get("source_id") is not None:
+                src = db.get_source(row["source_id"])
+                source_default = (src or {}).get("default_genre") or None
+            data["genre"] = _genre_for(e, row, settings, genre_hint, source_default)
+        db.upsert_video(data)
         ids.append(vid)
     return ids
 
@@ -146,6 +167,8 @@ def run_search(
             "ok": False,
             "error": f"Backoff aktiv bis {format_until(exc.until)} – Suche gesperrt",
         }
+    except MetadataBusy as exc:  # a download is extracting right now (m4)
+        return {"ok": False, "error": str(exc)}
     except LimitReached as exc:
         at = throttle.search_available_at()
         when = f" – wieder möglich ab {format_until(at)}" if at else ""
@@ -158,8 +181,9 @@ def run_search(
             until = throttle.backoff_until()
             tail = f" – Backoff bis {format_until(until)}" if until else ""
             return {"ok": False, "error": f"YouTube blockiert gerade (429/Bot-Prüfung){tail}"}
-        log.error("Suche fehlgeschlagen: %s", exc)
-        return {"ok": False, "error": f"Suche fehlgeschlagen: {exc}"}
+        text = redact(exc)  # n4: proxy credentials never reach the UI or the log
+        log.error("Suche fehlgeschlagen: %s", text)
+        return {"ok": False, "error": f"Suche fehlgeschlagen: {text}"}
     ids = store_results(db, entries, settings, genre_hint=genre)
     live = [e["id"] for e in entries if filters.is_live(e)]
     db.set_state(

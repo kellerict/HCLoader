@@ -209,10 +209,16 @@ class FakeYDL:
     def sanitize_info(self, info):
         return info
 
-    def extract_info(self, url, download=True):
+    def extract_info(self, url, download=True, process=True):
         self.url = url
-        if not download:
-            return FakeYDL.info
+        if not process:  # extraction part of a download
+            assert not download
+            return {"_type": "video", **FakeYDL.info, "_fake_url": url}
+        assert not download
+        return FakeYDL.info
+
+    def process_ie_result(self, ie_result, download=True):
+        assert download and ie_result.get("_fake_url") == self.url
         if FakeYDL.errors:
             exc = FakeYDL.errors.pop(0)
             if exc:
@@ -319,7 +325,7 @@ def test_search_limit(client, fake, settings):
 
 def test_search_rate_limit_triggers_backoff(client, monkeypatch):
     class Boom(FakeYDL):
-        def extract_info(self, url, download=True):
+        def extract_info(self, url, download=True, process=True):
             raise yt_dlp.utils.DownloadError("ERROR: HTTP Error 429: Too Many Requests")
 
     monkeypatch.setattr(ytclient.yt_dlp, "YoutubeDL", Boom)
@@ -437,11 +443,11 @@ def test_cancel_cleans_tmp(client, fake, db, settings, monkeypatch):
     tmp.mkdir(parents=True)
     (tmp / f"{VID}.webm.part").write_text("partial")
 
-    def raising(opts_self, url, download=True):
+    def raising(opts_self, ie_result, download=True):
         for hook in opts_self.opts["progress_hooks"]:
             hook({"status": "downloading", "downloaded_bytes": 1, "total_bytes": 10})
 
-    monkeypatch.setattr(FakeYDL, "extract_info", raising)
+    monkeypatch.setattr(FakeYDL, "process_ie_result", raising)
     res = client.download(VID, cancel_event=ev)
     assert res.status == "cancelled" and not res.ok
     assert [f.name for f in tmp.glob(f"{VID}.*")] == [f"{VID}.webm.part"]  # resumable (m3)
@@ -650,11 +656,11 @@ def test_cancel_restores_queued(client, fake, db, monkeypatch):
     ev.set()
     db.upsert_video({"id": VID, "status": "queued"})
 
-    def hook_cancel(self, url, download=True):
+    def hook_cancel(self, ie_result, download=True):
         for hook in self.opts["progress_hooks"]:
             hook({"status": "downloading"})
 
-    monkeypatch.setattr(FakeYDL, "extract_info", hook_cancel)
+    monkeypatch.setattr(FakeYDL, "process_ie_result", hook_cancel)
     res = client.download(VID, cancel_event=ev)
     assert res.status == "cancelled"
     row = db.get_video(VID)
@@ -713,7 +719,7 @@ def test_cue_failure_after_move_still_done(client, fake, db, monkeypatch):
 
 
 def test_warning_429_triggers_backoff(client, fake, throttle, monkeypatch):
-    def warn_then_ok(self, url, download=True):
+    def warn_then_ok(self, url, download=True, process=True):
         self.opts["logger"].warning("WARNING: HTTP Error 429: Too Many Requests, trying next")
         return {"entries": []}
 
@@ -845,3 +851,129 @@ def test_external_pot_server_is_not_started_or_stopped(client, fake, settings):
     ext.up = False
     with pytest.raises(ytclient.YtClientError, match="PO-Token-Server"):
         c.search("x", 1)
+
+
+# ------------------------------------------------------------------ Review Phase 3
+
+
+class _ExternalPot:
+    def __init__(self, alive):
+        self.alive = alive
+        self.port = 4416
+
+    def running(self):
+        return self.alive
+
+    def start(self):
+        return self.alive
+
+    def stop(self):
+        pass
+
+
+def test_m2_pot_not_running_is_local_error_without_side_effects(settings, db, throttle, fake):
+    settings.network.po_token_mode = "http"
+    client = YtClient(lambda: settings, db, throttle, pot_server=_ExternalPot(False))
+    db.upsert_video({"id": VID, "status": "queued"})
+    with pytest.raises(ytclient.LocalError) as ei:
+        client.download(VID)
+    assert ei.value.code == "pot" and isinstance(ei.value, ytclient.YtClientError)
+    assert db.get_video(VID)["status"] == "queued"
+    assert not fake.instances  # no yt-dlp, no request
+    assert db.get_state("last_download_end") is None and throttle.downloads_today() == 0
+
+
+def test_m2_unwritable_target_is_local_error(client, settings, db, throttle, fake, tmp_path):
+    blocker = tmp_path / "file"
+    blocker.write_text("x")
+    settings.storage.target_dir = str(blocker / "music")
+    db.upsert_video({"id": VID, "status": "queued"})
+    with pytest.raises(ytclient.LocalError) as ei:
+        client.download(VID)
+    assert ei.value.code == "target" and "Zielordner nicht erreichbar" in str(ei.value)
+    assert db.get_video(VID)["status"] == "queued" and not fake.instances
+    assert db.get_state("last_download_end") is None
+
+
+def test_m2_error_before_first_request_is_no_download_end(client, fake, db, monkeypatch):
+    """A failure before yt-dlp sends anything (e.g. YoutubeDL() itself) needs no pause."""
+
+    class Broken(FakeYDL):
+        def __init__(self, opts):
+            raise yt_dlp.utils.YoutubeDLError("cookies database locked")
+
+    monkeypatch.setattr(ytclient.yt_dlp, "YoutubeDL", Broken)
+    res = client.download(VID)
+    assert res.status == "failed" and "cookies" in res.error
+    assert db.get_state("last_download_end") is None
+
+
+@needs_ffmpeg
+def test_m4_download_releases_metadata_lock_before_media(client, fake, throttle, monkeypatch):
+    seen = {}
+    real_extract = FakeYDL.extract_info
+    real_process = FakeYDL.process_ie_result
+
+    def extract(self, url, download=True, process=True):
+        seen["extract"] = throttle.metadata_busy()
+        return real_extract(self, url, download=download, process=process)
+
+    def process(self, ie_result, download=True):
+        seen["process"] = throttle.metadata_busy()
+        return real_process(self, ie_result, download=download)
+
+    monkeypatch.setattr(FakeYDL, "extract_info", extract)
+    monkeypatch.setattr(FakeYDL, "process_ie_result", process)
+    assert client.download(VID).status == "done"
+    assert seen == {"extract": True, "process": False}
+    assert not throttle.metadata_busy()
+
+
+def test_m4_search_gives_up_while_download_extracts(client, fake, throttle, monkeypatch):
+    monkeypatch.setattr(ytclient, "METADATA_WAIT_S", 0.1)
+    fake.info = {"entries": []}
+    with throttle.metadata_lock(), pytest.raises(ytclient.MetadataBusy):
+        client.search("x", 1)
+    assert not fake.instances and throttle.searches_last_hour() == 0
+    assert client.search("x", 1) == []
+
+
+@needs_ffmpeg
+def test_m1_stored_chip_genre_is_used_when_keywords_decide_nothing(client, fake, db):
+    fake.info = {**fake.info, "title": "Partyraiser @ Dominator 2024", "description": ""}
+    db.upsert_video({"id": VID, "title": "x", "genre": "Uptempo"})  # chip hint, not manual
+    res = client.download(VID)
+    assert res.status == "done" and res.file_path.parts[-4] == "Uptempo"
+    assert str(ID3(res.file_path)["TCON"]) == "Uptempo"
+    assert db.get_video(VID)["genre"] == "Uptempo"
+
+
+@needs_ffmpeg
+def test_m1_keyword_beats_stored_chip_and_unknown_hint_is_ignored(client, fake, db):
+    fake.info = {**fake.info, "title": "Partyraiser Hardcore Liveset", "description": ""}
+    db.upsert_video({"id": VID, "title": "x", "genre": "Uptempo"})
+    assert client.download(VID).file_path.parts[-4] == "Hardcore"
+
+    vid2 = "zzz123XYZ_-"
+    fake.info = {**fake.info, "id": vid2, "title": "Angerfist @ Defqon.1"}
+    db.upsert_video({"id": vid2, "title": "x", "genre": "Polka"})  # genre deleted meanwhile
+    assert client.download(vid2).file_path.parts[-4] == "Unsortiert"
+
+
+def test_n3_on_commit_false_aborts_before_move(client, fake, db, settings):
+    if shutil.which("ffmpeg") is None:
+        pytest.skip("ffmpeg fehlt")
+    db.upsert_video({"id": VID, "status": "queued"})
+    res = client.download(VID, on_commit=lambda: False)
+    assert res.status == "cancelled"
+    assert db.get_video(VID)["status"] == "queued" and not db.get_video(VID)["file_path"]
+    assert not list(Path(settings.storage.target_dir).rglob("*.mp3"))
+
+
+def test_n4_clean_error_masks_proxy_credentials():
+    exc = yt_dlp.utils.DownloadError(
+        "ERROR: Unable to connect to proxy http://hans:geheim@10.0.0.1:3128 (refused)"
+    )
+    text = ytclient._clean_error(exc)
+    assert "geheim" not in text and "hans" not in text
+    assert "http://***@10.0.0.1:3128" in text

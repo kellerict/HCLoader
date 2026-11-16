@@ -806,6 +806,7 @@ def test_db_backed_reads_and_simple_actions(env):
         "genre",
         "genre_manual",
         "status",
+        "is_live",
     }
     src = a.get_sources()[0]
     assert src["new_count"] == 1 and src["enabled"] is True
@@ -962,8 +963,9 @@ def test_maintenance_job_refused_while_another_runs(env):
     started = threading.Event()
 
     def slow():
-        started.set()
-        release.wait(5)
+        with a._ytdlp_gate.update():  # what _do_update holds while pip runs (n2)
+            started.set()
+            release.wait(5)
         return {"ok": True}
 
     fut = a._worker.submit("update", slow)
@@ -1048,3 +1050,216 @@ def test_search_validates_options_and_query(env):
     ].endswith("2024")
     last = a.get_last_search()
     assert last["query"] == "hardcore" and last["genre"] == "Uptempo" and last["year"] == 2024
+
+
+# --------------------------------------------------------------------------- Review Phase 3
+
+
+def _queued(a, vid="abcdefghijk"):
+    a._db.upsert_video({"id": vid, "title": "Mix"})
+    assert a.enqueue([vid])["ids"] == [vid]
+    return vid
+
+
+def test_m3_broken_client_blocks_without_run_until_user_action(env):
+    calls = []
+
+    def broken():
+        calls.append(1)
+        raise ImportError("No module named 'yt_dlp.extractor' (proxy http://u:pw@p:1)")
+
+    a = env.make(client_factory=broken)
+    vid = _queued(a)
+    a._queue.run_pending()
+    q = a.get_queue()
+    assert q["blocked_code"] == "error"
+    assert q["blocked_reason"].startswith("Download-Modul (yt-dlp) konnte nicht geladen werden")
+    assert "pw@" not in q["blocked_reason"]
+    assert a._db.list_runs() == [] and calls == [1]
+    a._queue.run_pending()
+    a._queue.run_pending()
+    assert calls == [1]  # no retry loop
+    a.set_queue_paused(False)  # user action
+    a._queue.run_pending()
+    assert calls == [1, 1]
+    assert a.save_settings(a.get_settings()["values"])["ok"]  # user action
+    a._queue.run_pending()
+    assert calls == [1, 1, 1]
+    assert a._db.get_video(vid)["status"] == "queued" and a._db.list_runs() == []
+
+
+class _RaisingClient:
+    def __init__(self, exc):
+        self.exc = exc
+
+    def download(self, vid, **kw):
+        assert "on_commit" in kw
+        raise self.exc
+
+    def close(self):
+        pass
+
+
+def test_m6_throttle_refusal_sends_video_event(env):
+    from datetime import UTC, datetime, timedelta
+
+    from app.core.throttle import BackoffActive
+
+    exc = BackoffActive(datetime.now(UTC) + timedelta(hours=1))
+    a = env.make(client_factory=lambda: _RaisingClient(exc))
+    vid = _queued(a)
+    a._queue.run_pending()
+    flush(a)
+    statuses = [e["status"] for e in env.window.events_of("video") if e["id"] == vid]
+    assert statuses[-2:] == ["downloading", "queued"]
+    assert not env.window.events_of("failed")
+
+
+def test_m2_local_error_during_download_blocks_queue(env):
+    from app.core.preflight import LocalError
+
+    exc = LocalError("pot", "PO-Token-Server läuft nicht (wird vom Watchdog neu gestartet)")
+    a = env.make(client_factory=lambda: _RaisingClient(exc))
+    vid = _queued(a)
+    a._queue.run_pending()
+    q = a.get_queue()
+    assert q["blocked_code"] == "pot"
+    assert q["blocked_reason"] == (
+        "PO-Token-Server läuft nicht (wird vom Watchdog neu gestartet) – "
+        "Rest bleibt in der Warteschlange"
+    )
+    assert a._db.get_video(vid)["status"] == "queued"
+    flush(a)
+    assert not env.window.events_of("failed")
+    assert [e["status"] for e in env.window.events_of("video") if e["id"] == vid][-1] == "queued"
+
+
+def test_m2_queue_waits_for_watchdog_at_start(env):
+    class SlowWatchdog:
+        """First check completes after 0.2 s and finds the server running."""
+
+        def __init__(self):
+            self.ready = threading.Event()
+            self.calls = []
+
+        def running(self):
+            return self.ready.is_set()
+
+        def wait_ready(self, timeout, stop=None):
+            self.calls.append(timeout)
+            return self.ready.wait(timeout)
+
+        apply = start = stop = lambda self, *a: None
+
+    wd = SlowWatchdog()
+    seen = []
+    holder = {}
+
+    class Client:
+        def download(self, vid, **kw):
+            seen.append(wd.running())
+            holder["a"]._db.set_status(vid, "done")
+            return types.SimpleNamespace(status="done", title="Mix")
+
+        def close(self):
+            pass
+
+    a = holder["a"] = env.make(watchdog=wd, client_factory=Client)
+    data = a.get_settings()["values"]
+    data["network"]["po_token_mode"] = "http"
+    assert a.save_settings(data)["ok"]
+    _queued(a)
+    threading.Timer(0.2, wd.ready.set).start()
+    a._queue.run_pending()
+    assert wd.calls == [api_mod.POT_START_WAIT_S] and seen == [True]
+
+
+def test_n1_search_results_carry_is_live(env):
+    a = env.make()
+
+    class Client:
+        def search(self, query, n=None, *, genre=None, year=None):
+            base = {"title": "Hardcore Mix", "channel_name": "C", "duration": 3600}
+            return [
+                {**base, "id": "live1234567", "live_status": "is_live"},
+                {**base, "id": "vod12345678", "live_status": "not_live"},
+            ]
+
+        def close(self):
+            pass
+
+    a._client_factory = Client
+    res = a.search("hardcore")
+    by_id = {v["id"]: v for v in res["results"]}
+    assert by_id["live1234567"]["is_live"] is True
+    assert by_id["live1234567"]["filter_reason"] == "Livestream"
+    assert by_id["vod12345678"]["is_live"] is False
+    last = {v["id"]: v for v in a.get_last_search()["results"]}
+    assert last["live1234567"]["is_live"] is True
+
+
+def test_n2_update_and_search_exclude_each_other(env):
+    a = env.make()
+    with a._ytdlp_gate.search():
+        res = a.update_ytdlp()
+    assert res["ok"] is False and res["error"].startswith("Eine Suche läuft gerade")
+    assert env.update_calls == []
+    with a._ytdlp_gate.update():
+        assert a.search("x")["error"] == "Wartung läuft gerade (Update) – bitte später erneut"
+        # a search job that was already queued when the update began is refused, too
+        assert a._do_search("x", None, None)["error"].startswith("Wartung läuft gerade")
+
+
+def test_n3_cancel_unknown_and_done(env):
+    a = env.make()
+    a._db.upsert_video({"id": "abcdefghijk", "title": "Mix", "status": "done"})
+    assert a.queue_cancel("abcdefghijk") == {"ok": False, "error": "Download bereits fertig"}
+    assert a.queue_cancel("zzzzzzzzzzz")["error"].startswith("Eintrag ist nicht")
+
+
+def test_n4_search_error_masks_proxy_credentials(env):
+    a = env.make()
+
+    class Client:
+        def search(self, *a, **k):
+            raise OSError("Unable to connect to proxy http://hans:geheim@10.0.0.1:3128")
+
+        def close(self):
+            pass
+
+    a._client_factory = Client
+    root = logging.getLogger()
+    root.addHandler(live_handler())
+    try:
+        res = a.search("hardcore")
+    finally:
+        root.removeHandler(live_handler())
+    assert res["ok"] is False and "geheim" not in res["error"]
+    assert "http://***@10.0.0.1:3128" in res["error"]
+    assert all("geheim" not in e["message"] for e in live_handler().backlog)
+
+
+def test_m5_shutdown_closes_db_only_after_queue_thread(env):
+    a = env.make()
+    order = []
+    real_stop = a._queue.stop
+
+    def stop(timeout):
+        order.append(("queue", timeout))
+        return real_stop(timeout)
+
+    a._queue.stop = stop
+    a._own_db = True
+    real_close = a._db.close
+    a._db.close = lambda: (order.append("db"), real_close())[1]
+    assert a.shutdown() is True
+    assert order == [("queue", api_mod.QUEUE_STOP_TIMEOUT_S), "db"]
+
+    b = env.make()
+    b._own_db = True
+    b._queue.stop = lambda timeout: False  # thread did not end in time
+    closed = []
+    b._db.close = lambda: closed.append(1)
+    b._db.upsert_video({"id": "abcdefghijk", "title": "Mix", "status": "downloading"})
+    assert b.shutdown() is False
+    assert closed == [] and b._db.get_video("abcdefghijk")["status"] == "queued"

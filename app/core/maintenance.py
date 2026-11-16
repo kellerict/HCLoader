@@ -17,8 +17,9 @@ import sqlite3
 import subprocess
 import sys
 import threading
+import time
 import urllib.request
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -318,3 +319,53 @@ def open_in_shell(path: Path) -> None:
         subprocess.Popen(["open", str(path)])  # noqa: S603, S607
     else:
         subprocess.Popen(["xdg-open", str(path)])  # noqa: S603, S607
+
+
+# --------------------------------------------------------------------------- stale partial files
+
+PARTIAL_MAX_AGE_DAYS = 7
+
+
+def _is_partial_name(name: str) -> bool:
+    return name.endswith((".part", ".ytdl")) or ".part-Frag" in name
+
+
+def cleanup_stale_partials(
+    tmp_dir: Path,
+    keep_ids: Collection[str],
+    *,
+    max_age_days: float = PARTIAL_MAX_AGE_DAYS,
+    now: float | None = None,
+) -> int:
+    """Delete `.part`/`.ytdl` leftovers in `<target>/.tmp` older than `max_age_days`
+    (Review Phase 3 n6). Files of videos in `keep_ids` (still in the queue) stay: a later
+    download resumes them. The video id is the file name up to the first dot
+    (`<id>.f251.webm.part`).
+    Returns the number of deleted files; a missing/unreachable folder deletes nothing."""
+    try:
+        if not tmp_dir.is_dir():
+            return 0
+        files = list(tmp_dir.iterdir())
+    except OSError:
+        return 0
+    limit = (time.time() if now is None else now) - max_age_days * 86400
+    keep = set(keep_ids)
+    removed = 0
+    for f in files:
+        name = f.name
+        if not _is_partial_name(name) or name.split(".", 1)[0] in keep:
+            continue
+        try:
+            if f.is_file() and f.stat().st_mtime < limit:
+                f.unlink()
+                removed += 1
+        except OSError:
+            log.debug("Teildatei nicht löschbar: %s", f)
+    if removed:
+        log.info(
+            "%d alte Teildateien (älter als %d Tage) aus %s entfernt",
+            removed,
+            int(max_age_days),
+            tmp_dir,
+        )
+    return removed

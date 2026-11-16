@@ -9,6 +9,8 @@
   run lock, resets the per-run counter and calls `Throttle.finish_run(success)` at the end.
 - `DownloadQueue`: the sequential download queue (own thread, persistent in the DB).
 - `PotWatchdog`: keeps the bgutil HTTP provider running while `po_token_mode == "http"`.
+- `YtdlpGate`: mutual exclusion "yt-dlp update" <-> "search uses yt-dlp" without TOCTOU.
+- `local_preflight()`: local download preconditions (PO-token server ready, target writable).
 - `LogForwarder`: live log records -> `log` events (LogLine).
 
 Nothing here imports pywebview; the window is any object with `evaluate_js(str)`.
@@ -29,9 +31,11 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
-from .core import binaries, locks
+from .core import binaries, locks, preflight
 from .core.discover import format_until
 from .core.logging_setup import live_handler
+from .core.preflight import LocalError
+from .core.redact import redact
 from .core.throttle import ThrottleError, WaitCancelled
 
 # Only the event dispatcher is silent towards the UI (a failing evaluate_js must not produce
@@ -385,6 +389,7 @@ def video_dict(row: dict[str, Any]) -> dict[str, Any]:
         "genre": row.get("genre") or _UNSORTED,
         "genre_manual": bool(row.get("genre_manual")),
         "status": row.get("status") or "new",
+        "is_live": False,  # only search results know it (discover sets True), Review n1
     }
 
 
@@ -412,6 +417,9 @@ class DownloadQueue:
         settings_provider: Callable[[], Any],
         run_lock: Callable[[], Any] = locks.acquire_run_lock,
         on_change: Callable[[], None] | None = None,
+        preflight: Callable[[float, threading.Event], LocalError | None] | None = None,
+        pot_wait: float = 20.0,
+        on_thread_start: Callable[[], Any] | None = None,
         idle_interval: float = 30.0,
         progress_interval: float = 0.5,
         monotonic: Callable[[], float] = time.monotonic,
@@ -423,6 +431,9 @@ class DownloadQueue:
         self._settings = settings_provider
         self._run_lock = run_lock
         self._on_change = on_change
+        self._preflight = preflight
+        self._pot_wait = pot_wait
+        self._on_thread_start = on_thread_start
         self._idle_interval = idle_interval
         self._progress_interval = progress_interval
         self._mono = monotonic
@@ -438,6 +449,10 @@ class DownloadQueue:
         self._restart_required = False
         self._busy = False
         self._last_block: str | None = None
+        # m3: the client (yt-dlp import) failed -> no new attempt until a user action
+        self._client_error: str | None = None
+        # m2: local precondition failed (code, blocked_reason) -> re-checked every tick
+        self._local_block: tuple[str, str] | None = None
         self._thread: threading.Thread | None = None
 
     # ------------------------------------------------------------------ lifecycle
@@ -448,25 +463,48 @@ class DownloadQueue:
             self._thread = threading.Thread(target=self._loop, name="hcloader-queue", daemon=True)
             self._thread.start()
 
-    def stop(self, timeout: float = 10.0) -> None:
-        """Stop the thread; an active download is aborted and stays `queued` (resumable)."""
+    def stop(self, timeout: float = 10.0) -> bool:
+        """Stop the thread; an active download is aborted and stays `queued` (resumable).
+
+        Returns True once the thread has ended. Cancelling is only noticed in yt-dlp's hooks;
+        a running ffmpeg conversion has none, so this may take a while (m5): the caller must
+        not close the DB while it returns False.
+        """
         self._stop.set()
-        self._cancel.set()
+        with self._lock:
+            self._cancel_target = None  # programme end: entry stays queued
+            self._cancel.set()
         self._wake.set()
-        if self._thread is not None and self._thread.is_alive():
-            self._thread.join(timeout)
+        thread = self._thread
+        if thread is not None and thread.is_alive() and thread is not threading.current_thread():
+            thread.join(timeout)
+            return not thread.is_alive()
+        return True
 
     def wake(self) -> None:
-        """Re-evaluate now (enqueue, resume, backoff lifted, settings changed)."""
+        """Re-evaluate now (enqueue, resume, backoff lifted, PO-token server ready …)."""
         with self._lock:
             self._idle.clear()
             self._wake.set()
+
+    def user_action(self) -> None:
+        """An explicit user action (enqueue, resume, settings saved): retry a client that
+        failed to load (m3) and re-evaluate everything now."""
+        if self._client_error is not None:
+            self._client_error = None
+            log.info("Download-Modul wird erneut geladen")
+        self.wake()
 
     def wait_idle(self, timeout: float = 10.0) -> bool:
         """Tests: wait until the thread has nothing runnable left."""
         return self._idle.wait(timeout)
 
     def _loop(self) -> None:
+        if self._on_thread_start is not None:
+            try:  # housekeeping (old partial files) before the first download, same thread
+                self._on_thread_start()
+            except Exception:
+                log.debug("Warteschlange: Start-Aufgabe fehlgeschlagen", exc_info=True)
         while not self._stop.is_set():
             self._wake.clear()
             try:
@@ -501,7 +539,9 @@ class DownloadQueue:
     def blocked(self) -> tuple[str | None, str | None]:
         """(code, German message) why waiting entries do not run, or (None, None).
 
-        code: restart | backoff | day_limit | run_limit | busy (not: paused, see `paused`).
+        code: restart | backoff | day_limit | run_limit | error | pot | target | busy
+        (not: paused, see `paused`). The throttle verdicts come first: while one of them
+        holds, local preconditions are not even checked.
         """
         if self._restart_required:
             return "restart", (
@@ -527,6 +567,11 @@ class DownloadQueue:
                 f"{cfg.max_downloads_per_run}) – Rest bleibt in der Warteschlange; "
                 "«Fortsetzen» startet einen neuen Lauf"
             )
+        if self._client_error:
+            return "error", self._client_error
+        local = self._local_block
+        if local:
+            return local
         if self._busy:
             return "busy", "Ein anderer Download-Lauf ist aktiv (z.B. geplante Prüfung) – wartet"
         return None, None
@@ -587,7 +632,7 @@ class DownloadQueue:
             log.info("%d Mix(es) zur Warteschlange hinzugefügt", len(accepted))
             self._run_limit_hit = False  # explicit user action = new run
         self._changed()
-        self.wake()
+        self.user_action()
         return accepted
 
     def set_paused(self, paused: bool) -> bool:
@@ -605,7 +650,10 @@ class DownloadQueue:
             self._run_limit_hit = False
             log.info("Warteschlange fortgesetzt")
         self._changed()
-        self.wake()
+        if paused:
+            self.wake()
+        else:
+            self.user_action()
         return paused
 
     def move(self, video_id: str, delta: int) -> bool:
@@ -614,22 +662,30 @@ class DownloadQueue:
             self._changed()
         return ok
 
-    def cancel(self, video_id: str) -> bool:
-        """Remove an entry. Active/sleeping: abort it (partial files are kept for later)."""
+    def cancel(self, video_id: str) -> str:
+        """Remove an entry. Active/sleeping: abort it (partial files are kept for later).
+
+        Returns "ok", "late" (the download is already past its point of no return or done,
+        Review n3) or "missing" (not in the queue).
+        """
         vid = str(video_id)
         with self._lock:
             if self._current and self._current["id"] == vid:
+                if self._current.get("committed"):
+                    return "late"
                 self._cancel_target = vid
                 self._cancel.set()
-                return True
+                return "ok"
         row = self._db.get_video(vid)
+        if row and row["status"] == "done":
+            return "late"
         if not row or row["status"] not in ("queued", "failed"):
-            return False
+            return "missing"
         self._db.dequeue(vid, "new")
         log.info("Aus der Warteschlange entfernt: %s", row.get("title") or vid)
         self._emit_video(vid)
         self._changed()
-        return True
+        return "ok"
 
     def retry(self, video_id: str) -> bool:
         """Manual retry of a failed entry (SPEC §5: never automatic)."""
@@ -648,32 +704,80 @@ class DownloadQueue:
             self._note_block(None)
             return
         code, _ = self.blocked()
-        if code and code != "busy":
+        if code in ("restart", "backoff", "day_limit", "run_limit", "error"):
             self._note_block(code)
+            return
+        # local preconditions before a run: no runs entry, no request, nothing counted (m2);
+        # at the first start in HTTP mode this waits for the watchdog's first check
+        if self._check_local(self._pot_wait):
+            self._note_block(self._local_block[0] if self._local_block else None)
+            return
+        client = self._make_client()  # before the run (m3)
+        if client is None:
             return
         try:
             with run_session(self._throttle, acquire=self._run_lock) as run:
                 self._busy = False
-                self._session(run)
+                self._session(run, client)
         except RunBusy:
             self._busy = True
             self._note_block("busy")
             return
+        finally:
+            try:
+                client.close()
+            except Exception:
+                log.debug("YtClient.close", exc_info=True)
         self._note_block(self.blocked()[0] if self._db.next_queued() else None)
+
+    def _check_local(self, wait: float) -> bool:
+        """Run the local preflight; stores/clears `_local_block`. True = blocked."""
+        result: LocalError | None = None
+        if self._preflight is not None:
+            try:
+                result = self._preflight(wait, self._stop)
+            except Exception:
+                log.exception("Download-Vorprüfung fehlgeschlagen")
+        return self._set_local_block(result)
+
+    def _set_local_block(self, exc: LocalError | None) -> bool:
+        prev = self._local_block
+        block = (exc.code, preflight.block_reason(str(exc))) if exc is not None else None
+        self._local_block = block
+        if block and block != prev:
+            log.warning("Warteschlange wartet: %s", exc)
+        elif prev and not block:
+            log.info("Warteschlange: lokale Sperre aufgehoben")
+        return block is not None
+
+    def _make_client(self) -> Any:
+        """The download client (imports yt-dlp). On failure: block "error" until a user
+        action (m3) - no run, no runs entry, no retry loop."""
+        try:
+            return self._factory()
+        except Exception as exc:
+            text = redact(exc)[:300] or exc.__class__.__name__
+            self._client_error = (
+                f"Download-Modul (yt-dlp) konnte nicht geladen werden: {text} – neuer Versuch "
+                "nach «Fortsetzen», neuen Einträgen oder dem Speichern der Einstellungen"
+            )
+            log.error("%s", self._client_error)
+            log.debug("Client-Fehler", exc_info=True)
+            self._note_block("error")
+            return None
 
     def _note_block(self, code: str | None) -> None:
         if code != self._last_block:
             self._last_block = code
             self._changed()
 
-    def _session(self, run: RunSession) -> None:
+    def _session(self, run: RunSession, client: Any) -> None:
         run_id = self._db.start_run("manual")
         downloaded = errors = 0
         note = ""
-        client = None
         log.info("Download-Lauf gestartet")
+        first = True
         try:
-            client = self._factory()
             while not self._stop.is_set() and not self._paused:
                 row = self._db.next_queued()
                 if row is None:
@@ -686,6 +790,10 @@ class DownloadQueue:
                     note = block
                     log.warning("Warteschlange angehalten: %s", note)
                     break
+                if not first and self._check_local(0):  # run_pending just checked the first
+                    note = self.blocked()[1] or ""
+                    break
+                first = False
                 outcome = self._process(client, row)
                 if outcome == "done":
                     downloaded += 1
@@ -693,14 +801,9 @@ class DownloadQueue:
                 elif outcome == "failed":
                     errors += 1
                 elif outcome in ("blocked", "stopped"):
-                    note = self._download_block() or ""
+                    note = self._download_block() or self.blocked()[1] or ""
                     break
         finally:
-            if client is not None:
-                try:
-                    client.close()
-                except Exception:
-                    log.debug("YtClient.close", exc_info=True)
             self._set_current(None)
             self._db.finish_run(run_id, downloaded=downloaded, errors=errors, note=note or None)
             log.info("Download-Lauf beendet: %d geladen, %d Fehler", downloaded, errors)
@@ -756,7 +859,7 @@ class DownloadQueue:
                 self._set_current(None)
             return "slept"  # re-read the next entry: the order may have changed meanwhile
 
-        self._set_current(vid, phase="download")
+        self._set_current(vid, phase="download", committed=False)
         # YtClient sets 'downloading' in the DB itself; tell the UI (cards) right away
         self._bus.emit(
             "video", {"id": vid, "status": "downloading", "genre": row.get("genre") or _UNSORTED}
@@ -764,10 +867,18 @@ class DownloadQueue:
         self._changed()
         try:
             result = client.download(
-                vid, on_progress=self._progress_hook(vid), cancel_event=self._cancel
+                vid,
+                on_progress=self._progress_hook(vid),
+                cancel_event=self._cancel,
+                on_commit=self._commit_hook(vid),
             )
         except ThrottleError as exc:  # status restored by YtClient
             log.warning("Download gesperrt: %s", exc)
+            self._emit_video(vid)  # m6: cards back from "downloading" to "queued"
+            return "blocked"
+        except LocalError as exc:  # m2: nothing requested; status restored by YtClient
+            self._set_local_block(exc)
+            self._emit_video(vid)
             return "blocked"
         except Exception as exc:
             log.exception("Download von %s: unerwarteter Fehler", vid)
@@ -809,6 +920,20 @@ class DownloadQueue:
         self._db.dequeue(vid, "new")
         log.warning("Abgebrochen: %s", title)
         self._emit_video(vid)
+
+    def _commit_hook(self, vid: str) -> Callable[[], bool]:
+        """Point of no return of a download (n3): atomically either refuse (a cancel or the
+        programme end came first) or mark the entry as committed (later cancels: "late")."""
+
+        def commit() -> bool:
+            with self._lock:
+                if self._cancel.is_set():
+                    return False
+                if self._current and self._current["id"] == vid:
+                    self._current["committed"] = True
+                return True
+
+        return commit
 
     def _progress_hook(self, vid: str) -> Callable[[dict[str, Any]], None]:
         last: dict[str, Any] = {"t": None, "phase": None}
@@ -957,6 +1082,25 @@ class PotWatchdog:
         self._stop = threading.Event()
         self._lock = threading.Lock()
         self._thread: threading.Thread | None = None
+        # set after each completed check(), cleared by apply(): "a verdict is available" (m2)
+        self._checked = threading.Event()
+
+    @property
+    def gave_up(self) -> bool:
+        """True after `max_failures` failed starts (until the next `apply()`)."""
+        return self._failures >= self._max_failures
+
+    def wait_ready(self, timeout: float, stop: threading.Event | None = None) -> bool:
+        """Wait (max. `timeout` s) until a check has completed since the start / the last
+        `apply()`; returns `running()`. The queue calls this before its first run in HTTP
+        mode, so an entry waiting at app start does not run into a server still starting."""
+        deadline = time.monotonic() + max(0.0, timeout)
+        while not self._checked.is_set():
+            left = deadline - time.monotonic()
+            if left <= 0 or (stop is not None and stop.is_set()):
+                break
+            self._checked.wait(min(0.2, left))
+        return self.running()
 
     @property
     def server(self) -> Any:
@@ -976,6 +1120,7 @@ class PotWatchdog:
     def apply(self) -> None:
         """Settings changed: reset the failure counter and re-check now."""
         self._failures = 0
+        self._checked.clear()
         self._wake.set()
 
     def _loop(self) -> None:
@@ -1013,6 +1158,7 @@ class PotWatchdog:
                             )
                     self._server = server
                     changed = True
+        self._checked.set()
         if changed and self._on_change:
             self._on_change()
 
@@ -1025,6 +1171,72 @@ class PotWatchdog:
             if self._server is not None:
                 self._server.stop()
                 self._server = None
+
+
+def local_preflight(
+    settings: Any, watchdog: Any, *, wait: float = 0.0, stop: threading.Event | None = None
+) -> LocalError | None:
+    """Local download preconditions for the GUI queue (Review Phase 3 m2), no request:
+
+    - HTTP PO-token mode: the watchdog's server runs (waits up to `wait` s for its first
+      check, e.g. right after app start); otherwise LocalError('pot').
+    - `<target>/.tmp` is writable; otherwise LocalError('target').
+    """
+    if settings.network.po_token_mode == "http" and watchdog is not None:
+        running = watchdog.running()
+        if not running and wait > 0 and hasattr(watchdog, "wait_ready"):
+            running = watchdog.wait_ready(wait, stop)
+        if not running:
+            gave_up = bool(getattr(watchdog, "gave_up", False))
+            return LocalError("pot", preflight.POT_GAVE_UP if gave_up else preflight.POT_NOT_READY)
+    return preflight.check_target(settings.target_dir_path())
+
+
+class GateBusy(Exception):
+    """`YtdlpGate` refused: `what` is "update" or "search"."""
+
+    def __init__(self, what: str) -> None:
+        super().__init__(what)
+        self.what = what
+
+
+class YtdlpGate:
+    """yt-dlp update vs. searches (Review Phase 3 n2): both sides check and register under
+    one lock, so a search that starts while an update begins (or vice versa) is refused
+    instead of slipping through a check-then-act gap. Searches may run concurrently."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._searches = 0
+        self._updating = False
+
+    @property
+    def updating(self) -> bool:
+        return self._updating
+
+    @contextmanager
+    def search(self) -> Iterator[None]:
+        with self._lock:
+            if self._updating:
+                raise GateBusy("update")
+            self._searches += 1
+        try:
+            yield
+        finally:
+            with self._lock:
+                self._searches -= 1
+
+    @contextmanager
+    def update(self) -> Iterator[None]:
+        with self._lock:
+            if self._searches:
+                raise GateBusy("search")
+            self._updating = True
+        try:
+            yield
+        finally:
+            with self._lock:
+                self._updating = False
 
 
 # --------------------------------------------------------------------------- ticker

@@ -127,3 +127,37 @@ def test_event_scripts_reach_bridge_handlers(browser):
     assert page.evaluate("window.__got") == payloads
     assert not errors
     page.close()
+
+
+def _schedule_tab(page):
+    page.click('.nav-item[data-view="settings"]')
+    page.wait_for_selector('.stab[data-tab="schedule"]')
+    page.click('.stab[data-tab="schedule"]')
+    page.wait_for_selector("[data-custom=task] [data-task]", timeout=10000)
+    page.wait_for_function("HC.bridge.pending === 0")
+
+
+SWITCH = "HC.settings.values.schedule.task_scheduler_enabled"
+SAVE_DISABLED = "document.getElementById('btn-save').disabled"
+
+
+def test_settings_adopt_task_state_from_get_task_status(browser):
+    """Review Phase 3 m1: a task deleted outside the app (registered false) switches the form
+    off, so the next save does not silently re-create it; `null` (unknown) changes nothing."""
+    page, errors = _page(browser, "?mock=1&nosim")
+    page.wait_for_function("document.body.classList.contains('ready')", timeout=10000)
+    page.evaluate(f"{SWITCH} = true; HC.views.settings.reset(); 0")  # task gone in the mock
+    _schedule_tab(page)
+    page.wait_for_function(f"{SWITCH} === false", timeout=10000)
+    assert page.evaluate(SAVE_DISABLED) is True  # form = saved state, nothing dirty
+    label = "document.querySelector('.field[data-k=\"schedule.task_scheduler_enabled\"] [data-tl]')"
+    assert page.evaluate(f"{label}.textContent") == page.evaluate("HC.t('common.off')")
+
+    # unknown (schtasks failed): keep the value
+    page.click('.nav-item[data-view="discover"]')
+    page.evaluate(f"HC.mock.demo.taskUnknown(); {SWITCH} = true; HC.views.settings.reset(); 0")
+    _schedule_tab(page)
+    page.wait_for_selector("[data-task=refresh]", timeout=10000)
+    assert page.evaluate(SWITCH) is True and page.evaluate(SAVE_DISABLED) is True
+    assert not errors
+    page.close()

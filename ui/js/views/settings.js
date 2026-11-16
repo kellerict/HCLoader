@@ -388,6 +388,21 @@
 
     /* Windows-Aufgabenplanung */
     task(host) {
+      /* Review Phase 3 m1: get_task_status gleicht bei sicherem Ergebnis (true/false) die Einstellung
+         im Backend an (z.B. Aufgabe ausserhalb gelöscht). Das Formular übernimmt den Wert, sonst
+         würde das nächste Speichern mit dem alten «true» die Aufgabe still neu anlegen.
+         registered === null (unbekannt): nichts ändern. Ungespeicherte Änderung am Schalter bleibt. */
+      const adoptTask = (s) => {
+        if (!s || typeof s.registered !== 'boolean') return;
+        const k = 'schedule.task_scheduler_enabled';
+        const was = get(saved, k);
+        if (was === s.registered) return;
+        if (eq(get(work, k), was)) set(work, k, s.registered);
+        set(saved, k, s.registered);
+        set(HC.settings.values, k, s.registered);
+        if (host.isConnected) renderPane(false); // Schalter im Formular neu zeichnen
+        paintChrome();
+      };
       const paint = () => {
         const s = cache.task;
         if (!s) { host.innerHTML = box('off', t('set.task.loading'), '&nbsp;', '', '', 'off'); return; }
@@ -412,6 +427,7 @@
           const st = await HC.bridge.safe('get_task_status');
           if (st) cache.task = st;
           paint();
+          adoptTask(st);
           return;
         }
         const create = b.dataset.task === 'create';
@@ -429,7 +445,7 @@
         }
       });
       paint();
-      HC.bridge.safe('get_task_status').then((s) => { if (s) { cache.task = s; paint(); } });
+      HC.bridge.safe('get_task_status').then((s) => { if (s) { cache.task = s; paint(); adoptTask(s); } });
     },
 
     /* Vorschau Kick-Puls */

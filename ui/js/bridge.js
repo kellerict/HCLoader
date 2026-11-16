@@ -68,14 +68,16 @@
    Downloads
      get_queue()                        -> {paused, items:[QueueItem], blocked_code, blocked_reason}
                                            blocked_code: "restart" | "backoff" | "day_limit" | "run_limit" |
-                                           "busy" | null – warum wartende Einträge gerade nicht laufen;
+                                           "busy" | "pot" | "target" | "error" | null – warum wartende
+                                           Einträge gerade nicht laufen (pot/target/error = lokales
+                                           Problem: PO-Token-Server, Zielordner, Download-Modul);
                                            blocked_reason: deutsche Meldung dazu (oder null). Fehlt
                                            blocked_code, leitet die UI den Grund aus Status.backoff /
                                            Status.counters und den Throttle-Limits ab.
                                            Nach "run_limit" startet set_queue_paused(false) einen neuen Lauf.
      set_queue_paused(paused)           -> {ok, paused}
      queue_move(id, delta)              -> {ok}       delta: -1 nach oben, +1 nach unten
-     queue_cancel(id)                   -> {ok}
+     queue_cancel(id)                   -> {ok} | {ok:false, error:"Download bereits fertig"} (zu spät)
      queue_retry(id)                    -> {ok}
 
    Bibliothek
@@ -93,7 +95,8 @@
      Video       {id, title, channel_id, channel_name, duration (s), upload_date "YYYY-MM-DD"|"YYYYMMDD"|null,
                   date_approx (bool, optional: Datum aus der flachen Suche, nur ungefähr),
                   filter_reason (nur Suchtreffer: Grund laut gespeicherten Filtern oder ""; die UI filtert
-                  selbst live und wertet nur "Livestream" aus), is_live (optional),
+                  selbst live und wertet den Text nicht aus), is_live (bool: Livestream, nur bei
+                  Suchtreffern true, sonst false),
                   view_count, thumbnail (URL|null – geladen wird nur https://*.ytimg.com), genre, genre_manual,
                   status: "new"|"inbox"|"queued"|"downloading"|"done"|"ignored"|"failed"}
      Source      {id, type: "channel"|"playlist"|"search", name, url_or_query, default_genre|null,

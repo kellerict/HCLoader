@@ -6,7 +6,8 @@
    Throttle sichtbar machen:
    - Phase "sleep": Pause (30–120 s) vor dem nächsten Download mit Countdown. Die UI zählt
      selbst herunter (ein Event zu Beginn genügt), weitere Events korrigieren die Restzeit.
-   - Blockiert: Backoff, Tages- oder Lauf-Limit, Neustart nötig, anderer Lauf aktiv
+   - Blockiert: Backoff, Tages- oder Lauf-Limit, Neustart nötig, anderer Lauf aktiv,
+     lokale Probleme (PO-Token-Server «pot», Zielordner «target», Download-Modul «error»)
      -> Hinweis «Rest bleibt in der Warteschlange».
      Quelle: queue.blocked_code (+ blocked_reason als Text), sonst Status + Limits.
    ===================================================================== */
@@ -57,7 +58,9 @@
   }
 
   /* ---------- Warum läuft nichts? ---------- */
-  const CODES = ['restart', 'backoff', 'day_limit', 'run_limit', 'busy'];
+  const CODES = ['restart', 'backoff', 'day_limit', 'run_limit', 'busy', 'pot', 'target', 'error'];
+  /* Lokale Sperren: Text-Schlüssel und Einstellungs-Tab, in dem man sie behebt. */
+  const LOCAL = { pot: 'settings/network', target: 'settings/storage', error: 'settings/maintenance' };
   const waitingCount = () => queue.items.filter((q) => q.state === 'waiting').length;
   function blockedReason() {
     const s = HC.status, th = HC.settings.values.throttle;
@@ -73,7 +76,7 @@
 
   const canUp = (items, i) => i > 0 && items[i].state === 'waiting' && items[i - 1].state === 'waiting';
   const canDown = (items, i) => i < items.length - 1 && items[i].state === 'waiting' && items[i + 1].state === 'waiting';
-  const WHY = { restart: 'why_restart', backoff: 'why_backoff', day_limit: 'why_day', run_limit: 'why_run', busy: 'why_busy', paused: 'why_paused' };
+  const WHY = { restart: 'why_restart', backoff: 'why_backoff', day_limit: 'why_day', run_limit: 'why_run', busy: 'why_busy', paused: 'why_paused', pot: 'why_pot', target: 'why_target', error: 'why_error' };
   let why = null; // Grund, der bei wartenden Einträgen steht
   const sig = (q, i, items) => `${q.state}|${q.phase}|${i}|${canUp(items, i)}|${canDown(items, i)}|${why}`;
 
@@ -179,6 +182,11 @@
         <button class="btn sm" data-newrun ${queue.paused ? 'disabled' : ''}>${I.play}${t('downloads.new_run')}</button></div>`);
     } else if (reason === 'restart') {
       html = ui.notice('error', t('downloads.need_restart'));
+    } else if (LOCAL[reason]) {
+      /* Lokales Problem (kein YouTube-Request): Einträge bleiben wartend; Details vom Backend. */
+      const fix = `<button class="linkbtn" data-goto="${LOCAL[reason]}">${t('downloads.local_link_' + reason)}</button>`;
+      const detail = queue.blocked_reason ? `<br>${esc(queue.blocked_reason)}` : '';
+      html = ui.notice(reason === 'error' ? 'error' : 'warn', `${t('downloads.local_' + reason, { rest: `<b>${rest}</b>` })} ${fix}${detail}`);
     } else if (reason) {
       /* busy, Backoff ohne Status-Details oder künftige Gründe: Text des Backends, sonst eigener. */
       html = ui.notice(reason === 'backoff' ? 'error' : 'info', queue.blocked_reason ? esc(queue.blocked_reason) : t('downloads.busy'));

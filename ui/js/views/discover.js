@@ -93,7 +93,7 @@
   const yearInQuery = (o) => (o.year && appendYear() ? o.year : null);
 
   function passes(v) {
-    if (v.is_live || v.filter_reason === 'Livestream') return false; // Livestreams nie (SPEC §4); nur das Backend erkennt sie
+    if (v.is_live) return false; // Livestreams nie (SPEC §4); nur das Backend erkennt sie (Feld is_live)
     if (v.duration == null || v.duration < f.min * 60) return false;
     if (f.max && v.duration > f.max * 60) return false;
     if (!util.inUploadPeriod(v, f)) return false;

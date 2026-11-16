@@ -356,6 +356,7 @@
     po: { state: 'active', detail: 'Token erzeugt vor 4 min', created: Date.now() - 4 * 60000 },
     backoff: { active: false, until: null, level: 0 },
     task: { registered: false },
+    local: null, // [code, Meldung] – lokale Sperre «pot» / «target» / «error» (nur Demo)
     versions: { ytdlp: '2026.11.02', plugin: '1.3.0' },
     lastBackup: isoAt(5, 19, 2),
     sleepLeft: 0, // Sekunden bis zum nächsten Download (Throttle-Pause)
@@ -397,6 +398,7 @@
     if (state.backoff.active) return ['backoff', 'Backoff aktiv – Rest bleibt in der Warteschlange'];
     if (c.downloads_day >= th.max_downloads_per_day) return ['day_limit', `Tageslimit erreicht (${c.downloads_day}/${th.max_downloads_per_day}) – Rest bleibt in der Warteschlange`];
     if (c.downloads_run >= th.max_downloads_per_run) return ['run_limit', `Limit pro Lauf erreicht (${th.max_downloads_per_run}/${th.max_downloads_per_run}) – Rest bleibt in der Warteschlange; «Fortsetzen» startet einen neuen Lauf`];
+    if (state.local) return state.local.slice();
     return [null, null];
   }
   const queueView = () => {
@@ -767,6 +769,24 @@
         pushStatus();
       },
       taskUnknown(on) { state.task.unknown = on !== false; },
+      /** Lokale Sperre der Warteschlange (code "pot" | "target" | "error", null = aufheben). */
+      local(code, msg) {
+        const texts = {
+          pot: 'PO-Token-Server nicht bereit – Downloads warten, bis er läuft – Rest bleibt in der Warteschlange',
+          target: 'Zielordner nicht erreichbar oder nicht beschreibbar (M:\\Musik\\HCLoader): Das Gerät ist nicht bereit – Rest bleibt in der Warteschlange',
+          error: 'Download-Modul (yt-dlp) konnte nicht geladen werden: No module named yt_dlp.extractor – neuer Versuch nach «Fortsetzen», neuen Einträgen oder dem Speichern der Einstellungen',
+        };
+        state.local = code ? [code, msg || texts[code] || ''] : null;
+        if (code) {
+          state.queue.forEach((q) => { if (q.state === 'active') Object.assign(q, { state: 'waiting', phase: 'waiting', pct: 0, speed: 0, eta: 0 }); });
+          VIDEOS.filter((v) => v.status === 'downloading').forEach((v) => setStatus(v, 'queued'));
+          unsleep(null);
+          state.sleepLeft = 0;
+          state.counters.downloads_run = 0;
+        }
+        emit('queue', {});
+        pushStatus();
+      },
       poError() {
         state.po = { state: 'error', detail: 'Deno-Script lieferte keinen Token (Timeout nach 15 s)', created: 0 };
         pushStatus();

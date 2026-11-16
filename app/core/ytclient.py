@@ -21,12 +21,19 @@ from typing import Any
 import yt_dlp
 from yt_dlp.utils import DownloadCancelled
 
-from . import binaries, config, paths, tagging
-from .config import Settings
+from . import binaries, config, paths, preflight, tagging
+from .config import UNSORTED, Settings
 from .db import Database
 from .filters import normalize
 from .genre import detect_genre, genre_search_terms
-from .throttle import Throttle, ThrottleError, WaitCancelled, is_rate_limit_error
+from .redact import redact
+from .throttle import (
+    MetadataBusy,
+    Throttle,
+    ThrottleError,
+    WaitCancelled,
+    is_rate_limit_error,
+)
 
 log = logging.getLogger(__name__)
 
@@ -48,10 +55,13 @@ _NETWORK_RE = re.compile(
     re.I,
 )
 _HTTP_403_RE = re.compile(r"http error 403", re.I)
+# max. wait of a search/list/resolve for the metadata lock held by a download's extraction (m4)
+METADATA_WAIT_S = 60.0
 
 __all__ = [
     "DownloadCancelled",
     "DownloadResult",
+    "LocalError",
     "YtClient",
     "YtClientError",
     "build_ydl_opts",
@@ -67,6 +77,16 @@ class YtClientError(RuntimeError):
     def __init__(self, message: str, *, rate_limited: bool = False) -> None:
         super().__init__(message)
         self.rate_limited = rate_limited
+
+
+class LocalError(YtClientError, preflight.LocalError):
+    """A local precondition failed before any YouTube request (Review Phase 3 m2).
+    code 'pot' | 'target'; the queue blocks instead of failing the entry."""
+
+    def __init__(self, code: str, message: str) -> None:
+        RuntimeError.__init__(self, message)
+        self.code = code
+        self.rate_limited = False
 
 
 @dataclass
@@ -393,7 +413,9 @@ class YtClient:
             return
         if self._external_pot:
             if not self._pot_server.running():  # type: ignore[union-attr]
-                raise YtClientError("PO-Token-Server läuft nicht (wird vom Watchdog neu gestartet)")
+                raise LocalError(
+                    "pot", "PO-Token-Server läuft nicht (wird vom Watchdog neu gestartet)"
+                )
             return
         with self._lock:
             if self._pot_server is None or self._pot_server.port != net.po_token_port:
@@ -401,8 +423,8 @@ class YtClient:
                     self._pot_server.stop()
                 self._pot_server = binaries.PotServer(net.po_token_port)
             if not self._pot_server.start():
-                raise YtClientError(
-                    "PO-Token-Server nicht bereit (Deno/Provider fehlt oder keine Antwort)"
+                raise LocalError(
+                    "pot", "PO-Token-Server nicht bereit (Deno/Provider fehlt oder keine Antwort)"
                 )
 
     def _extract(
@@ -415,21 +437,49 @@ class YtClient:
         settings: Settings,
         cancel_event: threading.Event | None = None,
         retry: bool = False,
+        on_request: Callable[[], None] | None = None,
     ) -> dict[str, Any]:
+        """One yt-dlp call behind the throttle and the metadata lock (m4).
+
+        Metadata calls (search/list/resolve) hold `Throttle.metadata_lock` for the whole call
+        and give up after METADATA_WAIT_S (MetadataBusy). A download holds it only while
+        yt-dlp extracts (`extract_info(process=False)`: webpage, player, API, PO token) and
+        releases it before `process_ie_result(download=True)` starts the media transfer, so
+        a search may run while a mix is being loaded, but never during its extraction.
+        The download takes the lock *after* `before_request`, so the pause between downloads
+        never blocks searches. `on_request` is called right before the first YouTube request
+        (m2: only then did the attempt reach the network).
+        """
         self.throttle.check_backoff()
         self._prepare(settings)
-        self.throttle.before_request(
-            kind, cancel_event=cancel_event, count_attempt=download and not retry, retry=retry
-        )
         logger = opts.get("logger")
         try:
-            with yt_dlp.YoutubeDL(opts) as ydl:
-                info = ydl.extract_info(url, download=download)
-                if info is None:
-                    raise YtClientError("Keine Daten von yt-dlp erhalten")
-                if download and info.get("_type") == "playlist":
-                    raise YtClientError("Keine einzelne Video-URL (Playlist erkannt)")
-                return ydl.sanitize_info(info)  # type: ignore[no-any-return]
+            if download:
+                self.throttle.before_request(
+                    kind, cancel_event=cancel_event, count_attempt=not retry, retry=retry
+                )
+                with yt_dlp.YoutubeDL(opts) as ydl:
+                    with self.throttle.metadata_lock(cancel_event=cancel_event):
+                        if on_request:
+                            on_request()
+                        ie_result = ydl.extract_info(url, download=False, process=False)
+                    if ie_result is None:
+                        raise YtClientError("Keine Daten von yt-dlp erhalten")
+                    if ie_result.get("_type") == "playlist":
+                        raise YtClientError("Keine einzelne Video-URL (Playlist erkannt)")
+                    info = ydl.process_ie_result(ie_result, download=True)
+                    if info is None:
+                        raise YtClientError("Keine Daten von yt-dlp erhalten")
+                    return ydl.sanitize_info(info)  # type: ignore[no-any-return]
+            with self.throttle.metadata_lock(timeout=METADATA_WAIT_S, cancel_event=cancel_event):
+                self.throttle.before_request(kind, cancel_event=cancel_event)
+                if on_request:
+                    on_request()
+                with yt_dlp.YoutubeDL(opts) as ydl:
+                    info = ydl.extract_info(url, download=False)
+                    if info is None:
+                        raise YtClientError("Keine Daten von yt-dlp erhalten")
+                    return ydl.sanitize_info(info)  # type: ignore[no-any-return]
         finally:
             hit = getattr(logger, "rate_limit_hit", None)
             if hit:
@@ -438,7 +488,7 @@ class YtClient:
     def _metadata_call(self, kind: str, url: str, opts: dict[str, Any], settings: Settings):
         try:
             return self._extract(kind, url, opts, settings=settings)
-        except DownloadCancelled:
+        except (DownloadCancelled, MetadataBusy):
             raise
         except Exception as exc:
             if isinstance(exc, YtClientError):
@@ -519,8 +569,15 @@ class YtClient:
         *,
         on_progress: Callable[[dict[str, Any]], None] | None = None,
         cancel_event: threading.Event | None = None,
+        on_commit: Callable[[], bool] | None = None,
     ) -> DownloadResult:
         """Full pipeline: skip check -> throttle -> yt-dlp into .tmp -> tags -> move -> DB.
+
+        `on_commit` is asked once right before the file is moved into the library (point of
+        no return); returning False aborts like a cancel. The queue uses it to decide
+        atomically whether a cancel request still takes effect (Review Phase 3 n3).
+        Local preconditions (PO-token server, writable target) raise LocalError before any
+        request; the DB status is left unchanged then.
 
         Only single videos: a video id (or a URL containing one) is required. Playlist, channel
         and search URLs are refused before the throttle, and the URL passed to yt-dlp is always
@@ -543,7 +600,7 @@ class YtClient:
 
         target_dir = settings.target_dir_path()
         tmp = paths.tmp_dir(target_dir)
-        tmp.mkdir(parents=True, exist_ok=True)
+        self.check_local(settings, target_dir)
         config.archive_path().parent.mkdir(parents=True, exist_ok=True)
         previous = self.db.get_video(vid)
         prev_status = previous["status"] if previous else "new"
@@ -580,10 +637,10 @@ class YtClient:
             info = self._download_with_retry(url, opts, settings, check_cancel, cancel_event)
             check_cancel()
             emit({**normalize_progress({}, PHASE_TAG), "percent": None})
-            return self._finish(info, vid, settings, target_dir, tmp, check_cancel)
+            return self._finish(info, vid, settings, target_dir, tmp, check_cancel, on_commit)
         except (DownloadCancelled, WaitCancelled):
             return self._cancelled(vid, tmp, prev_status)
-        except ThrottleError:
+        except (ThrottleError, LocalError):
             self._restore_status(vid, prev_status, prev_error)
             raise
         except Exception as exc:
@@ -597,6 +654,16 @@ class YtClient:
                 and bool(_NETWORK_RE.search(str(exc)))
             )
             return self._fail(vid, tmp, msg, rate_limited=limited, keep_partial=keep)
+
+    def check_local(self, settings: Settings | None = None, target_dir: Path | None = None) -> None:
+        """Local preconditions of a download (m2): PO-token server ready, target writable.
+        Raises LocalError('pot' | 'target'); makes no request."""
+        settings = settings or self.settings
+        target_dir = target_dir or settings.target_dir_path()
+        self._prepare(settings)
+        err = preflight.check_target(target_dir)
+        if err is not None:
+            raise LocalError(err.code, str(err))
 
     def _restore_status(self, vid: str, prev_status: str, prev_error: str | None) -> None:
         status = "queued" if prev_status == "downloading" else prev_status
@@ -623,11 +690,17 @@ class YtClient:
         cancel_event: threading.Event | None = None,
     ) -> dict[str, Any]:
         attempt = 0
-        reached_network = False
+        # set by _extract right before the first request: local errors (PO-token server,
+        # throttle refusals, a cancelled wait) never count as a download end (m2)
+        reached = {"network": False}
+
+        def mark_request() -> None:
+            reached["network"] = True
+
         try:
             while True:
                 try:
-                    info = self._extract(
+                    return self._extract(
                         "download",
                         url,
                         opts,
@@ -635,16 +708,13 @@ class YtClient:
                         settings=settings,
                         cancel_event=cancel_event,
                         retry=attempt > 0,
+                        on_request=mark_request,
                     )
-                    reached_network = True
-                    return info
-                except (ThrottleError, WaitCancelled):
-                    raise
-                except DownloadCancelled:
-                    reached_network = True
+                except (ThrottleError, WaitCancelled, DownloadCancelled, LocalError):
                     raise
                 except Exception as exc:
-                    reached_network = True
+                    if not reached["network"]:
+                        raise
                     msg = str(exc)
                     if is_rate_limit_error(msg) or _HTTP_403_RE.search(msg):
                         raise
@@ -657,7 +727,7 @@ class YtClient:
                         continue
                     raise
         finally:
-            if reached_network:
+            if reached["network"]:
                 self.throttle.mark_download_end()
 
     def _finish(
@@ -668,6 +738,7 @@ class YtClient:
         target_dir: Path,
         tmp: Path,
         check_cancel: Callable[[], None],
+        on_commit: Callable[[], bool] | None = None,
     ) -> DownloadResult:
         dl = settings.download
         st = settings.storage
@@ -689,6 +760,12 @@ class YtClient:
             source_default=source_default,
             description=description if settings.filters.match_description else None,
         )
+        if genre == UNSORTED and manual is None:
+            # Review Phase 3 M1: the genre chip of the search was stored as a non-manual hint
+            # (discover.store_results). Priority: manual > source > keyword > chip > Unsortiert.
+            stored = row.get("genre")
+            if stored and stored != UNSORTED and stored in {g.name for g in settings.genres.items}:
+                genre = stored
         title = paths.clean_title(meta["title"], st.title_cleanup_patterns)
         channel = meta["channel_name"]
         artist = channel
@@ -729,6 +806,8 @@ class YtClient:
         )
 
         check_cancel()
+        if on_commit is not None and not on_commit():
+            raise DownloadCancelled  # cancelled at the last moment: nothing moved yet
         target = paths.build_target_path(
             target_dir,
             st.path_template,
@@ -811,7 +890,7 @@ class YtClient:
 
 
 def _clean_error(exc: BaseException) -> str:
-    text = re.sub(r"\x1b\[[0-9;]*m", "", str(exc)).strip()
+    text = redact(re.sub(r"\x1b\[[0-9;]*m", "", str(exc))).strip()
     return re.sub(r"^ERROR:\s*", "", text)[:500] or exc.__class__.__name__
 
 

@@ -10,6 +10,7 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 from .config import logs_dir
+from .redact import RedactingFormatter, redact
 
 LOG_FORMAT = "%(asctime)s %(levelname)-7s %(name)s: %(message)s"
 _FILE_MARK = "_hcloader_file"
@@ -41,7 +42,7 @@ class CallbackHandler(logging.Handler):
                 "time": self.formatter.formatTime(record, "%H:%M:%S") if self.formatter else "",
                 "level": record.levelname,
                 "logger": record.name,
-                "message": record.getMessage(),
+                "message": redact(record.getMessage()),
                 # optional UI level, e.g. log.info(..., extra={"ui_level": "ok"})
                 "ui_level": getattr(record, "ui_level", None),
             }
@@ -80,7 +81,7 @@ def setup_logging(
         if getattr(h, _FILE_MARK, False):
             root.removeHandler(h)
             h.close()
-    fmt = logging.Formatter(LOG_FORMAT)
+    fmt = RedactingFormatter(LOG_FORMAT)  # proxy credentials never reach a log (n4)
     fh = RotatingFileHandler(log_file, maxBytes=1_000_000, backupCount=5, encoding="utf-8")
     fh.setFormatter(fmt)
     setattr(fh, _FILE_MARK, True)

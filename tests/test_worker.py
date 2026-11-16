@@ -451,3 +451,75 @@ def test_watchdog_pot_server_proxy():
     assert not proxy.running()
     proxy.stop()  # never stops the watchdog's server
     assert wd.server.port == 4416
+
+
+# --------------------------------------------------------------------------- Review Phase 3
+
+
+def test_watchdog_wait_ready_waits_for_first_check():
+    FakeServer.instances = []
+    wd = PotWatchdog(lambda: _settings("http"), server_factory=FakeServer, interval=60)
+    assert wd.wait_ready(0.05) is False  # nothing checked yet: times out
+    threading.Timer(0.1, wd.check).start()
+    t0 = time.monotonic()
+    assert wd.wait_ready(5) is True and time.monotonic() - t0 < 4
+    wd.apply()  # new settings -> wait for the next verdict again
+    FakeServer.instances[0].alive = False
+    stop = threading.Event()
+    stop.set()
+    assert wd.wait_ready(5, stop) is False  # aborted by the stop event
+    wd.stop()
+
+
+def test_watchdog_wait_ready_returns_at_once_after_failed_check():
+    wd = PotWatchdog(
+        lambda: _settings("http"), server_factory=lambda p: FakeServer(p, ok=False), max_failures=1
+    )
+    wd.check()
+    t0 = time.monotonic()
+    assert wd.wait_ready(5) is False and time.monotonic() - t0 < 1
+    assert wd.gave_up
+    wd.stop()
+
+
+def test_local_preflight(tmp_path):
+    def cfg(mode, target):
+        return SimpleNamespace(
+            network=SimpleNamespace(po_token_mode=mode), target_dir_path=lambda: target
+        )
+
+    class WD:
+        alive, gave_up = False, False
+
+        def running(self):
+            return self.alive
+
+    wd = WD()
+    ok_target = tmp_path / "music"
+    assert worker.local_preflight(cfg("script", ok_target), wd) is None
+    assert (ok_target / ".tmp").is_dir() and not list((ok_target / ".tmp").iterdir())
+    err = worker.local_preflight(cfg("http", ok_target), wd)
+    assert err.code == "pot" and str(err).startswith("PO-Token-Server nicht bereit")
+    wd.gave_up = True
+    assert "mehrere Versuche" in str(worker.local_preflight(cfg("http", ok_target), wd))
+    wd.alive = True
+    assert worker.local_preflight(cfg("http", ok_target), wd) is None
+    blocker = tmp_path / "file"
+    blocker.write_text("x")
+    err = worker.local_preflight(cfg("off", blocker / "music"), wd)
+    assert err.code == "target" and "Zielordner nicht erreichbar" in str(err)
+
+
+def test_ytdlp_gate():
+    gate = worker.YtdlpGate()
+    with gate.search(), gate.search():  # searches may overlap
+        with pytest.raises(worker.GateBusy) as ei, gate.update():
+            pass
+        assert ei.value.what == "search"
+    with gate.update():
+        assert gate.updating
+        with pytest.raises(worker.GateBusy), gate.search():
+            pass
+    assert not gate.updating
+    with gate.search():
+        pass

@@ -151,6 +151,8 @@ Kurze Notizen zu Architekturentscheiden (Datum, Entscheid, Grund).
   zwischen allen Requests); die lange Pause zwischen Downloads blockiert Suchen nicht (eigener Lock).
   Während eines yt-dlp-Updates wird die Suche sofort abgelehnt, umgekehrt verweigert das Update,
   solange eine Suche läuft.
+  Präzisiert (Review Phase 3 m4/n2): nicht während der Metadaten-Extraktion eines Downloads
+  (Metadaten-Lock) und gegenseitiger Ausschluss mit dem Update über `YtdlpGate`, siehe unten.
 - Das Backend liefert **alle** Treffer mit DB-Status und `filter_reason` (leer = besteht die
   gespeicherten Filter, sonst deutscher Grund aus `filters.passes`, Blacklist und Status
   eingeschlossen; `opts.year` ersetzt dabei den gespeicherten Zeitraum) plus `hidden_count`.
@@ -198,3 +200,87 @@ Kurze Notizen zu Architekturentscheiden (Datum, Entscheid, Grund).
   Inline-Skripte, Inline-Handler und fremde Skriptquellen bleiben blockiert.
 - Im Host-Modus (`?host=pywebview`) gibt es nach 30 s ohne API keinen Mock mehr, sondern einen sichtbaren
   Fehlerzustand mit „Neu laden“ (Review Phase 2 m9).
+
+## 2026-11-16 – Genre-Hint der Suche bleibt bis zur Datei (Review Phase 3 M1)
+
+- **Entscheid:** Kein eigenes DB-Feld für den Chip-Hint. `store_results` speichert ihn wie bisher
+  als nicht manuelles `genre`; `YtClient._finish` nimmt dieses gespeicherte Genre als Rückfall, wenn
+  die Erkennung (manuell > Quellen-Default > Keyword) «Unsortiert» ergibt. Damit gilt beim Download
+  dieselbe Reihenfolge wie in der Suche: manuell > Quelle > Keyword > Chip > Unsortiert. Ein
+  gespeichertes Genre, das es in den Einstellungen nicht mehr gibt, fällt auf «Unsortiert».
+- Suchen ändern das Genre von Zeilen mit Status `queued`/`downloading`/`done` nicht mehr (Datei,
+  TCON, Zielordner und Bibliothek bleiben gleich). Die Suche berücksichtigt den Quellen-Default
+  einer Zeile mit `source_id` (Phase 4), damit Suche und Download dasselbe anzeigen.
+- **Grund:** Kleinste Änderung ohne Migration; der Zielordner in der Warteschlange
+  (`QueueItem.target`) zeigt jetzt genau den Ordner, in dem die Datei landet.
+
+## 2026-11-16 – Lokale Fehler sperren die Warteschlange (Review Phase 3 m2, m3)
+
+- **Entscheid:** PO-Token-Server nicht bereit (`pot`), Zielordner nicht erreichbar/beschreibbar
+  (`target`) und ein nicht ladbarer Download-Client (`error`) sind **Sperren**, keine
+  Download-Fehler. Die Einträge bleiben `queued`, es entsteht kein `runs`-Eintrag, nichts wird
+  gezählt und es gibt keine Pause zwischen Downloads (die gilt nur nach einem echten Request,
+  `reached_network` wird erst unmittelbar vor dem ersten Request gesetzt).
+- Ablauf: `DownloadQueue.run_pending` prüft zuerst die Throttle-Sperren, dann `error`, dann die
+  lokale Vorprüfung (`worker.local_preflight`: Watchdog läuft, Probe-Datei in `<Ziel>/.tmp`),
+  erzeugt dann den Client und startet erst danach den Lauf. Im Lauf wird vor jedem weiteren
+  Eintrag erneut geprüft; `YtClient.download` prüft dasselbe noch einmal und wirft
+  `ytclient.LocalError` (Unterklasse von `YtClientError` und `preflight.LocalError`).
+- `pot`/`target` werden bei jedem Tick (30 s), nach dem Speichern der Einstellungen und – bei
+  `pot` – sobald der Watchdog den Server meldet (`on_change` weckt die Queue) neu geprüft.
+  Beim ersten Start im HTTP-Modus wartet die Queue bis 20 s auf das erste Watchdog-Ergebnis
+  (`PotWatchdog.wait_ready`). `error` wird nur nach einer Nutzeraktion neu versucht (`enqueue`,
+  `set_queue_paused(false)`, Einstellungen speichern/zurücksetzen), damit ein defektes yt-dlp
+  keine Schleife mit Lauf-Einträgen erzeugt.
+- **Grund:** Ein getrenntes Laufwerk oder ein noch startender Server soll nicht die ganze
+  Warteschlange auf «fehlgeschlagen» setzen (Handarbeit für den User), und YouTube ist dabei
+  gar nicht beteiligt.
+
+## 2026-11-16 – YouTube-Metadaten-Lock: Suche ja, aber nicht während einer Download-Extraktion (Review Phase 3 m4)
+
+- **Entscheid:** Eine Suche darf während eines laufenden Downloads stattfinden, aber nie während
+  dessen Metadaten-Extraktion. `Throttle.metadata_lock()` (eigener Lock, nie unter dem
+  Throttle-`_lock` genommen) halten: `search`, `list_source`, `resolve` für den ganzen Aufruf und
+  der Download nur für die Extraktion.
+- Umsetzung im Download: `ydl.extract_info(url, download=False, process=False)` unter dem Lock
+  (Webseite, Player, API, PO-Token, JS-Challenges), dann Lock frei und
+  `ydl.process_ie_result(info, download=True)` (Formatwahl, Medienübertragung, Thumbnail,
+  Postprocessing). Geprüft gegen yt-dlp 2026.10.26: `extract_info(process=True)` ruft intern
+  genau `process_ie_result(ie_result, download, extra_info)` auf (`__extract_info`); Fehler der
+  Extraktion laufen weiter über `_handle_extraction_exceptions` (DownloadError), Fehler beim
+  Laden über `process_info`/`report_error`. Die Variante «Lock bis zum ersten
+  `downloading`-Hook» wurde verworfen: Die Freigabe hinge an Hook-Semantik und fände bei
+  Fehlern vor dem ersten Hook nur über `finally` statt; die Trennung ist deterministisch.
+- Der Download nimmt den Lock erst **nach** `before_request` (Pause zwischen Downloads,
+  Request-Abstand), damit die lange Pause keine Suche blockiert. Wartet er auf den Lock, ist das
+  per `cancel_event` abbrechbar. Eine Suche wartet max. 60 s (`ytclient.METADATA_WAIT_S`), dann
+  `MetadataBusy` → «Download-Abfrage läuft gerade – bitte gleich erneut versuchen» (nicht gezählt).
+- **Grund:** CLAUDE.md §1 «keine Parallelität»: Zwei gleichzeitige Metadaten-Abfragen an YouTube
+  sind ausgeschlossen. Die Medienübertragung (googlevideo) parallel zu einer flachen Suche bleibt
+  bewusst erlaubt, sonst wäre die Suche minutenlang gesperrt.
+
+## 2026-11-16 – Beenden während eines Downloads (Review Phase 3 m5, n3)
+
+- **Entscheid:** `Api.shutdown` bricht den laufenden Download ab (`cancel_event`, Eintrag bleibt
+  `queued`) und wartet bis 60 s auf den Queue-Thread. Erst danach wird die DB geschlossen. Endet
+  der Thread nicht (ffmpeg-Konvertierung hat keinen Abbruch-Hook), bleibt die DB offen bis zum
+  Prozessende und `downloading`-Zeilen werden auf `queued` gesetzt (`requeue_downloading`).
+  Schreibt der Thread danach doch noch `done`, gewinnt `done`.
+- Abbrechen ist bis zum letzten Schritt vor dem Verschieben möglich. Der Punkt ohne Rückkehr ist
+  atomar (`on_commit` unter dem Queue-Lock); ein späteres `queue_cancel` meldet
+  `{ok:false, error:"Download bereits fertig"}`.
+- Offen (optional): ffmpeg-Kindprozesse an das Job Object binden.
+
+## 2026-11-16 – Kleinere Entscheide Review Phase 3 (n2, n4, n6)
+
+- **n2:** `worker.YtdlpGate` (ein Lock, Zähler für Suchen, Flag für Update): Suche registriert
+  sich im Such-Thread, das Update im Wartungs-Thread, beide prüfen und setzen unter demselben Lock.
+  Eine Suche, die beim Update-Start noch in der Warteschlange des Such-Workers steht, wird bei
+  ihrem Start abgelehnt.
+- **n4:** Zugangsdaten in URLs werden zentral maskiert (`app/core/redact.py`): Fehlertexte von
+  yt-dlp (`_clean_error`), Suchfehler, der Live-Log und alle Log-Handler (`RedactingFormatter`).
+- **n6:** Teildateien (`.part`, `.ytdl`, `.part-Frag*`) in `<Ziel>/.tmp`, älter als 7 Tage, werden
+  beim Start im Queue-Thread (vor dem ersten Download, kein Wettlauf) gelöscht. Behalten werden
+  Dateien von Einträgen mit Status `queued`, `downloading` **und** `failed`: Fehlgeschlagene
+  stehen sichtbar in der Warteschlange und sollen beim manuellen Wiederholen fortsetzen
+  (Netzwerkfehler behalten `.part` bewusst).

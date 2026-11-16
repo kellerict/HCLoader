@@ -22,7 +22,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .core import binaries, config, discover, locks, maintenance, potoken, scheduler
+from .core import binaries, config, discover, locks, maintenance, paths, potoken, scheduler
 from .core import status as status_mod
 from .core.config import Settings
 from .core.db import Database
@@ -31,11 +31,14 @@ from .core.throttle import Throttle
 from .worker import (
     DownloadQueue,
     EventBus,
+    GateBusy,
     LogForwarder,
     PotWatchdog,
     Ticker,
     WatchdogPotServer,
     Worker,
+    YtdlpGate,
+    local_preflight,
     log_ok,
     video_dict,
 )
@@ -49,12 +52,17 @@ STATUS_INTERVAL_S = 30.0
 PO_TEST_TIMEOUT_S = 60
 # a flat search is one request (+ request spacing); generous for slow networks / PO token
 SEARCH_TIMEOUT_S = 180
+# m5: an ffmpeg conversion has no cancel hook; wait this long for the queue thread at exit
+QUEUE_STOP_TIMEOUT_S = 60.0
+# m2: at the first queue start in HTTP mode, wait this long for the PO-token watchdog
+POT_START_WAIT_S = 20.0
 _JOB_LABELS = {
     "update": "Update",
     "update_check": "Update-Prüfung",
     "backup": "Sicherung",
     "po_test": "PO-Token-Test",
 }
+_UPDATE_BUSY = "Wartung läuft gerade (Update) – bitte später erneut"
 _VIDEO_ID_RE = re.compile(r"^[0-9A-Za-z_-]{11}$")
 _RUN_KINDS = ("watchlist", "headless", "manual")
 
@@ -113,7 +121,10 @@ class Api:
         self._worker = worker or Worker()
         self._search_worker = Worker("hcloader-search")
         self._scheduler = task_scheduler or scheduler.TaskScheduler()
-        self._watchdog = watchdog or PotWatchdog(lambda: self._settings, on_change=self._push)
+        self._watchdog = watchdog or PotWatchdog(
+            lambda: self._settings, on_change=self._on_pot_change
+        )
+        self._ytdlp_gate = YtdlpGate()
         self._logs = LogForwarder(self._bus)
         self._open = opener or maintenance.open_in_shell
         self._browser = browser or webbrowser.open
@@ -122,6 +133,7 @@ class Api:
         self._update_checker = update_checker or maintenance.check_updates
         self._run_lock = run_lock or locks.acquire_run_lock
         self._client_factory = client_factory or self._make_client
+        qopts: dict[str, Any] = {"pot_wait": POT_START_WAIT_S, **(queue_options or {})}
         self._queue = DownloadQueue(
             self._db,
             self._throttle,
@@ -130,7 +142,11 @@ class Api:
             settings_provider=lambda: self._settings,
             run_lock=self._run_lock,
             on_change=self._push,
-            **(queue_options or {}),
+            preflight=lambda wait, stop: local_preflight(
+                self._settings, self._watchdog, wait=wait, stop=stop
+            ),
+            on_thread_start=self._cleanup_partials,  # n6: in the queue thread, before downloads
+            **qopts,
         )
         self._configure_logging = configure_logging
         self._window: Any = None
@@ -161,23 +177,47 @@ class Api:
         self._ticker.start()
 
     @_internal
-    def shutdown(self) -> None:
+    def shutdown(self, queue_timeout: float = QUEUE_STOP_TIMEOUT_S) -> bool:
+        """Stop everything. The DB is closed only after the queue thread has ended (m5): an
+        active download is cancelled and stays `queued`. If the thread does not end in time
+        (long ffmpeg conversion), the DB stays open until the process exits and a row left in
+        `downloading` is put back to `queued`. Returns True if the queue thread ended."""
         self._logs.stop()
         if self._ticker:
             self._ticker.stop()
-        self._queue.stop()
+        ended = self._queue.stop(queue_timeout)
         self._search_worker.stop()
         self._watchdog.stop()
         self._worker.stop()
         self._bus.close()
+        if not ended:
+            log.warning(
+                "Download wird beim Beenden noch abgeschlossen (Konvertierung) – "
+                "Eintrag bleibt in der Warteschlange"
+            )
+            try:
+                self._db.requeue_downloading()
+            except Exception:
+                log.debug("requeue_downloading", exc_info=True)
+            return False
         if self._own_db:
             self._db.close()
+        return True
 
     def _on_loaded(self) -> None:
         self._bus.mark_ready()
         if not self._loaded_once:
             self._loaded_once = True
             self._startup_update_check()
+
+    def _on_pot_change(self) -> None:
+        """Watchdog started/stopped the PO-token server: status bar + queue re-check (m2)."""
+        self._push()
+        self._queue.wake()
+
+    def _cleanup_partials(self) -> int:
+        keep = {v["id"] for v in self._db.list_videos(status=("queued", "downloading", "failed"))}
+        return maintenance.cleanup_stale_partials(paths.tmp_dir(self._cfg.target_dir_path()), keep)
 
     def _push(self) -> None:
         """Send the current status to the status bar."""
@@ -284,8 +324,8 @@ class Api:
         if old.network != new.network:
             self._po_test = None
             self._watchdog.apply()
-        if old.throttle != new.throttle:
-            self._queue.wake()  # limits may allow the queue to continue
+        # limits, target folder or a failed client may allow the queue to continue (m2/m3)
+        self._queue.user_action()
         self._push()
 
     def _persist(self, **schedule: Any) -> str | None:
@@ -355,12 +395,17 @@ class Api:
         return res
 
     def _do_update(self) -> dict[str, Any]:
-        if self._search_worker.current is not None:
+        try:
+            with self._ytdlp_gate.update():  # n2: no search may start meanwhile
+                return self._do_update_locked()
+        except GateBusy:
             return {
                 "ok": False,
                 "error": "Eine Suche läuft gerade – Update danach ausführen.",
                 "output": "",
             }
+
+    def _do_update_locked(self) -> dict[str, Any]:
         lock = self._run_lock()
         if lock is None:
             return {
@@ -586,8 +631,8 @@ class Api:
             return {"ok": False, "error": "Suchbegriff fehlt"}
         if self._queue.restart_required:
             return {"ok": False, "error": "Neustart nötig – yt-dlp wurde aktualisiert"}
-        if self._worker.current == "update":
-            return {"ok": False, "error": "Wartung läuft gerade (Update) – bitte später erneut"}
+        if self._ytdlp_gate.updating:
+            return {"ok": False, "error": _UPDATE_BUSY}
         genre, year = discover.clean_options(opts if isinstance(opts, dict) else None, self._cfg)
         try:
             return self._search_worker.run(
@@ -602,6 +647,13 @@ class Api:
             return {"ok": False, "error": "Suche dauert zu lange – bitte später erneut versuchen"}
 
     def _do_search(self, query: str, genre: str | None, year: int | None) -> dict[str, Any]:
+        try:
+            with self._ytdlp_gate.search():  # n2: checked and registered atomically
+                return self._do_search_locked(query, genre, year)
+        except GateBusy:
+            return {"ok": False, "error": _UPDATE_BUSY}
+
+    def _do_search_locked(self, query: str, genre: str | None, year: int | None) -> dict[str, Any]:
         from .core.ytclient import build_search_query  # lazy: loads yt-dlp (m2)
 
         settings = self._cfg
@@ -739,8 +791,11 @@ class Api:
         return {"ok": False, "error": "Nur wartende Einträge lassen sich verschieben"}
 
     def queue_cancel(self, video_id: str) -> dict[str, Any]:
-        if self._queue.cancel(str(video_id)):
+        res = self._queue.cancel(str(video_id))
+        if res == "ok":
             return {"ok": True}
+        if res == "late":
+            return {"ok": False, "error": "Download bereits fertig"}
         return {"ok": False, "error": "Eintrag ist nicht (mehr) in der Warteschlange"}
 
     def queue_retry(self, video_id: str) -> dict[str, Any]:

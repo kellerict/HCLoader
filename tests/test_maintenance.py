@@ -283,3 +283,35 @@ def test_build_status_uses_given_binaries(db):
     assert st["ytdlp_version"] == "2026.11.2" and st["deno_ok"] and not st["ffmpeg_ok"]
     assert st["counters"] == {"downloads_run": 0, "downloads_day": 0, "searches_hour": 0}
     assert SimpleNamespace(**st).queue_paused is False
+
+
+# --------------------------------------------------------------------------- n6: partial files
+
+
+def test_cleanup_stale_partials(tmp_path):
+    import os
+    import time
+
+    tmp = tmp_path / ".tmp"
+    tmp.mkdir()
+    old = time.time() - 8 * 86400
+    names = {
+        "aaaaaaaaaaa.webm.part": old,  # old, not queued -> deleted
+        "bbbbbbbbbbb.f251.webm.part": old,  # old but still queued -> kept
+        "ccccccccccc.webm.ytdl": old,  # old yt-dlp state file -> deleted
+        "ddddddddddd.webm.part-Frag3": old,  # old fragment -> deleted
+        "eeeeeeeeeee.webm.part": time.time() - 3600,  # recent -> kept
+        "fffffffffff.mp3": old,  # not a partial file -> kept
+    }
+    for name, mtime in names.items():
+        p = tmp / name
+        p.write_text("x")
+        os.utime(p, (mtime, mtime))
+    removed = maintenance.cleanup_stale_partials(tmp, {"bbbbbbbbbbb"})
+    assert removed == 3
+    assert sorted(p.name for p in tmp.iterdir()) == [
+        "bbbbbbbbbbb.f251.webm.part",
+        "eeeeeeeeeee.webm.part",
+        "fffffffffff.mp3",
+    ]
+    assert maintenance.cleanup_stale_partials(tmp_path / "missing", set()) == 0

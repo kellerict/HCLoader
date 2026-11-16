@@ -419,3 +419,51 @@ def test_search_available_at(db):
     assert t.search_available_at() == first + timedelta(hours=1)
     with pytest.raises(LimitReached):
         t.before_request("search")
+
+
+# ------------------------------------------------------------------ Review Phase 3 m4
+
+
+def test_metadata_lock_timeout_and_cancel(db):
+    import threading
+
+    from app.core.throttle import MetadataBusy, WaitCancelled
+
+    t, _ = make(db)
+    with t.metadata_lock():
+        assert t.metadata_busy()
+        with pytest.raises(MetadataBusy) as ei:
+            with t.metadata_lock(timeout=0.05):
+                pass
+        assert str(ei.value) == "Download-Abfrage läuft gerade – bitte gleich erneut versuchen"
+        ev = threading.Event()
+        ev.set()
+        with pytest.raises(WaitCancelled):
+            with t.metadata_lock(cancel_event=ev):
+                pass
+    assert not t.metadata_busy()
+    with t.metadata_lock(timeout=0.05):  # free again
+        pass
+
+
+def test_metadata_lock_waits_for_release(db):
+    import threading
+    import time
+
+    t, _ = make(db)
+    held = threading.Event()
+    order = []
+
+    def holder():
+        with t.metadata_lock():
+            held.set()
+            time.sleep(0.2)
+            order.append("download extraction done")
+
+    th = threading.Thread(target=holder)
+    th.start()
+    assert held.wait(5)
+    with t.metadata_lock(timeout=5):
+        order.append("search")
+    th.join()
+    assert order == ["download extraction done", "search"]

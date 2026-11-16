@@ -5,6 +5,46 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
 
 ## [Unreleased]
 
+### Fixed
+- Review Phase 3:
+  - **M1** Das Genre aus dem Such-Chip bleibt bis in Datei, TCON, Zielordner und DB erhalten:
+    `YtClient._finish` nimmt das gespeicherte, nicht manuelle Genre, wenn die Keywords nichts
+    entscheiden (manuell > Quelle > Keyword > Chip > Unsortiert; unbekannte Genres fallen auf
+    «Unsortiert»). Suchen ändern das Genre von Einträgen in `queued`/`downloading`/`done` nicht
+    mehr; die Suche berücksichtigt den Quellen-Default (Phase 4).
+  - **m1** Einstellungen übernehmen das Ergebnis von `get_task_status` (`true`/`false`) in
+    Formular, gespeicherten Stand und `HC.settings.values`; eine extern gelöschte Aufgabe wird
+    nicht mehr still neu angelegt. `null` ändert nichts, ungespeicherte Eingaben bleiben.
+  - **m2** Lokale Fehler blockieren die Warteschlange statt Einträge `failed` zu setzen:
+    PO-Token-Server nicht bereit (`blocked_code: "pot"`), Zielordner nicht erreichbar oder nicht
+    beschreibbar (`"target"`). Einträge bleiben `queued`, kein Lauf-Eintrag, nichts gezählt, keine
+    Pause. Beim Start im HTTP-Modus wartet die Queue bis 20 s auf den ersten Watchdog-Check.
+    Die Pause zwischen Downloads gilt nur noch nach einem echten Request. UI: Hinweise mit Link
+    zu den passenden Einstellungen.
+  - **m3** Der Download-Client wird vor dem Lauf erzeugt; schlägt das fehl (z.B. defektes
+    yt-dlp), blockiert die Queue mit `blocked_code: "error"`, ohne Lauf-Eintrag und ohne
+    30-s-Schleife. Neuer Versuch nach «Fortsetzen», `enqueue` oder Speichern der Einstellungen.
+  - **m4** YouTube-Metadaten-Lock (`Throttle.metadata_lock`): Suche, Quellenliste, Auflösen und
+    die Extraktion eines Downloads laufen nie gleichzeitig. Der Download gibt den Lock vor der
+    Medienübertragung frei (`extract_info(process=False)` + `process_ie_result`). Eine Suche wartet
+    max. 60 s, sonst «Download-Abfrage läuft gerade – bitte gleich erneut versuchen».
+  - **m5** Beim Beenden wartet HCLoader bis 60 s auf den Queue-Thread (laufender Download wird
+    abgebrochen, Eintrag bleibt `queued`) und schliesst die DB erst danach. Endet der Thread
+    nicht (lange Konvertierung), bleibt die DB offen und der Eintrag wird auf `queued` gesetzt.
+  - **m6** `video`-Event auch, wenn der Throttle einen Download ablehnt (Karte zurück auf
+    «wartend»).
+  - **m7** `enqueue` und `move_in_queue` laufen in einer Transaktion (`Database.transaction`).
+  - **n1** `Video.is_live` (bool); die UI erkennt Livestreams nicht mehr am Text von
+    `filter_reason`.
+  - **n2** `YtdlpGate`: Update und Suche sperren sich gegenseitig ohne Prüf-Lücke.
+  - **n3** `queue_cancel` meldet `{ok:false, error:"Download bereits fertig"}`, wenn der
+    Download schon fertig ist oder seinen letzten Schritt (Verschieben) erreicht hat.
+  - **n4** Zugangsdaten in URLs (Proxy `user:pass@`) werden in Fehlertexten und allen Logs
+    maskiert (`app/core/redact.py`, `RedactingFormatter`).
+  - **n6** `.part`/`.ytdl`-Reste in `<Ziel>/.tmp`, älter als 7 Tage, werden beim Start
+    aufgeräumt, ausser sie gehören zu einem Eintrag in der Warteschlange (wartend, aktiv oder
+    fehlgeschlagen).
+
 ### Added
 - Phase 3b Integration Entdecken & Downloads: `search(query, opts)` über einen eigenen
   Such-Worker (Throttle, deutsche Meldungen inkl. «wieder möglich ab …»), Treffer in der DB
