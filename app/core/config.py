@@ -243,7 +243,9 @@ class StorageSettings(_Section):
     max_title_length: int = Field(120, ge=20, le=200)
     max_path_length: int = Field(240, ge=100, le=259)
     artist_from_title: bool = False
-    title_cleanup_patterns: list[str] = Field(default_factory=lambda: list(DEFAULT_CLEANUP_PATTERNS))
+    title_cleanup_patterns: list[str] = Field(
+        default_factory=lambda: list(DEFAULT_CLEANUP_PATTERNS)
+    )
 
     @field_validator("path_template")
     @classmethod
@@ -608,9 +610,7 @@ def save(settings: Settings, path: Path | None = None) -> Path:
     return path
 
 
-def _repair_section(
-    model: type[_Section], data: Any, name: str, warnings: list[str]
-) -> _Section:
+def _repair_section(model: type[_Section], data: Any, name: str, warnings: list[str]) -> _Section:
     if not isinstance(data, dict):
         if data is not None:
             warnings.append(f"Abschnitt '{name}' ist ungültig, Standardwerte werden verwendet")

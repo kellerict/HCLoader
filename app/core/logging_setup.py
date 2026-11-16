@@ -13,7 +13,6 @@ from .config import logs_dir
 
 LOG_FORMAT = "%(asctime)s %(levelname)-7s %(name)s: %(message)s"
 _FILE_MARK = "_hcloader_file"
-_LIVE_MARK = "_hcloader_live"
 
 
 class CallbackHandler(logging.Handler):
@@ -39,9 +38,7 @@ class CallbackHandler(logging.Handler):
         try:
             entry = {
                 "ts": record.created,
-                "time": self.formatter.formatTime(record, "%H:%M:%S")
-                if self.formatter
-                else "",
+                "time": self.formatter.formatTime(record, "%H:%M:%S") if self.formatter else "",
                 "level": record.levelname,
                 "logger": record.name,
                 "message": record.getMessage(),

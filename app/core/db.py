@@ -346,7 +346,15 @@ class Database:
         cur = self.execute(
             "INSERT INTO sources(type,name,url_or_query,default_genre,enabled,auto_download,"
             "max_entries) VALUES (?,?,?,?,?,?,?)",
-            (type, name, url_or_query, default_genre, int(enabled), int(auto_download), max_entries),
+            (
+                type,
+                name,
+                url_or_query,
+                default_genre,
+                int(enabled),
+                int(auto_download),
+                max_entries,
+            ),
         )
         return int(cur.lastrowid)
 
@@ -354,7 +362,9 @@ class Database:
         return self.query_one("SELECT * FROM sources WHERE id=?", (source_id,))
 
     def list_sources(self, *, enabled_only: bool = False) -> list[dict[str, Any]]:
-        sql = "SELECT * FROM sources" + (" WHERE enabled=1" if enabled_only else "") + " ORDER BY id"
+        sql = (
+            "SELECT * FROM sources" + (" WHERE enabled=1" if enabled_only else "") + " ORDER BY id"
+        )
         return self.query(sql)
 
     def update_source(self, source_id: int, **fields: Any) -> None:

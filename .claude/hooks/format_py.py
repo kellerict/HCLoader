@@ -1,4 +1,5 @@
 """PostToolUse-Hook: formatiert geänderte Python-Dateien mit ruff (still, Fehler ignoriert)."""
+
 import json
 import shutil
 import subprocess

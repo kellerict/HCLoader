@@ -18,8 +18,14 @@ _REPLACEMENTS = {
     "?": "",
     "*": "",
 }
-_RESERVED = {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)),
-             *(f"LPT{i}" for i in range(1, 10))}
+_RESERVED = {
+    "CON",
+    "PRN",
+    "AUX",
+    "NUL",
+    *(f"COM{i}" for i in range(1, 10)),
+    *(f"LPT{i}" for i in range(1, 10)),
+}
 _PLACEHOLDER = re.compile(r"\{(\w+)\}")
 MIN_TITLE_LENGTH = 5
 UNKNOWN_ARTIST = "Unbekannt"
@@ -33,8 +39,9 @@ def sanitize_filename(name: str, *, fallback: str = "_") -> str:
     """Make a single path component safe for Windows (and other file systems)."""
     name = unicodedata.normalize("NFC", name or "")
     name = "".join(_REPLACEMENTS.get(ch, ch) for ch in name)
+    name = re.sub(r"\s+", " ", name)
     name = "".join(ch for ch in name if ord(ch) >= 32 and ord(ch) != 127)
-    name = re.sub(r"\s+", " ", name).strip()
+    name = name.strip()
     name = name.rstrip(". ")
     name = name.lstrip(" ")
     if not name:

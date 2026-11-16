@@ -57,7 +57,9 @@ def matches_any(text: str | None, keywords: Iterable[str]) -> str | None:
     return None
 
 
-def check_duration(duration: int | float | None, min_duration: int, max_duration: int) -> str | None:
+def check_duration(
+    duration: int | float | None, min_duration: int, max_duration: int
+) -> str | None:
     """Return a rejection reason or None if OK. Unknown duration is rejected."""
     if duration is None or duration <= 0:
         return "Dauer unbekannt"
