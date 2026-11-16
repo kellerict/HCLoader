@@ -24,7 +24,8 @@ from yt_dlp.utils import DownloadCancelled
 from . import binaries, config, paths, tagging
 from .config import Settings
 from .db import Database
-from .genre import detect_genre
+from .filters import normalize
+from .genre import detect_genre, genre_search_terms
 from .throttle import Throttle, ThrottleError, WaitCancelled, is_rate_limit_error
 
 log = logging.getLogger(__name__)
@@ -55,6 +56,7 @@ __all__ = [
     "YtClientError",
     "build_ydl_opts",
     "extract_video_id",
+    "build_search_query",
     "normalize_entry",
 ]
 
@@ -117,9 +119,12 @@ def normalize_entry(entry: Mapping[str, Any]) -> dict[str, Any]:
     vid = str(entry.get("id") or "")
     thumbs = entry.get("thumbnails") or []
     thumb = entry.get("thumbnail") or (thumbs[-1].get("url") if thumbs else None)
-    upload = entry.get("upload_date") or _date_from_ts(
-        entry.get("timestamp") or entry.get("release_timestamp")
-    )
+    upload = entry.get("upload_date")
+    approx = False
+    if not upload:
+        # flat results: `timestamp` is only approximate (youtubetab:approximate_date)
+        upload = _date_from_ts(entry.get("timestamp") or entry.get("release_timestamp"))
+        approx = bool(upload)
     url = entry.get("webpage_url") or entry.get("url") or ""
     if not str(url).startswith("http") and vid:
         url = watch_url(vid)
@@ -131,6 +136,7 @@ def normalize_entry(entry: Mapping[str, Any]) -> dict[str, Any]:
         "channel_name": entry.get("channel") or entry.get("uploader") or "",
         "duration": int(duration) if isinstance(duration, (int, float)) else None,
         "upload_date": upload or "",
+        "date_approx": approx,
         "view_count": entry.get("view_count"),
         "thumbnail": thumb,
         "url": url,
@@ -229,7 +235,7 @@ def build_ydl_opts(
         "sleep_interval_requests": settings.throttle.sleep_requests,
         "js_runtimes": {"deno": {"path": str(deno)} if deno.exists() else {}},
         "noplaylist": purpose in ("resolve", "download"),
-        "extractor_args": _extractor_args(settings),
+        "extractor_args": _extractor_args(settings, purpose),
     }
     if net.proxy:
         opts["proxy"] = net.proxy
@@ -255,9 +261,19 @@ def build_ydl_opts(
     return opts
 
 
-def _extractor_args(settings: Settings) -> dict[str, dict[str, list[str]]]:
+def _extractor_args(
+    settings: Settings, purpose: str = "resolve"
+) -> dict[str, dict[str, list[str]]]:
+    """PO-token provider args; flat purposes also get `youtubetab:approximate_date`.
+
+    yt-dlp reads `approximate_date` via `_configuration_arg(...)` as a list; a non-empty list
+    (even `['']`) is truthy and makes flat entries carry a `timestamp` parsed from 'vor X Jahren'.
+    The keys (youtube / youtubepot-* / youtubetab) are distinct, so merging is plain assignment.
+    """
     net = settings.network
     args: dict[str, dict[str, list[str]]] = {}
+    if purpose in ("search", "list"):
+        args["youtubetab"] = {"approximate_date": [""]}
     if net.po_token_mode == "off":
         args["youtube"] = {"fetch_pot": ["never"]}
     elif net.po_token_mode == "script":
@@ -294,6 +310,43 @@ def _download_opts(opts: dict[str, Any], settings: Settings, target_dir: Path | 
         ]
 
 
+MAX_GENRE_TERMS = 2
+
+
+def build_search_query(
+    query: str,
+    *,
+    genre: str | None = None,
+    year: int | None = None,
+    settings: Settings,
+) -> str:
+    """Query text for YouTube: user query + up to 2 genre terms + year (if `append_year`).
+
+    Only the first genre keywords (they are the most distinctive ones) are appended, and only
+    if the query does not already contain them; long keyword lists would narrow the search.
+    """
+    parts = [(query or "").strip()]
+    if genre:
+
+        def flat(text: str) -> str:
+            return normalize(text).replace("-", "").replace(" ", "")
+
+        chosen: list[str] = []
+        for term in genre_search_terms(genre, settings.genres.items):
+            key = flat(term)
+            if key and key not in flat(parts[0]) and all(key != flat(c) for c in chosen):
+                chosen.append(term)
+        terms = chosen
+        parts.extend(terms[:MAX_GENRE_TERMS])
+    if (
+        year
+        and settings.search.append_year
+        and not re.search(rf"(?<!\d){int(year)}(?!\d)", parts[0])
+    ):
+        parts.append(str(int(year)))
+    return " ".join(p for p in parts if p)
+
+
 # --------------------------------------------------------------------------- client
 
 
@@ -305,11 +358,14 @@ class YtClient:
         settings_provider: Callable[[], Settings] | Settings,
         db: Database,
         throttle: Throttle,
+        pot_server: binaries.PotServer | None = None,
     ) -> None:
         self._settings = settings_provider
         self.db = db
         self.throttle = throttle
-        self._pot_server: binaries.PotServer | None = None
+        # externally managed (PotWatchdog): never started/stopped here (port conflict otherwise)
+        self._external_pot = pot_server is not None
+        self._pot_server: binaries.PotServer | None = pot_server
         self._lock = threading.Lock()
 
     @property
@@ -317,7 +373,7 @@ class YtClient:
         return self._settings() if callable(self._settings) else self._settings
 
     def close(self) -> None:
-        if self._pot_server:
+        if self._pot_server and not self._external_pot:
             self._pot_server.stop()
             self._pot_server = None
 
@@ -334,6 +390,10 @@ class YtClient:
         net = settings.network
         os.environ["TOKEN_TTL"] = str(max(1, round(net.po_token_ttl_hours)))
         if net.po_token_mode != "http":
+            return
+        if self._external_pot:
+            if not self._pot_server.running():  # type: ignore[union-attr]
+                raise YtClientError("PO-Token-Server läuft nicht (wird vom Watchdog neu gestartet)")
             return
         with self._lock:
             if self._pot_server is None or self._pot_server.port != net.po_token_port:
@@ -390,11 +450,20 @@ class YtClient:
 
     # -- metadata
 
-    def search(self, query: str, n: int | None = None) -> list[dict[str, Any]]:
+    def search(
+        self,
+        query: str,
+        n: int | None = None,
+        *,
+        genre: str | None = None,
+        year: int | None = None,
+    ) -> list[dict[str, Any]]:
+        """Flat search; genre search terms and (with `search.append_year`) the year are appended."""
         settings = self.settings
         n = n or settings.search.results_count
+        full_query = build_search_query(query, genre=genre, year=year, settings=settings)
         opts = build_ydl_opts(settings, "search")
-        info = self._metadata_call("search", f"ytsearch{int(n)}:{query}", opts, settings)
+        info = self._metadata_call("search", f"ytsearch{int(n)}:{full_query}", opts, settings)
         return [normalize_entry(e) for e in info.get("entries") or [] if e and e.get("id")]
 
     def list_source(self, url: str, max_entries: int | None = None) -> list[dict[str, Any]]:

@@ -102,3 +102,64 @@ def test_upload_period():
     assert filters.within_upload_period(None, "all", today=today)
     assert not filters.within_upload_period(None, "7d", today=today)
     assert not filters.within_upload_period("garbage", "30d", today=today)
+
+
+# ------------------------------------------------------------------ Phase 3a: year / custom
+
+
+def test_title_has_year_as_word():
+    assert filters.title_has_year("Defqon.1 2024 Mix", 2024)
+    assert filters.title_has_year("Mix (2024)", 2024)
+    assert not filters.title_has_year("Mix 20245", 2024)
+    assert not filters.title_has_year("Mix 12024", 2024)
+    assert not filters.title_has_year(None, 2024)
+
+
+def test_period_year():
+    f = filters.within_upload_period
+    assert f("20240601", "year", year=2024)
+    assert not f("20250101", "year", year=2024)
+    # approximate date: +-1 year tolerated
+    assert f("20250101", "year", year=2024, approx=True)
+    assert f("20230601", "year", year=2024, approx=True)
+    assert not f("20220601", "year", year=2024, approx=True)
+    # year in the title wins, also without date
+    assert f(None, "year", year=2024, title="Q-Dance 2024 Live Set", approx=True)
+    assert f("20100101", "year", year=2024, title="Best of 2024")
+    # unknown date and no year in title -> rejected
+    assert not f(None, "year", year=2024, title="Live Set")
+    assert not f("20240601", "year", year=0)
+
+
+def test_period_custom():
+    f = filters.within_upload_period
+    kw = {"date_from": "2024-03-01", "date_to": "2024-06-30"}
+    assert f("20240401", "custom", **kw)
+    assert f("20240301", "custom", **kw) and f("20240630", "custom", **kw)
+    assert not f("20240228", "custom", **kw)
+    assert not f("20240701", "custom", **kw)
+    assert not f(None, "custom", **kw)
+    # approximate: +-1 year at the edges
+    assert f("20230501", "custom", approx=True, **kw)
+    assert f("20250501", "custom", approx=True, **kw)
+    assert not f("20220101", "custom", approx=True, **kw)
+    # open ends
+    assert f("20990101", "custom", date_from="2024-01-01")
+    assert f("19990101", "custom", date_to="2024-01-01")
+
+
+def test_passes_includes_upload_period():
+    s = S(upload_period="year", upload_year=2024)
+    ok, why = filters.passes(V("Hardcore Mix 2024", upload_date="20200101"), s)
+    assert ok, why
+    ok, why = filters.passes(V("Hardcore Mix", upload_date="20200101"), s)
+    assert not ok and why == "Ausserhalb des Zeitraums"
+    ok, why = filters.passes(V("Hardcore Mix"), s)
+    assert not ok and why == "Upload-Datum unbekannt"
+    ok, why = filters.passes(V("Hardcore Mix", upload_date="20250301", date_approx=True), s)
+    assert ok, why
+    s = S(upload_period="custom", upload_from="2024-01-01", upload_to="2024-12-31")
+    assert filters.passes(V(upload_date="20240505"), s)[0]
+    assert not filters.passes(V(upload_date="20260505"), s)[0]
+    # duration is still checked first
+    assert filters.passes(V(duration=5, upload_date="20260505"), s)[1] == "Zu kurz"

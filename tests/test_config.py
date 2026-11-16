@@ -195,3 +195,25 @@ def test_save_readable_config_makes_no_backup(tmp_path):
     config.save(config.defaults(), path)
     config.save(config.defaults(), path)
     assert not list(tmp_path.glob("config.yaml.bak-*"))
+
+
+def test_upload_period_year_and_custom_validation():
+    ok = config.validate_settings
+    assert ok({"filters": {"upload_period": "year", "upload_year": 2024}}) == {}
+    assert "Pflicht" in ok({"filters": {"upload_period": "year"}})["filters.upload_year"]
+    assert "filters.upload_year" in ok({"filters": {"upload_year": 1999}})
+    assert "filters.upload_year" in ok({"filters": {"upload_year": 2999}})
+    assert ok({"filters": {"upload_year": 0}}) == {}
+    assert ok({"filters": {"upload_period": "custom", "upload_from": "2024-01-01"}}) == {}
+    errs = ok({"filters": {"upload_from": "01.02.2024", "upload_to": "2024-02-30"}})
+    assert "JJJJ-MM-TT" in errs["filters.upload_from"] and "filters.upload_to" in errs
+    errs = ok({"filters": {"upload_from": "2024-05-01", "upload_to": "2024-04-01"}})
+    assert "Bis-Datum" in errs["filters.upload_to"]
+    assert ok({"filters": {"upload_from": "2024-05-01", "upload_to": "2024-05-01"}}) == {}
+
+
+def test_new_defaults():
+    s = config.defaults()
+    assert s.search.append_year is True
+    f = s.filters
+    assert (f.upload_year, f.upload_from, f.upload_to) == (0, "", "")

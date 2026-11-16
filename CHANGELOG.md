@@ -6,6 +6,14 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
 ## [Unreleased]
 
 ### Added
+- Phase 3a Backend Entdecken: Einstellungen `search.append_year`, `filters.upload_period` (`year`, `custom`),
+  `upload_year`, `upload_from`, `upload_to` mit Validierung; Jahr-/Zeitraum-Filter (Jahr im Titel,
+  ungefähres Datum ±1 Jahr) in `filters.passes`; `ytclient.search(query, n, genre=, year=)` und
+  `build_search_query`; `approximate_date` für flache Abfragen (`date_approx` am Video);
+  `YtClient(pot_server=...)` für extern verwalteten PO-Token-Server.
+- Fixes (Review Phase 2): Update-Timeout greift wirklich (m1), Aufgabenplanung unterscheidet
+  «nicht registriert» von «Status unbekannt» (m6), Datumsparsing tag-zuerst (m7), Update nur in
+  venv (n5).
 - Projektgerüst, Konfiguration (YAML/pydantic), SQLite-Schema mit Migrationen.
 - Kernmodule: Pfade, Filter, Genre-Erkennung, Throttle mit Backoff, Logging.
 - CI-Workflow (Windows, ruff, pytest).

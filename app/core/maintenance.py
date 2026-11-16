@@ -16,6 +16,7 @@ import re
 import sqlite3
 import subprocess
 import sys
+import threading
 import urllib.request
 from collections.abc import Callable
 from datetime import datetime
@@ -84,18 +85,31 @@ def _default_popen(args: list[str]) -> subprocess.Popen:
     )
 
 
+def in_venv() -> bool:
+    return sys.prefix != sys.base_prefix
+
+
 def run_update(
     on_line: Callable[[str], None] | None = None,
     *,
     popen: Callable[[list[str]], Any] = _default_popen,
     executable: str | None = None,
     versions: Callable[[], dict[str, str | None]] = installed_versions,
+    timeout_s: float = UPDATE_TIMEOUT_S,
+    venv_check: Callable[[], bool] | None = None,
 ) -> dict[str, Any]:
     """pip install -U yt-dlp[default] bgutil-ytdlp-pot-provider; streams output lines.
 
     Returns {ok, ytdlp, plugin, changed, output} or {ok: False, error, output}. The running
     process keeps the old yt-dlp module until restart (noted in the output).
+    Refuses to run outside a venv (pip would modify the global Python). A timer kills a hanging
+    pip after `timeout_s` (the reader loop blocks on the pipe, so a plain `wait(timeout)` after
+    it would never trigger).
     """
+    if not (venv_check or in_venv)():
+        msg = "HCLoader läuft nicht in einer virtuellen Umgebung (venv) – Update abgebrochen"
+        log.error(msg)
+        return {"ok": False, "error": msg, "output": ""}
     before = versions()
     cmd = update_command(executable)
     lines = ["> " + " ".join(["pip", *cmd[3:]])]
@@ -106,21 +120,39 @@ def run_update(
     except OSError as exc:
         return {"ok": False, "error": f"pip konnte nicht gestartet werden: {exc}", "output": ""}
     assert proc.stdout is not None
-    for raw in proc.stdout:
-        line = raw.rstrip()
-        if not line:
-            continue
-        lines.append(line)
-        if on_line:
-            on_line(line)
+    timed_out = threading.Event()
+
+    def _kill() -> None:
+        timed_out.set()
+        try:
+            proc.kill()
+        except Exception:  # process may be gone already
+            log.debug("pip kill failed", exc_info=True)
+
+    timer = threading.Timer(timeout_s, _kill)
+    timer.daemon = True
+    timer.start()
     try:
-        code = proc.wait(timeout=UPDATE_TIMEOUT_S)
-    except subprocess.TimeoutExpired:
-        proc.kill()
-        code = -1
+        for raw in proc.stdout:
+            line = raw.rstrip()
+            if not line:
+                continue
+            lines.append(line)
+            if on_line:
+                on_line(line)
+        try:
+            code = proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            _kill()
+            code = -1
+    finally:
+        timer.cancel()
     binaries.clear_cache()
     after = versions()
     output = "\n".join(lines)
+    if timed_out.is_set():
+        msg = f"Zeitüberschreitung nach {int(timeout_s)} s – pip wurde beendet"
+        return {"ok": False, "error": msg, "output": output}
     if code != 0:
         return {"ok": False, "error": f"pip ist mit Code {code} beendet", "output": output}
     changed = after != before

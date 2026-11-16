@@ -19,6 +19,8 @@ class FilterSettingsLike(Protocol):
     match_description: bool
     hide_done_ignored: bool
     apply_channel_blacklist: bool
+    # optional (getattr with defaults in passes()): upload_period, upload_year,
+    # upload_from, upload_to
 
 
 def normalize(text: str | None) -> str:
@@ -83,13 +85,52 @@ def parse_upload_date(value: str | None) -> date | None:
         return None
 
 
+def title_has_year(title: str | None, year: int) -> bool:
+    """True if `year` stands as a separate word in the title (e.g. 'Defqon.1 2024 Mix')."""
+    if not title or not year:
+        return False
+    return bool(re.search(rf"(?<![^\W_]){int(year)}(?![^\W_])", title))
+
+
 def within_upload_period(
-    upload_date: str | None, period: str, *, today: date | None = None
+    upload_date: str | None,
+    period: str,
+    *,
+    today: date | None = None,
+    year: int = 0,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    title: str | None = None,
+    approx: bool = False,
 ) -> bool:
-    """period: all | 7d | 30d | 1y. Unknown date passes only for 'all'."""
-    if period == "all" or period not in PERIOD_DAYS:
+    """period: all | 7d | 30d | 1y | year | custom. Unknown date passes only for 'all'.
+
+    `approx`: the date comes from a flat search ('vor X Jahren'), so 'year' and 'custom'
+    tolerate +-1 year (docs/settings-schema.md, Phase 3). 'year' also passes if the year
+    stands as a separate word in `title`.
+    """
+    if period == "all":
         return True
     d = parse_upload_date(upload_date)
+    if period == "year":
+        if year and title_has_year(title, year):
+            return True
+        if d is None or not year:
+            return False
+        return abs(d.year - year) <= 1 if approx else d.year == year
+    if period == "custom":
+        start = parse_upload_date(date_from)
+        end = parse_upload_date(date_to)
+        if d is None:
+            return False
+        if approx:
+            if start:
+                start -= timedelta(days=365)
+            if end:
+                end += timedelta(days=365)
+        return not ((start and d < start) or (end and d > end))
+    if period not in PERIOD_DAYS:
+        return True
     if d is None:
         return False
     today = today or datetime.now(UTC).date()
@@ -98,6 +139,12 @@ def within_upload_period(
 
 def is_live(video: Mapping[str, Any]) -> bool:
     return bool(video.get("is_live")) or video.get("live_status") in {"is_live", "is_upcoming"}
+
+
+def _period_reason(upload_date: str | None, period: str) -> str:
+    if parse_upload_date(upload_date) is None:
+        return "Upload-Datum unbekannt"
+    return "Ausserhalb des Zeitraums"
 
 
 def passes(
@@ -112,6 +159,18 @@ def passes(
     reason = check_duration(video.get("duration"), settings.min_duration, settings.max_duration)
     if reason:
         return False, reason
+
+    period = getattr(settings, "upload_period", "all")
+    if period != "all" and not within_upload_period(
+        video.get("upload_date"),
+        period,
+        year=getattr(settings, "upload_year", 0),
+        date_from=getattr(settings, "upload_from", ""),
+        date_to=getattr(settings, "upload_to", ""),
+        title=video.get("title"),
+        approx=bool(video.get("date_approx")),
+    ):
+        return False, _period_reason(video.get("upload_date"), period)
 
     text = video.get("title") or ""
     if settings.match_description and video.get("description"):

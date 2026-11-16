@@ -26,14 +26,24 @@ MAX_TR_LENGTH = 261  # schtasks limit for /TR
 TIMEOUT_S = 20
 _TIME_RE = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
 _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+# schtasks prints dates in the Windows locale. Target system is de-CH: ISO first, then
+# day-first formats, month-first (US) only afterwards (m7). Unambiguous values still parse:
+# "12/31/2026" fails every day-first format and falls through to the US ones.
 _DATE_FORMATS = (
-    "%d.%m.%Y %H:%M:%S",
-    "%d.%m.%Y %H:%M",
-    "%m/%d/%Y %I:%M:%S %p",
-    "%m/%d/%Y %H:%M:%S",
-    "%d/%m/%Y %H:%M:%S",
     "%Y-%m-%d %H:%M:%S",
     "%Y/%m/%d %H:%M:%S",
+    "%d.%m.%Y %H:%M:%S",
+    "%d.%m.%Y %H:%M",
+    "%d/%m/%Y %H:%M:%S",
+    "%d/%m/%Y %I:%M:%S %p",
+    "%m/%d/%Y %I:%M:%S %p",
+    "%m/%d/%Y %H:%M:%S",
+)
+_US_FIRST = ("%m/%d/%Y %I:%M:%S %p", "%m/%d/%Y %H:%M:%S")
+_NOT_FOUND_RE = re.compile(
+    r"cannot find|can't find|does not exist|nicht finden|nicht vorhanden|existiert nicht|"
+    r"introuvable|0x80070002|n'existe pas|no se puede encontrar",
+    re.I,
 )
 
 Runner = Callable[[Sequence[str]], subprocess.CompletedProcess]
@@ -50,10 +60,11 @@ class SchedulerUnavailable(SchedulerError):
 
 @dataclass
 class TaskStatus:
-    registered: bool
+    registered: bool | None  # None = unknown (schtasks failed for another reason, see `error`)
     name: str = TASK_NAME
     next_run: str | None = None  # ISO, local time with offset
     time: str | None = None
+    error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -61,6 +72,7 @@ class TaskStatus:
             "name": self.name,
             "next_run": self.next_run,
             "time": self.time,
+            "error": self.error,
         }
 
 
@@ -100,9 +112,22 @@ def next_daily(time_str: str, now: datetime | None = None) -> datetime:
     return nxt
 
 
+def _date_formats() -> tuple[str, ...]:
+    """US locale (en_US) reads month-first; everything else (de-CH, ...) day-first."""
+    import locale
+
+    try:
+        name = locale.getlocale()[0] or ""
+    except (ValueError, TypeError):
+        name = ""
+    if name.lower().startswith(("en_us", "english_united states")):
+        return _US_FIRST + tuple(f for f in _DATE_FORMATS if f not in _US_FIRST)
+    return _DATE_FORMATS
+
+
 def _parse_local(text: str) -> datetime | None:
     text = (text or "").strip()
-    for fmt in _DATE_FORMATS:
+    for fmt in _date_formats():
         try:
             return datetime.strptime(text, fmt).astimezone()
         except ValueError:
@@ -191,7 +216,7 @@ class TaskScheduler:
     def delete(self) -> None:
         self._require()
         code, msg = self._call("/Delete", "/TN", self.name, "/F")
-        if code != 0 and self.query().registered:
+        if code != 0 and self.query().registered is not False:
             raise SchedulerError(f"Aufgabe konnte nicht entfernt werden: {msg}")
         log.info("Aufgabenplanung: %s entfernt", self.name)
 
@@ -201,7 +226,14 @@ class TaskScheduler:
         self._require()
         code, out = self._call("/Query", "/TN", self.name, "/FO", "CSV", "/V")
         if code != 0:
-            return TaskStatus(False, self.name, None, expected_time)
+            if _NOT_FOUND_RE.search(out):
+                return TaskStatus(False, self.name, None, expected_time)
+            # any other failure (access denied, service down, ...) is not "not registered" (m6)
+            log.warning("schtasks /Query fehlgeschlagen (Code %s): %s", code, out[:200])
+            detail = out[:200] or f"Code {code}"
+            return TaskStatus(
+                None, self.name, None, expected_time, f"Status nicht lesbar: {detail}"
+            )
         rows = [r for r in csv.reader(io.StringIO(out)) if r]
         data = rows[1] if len(rows) > 1 else []
         name = data[1].strip() if len(data) > 1 and data[1].strip() else self.name

@@ -97,7 +97,37 @@ def test_query_not_registered():
         "name": "HCLoader-Watchlist",
         "next_run": None,
         "time": "03:00",
+        "error": None,
     }
+
+
+def test_query_other_failure_is_unknown_not_unregistered():
+    def denied(args):
+        return subprocess.CompletedProcess(args, 1, b"", b"FEHLER: Zugriff verweigert")
+
+    sched = TaskScheduler(run=denied, platform="win32")
+    st = sched.query("03:00")
+    assert st.registered is None and "Zugriff verweigert" in st.error
+    assert st.to_dict()["registered"] is None
+    with pytest.raises(SchedulerError, match="nicht entfernt"):
+        sched.delete()
+
+
+def test_date_parsing_prefers_day_first(monkeypatch):
+    monkeypatch.setattr(scheduler, "_date_formats", lambda: scheduler._DATE_FORMATS)
+    d = scheduler._parse_local("03/12/2026 10:00:00")
+    assert (d.month, d.day) == (12, 3)  # 3 December, not March 12
+    d = scheduler._parse_local("12/31/2026 10:00:00")  # only valid month-first
+    assert (d.month, d.day) == (12, 31)
+    d = scheduler._parse_local("2026-11-17 03:00:00")
+    assert (d.month, d.day) == (11, 17)
+    assert scheduler._parse_local("17.11.2026 03:00:00").day == 17
+
+
+def test_date_parsing_us_locale_is_month_first(monkeypatch):
+    monkeypatch.setattr("locale.getlocale", lambda *a: ("en_US", "UTF-8"))
+    d = scheduler._parse_local("03/12/2026 10:00:00")
+    assert (d.month, d.day) == (3, 12)
 
 
 def test_query_parses_english_dates_and_falls_back():

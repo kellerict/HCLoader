@@ -759,3 +759,89 @@ def test_http_server_not_ready_fails_clean(client, fake, settings, monkeypatch):
         client.search("x", 1)
     assert not fake.instances
     assert client.throttle.searches_last_hour() == 0
+
+
+# ------------------------------------------------------------------ Phase 3a: Entdecken
+
+
+def test_opts_flat_purposes_enable_approximate_date(settings):
+    for purpose in ("search", "list"):
+        args = build_ydl_opts(settings, purpose)["extractor_args"]
+        assert args["youtubetab"] == {"approximate_date": [""]}
+        assert args["youtube"] == {"fetch_pot": ["never"]}  # merged with PO-token args
+    assert "youtubetab" not in build_ydl_opts(settings, "resolve")["extractor_args"]
+    settings.network.po_token_mode = "script"
+    args = build_ydl_opts(settings, "search")["extractor_args"]
+    assert "youtubepot-bgutilscript" in args and "youtubetab" in args
+
+
+def test_approximate_date_arg_is_truthy_for_ytdlp(settings):
+    from yt_dlp.extractor.youtube import YoutubeTabIE
+
+    opts = build_ydl_opts(settings, "search")
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        ie = ydl.get_info_extractor("YoutubeTab")
+        assert isinstance(ie, YoutubeTabIE)
+        assert ie._configuration_arg("approximate_date", ie_key=YoutubeTabIE)
+    with yt_dlp.YoutubeDL(build_ydl_opts(settings, "resolve")) as ydl:
+        assert not ydl.get_info_extractor("YoutubeTab")._configuration_arg(
+            "approximate_date", ie_key=YoutubeTabIE
+        )
+
+
+def test_normalize_entry_date_approx():
+    flat = ytclient.normalize_entry({"id": "a" * 11, "timestamp": 1790000000})
+    assert flat["upload_date"] == "20260921" and flat["date_approx"] is True
+    exact = ytclient.normalize_entry({"id": "a" * 11, "upload_date": "20240101", "timestamp": 1})
+    assert exact["upload_date"] == "20240101" and exact["date_approx"] is False
+    none = ytclient.normalize_entry({"id": "a" * 11})
+    assert none["upload_date"] == "" and none["date_approx"] is False
+
+
+def test_build_search_query(settings):
+    q = ytclient.build_search_query
+    assert q("mix", settings=settings) == "mix"
+    # only the first two genre terms, not the whole keyword list
+    assert q("mix", genre="Hardcore", settings=settings) == "mix hardcore gabber"
+    assert q("mix", genre="Hardcore", year=2024, settings=settings) == "mix hardcore gabber 2024"
+    # terms already in the query (also hyphen/space variants) are not repeated
+    assert q("Uptempo mix", genre="Uptempo", settings=settings) == "Uptempo mix terror terrorcore"
+    assert q("mix 2024", year=2024, settings=settings) == "mix 2024"
+    assert q("mix", genre="Gibtsnicht", settings=settings) == "mix"
+    settings.search.append_year = False
+    assert q("mix", year=2024, settings=settings) == "mix"
+
+
+def test_search_passes_genre_and_year(client, fake, settings):
+    fake.info = {"entries": []}
+    client.search("mix", 3, genre="Hardstyle", year=2023)
+    assert fake.instances[0].url == "ytsearch3:mix hardstyle rawstyle 2023"
+
+
+def test_external_pot_server_is_not_started_or_stopped(client, fake, settings):
+    class External:
+        port = 4416
+
+        def __init__(self, up):
+            self.up, self.calls = up, []
+
+        def running(self):
+            return self.up
+
+        def start(self):
+            self.calls.append("start")
+            return True
+
+        def stop(self):
+            self.calls.append("stop")
+
+    ext = External(True)
+    c = YtClient(lambda: settings, client.db, client.throttle, pot_server=ext)
+    settings.network.po_token_mode = "http"
+    fake.info = {"entries": []}
+    c.search("x", 1)
+    c.close()
+    assert ext.calls == []
+    ext.up = False
+    with pytest.raises(ytclient.YtClientError, match="PO-Token-Server"):
+        c.search("x", 1)

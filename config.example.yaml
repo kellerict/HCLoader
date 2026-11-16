@@ -13,6 +13,8 @@ general:
 search:
   # Anzahl Treffer pro Suche (1-100)
   results_count: 30
+  # Bei Jahr-Filter die Jahreszahl an den Suchbegriff anhängen
+  append_year: true
 
 # --- Filter & Keywords ---
 filters:
@@ -20,8 +22,14 @@ filters:
   min_duration: 600
   # Maximaldauer in Sekunden, 0 = unbegrenzt
   max_duration: 0
-  # Upload-Zeitraum: all, 7d, 30d, 1y
+  # Upload-Zeitraum: all, 7d, 30d, 1y, year, custom
   upload_period: all
+  # Jahr (nur bei upload_period: year), 0 = nicht gesetzt
+  upload_year: 0
+  # Von-Datum JJJJ-MM-TT (nur bei upload_period: custom)
+  upload_from: ''
+  # Bis-Datum JJJJ-MM-TT (nur bei upload_period: custom)
+  upload_to: ''
   # Include-Keywords: mindestens eines muss im Titel vorkommen (leer = egal)
   include_keywords:
     - mix

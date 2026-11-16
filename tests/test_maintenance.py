@@ -12,6 +12,30 @@ from app.core.db import Database
 # --------------------------------------------------------------------------- pip update
 
 
+@pytest.fixture(autouse=True)
+def _in_venv(monkeypatch):
+    monkeypatch.setattr(maintenance, "in_venv", lambda: True)
+
+
+class HangingProc:
+    """Pipe blocks until kill() is called (like a pip that hangs)."""
+
+    def __init__(self):
+        import os
+
+        r, w = os.pipe()
+        self._w = os.fdopen(w, "w")
+        self.stdout = os.fdopen(r, "r")
+        self.killed = False
+
+    def kill(self):
+        self.killed = True
+        self._w.close()
+
+    def wait(self, timeout=None):
+        return -9
+
+
 class FakeProc:
     def __init__(self, lines, code=0):
         self.stdout = io.StringIO("".join(f"{line}\n" for line in lines))
@@ -51,6 +75,21 @@ def test_run_update_streams_and_reports_change():
     assert seen[0] == "> pip install -U yt-dlp[default] bgutil-ytdlp-pot-provider"
     assert "Successfully installed yt-dlp-2" in seen and "Neustart" in res["output"]
     assert cmds[0][1:3] == ["-m", "pip"]
+
+
+def test_run_update_timeout_kills_hanging_process():
+    same = {"ytdlp": "1", "plugin": "1"}
+    proc = HangingProc()
+    res = maintenance.run_update(popen=lambda c: proc, versions=lambda: same, timeout_s=0.2)
+    assert proc.killed and res["ok"] is False and "Zeitüberschreitung" in res["error"]
+
+
+def test_run_update_refuses_outside_venv():
+    called = []
+    res = maintenance.run_update(
+        popen=lambda c: called.append(c), venv_check=lambda: False, versions=lambda: {}
+    )
+    assert res["ok"] is False and "venv" in res["error"] and not called
 
 
 def test_run_update_unchanged_and_failure():

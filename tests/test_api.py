@@ -84,7 +84,9 @@ class FakeSchtasks:
         elif args[1] == "/Delete":
             self.registered = False
         elif args[1] == "/Query" and not self.registered:
-            return subprocess.CompletedProcess(args, 1, b"", b"FEHLER")
+            return subprocess.CompletedProcess(
+                args, 1, b"", b"FEHLER: Das System kann die angegebene Datei nicht finden."
+            )
         elif args[1] == "/Query":
             out = b'"Host","Name","Next"\r\n"PC","\\HCLoader-Watchlist","N/A"\r\n'
             return subprocess.CompletedProcess(args, 0, out, b"")

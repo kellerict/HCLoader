@@ -22,6 +22,7 @@ log = logging.getLogger(__name__)
 
 APP_NAME = "HCLoader"
 UNSORTED = "Unsortiert"
+MIN_UPLOAD_YEAR = 2005
 
 DEFAULT_INCLUDE_KEYWORDS = [
     "mix",
@@ -140,12 +141,16 @@ class GeneralSettings(_Section):
 
 class SearchSettings(_Section):
     results_count: int = Field(30, ge=1, le=100)
+    append_year: bool = True
 
 
 class FilterSettings(_Section):
     min_duration: int = Field(600, ge=0)
     max_duration: int = Field(0, ge=0)
-    upload_period: Literal["all", "7d", "30d", "1y"] = "all"
+    upload_period: Literal["all", "7d", "30d", "1y", "year", "custom"] = "all"
+    upload_year: int = Field(0, validate_default=True)
+    upload_from: str = Field("", validate_default=True)
+    upload_to: str = Field("", validate_default=True)
     include_keywords: list[str] = Field(default_factory=lambda: list(DEFAULT_INCLUDE_KEYWORDS))
     exclude_keywords: list[str] = Field(default_factory=lambda: list(DEFAULT_EXCLUDE_KEYWORDS))
     match_description: bool = False
@@ -153,6 +158,40 @@ class FilterSettings(_Section):
     apply_channel_blacklist: bool = True
 
     _clean = field_validator("include_keywords", "exclude_keywords", mode="before")(_clean_list)
+
+    @field_validator("upload_year")
+    @classmethod
+    def _upload_year(cls, v: int, info: Any) -> int:
+        if v != 0 and not (MIN_UPLOAD_YEAR <= v <= datetime.now().year):
+            raise ValueError(
+                f"Jahr muss zwischen {MIN_UPLOAD_YEAR} und {datetime.now().year} liegen"
+            )
+        if v == 0 and info.data.get("upload_period") == "year":
+            raise ValueError("Jahr fehlt (Pflicht beim Zeitraum 'Jahr')")
+        return v
+
+    @field_validator("upload_from", "upload_to", mode="before")
+    @classmethod
+    def _date_text(cls, v: Any) -> Any:
+        return v.strip() if isinstance(v, str) else v
+
+    @field_validator("upload_from", "upload_to")
+    @classmethod
+    def _date_format(cls, v: str) -> str:
+        if v:
+            try:
+                datetime.strptime(v, "%Y-%m-%d")
+            except ValueError:
+                raise ValueError("Ungültiges Datum (Format JJJJ-MM-TT)") from None
+        return v
+
+    @field_validator("upload_to")
+    @classmethod
+    def _to_after_from(cls, v: str, info: Any) -> str:
+        start = info.data.get("upload_from")
+        if v and start and v < start:
+            raise ValueError("Bis-Datum liegt vor dem Von-Datum")
+        return v
 
     @field_validator("max_duration")
     @classmethod
@@ -501,9 +540,13 @@ COMMENTS = {
     "general.log_level": "Log-Stufe: DEBUG, INFO, WARNING, ERROR",
     "general.confirm_delete": "Vor dem Löschen aus der Bibliothek nachfragen",
     "search.results_count": "Anzahl Treffer pro Suche (1-100)",
+    "search.append_year": "Bei Jahr-Filter die Jahreszahl an den Suchbegriff anhängen",
     "filters.min_duration": "Mindestdauer in Sekunden (600 = 10 Minuten)",
     "filters.max_duration": "Maximaldauer in Sekunden, 0 = unbegrenzt",
-    "filters.upload_period": "Upload-Zeitraum: all, 7d, 30d, 1y",
+    "filters.upload_period": "Upload-Zeitraum: all, 7d, 30d, 1y, year, custom",
+    "filters.upload_year": "Jahr (nur bei upload_period: year), 0 = nicht gesetzt",
+    "filters.upload_from": "Von-Datum JJJJ-MM-TT (nur bei upload_period: custom)",
+    "filters.upload_to": "Bis-Datum JJJJ-MM-TT (nur bei upload_period: custom)",
     "filters.include_keywords": "Include-Keywords: mindestens eines muss im Titel vorkommen (leer = egal)",
     "filters.exclude_keywords": "Exclude-Keywords: Treffer mit einem dieser Begriffe werden verworfen",
     "filters.match_description": "Keywords auch in der Beschreibung suchen (flache Abfragen liefern sie oft nicht)",
