@@ -613,7 +613,7 @@
     get_status: () => later(20, status),
     get_versions: () => later(40, () => ({
       app: '0.2.0', ytdlp: state.versions.ytdlp, plugin: state.versions.plugin, deno: '2.5.4', ffmpeg: '7.1', python: '3.13.1',
-      data_dir: '%APPDATA%\\HCLoader', db_path: '%APPDATA%\\HCLoader\\hcloader.db', db_entries: 1234, db_size_mb: 1.8,
+      data_dir: '%APPDATA%\\HCLoader', app_dir: 'C:\\Tools\\HCLoader', portable: false, db_path: '%APPDATA%\\HCLoader\\hcloader.db', db_entries: 1234, db_size_mb: 1.8,
       last_backup: state.lastBackup, last_update_check: isoAt(0, 9, 12),
       backups: clone(state.backups), restart_required: state.restart,
     })),
@@ -674,19 +674,22 @@
         return { ok: true };
       });
     },
-    get_task_status: () => later(60, () => (state.task.unknown ? { registered: null, name: '\\HCLoader\\Watchlist', time: settings.schedule.task_time, next_run: null, error: 'schtasks antwortet nicht (Zeitüberschreitung nach 20 s)' } : {
+    get_task_status: () => later(60, () => (state.task.unknown ? { registered: null, name: '\\HCLoader\\Watchlist', time: settings.schedule.task_time, next_run: null, error: 'schtasks antwortet nicht (Zeitüberschreitung nach 20 s)', path_mismatch: false, task_command: null } : {
       registered: state.task.registered, name: '\\HCLoader\\Watchlist', time: settings.schedule.task_time,
       next_run: state.task.registered ? nextTask() : null, error: null,
+      path_mismatch: !!(state.task.registered && state.task.moved),
+      task_command: state.task.registered ? (state.task.moved ? '"E:\\HCLoader\\python\\pythonw.exe" "E:\\HCLoader\\scripts\\run_watchlist.pyw"' : '"C:\\Tools\\HCLoader\\python\\pythonw.exe" "C:\\Tools\\HCLoader\\scripts\\run_watchlist.pyw"') : null,
     })),
     create_task(time) {
       return later(600, () => {
         if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time || '')) return { ok: false, error: 'Uhrzeit im Format HH:MM erwartet.' };
         state.task.registered = true;
+        state.task.moved = false;
         settings.schedule.task_scheduler_enabled = true;
         settings.schedule.task_time = time;
         pushLog('ok', `Aufgabenplanung: \\HCLoader\\Watchlist täglich ${time} angelegt`);
         pushStatus();
-        return { ok: true, registered: true, name: '\\HCLoader\\Watchlist', time, next_run: nextTask() };
+        return { ok: true, registered: true, name: '\\HCLoader\\Watchlist', time, next_run: nextTask(), path_mismatch: false, task_command: '"C:\\Tools\\HCLoader\\python\\pythonw.exe" "C:\\Tools\\HCLoader\\scripts\\run_watchlist.pyw"' };
       });
     },
     remove_task() {
@@ -968,6 +971,8 @@
       /** Zielordner nicht erreichbar (Banner, «Eintrag entfernen» gesperrt); on = false hebt auf. */
       targetDown(on) { targetDown = on !== false; },
       taskUnknown(on) { state.task.unknown = on !== false; },
+      /** Registrierte Aufgabe zeigt auf einen alten App-Ordner (App verschoben); on = false hebt auf. */
+      taskMoved(on) { state.task.moved = on !== false; if (state.task.moved) { state.task.registered = true; settings.schedule.task_scheduler_enabled = true; } },
       /** Leere Bibliothek zeigen (on = false stellt sie wieder her). */
       libraryEmpty(on) {
         if (on === false) { if (libraryBackup) LIBRARY = libraryBackup; libraryBackup = null; return; }

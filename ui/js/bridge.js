@@ -23,9 +23,10 @@
 
    Status / Wartung
      get_status()                       -> Status (siehe unten)
-     get_versions()                     -> {app, ytdlp, plugin, deno, ffmpeg, python, data_dir, db_path,
-                                            db_entries, db_size_mb, last_backup, last_update_check,
+     get_versions()                     -> {app, ytdlp, plugin, deno, ffmpeg, python, data_dir, app_dir, portable,
+                                            db_path, db_entries, db_size_mb, last_backup, last_update_check,
                                             backups, restart_required}
+                                             portable: bool  (portable.txt im App-Ordner -> Daten in <app_dir>\data)
                                              backups: [{name, path, size_mb, created (ISO)}]  neueste zuerst
                                              restart_required: bool  (yt-dlp aktualisiert, App noch nicht neu gestartet)
      update_ytdlp()                     -> {ok, ytdlp, plugin, changed, output, restart_required?} | {ok:false, error, output}
@@ -38,9 +39,12 @@
      test_po_token()                    -> {ok, state, detail, ms}       state: "active" | "inactive" | "error"
                                            Fehler: {ok:false, state:"error", detail, error, ms:0}
      clear_backoff()                    -> {ok}
-     get_task_status()                  -> {registered, name, next_run, time, error}
+     get_task_status()                  -> {registered, name, next_run, time, error, path_mismatch, task_command}
                                            registered: true | false | null (= unbekannt, error sagt warum)
-     create_task(time)                  -> {ok, registered, name, next_run, time} | {ok:false, error}
+                                           path_mismatch: true = Aufgabe startet einen anderen App-Ordner (App
+                                           verschoben) -> Hinweis + «Aufgabe neu anlegen» (create_task);
+                                           task_command: eingetragene Befehlszeile oder null
+     create_task(time)                  -> {ok, registered, name, next_run, time, path_mismatch, task_command} | {ok:false, error}
                                            setzt schedule.task_scheduler_enabled = true und schedule.task_time
      remove_task()                      -> {ok, registered:false}        setzt schedule.task_scheduler_enabled = false
      get_blacklist()                    -> [{channel_id, channel_name, added}]

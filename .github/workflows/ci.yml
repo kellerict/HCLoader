@@ -3,9 +3,9 @@ on:
   push:
   pull_request:
 concurrency:
-  # Only the newest push per branch is tested; older runs are cancelled.
+  # A running job finishes; of the waiting runs only the newest push is kept.
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   test:
     runs-on: windows-latest

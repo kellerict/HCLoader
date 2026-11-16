@@ -123,7 +123,7 @@ download:
 
 # --- Ablage & Tags ---
 storage:
-  # Zielordner; %USERPROFILE% wird ersetzt
+  # Zielordner; %USERPROFILE% wird ersetzt; relativ (z.B. .\Music) = zum App-Ordner, nur Portable-Version
   target_dir: '%USERPROFILE%\Music\HCLoader'
   # Ordner-/Dateimuster; Platzhalter: genre, artist, channel, year, date, title, id
   path_template: '{genre}/{artist}/{year}/{date} - {title} [{id}]'

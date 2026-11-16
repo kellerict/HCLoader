@@ -68,15 +68,42 @@ VIEWS = ("discover", "inbox", "watchlist", "downloads", "library", "log")
 # --------------------------------------------------------------------------- paths
 
 
+PORTABLE_MARKER = "portable.txt"
+PORTABLE_DATA_DIR = "data"
+
+
+def app_root() -> Path:
+    """The app folder (repo root / unpacked portable folder): parent of `app/`."""
+    return Path(__file__).resolve().parents[2]
+
+
+def is_portable(root: Path | None = None) -> bool:
+    """Portable mode: a file `portable.txt` lies in the app folder (the portable build creates
+    it, docs/decisions.md "Portable-Version")."""
+    return ((root or app_root()) / PORTABLE_MARKER).is_file()
+
+
+def _roaming_dir() -> Path:
+    """%APPDATA% (Windows) or ~/.config, independent of portable mode."""
+    if sys.platform == "win32":
+        base = os.environ.get("APPDATA")
+        return Path(base) if base else Path.home() / "AppData" / "Roaming"
+    return Path.home() / ".config"
+
+
 def app_home() -> Path:
-    """User data folder: $HCLOADER_HOME, else %APPDATA%\\HCLoader (Windows) or ~/.config/HCLoader."""
+    """User data folder. Order (first match wins):
+    1. $HCLOADER_HOME (tests, special setups),
+    2. portable mode (`portable.txt` in the app folder): `<app folder>/data`,
+    3. %APPDATA%\\HCLoader (Windows) or ~/.config/HCLoader.
+    """
     override = os.environ.get("HCLOADER_HOME")
     if override:
         return Path(override)
-    if sys.platform == "win32":
-        base = os.environ.get("APPDATA")
-        return (Path(base) if base else Path.home() / "AppData" / "Roaming") / APP_NAME
-    return Path.home() / ".config" / APP_NAME
+    root = app_root()
+    if is_portable(root):
+        return root / PORTABLE_DATA_DIR
+    return _roaming_dir() / APP_NAME
 
 
 def config_path() -> Path:
@@ -99,7 +126,10 @@ _ENV_RE = re.compile(r"%([^%]+)%")
 
 
 def expand_path(value: str) -> Path:
-    """Expand %VAR% (e.g. %USERPROFILE%) and ~ in a configured path; works on any platform."""
+    """Expand %VAR% (e.g. %USERPROFILE%) and ~ in a configured path; works on any platform.
+
+    A path that is still relative afterwards is resolved against the app folder in portable
+    mode only; otherwise it stays relative (working directory), as before."""
 
     def repl(m: re.Match[str]) -> str:
         name = m.group(1)
@@ -109,13 +139,20 @@ def expand_path(value: str) -> Path:
         if name.upper() == "USERPROFILE":
             return str(Path.home())
         if name.upper() == "APPDATA":
-            return str(app_home().parent)
+            return str(_roaming_dir())
         return m.group(0)
 
     text = _ENV_RE.sub(repl, value)
     if sys.platform != "win32":
         text = text.replace("\\", "/")
-    return Path(text).expanduser()
+    path = Path(text).expanduser()
+    if not path.is_absolute():
+        root = app_root()
+        if is_portable(root):
+            # portable (e.g. USB stick): ".\\Music" lives next to the app, wherever it is.
+            # On Windows "\\Music" (no drive) gets the app folder's drive.
+            return root / path
+    return path
 
 
 # --------------------------------------------------------------------------- models
@@ -559,7 +596,7 @@ COMMENTS = {
     "download.write_cover_jpg": "Zusätzlich cover.jpg neben die Datei legen",
     "download.write_cue": "CUE-Datei aus Kapiteln erzeugen",
     "download.write_id3_chapters": "ID3-Kapitel (CHAP/CTOC) einbetten",
-    "storage.target_dir": "Zielordner; %USERPROFILE% wird ersetzt",
+    "storage.target_dir": "Zielordner; %USERPROFILE% wird ersetzt; relativ (z.B. .\\Music) = zum App-Ordner, nur Portable-Version",
     "storage.path_template": "Ordner-/Dateimuster; Platzhalter: genre, artist, channel, year, date, title, id",
     "storage.max_title_length": "Maximale Titellänge im Dateinamen (20-200)",
     "storage.max_path_length": "Maximale Gesamtpfadlänge (100-259, Windows-Limit)",

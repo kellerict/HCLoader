@@ -290,7 +290,7 @@
         write_id3_chapters: { label: 'ID3-Kapitel schreiben', help: 'Kapitelmarken (CHAP/CTOC) direkt in die MP3 einbetten.' },
       },
       storage: {
-        target_dir: { label: 'Zielordner', help: 'Wurzel der Musikablage. Temporäre Dateien liegen in «.tmp» darunter.' },
+        target_dir: { label: 'Zielordner', help: 'Wurzel der Musikablage. Temporäre Dateien liegen in «.tmp» darunter. In der Portable-Version wird ein relativer Pfad wie «.\\Music» relativ zum App-Ordner aufgelöst (z.B. auf dem USB-Stick).' },
         path_template: { label: 'Pfadmuster', help: 'Relativ zum Zielordner, ohne Dateiendung. «/» trennt Ordner. {id} muss enthalten sein.' },
         max_title_length: { label: 'Max. Titellänge', help: 'Längere Titel werden im Dateinamen gekürzt.' },
         max_path_length: { label: 'Max. Pfadlänge', help: 'Gesamtpfad inklusive Zielordner. Windows erlaubt ohne Zusatzeinstellung 259 Zeichen.' },
@@ -356,6 +356,9 @@
         registered: 'Aufgabe registriert', registered_detail: '{name} · täglich {time} · nächster Lauf {next}',
         none: 'Keine Aufgabe registriert', none_detail: 'Legt in Windows eine tägliche Aufgabe um {time} an (schtasks).',
         create: 'Aufgabe anlegen', remove: 'Aufgabe entfernen',
+        moved: 'App wurde verschoben – Aufgabe neu anlegen',
+        moved_detail: 'Die geplante Aufgabe startet noch {cmd}. Neu anlegen übernimmt den aktuellen App-Ordner.',
+        recreate: 'Aufgabe neu anlegen',
         unknown: 'Status der Aufgabe unbekannt', unknown_detail: 'Die Windows-Aufgabenplanung hat nicht geantwortet. Die Einstellung bleibt unverändert.', recheck: 'Erneut prüfen',
       },
       appearance: {

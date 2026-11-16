@@ -74,7 +74,12 @@ _JOB_LABELS = {
     "update_check": "Update-Prüfung",
     "backup": "Sicherung",
     "po_test": "PO-Token-Test",
+    "task_check": "Aufgabenprüfung",
 }
+_TASK_MOVED = (
+    "HCLoader wurde verschoben – die geplante Aufgabe startet noch den alten Ordner. "
+    "Einstellungen › Zeitplan › «Aufgabe neu anlegen»."
+)
 _UPDATE_BUSY = "Wartung läuft gerade (Update) – bitte später erneut"
 _VIDEO_ID_RE = re.compile(r"^[0-9A-Za-z_-]{11}$")
 
@@ -235,6 +240,7 @@ class Api:
         if not self._loaded_once:
             self._loaded_once = True
             self._startup_update_check()
+            self._startup_task_check()
 
     def _on_run_finished(self, row: dict[str, Any]) -> None:
         """A run (watchlist, headless, manual queue) ended: event `run` for the log view."""
@@ -481,6 +487,29 @@ class Api:
         if not maintenance.update_check_due(self._db.get_state(maintenance.K_LAST_UPDATE_CHECK)):
             return
         self._worker.submit("update_check", self._do_update_check)
+
+    def _startup_task_check(self) -> None:
+        """Phase 6: after moving the app (portable, USB stick) the scheduled task still starts
+        the old folder. Checked once per GUI start in the worker (schtasks may take seconds)."""
+        if not self._cfg.schedule.task_scheduler_enabled or not self._scheduler.available:
+            return
+        self._worker.submit("task_check", self._do_task_check)
+
+    def _do_task_check(self) -> dict[str, Any]:
+        try:
+            st = self._scheduler.query(self._cfg.schedule.task_time)
+        except scheduler.SchedulerError as exc:
+            log.debug("Aufgabenprüfung: %s", exc)
+            return {"ok": False, "error": str(exc)}
+        if st.registered and st.path_mismatch:
+            log.warning(
+                "Aufgabenplanung: Aufgabe startet %s, die App liegt jetzt in %s – "
+                "Aufgabe neu anlegen (Einstellungen › Zeitplan)",
+                st.task_command,
+                config.app_root(),
+            )
+            self._bus.toast(_TASK_MOVED, "warn")
+        return {"ok": True, "path_mismatch": st.path_mismatch}
 
     def _do_update_check(self) -> dict[str, Any]:
         res = self._update_checker()

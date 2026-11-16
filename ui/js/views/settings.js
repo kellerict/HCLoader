@@ -491,6 +491,15 @@
             `<button class="btn sm" data-task="refresh">${I.refresh}${t('set.task.recheck')}</button>`, '', 'warn');
           return;
         }
+        /* Phase 6: Aufgabe zeigt auf einen anderen App-Ordner (App verschoben, z.B. Portable auf USB-Stick).
+           «Neu anlegen» = create_task mit der aktuellen Uhrzeit; schtasks /F überschreibt die alte Aufgabe. */
+        if (s.registered && s.path_mismatch) {
+          host.innerHTML = box('warn', t('set.task.moved'),
+            t('set.task.moved_detail', { cmd: `<code>${esc(s.task_command || '')}</code>` }),
+            `<button class="btn sm primary" data-task="create">${I.clock}${t('set.task.recreate')}</button>`
+            + `<button class="btn sm danger" data-task="remove">${I.trash}${t('set.task.remove')}</button>`, '', 'warn');
+          return;
+        }
         host.innerHTML = s.registered
           ? box('ok', t('set.task.registered'), t('set.task.registered_detail', { name: `<b>${esc(s.name)}</b>`, time: `<b>${esc(s.time)}</b>`, next: `<b>${esc(util.fmtWhen(s.next_run))}</b>` }),
             `<button class="btn sm danger" data-task="remove">${I.trash}${t('set.task.remove')}</button>`)

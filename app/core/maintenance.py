@@ -1,4 +1,5 @@
-"""Maintenance: yt-dlp/plugin update (pip in the venv), daily update check, DB backup, versions.
+"""Maintenance: yt-dlp/plugin update (pip in the venv or in the embedded Python of the portable
+version), daily update check, DB backup, versions.
 
 No YouTube access. The update check asks PyPI (JSON API) for the latest versions; it is not
 YouTube traffic and therefore does not go through the Throttle (docs/decisions.md).
@@ -71,8 +72,17 @@ def venv_python(executable: str | None = None) -> Path:
     return exe
 
 
-def update_command(executable: str | None = None) -> list[str]:
-    return [str(venv_python(executable)), "-m", "pip", "install", "-U", *PIP_SPECS]
+# Portable version (docs/decisions.md): the embedded Python has a `._pth` file, so pip's default
+# build isolation (PYTHONPATH + sitecustomize) does not work there; setuptools is shipped and
+# sdists are built without isolation. Wheels are preferred, so normally nothing is built.
+PORTABLE_PIP_FLAGS = ("--no-warn-script-location", "--prefer-binary", "--no-build-isolation")
+
+
+def update_command(executable: str | None = None, *, portable: bool | None = None) -> list[str]:
+    if portable is None:
+        portable = is_portable_python(executable)
+    flags = PORTABLE_PIP_FLAGS if portable else ()
+    return [str(venv_python(executable)), "-m", "pip", "install", "-U", *flags, *PIP_SPECS]
 
 
 def _default_popen(args: list[str]) -> subprocess.Popen:
@@ -90,6 +100,29 @@ def _default_popen(args: list[str]) -> subprocess.Popen:
 
 def in_venv() -> bool:
     return sys.prefix != sys.base_prefix
+
+
+PORTABLE_PYTHON_DIR = "python"
+
+
+def _same_dir(a: Path, b: Path) -> bool:
+    try:
+        ra, rb = a.resolve(), b.resolve()
+    except OSError:
+        return False
+    return os.path.normcase(str(ra)).casefold() == os.path.normcase(str(rb)).casefold()
+
+
+def is_portable_python(executable: str | Path | None = None, root: Path | None = None) -> bool:
+    """True for the embedded Python of the portable version: `portable.txt` in the app folder
+    AND the interpreter lies directly in `<app folder>/python/`. There is no venv there
+    (`sys.prefix == sys.base_prefix`), so `in_venv()` does not apply, but pip may update it:
+    it belongs to HCLoader alone."""
+    root = root or config.app_root()
+    if not config.is_portable(root):
+        return False
+    exe = Path(executable or sys.executable)
+    return _same_dir(exe.parent, root / PORTABLE_PYTHON_DIR)
 
 
 _PROBE = (
@@ -141,14 +174,23 @@ def run_update(
     process keeps the old yt-dlp module until restart (noted in the output).
     `executable`: Python of another venv to update (default: the running one). Then versions and
     the venv check refer to that interpreter (acceptance test with a throw-away venv).
-    Refuses to run outside a venv (pip would modify the global Python). A timer kills a hanging
+    Refuses to run outside a venv (pip would modify the global Python), except for the embedded
+    Python of the portable version (`is_portable_python`). A timer kills a hanging
     pip after `timeout_s` (the reader loop blocks on the pipe, so a plain `wait(timeout)` after
     it would never trigger).
     """
-    if venv_check is None and executable is not None:
+    if venv_check is None:
+        if executable is not None:
 
-        def venv_check() -> bool:
-            return bool((probe_python(venv_python(executable)) or {}).get("venv"))
+            def venv_check() -> bool:
+                if is_portable_python(executable):
+                    return True
+                return bool((probe_python(venv_python(executable)) or {}).get("venv"))
+
+        else:
+
+            def venv_check() -> bool:
+                return in_venv() or is_portable_python()
 
     if versions is None:
         versions = (
@@ -156,8 +198,11 @@ def run_update(
             if executable is not None
             else installed_versions
         )
-    if not (venv_check or in_venv)():
-        msg = "HCLoader läuft nicht in einer virtuellen Umgebung (venv) – Update abgebrochen"
+    if not venv_check():
+        msg = (
+            "HCLoader läuft weder in einer virtuellen Umgebung (venv) noch im Python der "
+            "Portable-Version – Update abgebrochen"
+        )
         log.error(msg)
         return {"ok": False, "error": msg, "output": ""}
     before = versions()
@@ -418,6 +463,8 @@ def versions_info(
         "ffmpeg": st.get("ffmpeg_version"),
         "python": platform.python_version(),
         "data_dir": str(config.app_home()),
+        "app_dir": str(config.app_root()),
+        "portable": config.is_portable(),
         "db_path": str(db_path),
         "db_entries": db_entries,
         "db_size_mb": db_size_mb(db_path),

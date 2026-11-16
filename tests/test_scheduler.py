@@ -120,6 +120,8 @@ def test_query_not_registered():
         "next_run": None,
         "time": "03:00",
         "error": None,
+        "path_mismatch": False,
+        "task_command": None,
     }
 
 

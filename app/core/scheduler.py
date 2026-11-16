@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
-from xml.sax.saxutils import escape
+from xml.sax.saxutils import escape, unescape
 
 log = logging.getLogger(__name__)
 
@@ -47,6 +47,8 @@ _DATE_FORMATS = (
 )
 _US_FIRST = ("%m/%d/%Y %I:%M:%S %p", "%m/%d/%Y %H:%M:%S")
 _BOUNDARY_RE = re.compile(r"<StartBoundary>\s*\d{4}-\d{2}-\d{2}T(\d{2}:\d{2})", re.I)
+_COMMAND_RE = re.compile(r"<Command>(.*?)</Command>", re.I | re.S)
+_ARGUMENTS_RE = re.compile(r"<Arguments>(.*?)</Arguments>", re.I | re.S)
 _NOT_FOUND_RE = re.compile(
     r"cannot find|can't find|does not exist|nicht finden|nicht vorhanden|existiert nicht|"
     r"introuvable|0x80070002|n'existe pas|no se puede encontrar",
@@ -72,6 +74,10 @@ class TaskStatus:
     next_run: str | None = None  # ISO, local time with offset
     time: str | None = None
     error: str | None = None
+    # the registered task starts HCLoader from another folder (app moved, e.g. portable on a
+    # USB stick); `task_command` is that registered command line (None = not readable)
+    path_mismatch: bool = False
+    task_command: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -80,6 +86,8 @@ class TaskStatus:
             "next_run": self.next_run,
             "time": self.time,
             "error": self.error,
+            "path_mismatch": self.path_mismatch,
+            "task_command": self.task_command,
         }
 
 
@@ -176,6 +184,57 @@ def next_daily(time_str: str, now: datetime | None = None) -> datetime:
     if nxt <= now:
         nxt += timedelta(days=1)
     return nxt
+
+
+def _norm_path(value: str) -> str:
+    """Comparable form of a Windows path (quotes, separators, case, `.`/`..`)."""
+    text = value.strip().strip('"').strip().replace("/", "\\")
+    parts: list[str] = []
+    for part in text.split("\\"):
+        if part in ("", ".") and parts:
+            continue
+        if part == ".." and len(parts) > 1:
+            parts.pop()
+            continue
+        parts.append(part)
+    return "\\".join(parts).casefold()
+
+
+def _first_quoted(arguments: str) -> str:
+    """First argument (the wrapper script) of the task's `<Arguments>`."""
+    text = arguments.strip()
+    if text.startswith('"'):
+        end = text.find('"', 1)
+        return text[1:end] if end > 0 else text[1:]
+    return text.split(" ", 1)[0]
+
+
+def registered_paths(xml_text: str) -> tuple[str, str] | None:
+    """(command, wrapper script) of the task XML (`schtasks /Query /XML`); None if absent."""
+    cmd = _COMMAND_RE.search(xml_text or "")
+    if not cmd:
+        return None
+    args = _ARGUMENTS_RE.search(xml_text)
+    command = unescape(cmd.group(1).strip()).strip('"')
+    script = _first_quoted(unescape(args.group(1))) if args else ""
+    return command, script
+
+
+def path_mismatch(xml_text: str, executable: str | None = None) -> tuple[bool, str | None]:
+    """Does the registered task start another HCLoader folder than the running one?
+
+    Compares the program (pythonw.exe) and the wrapper script with what `create` would write
+    now. Returns (mismatch, registered command line). Unreadable XML = no mismatch (nothing is
+    claimed that cannot be shown)."""
+    found = registered_paths(xml_text)
+    if found is None:
+        return False, None
+    command, script = found
+    shown = f'"{command}" "{script}"' if script else f'"{command}"'
+    same = _norm_path(command) == _norm_path(str(pythonw_path(executable))) and (
+        _norm_path(script) == _norm_path(str(wrapper_script()))
+    )
+    return (not same), shown
 
 
 def _date_formats() -> tuple[str, ...]:
@@ -289,13 +348,18 @@ class TaskScheduler:
             raise SchedulerError(f"Aufgabe konnte nicht entfernt werden: {msg}")
         log.info("Aufgabenplanung: %s entfernt", self.name)
 
-    def _trigger_time(self) -> str | None:
-        """`HH:MM` of the daily trigger from `schtasks /Query /XML`; None if not readable."""
+    def _task_xml(self) -> str | None:
+        """Task definition via `schtasks /Query /XML`; None if not readable."""
         try:
             code, out = self._call("/Query", "/TN", self.name, "/XML")
         except SchedulerError:
             return None
-        m = _BOUNDARY_RE.search(out) if code == 0 else None
+        return out if code == 0 else None
+
+    @staticmethod
+    def _trigger_time(xml_text: str | None) -> str | None:
+        """`HH:MM` of the daily trigger in the task XML."""
+        m = _BOUNDARY_RE.search(xml_text) if xml_text else None
         return m.group(1) if m else None
 
     def query(self, expected_time: str | None = None) -> TaskStatus:
@@ -318,7 +382,16 @@ class TaskScheduler:
         # n7: the CSV date is printed in the Windows locale; the task definition (`/XML`) is
         # locale independent. HCLoader's task is a plain daily trigger, so the next run is the
         # next occurrence of its trigger time. The CSV date is only the fallback.
-        xml_time = self._trigger_time()
+        xml_text = self._task_xml()
+        xml_time = self._trigger_time(xml_text)
+        mismatch, registered_cmd = path_mismatch(xml_text or "", self._executable)
+        if mismatch:
+            log.debug(
+                "Aufgabenplanung: %s startet %s statt %s (App verschoben?)",
+                self.name,
+                registered_cmd,
+                self.command(),
+            )
         if xml_time:
             next_dt = next_daily(xml_time)
         else:
@@ -328,4 +401,11 @@ class TaskScheduler:
             time_str = time_str or f"{next_dt:%H:%M}"
         elif expected_time:
             next_dt = next_daily(expected_time)
-        return TaskStatus(True, name, next_dt.isoformat() if next_dt else None, time_str)
+        return TaskStatus(
+            True,
+            name,
+            next_dt.isoformat() if next_dt else None,
+            time_str,
+            path_mismatch=mismatch,
+            task_command=registered_cmd,
+        )
