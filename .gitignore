@@ -41,3 +41,4 @@ Thumbs.db
 *.cue
 config.yaml.tmp
 config.yaml.bak-*
+docs/screenshots/reduced/
