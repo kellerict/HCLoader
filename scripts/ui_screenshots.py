@@ -91,34 +91,41 @@ class Shooter:
         self.written.append(path)
         print(f"  {path.relative_to(ROOT)}")
 
+    def clear_toasts(self) -> None:
+        self.page.evaluate("document.querySelector('#toasts').replaceChildren()")
+
     def go(self, view: str) -> None:
+        self.clear_toasts()
         self.page.click(f'.nav-item[data-view="{view}"]')
         self.settle()
 
     def tab(self, tab: str) -> None:
+        self.clear_toasts()
         self.page.click(f'.stab[data-tab="{tab}"]')
         self.settle()
 
     def shot_scrolled(self, name: str, scroller: str) -> None:
         """Extra screenshots while the given scroll container has more content."""
         page = self.page
-        metrics = page.evaluate(
+        height, visible = page.evaluate(
             "(sel) => { const e = document.querySelector(sel);"
             " return [e.scrollHeight, e.clientHeight]; }",
             scroller,
         )
-        height, visible = metrics
-        part = 2
-        top = visible - 80
-        while height > visible + 8 and top < height - 40 and part <= 6:
+        max_scroll = height - visible
+        if max_scroll <= 8:
+            return
+        step = visible - 80
+        tops = [*range(step, max_scroll, step), max_scroll]
+        if len(tops) >= 2 and tops[-1] - tops[-2] < 200:
+            del tops[-2]  # the last two pictures would be nearly identical
+        for part, top in enumerate(tops[:5], start=2):
             page.evaluate(
                 "([sel, y]) => { document.querySelector(sel).scrollTop = y; }",
                 [scroller, top],
             )
             page.wait_for_timeout(60)
             self.shot(f"{name}-{part}")
-            top += visible - 80
-            part += 1
         page.evaluate("(sel) => { document.querySelector(sel).scrollTop = 0; }", scroller)
 
     # -- scenes ------------------------------------------------------------

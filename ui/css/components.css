@@ -283,8 +283,8 @@ tr.checking td:first-child::before{content:"";position:absolute;left:0;top:0;bot
 .spane-body h4{font:400 18px var(--f-head);letter-spacing:1.6px;color:var(--muted);margin:26px 0 0;display:flex;align-items:center;gap:10px}
 .spane-body h4::after{content:"";flex:1;height:1px;background:var(--line)}
 .field{display:grid;grid-template-columns:270px minmax(0,1fr);gap:22px;padding:15px 0;border-bottom:1px solid var(--line);align-items:start;position:relative}
-.field .fl b{display:block;font-weight:600;margin-bottom:3px}
-.field .fl b::after{content:"";display:inline-block;vertical-align:middle;margin:0 0 2px 7px;width:5px;height:5px;background:var(--warn);opacity:0;transform:scale(0);transition:opacity var(--t-med),transform var(--t-med) var(--ease-snap)}
+.field .fl b{display:block;position:relative;font-weight:600;margin-bottom:3px}
+.field .fl b::after{content:"";position:absolute;left:-13px;top:8px;width:5px;height:5px;background:var(--warn);opacity:0;transform:scale(0);transition:opacity var(--t-med),transform var(--t-med) var(--ease-snap)}
 .field.dirty .fl b::after{opacity:1;transform:none}
 .field .fl .help{display:block;color:var(--muted);font-size:12.5px;line-height:1.45}
 .field .fl em{display:block;margin-top:5px;font:11px var(--f-mono);color:var(--dim);font-style:normal;overflow-wrap:anywhere}

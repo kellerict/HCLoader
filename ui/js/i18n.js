@@ -201,8 +201,8 @@
       path_preview: { label: 'Vorschau', help: 'Platzhalter anklicken, um sie ins Pfadmuster einzufügen.' },
       throttle: {
         sleep_requests: { label: 'Pause zwischen Requests', help: 'Wartezeit zwischen Metadaten-Abfragen (Suche, Watchlist).' },
-        sleep_interval: { label: 'Pause zwischen Downloads – Minimum', help: 'Nach jedem Download wird zufällig zwischen Minimum und Maximum gewartet.' },
-        max_sleep_interval: { label: 'Pause zwischen Downloads – Maximum', help: 'Obere Grenze der zufälligen Pause.' },
+        sleep_interval: { label: 'Download-Pause – Minimum', help: 'Nach jedem Download wird zufällig zwischen Minimum und Maximum gewartet.' },
+        max_sleep_interval: { label: 'Download-Pause – Maximum', help: 'Obere Grenze der zufälligen Pause.' },
         limit_rate_mb: { label: 'Download-Rate', help: 'Maximale Bandbreite. 0 = unbegrenzt (nicht empfohlen).' },
         max_downloads_per_run: { label: 'Max. Downloads pro Lauf', help: 'Der Rest bleibt in der Warteschlange.' },
         max_downloads_per_day: { label: 'Max. Downloads pro Tag', help: 'Zähler gilt für manuelle und automatische Downloads zusammen.' },

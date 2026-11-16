@@ -16,7 +16,7 @@ body.no-scanlines::before{display:none}
 body::after{ /* Vignette + roter Hauch */
   content:"";position:fixed;inset:0;pointer-events:none;z-index:99;
   background:radial-gradient(ellipse at 80% -10%,rgba(255,31,31,.10),transparent 55%),
-             radial-gradient(ellipse at 50% 120%,rgba(0,0,0,.7),transparent 60%);
+             radial-gradient(ellipse at 50% 125%,rgba(0,0,0,.4),transparent 50%);
 }
 
 /* ---------- Keyframes ---------- */
