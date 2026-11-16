@@ -128,6 +128,59 @@ class Shooter:
             self.shot(f"{name}-{part}")
         page.evaluate("(sel) => { document.querySelector(sel).scrollTop = 0; }", scroller)
 
+    def watchlist_scenes(self) -> None:
+        """Phase 4: laufende Prüfung, Backoff-Sperre, Eingang mit Auswahl, Zeitplan mit Aufgabe.
+
+        Läuft nach den Grundbildern, weil die Prüfung den Mock-Zustand verändert.
+        """
+        page = self.page
+        page.evaluate("HC.mock.demo.local(null); HC.mock.api.clear_backoff()")
+        self.go("watchlist")
+        # Quelle 1 findet etwas, Quelle 2 schlägt fehl, Quelle 3 bleibt im Zustand «prüft …»
+        page.evaluate(
+            "HC.mock.demo.sourceError(2, 'Kanal nicht gefunden (HTTP 404) – URL prüfen');"
+            " HC.mock.demo.checkHold(3)"
+        )
+        page.click("#wl-check")
+        page.wait_for_selector('#wl-body tr[data-id="3"].checking')
+        self.settle(300)
+        self.shot("watchlist-checking")
+        page.evaluate("HC.mock.demo.checkRelease()")
+        page.wait_for_function("!document.querySelector('#wl-check').classList.contains('busy')")
+        self.settle(300)
+        self.shot("watchlist-done")
+
+        page.evaluate("HC.mock.demo.backoff(6)")
+        self.settle(300)
+        self.shot("watchlist-backoff")
+        page.evaluate("HC.mock.api.clear_backoff()")
+
+        # Eingang: neue Treffer der Prüfung, Mehrfachauswahl, Quelle-Filter
+        self.go("inbox")
+        for i in (1, 3, 4):
+            page.click(f"#grid-inbox .card:nth-child({i}) .selbox", force=True)
+        self.settle()
+        self.shot("inbox-selected")
+        page.click("#inbox-selall")
+        page.click("#inbox-selall")
+        page.click('#inbox-bar .chip[data-src="4"]')
+        self.settle()
+        self.shot("inbox-source-filter")
+        page.click('#inbox-bar .chip[data-src=""]')
+
+        # Zeitplan: In-App-Prüfung und Windows-Aufgabe aktiv -> die Aufgabe ist der frühere Termin
+        self.go("settings")
+        self.tab("schedule")
+        page.wait_for_selector("[data-task=create]")
+        page.click("[data-task=create]")
+        page.wait_for_selector("[data-task=remove]")
+        page.evaluate("document.querySelector('#spane-scroll').scrollTop = 0")
+        self.settle()
+        self.shot("settings-schedule-task")
+        page.evaluate("document.querySelector('[data-task=remove]').click()")
+        page.wait_for_selector("[data-task=create]")
+        self.settle()
+
     # -- scenes ------------------------------------------------------------
     def run(self) -> None:
         page = self.page
@@ -169,6 +222,15 @@ class Shooter:
         page.wait_for_selector(".modal")
         self.settle()
         self.shot("watchlist-dialog")
+        # Feldfehler aus save_source ({ok:false, errors:{feld: msg}})
+        page.click('.modal [data-seg=type] [data-v="playlist"]')
+        page.fill(".modal [data-f=name]", "Gabber Vault")
+        page.fill(".modal [data-f=url_or_query]", "https://www.youtube.com/@gabbervault")
+        page.fill(".modal [data-f=max_entries]", "500")
+        page.click(".modal [data-act=ok]")
+        page.wait_for_selector(".modal .field-error:not([hidden])")
+        self.settle(300)
+        self.shot("watchlist-edit-errors")
         page.keyboard.press("Escape")
 
         # Downloads: Simulation von Hand ein paar Schritte weiterdrehen
@@ -272,6 +334,8 @@ class Shooter:
         self.settle(300)
         self.shot("downloads-target")
         page.evaluate("HC.mock.demo.local(null)")
+
+        self.watchlist_scenes()
 
         # Aufgabenplanung antwortet nicht -> Zustand «unbekannt», Schalter bleibt
         page.evaluate("HC.mock.api.clear_backoff(); HC.mock.demo.taskUnknown()")

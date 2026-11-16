@@ -158,7 +158,7 @@
       const text = [general].concat(rest).filter(Boolean).join(' ');
       box.hidden = !text;
       box.innerHTML = text ? ui.notice('error', esc(text)) : '';
-      if (first) { first.focus(); if (first.select) first.select(); }
+      if (first) first.focus();
     };
     ui.modal({
       title: t(isNew ? 'watchlist.add_title' : 'watchlist.edit_title'), body, okLabel: t('common.save'),
@@ -183,7 +183,6 @@
           if (box && !box.hidden) { box.hidden = true; e.target.classList.remove('invalid'); }
         });
         sync();
-        setTimeout(() => { const n = $('[data-f=name]', m); if (n && isNew) n.focus(); }, 0);
       },
       async onOk(m) {
         const okBtn = $('[data-act=ok]', m);
@@ -202,7 +201,6 @@
         if (!r.ok) {
           const errs = r.errors || {};
           showErrors(m, errs, r.error || (Object.keys(errs).length ? '' : t('watchlist.form_error')));
-          fx.pop($('.modal', m), 'again');
           return false;
         }
         ui.toast(t(isNew ? 'toast.source_added' : 'toast.source_saved', { name: out.name }));

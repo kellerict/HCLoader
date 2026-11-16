@@ -123,6 +123,17 @@ body::after{ /* Vignette + roter Hauch */
 .spinner{animation:spin .7s linear infinite}
 tr.checking td:first-child::before{animation:blink 1s steps(2) infinite}
 
+/* ---------- Phase 4: Watchlist-Prüfung, Eingang ---------- */
+/* Scan über die Zeile, die gerade geprüft wird: ein schwaches Band, das dank background-attachment:fixed
+   über alle Zellen hinweg als EIN Streifen läuft. */
+@keyframes rowScan{from{background-position:calc(var(--nav-w) - 320px) 0}to{background-position:100vw 0}}
+tbody tr.checking td,tbody tr.checking:hover td{background-image:linear-gradient(90deg,transparent,rgba(255,176,0,.085) 50%,transparent);background-size:320px 100%;background-repeat:no-repeat;
+  background-attachment:fixed;background-position:-400px 0;animation:rowScan 2.2s linear infinite}
+tr.flash td{animation:flashLine 1100ms ease-out}
+.input.invalid{animation:shake 240ms ease-in-out 1}
+.card.leave{transition:opacity 180ms,transform 180ms var(--ease-out);opacity:0;transform:scale(.96);pointer-events:none}
+.wl-table td .badge{animation:popIn 200ms var(--ease-out)}
+
 /* ---------- Phase 3: Jahr-Stepper, Pause zwischen Downloads, Suchkopf ---------- */
 .stepper .input.tick{animation:yearTick 320ms var(--ease-out)}
 .progress .bar.sleep{animation:breathe 2.4s ease-in-out infinite}
@@ -141,6 +152,8 @@ body.reduced .glitch::before,body.reduced .glitch::after,body.reduced .ripple,bo
 body.reduced .card:hover,body.reduced .btn:active,body.reduced .iconbtn:active,body.reduced .chip:active{transform:none!important}
 body.reduced .skel{background:var(--panel-2)}
 body.reduced .progress.indet .bar{width:100%!important;opacity:.45}
+body.reduced tbody tr.checking td{background-image:none}
+body.reduced .card.leave{opacity:1;transform:none}
 
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
@@ -148,4 +161,6 @@ body.reduced .progress.indet .bar{width:100%!important;opacity:.45}
   .card:hover,.btn:active,.iconbtn:active,.chip:active{transform:none!important}
   .skel{background:var(--panel-2)}
   .progress.indet .bar{width:100%!important;opacity:.45}
+  tbody tr.checking td,tbody tr.checking:hover td{background-image:none}
+  .card.leave{opacity:1;transform:none}
 }

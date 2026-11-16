@@ -187,7 +187,7 @@
 
     fx.count($('#nf-today'), s.counters.downloads_day);
     $('#nf-today-max').textContent = th.max_downloads_per_day;
-    $('#nf-next').textContent = nx.at ? (nx.due ? t('schedule.due') : util.fmtTime(nx.at)) : '–';
+    $('#nf-next').textContent = nx.at ? (nx.due ? t('schedule.due') : util.daysAgo(nx.at) === 0 && util.parseDate(nx.at).getDate() === new Date().getDate() ? util.fmtTime(nx.at) : util.fmtWhen(nx.at)) : '–';
 
     setBadge($('#b-inbox'), s.inbox_count || 0);
     setBadge($('#b-queue'), qn);
