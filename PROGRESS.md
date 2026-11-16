@@ -17,8 +17,8 @@ Cloud-Session (Linux-Container). Abweichend von `build-all.md`: alle Phasen auf 
 | 2 – GUI-Grundgerüst | **abgeschlossen** (QA bestanden, Review freigegeben, 12 Minor → Phase 3) | claude/compassionate-thompson-zgetlu | – | – |
 | 3 – Entdecken & Downloads | **abgeschlossen** (QA bestanden; Review R1 behoben 00f165c, R2 behoben ba6ccbd) | | | |
 | 4 – Watchlist & Zeitplan | **abgeschlossen** (QA bestanden; Review R1 behoben 06503c8, R2 freigegeben, R2-m1 behoben) | | | |
-| 5 – Bibliothek, Protokoll, Feinschliff | in Arbeit |
-| 6 – Portable (User-Wunsch) | geplant nach Phase 5 | | | |
+| 5 – Bibliothek, Protokoll, Feinschliff | **abgeschlossen** (QA bestanden; Review R1 behoben ea1e9aa, R2 freigegeben, R2-m1 behoben) |
+| 6 – Portable (User-Wunsch) | in Arbeit | | | |
 
 ## Aktueller Plan
 Phase 1
@@ -68,3 +68,6 @@ Phase 6 – Portable (User-Wunsch, Variante 2: komplett portable)
 - 2026-11-16 – User wählt Portable-Variante 2 (eingebettetes Python) → als Phase 6 nach Phase 5 eingeplant
 - 2026-11-16 – Phase 4: QA BESTANDEN, Review R1 ÄNDERUNGEN NÖTIG (M1) → behoben (06503c8), Runde 2 FREIGEGEBEN; R2-m1 (eskalierender Retry) behoben → abgeschlossen. Tests laufen offline (Netzwerksperre); Marker `network` nur gezielt/CI.
 - 2026-11-16 – Phase-5-Backend fertig (06503c8); UI läuft
+- 2026-11-16 – Phase 5: QA BESTANDEN, Review R1 ÄNDERUNGEN NÖTIG (M1 Neu-Taggen löscht fremde Tags) → behoben (ea1e9aa), R2 FREIGEGEBEN, R2-m1 (Bilder beim Neu-Taggen) behoben → abgeschlossen
+- 2026-11-16 – **Windows-CI hing seit e205214 (Phase 3b)**: pytest hängt auf windows-latest. CI mit Job-/Test-Timeouts + Stack-Dump + concurrency versehen (c134358), 31 hängende/wartende Läufe abgebrochen. Ursache wird ermittelt.
+- 2026-11-16 – Phase 6 (Portable) gestartet

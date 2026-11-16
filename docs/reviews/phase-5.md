@@ -177,3 +177,161 @@ rückgängig machen. Dazu kommen drei Minor-Funde.
 - **Hygiene:** keine Secrets, keine Binaries, keine Benutzerpfade im Diff. `.gitignore` deckt `.tmp/`,
   `*.cue`, `*.db`, `*.log` ab.
 - **Modulgrenzen:** `yt_dlp` kommt nur in `ytclient.py` vor, `core/` hat keinen UI-Bezug.
+
+## Runde 2
+
+- Umfang: Fixes in `87e916c..ea1e9aa` (`core/library.py`, `core/tagging.py`, `core/sidecar.py`,
+  `core/maintenance.py`, `core/ytclient.py` (FS_LOCK), `api.py`, `ui/js/views/library.js`, `i18n.js`,
+  `mock.js`, `bridge.js`, CSS, `tests/test_review5.py`, `conftest.py`, `ci.yml`), Begründungen in
+  `docs/decisions.md` («Review Phase 5: Fixes»). Bewertet habe ich den Stand `ea1e9aa` in einem eigenen
+  Worktree. Spätere Phase-6-Commits (ab `c134358`) wurden nicht bewertet.
+- Werkzeuge: `ruff check .` und `ruff format --check .` (87 Dateien) sind sauber. `pytest` ohne `-m network`
+  ergibt 620 passed, 1 deselected, Exit 0. Ein eigener Versuch (Scratchpad, nur lokale Dateien, kein Netz) prüft
+  `write_tags(keep_existing=True)` an einer ID3v2.3-MP3 mit fremden Frames und `prune_empty_dirs` mit Mix,
+  `cover.jpg` und `Thumbs.db` im selben Ordner. Kein Code geändert.
+
+### Ergebnis Runde 2: FREIGEGEBEN
+
+M1 ist behoben, ebenso m1–m3 und die angenommenen Hinweise (n1–n7, n12, n13). n8–n11 und n14 sind in
+decisions.md bewusst offen gelassen, das ist vertretbar. Neu gefunden habe ich einen Minor-Fund (R2-m1: Neu-Taggen
+entfernt zusätzliche fremde Bilder) und einige Hinweise. Keiner davon blockiert. Bitte R2-m1 in Phase 6 beheben oder
+in decisions.md begründen.
+
+### Status der Funde aus Runde 1
+
+| ID | Status | Bemerkung |
+|---|---|---|
+| M1 | behoben | Versuch: `TBPM`, `TXXX:replaygain_track_gain`, `COMM::deu` und `COMM:iTunNORM:eng` bleiben erhalten. `COMM::eng` (App-Slot) wird ersetzt. Fremde `CHAP`/`CTOC` mit anderen IDs (`ext1`/`TOC1`) werden durch `_add_chapter_frames` sauber ersetzt (es gibt keine doppelte Top-Level-CTOC). Ohne Kapitel werden alte CHAP/CTOC entfernt. `mutagen.ID3.delall("COMM::eng")` trifft nur den exakten HashKey, kein Präfix. ID3v2.3-`TYER` wird beim Laden zu `TDRC` und damit ersetzt. Der Erst-Download startet weiterhin leer (`keep_existing=False`). Rest: R2-m1 (APIC). |
+| m1 | behoben | `PathTooLongError`, `ValueError` und `OSError` beim Pfadbau ergeben `{ok:false}`, danach wird nichts geändert. |
+| m2 | behoben | `get_library` prüft den Zielordner einmal (Thread, 3 s). Darunter wird nicht `stat`-geprüft, die Einträge sind `unknown`, nicht `missing`, und `_under` arbeitet rein lexikalisch. Die UI zeigt ein Banner und sperrt «Neu taggen» und «Entfernen». `delete_item` verweigert im Backend zusätzlich (`unreachable`). `get_library` bleibt eine Liste (kein Bridge-Bruch). Rest: R2-n1, R2-n2. |
+| m3 | behoben | `outside:true` → Dialog «Nur Eintrag entfernen» (`delete_file=false`). Die Reihenfolge der Prüfungen stimmt: Eine Datei ausserhalb fällt nicht unter die Sperre «nicht erreichbar». Symlinks nach draussen werden über `within()` ebenfalls als `outside` erkannt. decisions.md ist ergänzt. |
+| n1 | behoben (prozessintern) | `FS_LOCK` (RLock) siehe unten. Headless und GUI sind getrennte Prozesse, siehe R2-n3. |
+| n2 | behoben | Erst `.cue`, dann MP3. Scheitert die MP3, bleibt der DB-Eintrag `done`, die `.cue` ist dann weg (lässt sich per Neu-Taggen aus dem Sidecar neu schreiben). |
+| n3/n4 | behoben | `os.path.samefile`, Zwischenname bei reiner Gross/Kleinschreibung, Aufräumen der Kopie nach gescheitertem `shutil.move`. Rest: R2-n4. |
+| n5 | behoben | Siehe «Aufräumen leerer Ordner». |
+| n6 | behoben | Strenges Muster, passend zu `backup_database` (`hcloader-YYYYmmdd-HHMMSS[-n].db`). `.db.tmp` und Nutzerkopien werden nie erfasst. `stat` läuft einmal pro Datei, verschwundene Dateien werden übersprungen, nur reguläre Dateien zählen. |
+| n7 | behoben | «Wartung läuft gerade (Neu taggen)». |
+| n12 | behoben | Siehe «Sidecar-Migration». |
+| n13 | behoben | Docstring ergänzt. `HCLOADER_REQUIRE_NETWORK=1` im CI-Netzwerkschritt macht aus dem PyPI-Skip einen Fehler. |
+| n8–n11, n14 | offen (bewusst) | In decisions.md vermerkt. |
+
+### `target_reachable` (Thread-Timeout)
+
+- Richtig: Der Timeout gilt als «nicht erreichbar». `daemon=True` blockiert das Beenden der App nicht. Das Ergebnis
+  wird über eine Liste übergeben (ein Thread schreibt, gelesen wird nach `join`). Das ist unkritisch.
+- **Thread-Leak:** Ja, aber begrenzt. Jeder Aufruf bei hängender Freigabe hinterlässt einen blockierten Daemon-Thread, bis
+  das OS den SMB-`stat` abbricht (unter Windows typischerweise 30–60 s, siehe R2-n1). Auslöser sind `get_library`
+  (Ansicht öffnen und jedes `done`-Event), `get_library_status` (nur ohne Cache) und `delete_item`.
+- Bei toter Freigabe hängen Downloads ohnehin vorher. Viele `done`-Events fallen in diesem Zustand also nicht an. Ein
+  Anhäufen ist deshalb unwahrscheinlich, aber nicht ausgeschlossen (Nutzer klickt wiederholt in die Bibliothek).
+
+### FS_LOCK
+
+- **Kein Deadlock gefunden.**
+  - Der Downloader nimmt `FS_LOCK` in `_finish`, nach `_download_with_retry`.
+  - Zu diesem Zeitpunkt hält er weder `Throttle._lock` noch `_dl_lock` noch `_meta_lock`. Der Metadaten-Lock wird beim
+    Start der Medienübertragung freigegeben, `mark_download_end` ist schon gelaufen.
+  - Unter `FS_LOCK` werden nur `Database._lock` (kurz, pro Aufruf), `sidecar.write` und der Prüf-Thread benutzt.
+  - Kein Halter von DB- oder Throttle-Locks greift umgekehrt nach `FS_LOCK`.
+  - Kein Import-Zyklus: `library` importiert `ytclient` nicht.
+- **Haltedauer:**
+  - Der Downloader hält ihn nur für `mkdir` und `move`.
+  - `retag` hält ihn für den ganzen Vorgang. Dazu gehört `write_tags` (Mutagen schreibt die Datei komplett neu, wenn
+    das Padding nicht reicht, bei einem 200-MB-Mix auf einem NAS sind das Sekunden) und gegebenenfalls ein
+    Verschieben über Volumegrenzen.
+  - `delete_item` hält ihn inklusive bis zu 3 s `target_reachable`.
+  - Folge: Ein fertiger Download wartet so lange vor dem Verschieben. Er ist dann schon `on_commit`, also nicht mehr
+    abbrechbar. Das ist vertretbar, weil Neu-Taggen eine Einzelaktion ist.
+  - Hängt jedoch ein `shutil.move` des Downloaders auf einer toten Freigabe, blockieren `delete_library_item`
+    (js_api-Thread, nicht der GUI-Thread) und `retag` (Wartungs-Worker, läuft in den Timeout) entsprechend lange. Siehe
+    R2-n1.
+
+### `_move` mit Zwischennamen
+
+- `same` und eine nur in der Gross/Kleinschreibung abweichende Schreibweise ergeben `moving=True`, ohne
+  «existiert bereits»-Abbruch. Der Weg führt dann über `*.hcl-rename`. Unter Linux (case-sensitive) bleibt es ein
+  normales Verschieben.
+- `.cue`: Bei gleicher Datei wird nicht gelöscht (`_same_file(old_cue, new_cue)`), sondern überschrieben bzw.
+  verschoben. Das ist korrekt.
+- `prune_empty_dirs` nach einer Umbenennung im selben Ordner findet die Datei und bricht ab.
+- Aufräumen nach gescheitertem `shutil.move`: Die Kopie am Ziel wird nur gelöscht, wenn die Quelle noch existiert. Ein
+  vorher vorhandenes Ziel ist ausgeschlossen, weil `new_path.exists()` vorher unter `FS_LOCK` abbricht. Damit ist das
+  Löschen sicher.
+- Lücke: R2-n4 (zweites `os.replace` scheitert).
+
+### Aufräumen leerer Ordner (`cover.jpg`, `desktop.ini`, `Thumbs.db`)
+
+- Gelöscht wird nur, wenn **alle** Einträge des Ordners Junk-Namen haben **und** reguläre Dateien sind. Ein noch
+  vorhandener Mix, eine `.cue`, ein Unterordner oder irgendeine andere Datei (`folder.jpg`, `.nfo`) verhindert das
+  Löschen. Versuch: Ordner mit `mix.mp3`, `cover.jpg` und `Thumbs.db` → nichts entfernt.
+- **Ein `cover.jpg`, das zu einem noch vorhandenen Mix im selben Ordner gehört, wird also nie gelöscht.** Ein Mix mit
+  Status `done`, dessen Datei fehlt, schützt das Cover nicht. Das ist harmlos, Neu-Taggen schreibt es neu.
+- Nie der Zielordner selbst: `within(root, root)` ist falsch, bei flacher Vorlage bleibt also auch `<Ziel>/cover.jpg`.
+- Downloads schreiben `cover.jpg` erst nach dem Verschieben (ausserhalb von `FS_LOCK`). Der Mix liegt dann schon im
+  Ordner, das Aufräumen greift also nicht.
+- Unter Windows kann ein schreibgeschütztes `desktop.ini` (Attribut `+r`) `unlink` scheitern lassen. Dann ist
+  vielleicht schon `cover.jpg` weg, der Ordner bleibt aber stehen (`OSError` → Abbruch). Das ist harmlos.
+
+### Sidecar-Migration
+
+- Neuer Name `<id>.<sha1[:8]>.json`. Die ID-Regex verbietet Punkte, Kollisionen mit anderen IDs sind also
+  ausgeschlossen.
+- Altes `<id>.json` wird nur gelesen, migriert (beim nächsten `write`) oder gelöscht, wenn das gespeicherte `id`
+  genau passt oder fehlt. Unter Windows bleibt so ein `ABC.json` (id `ABC`) beim Schreiben für `abc` erhalten.
+  `build` schreibt `id` immer.
+- Kleinigkeit: `delete` entfernt ein **kaputtes** altes `<id>.json` (`_load` → `None`) auch dann, wenn es zur
+  Variante mit anderer Schreibweise gehört. Das ist praktisch irrelevant.
+- Andere Leser des `meta`-Ordners gibt es nicht (grep).
+- Ohne `write` (kein Neu-Taggen) bleiben alte Namen dauerhaft liegen. Das funktioniert, ist aber nicht aufgeräumt.
+
+### Neue Funde
+
+#### Minor
+
+##### R2-m1 – Neu taggen entfernt bei MP3 alle zusätzlichen Bilder (APIC)
+- **Ort:** `app/core/tagging.py:369-370` (`if cover: tags.delall("APIC")`) zusammen mit
+  `app/core/library.py:363` (`cover = extract_cover(path)`, Cover kommt immer aus der Datei selbst).
+- **Problem:**
+  - Hat die Datei irgendein Bild, ist `cover` beim Neu-Taggen immer gesetzt. Dann werden **alle** APIC-Frames gelöscht
+    und nur das Frontcover (bzw. das erste Bild) als `type=3, desc="Cover"` neu geschrieben.
+  - Versuch: Datei mit Front (`type 3`) und Rückseite (`type 4, desc "back"`) → danach nur noch
+    `APIC:Cover` mit den Front-Daten. Die Rückseite ist weg.
+  - Das ist dieselbe Fundklasse wie M1 (fremde Frames gehen verloren), nur viel enger.
+  - Die Doku (`bridge-api.md`: «APIC nur mit neuem Cover», decisions.md: «ein altes Cover bleibt ohne neues»)
+    legt nahe, dass das Cover nur bei einem *neuen* Bild ersetzt wird. Ein neues Bild gibt es beim Neu-Taggen nie.
+  - Zusätzlich (schon vor Runde 2): Ein vom Nutzer eingesetztes PNG-Cover wird mit `mime="image/jpeg"`
+    zurückgeschrieben (`tagging.py:389`). Bei MP4 passiert dasselbe mit `FORMAT_JPEG`.
+- **Vorschlag:**
+  - Beim Neu-Taggen das vorhandene APIC gar nicht anfassen: in `retag` `cover_jpeg=None` übergeben und `cover` nur für
+    `cover.jpg` verwenden.
+  - Alternativ nur `APIC:Cover` bzw. das eine extrahierte Frame ersetzen und den MIME-Typ übernehmen.
+  - Test: Rückseite (`type 4`) übersteht das Neu-Taggen.
+
+#### Hinweise
+- **R2-n1 – Prüf-Thread pro Aufruf** (`library.py:78-92`): Bei hängender Freigabe entsteht pro `get_library` bzw.
+  `delete_item` ein weiterer blockierter Thread. Vorschlag: Nur eine laufende Prüfung pro Zielordner zulassen
+  (Modulvariable). Läuft noch eine, sofort `False` zurückgeben, ohne neuen Thread.
+- **R2-n2 – Langsame, aber lebende Freigabe:** Ein NAS, das aus dem Standby aufwacht, braucht oft mehr als 3 s. Die
+  Bibliothek zeigt dann kurz «nicht erreichbar» und lädt nicht von selbst neu. Das ist sicher (es wird nichts entfernt).
+  Optional: Banner mit Knopf «Erneut prüfen», oder einmal automatisch nach ~10 s neu laden.
+- **R2-n3 – FS_LOCK nur prozessintern:** Ein Headless-Lauf (Aufgabenplanung) verschiebt Downloads in einem anderen
+  Prozess. Das Zeitfenster aus n1 bleibt zwischen Headless-Download und GUI-Löschen bestehen (selten: beide
+  gleichzeitig, gleicher Ordner). Optional ein Datei-Lock wie `_xlock` beim Throttle, sonst in decisions.md
+  festhalten.
+- **R2-n4 – `_move`, zweites `os.replace` scheitert** (`library.py:100-101`): Die Datei bleibt als
+  `<name>.hcl-rename` liegen, die DB zeigt auf den alten Namen («Datei fehlt»). Vorschlag: Im `except` zurück
+  umbenennen (`os.replace(tmp, src)`).
+- **R2-n5 – `get_library_status` liest `_lib_status`** ohne Lock aus dem js_api-Thread. Gleichzeitige `get_library`
+  können sich überschreiben. Das ist harmlos (Ergebnis höchstens ein Aufruf alt).
+
+### Checkliste reviewer.md (Runde 2)
+
+| Punkt | Ergebnis |
+|---|---|
+| 1 YouTube-Schonung | ok. Keine neuen Netzwerkzugriffe. Neu-Taggen bleibt offline, `library` importiert weder `ytclient` noch `yt_dlp`. `ytclient` importiert nur `FS_LOCK`. |
+| 2 Modulgrenzen | ok. `yt_dlp` nur in `ytclient.py`. `core/` ohne UI-Bezug. `api.py` delegiert (`get_library_status` ist ein dünner Cache). |
+| 3 Sicherheit/Hygiene | ok. Keine Secrets, Binaries oder Benutzerpfade im Diff. Banner und Dialog escapen Pfad und Fehlertext. |
+| 4 Korrektheit | ok. Kein Deadlock, Löschen nur innerhalb des Ziels, kein Cover-Verlust bei vorhandenem Mix, strenge Backup-Rotation. Rest: R2-m1, R2-n1–n5. |
+| 5 Konfigurierbarkeit | ok. Keine neuen Einstellungen. `ROOT_CHECK_TIMEOUT_S` ist eine bewusste Konstante. |
+
+**Meldung: FREIGEGEBEN.** R2-m1 bitte in Phase 6 beheben oder in decisions.md begründen.

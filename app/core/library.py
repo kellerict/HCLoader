@@ -413,7 +413,10 @@ def _retag(db: Database, settings: Settings, video_id: str) -> dict[str, Any]:
         tagging.write_tags(
             path,
             tag_meta,
-            cover_jpeg=cover,
+            # Review P5 R2-m1: for MP3 the existing pictures (front cover, back, user images)
+            # stay untouched - the cover only comes from the file anyway. M4A/Opus keep the
+            # old behaviour (single cover rewritten from the file).
+            cover_jpeg=None if path.suffix.lower() == ".mp3" else cover,
             chapters=chapters,
             id3_chapters=dl.write_id3_chapters,
             total_duration=total,

@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 
 import pytest
-from mutagen.id3 import CHAP, ID3, POPM, TBPM, TIT2, TKEY, TXXX, USLT
+from mutagen.id3 import APIC, CHAP, ID3, POPM, TBPM, TIT2, TKEY, TXXX, USLT
 from test_api import env  # noqa: F401  (fixture)
 from test_library import (  # noqa: F401  (fixtures)
     VID,
@@ -94,6 +94,21 @@ def test_retag_keeps_old_cover_without_new_one(tmp_path):
     assert ID3(f).getall("APIC")[0].data == b"JPEGDATA"
     tagging.write_tags(f, {"title": "T", "artist": "A"}, cover_jpeg=b"NEW", keep_existing=True)
     assert [a.data for a in ID3(f).getall("APIC")] == [b"NEW"]
+
+
+@needs_ffmpeg
+def test_retag_keeps_all_pictures_of_an_mp3(tmp_path, root, db, settings):
+    """Review P5 R2-m1: re-tagging must not drop a back cover or a user PNG."""
+    f = make_item(tmp_path, root, db)
+    tags = ID3(f)
+    tags.delall("APIC")
+    tags.add(APIC(encoding=3, mime="image/jpeg", type=3, desc="front", data=b"FRONT"))
+    tags.add(APIC(encoding=3, mime="image/png", type=4, desc="back", data=b"BACKPNG"))
+    tags.save(f, v2_version=4)
+    res = library.retag(db, settings, VID)
+    assert res["ok"], res
+    pics = {(a.type, a.mime, a.data) for a in ID3(res["path"]).getall("APIC")}
+    assert pics == {(3, "image/jpeg", b"FRONT"), (4, "image/png", b"BACKPNG")}
 
 
 # ------------------------------------------------------------------ m1
