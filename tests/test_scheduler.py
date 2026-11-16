@@ -1,5 +1,7 @@
 import subprocess
+import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import pytest
 
@@ -17,6 +19,7 @@ class FakeSchtasks:
 
     def __init__(self, *, fail_create=False, next_run="17.11.2026 03:00:00"):
         self.calls = []
+        self.xml = []  # XML text of every /Create (read while the temp file still exists)
         self.registered = False
         self.fail_create = fail_create
         self.next_run = next_run
@@ -27,6 +30,7 @@ class FakeSchtasks:
         assert args[0] == "schtasks"
         op = args[1]
         if op == "/Create":
+            self.xml.append(Path(args[args.index("/XML") + 1]).read_bytes())
             if self.fail_create:
                 return subprocess.CompletedProcess(
                     args, 1, b"", "FEHLER: Zugriff verweigert".encode("cp850")
@@ -52,27 +56,45 @@ def make(fake=None, **kw):
     return TaskScheduler(run=fake, platform="win32", **kw), fake
 
 
-def test_create_uses_daily_trigger_and_wrapper():
+NS = {"t": "http://schemas.microsoft.com/windows/2004/02/mit/task"}
+
+
+def parse_xml(raw: bytes) -> ET.Element:
+    assert raw[:2] in (b"\xff\xfe", b"\xfe\xff")  # UTF-16 with BOM (what schtasks expects)
+    return ET.fromstring(raw.decode("utf-16").split("?>", 1)[1])
+
+
+def test_create_uses_xml_import_with_laptop_friendly_settings():
     sched, fake = make(executable=r"C:\HC\.venv\Scripts\python.exe")
     st = sched.create("03:30")
     create = fake.calls[0]
-    assert create[:9] == [
-        "schtasks",
-        "/Create",
-        "/SC",
-        "DAILY",
-        "/ST",
-        "03:30",
-        "/TN",
-        "HCLoader-Watchlist",
-        "/TR",
-    ]
-    assert create[-1] == "/F"
-    tr = create[9]
-    assert tr.endswith('run_watchlist.pyw"') and tr.startswith('"')
-    assert "python" in tr.lower()
+    assert create[:5] == ["schtasks", "/Create", "/TN", "HCLoader-Watchlist", "/XML"]
+    assert create[6:] == ["/F"]
+    assert not Path(create[5]).exists()  # temp file removed again
+    task = parse_xml(fake.xml[0])
+    settings = {c.tag.split("}")[1]: c.text for c in task.find("t:Settings", NS)}
+    assert settings["StartWhenAvailable"] == "true"
+    assert settings["DisallowStartIfOnBatteries"] == "false"
+    assert settings["StopIfGoingOnBatteries"] == "false"
+    assert settings["ExecutionTimeLimit"] == "PT6H"
+    assert settings["MultipleInstancesPolicy"] == "IgnoreNew"
+    trigger = task.find("t:Triggers/t:CalendarTrigger", NS)
+    assert trigger.find("t:StartBoundary", NS).text.endswith("T03:30:00")
+    assert trigger.find("t:ScheduleByDay/t:DaysInterval", NS).text == "1"
+    exe = task.find("t:Actions/t:Exec", NS)
+    assert exe.find("t:Command", NS).text.lower().endswith("python.exe")
+    assert exe.find("t:Arguments", NS).text.endswith('run_watchlist.pyw"')
+    assert exe.find("t:WorkingDirectory", NS).text == str(scheduler.repo_root())
     assert st.registered and st.name == "\\HCLoader-Watchlist" and st.time == "03:30"
     assert st.next_run.startswith("2026-11-17T03:00:00")
+
+
+def test_task_xml_escapes_paths_and_validates_time():
+    xml = scheduler.task_xml("04:05", r"C:\Users\A&B <x>\python.exe")
+    assert "A&amp;B &lt;x&gt;" in xml
+    ET.fromstring(xml.split("?>", 1)[1])
+    with pytest.raises(SchedulerError, match="HH:MM"):
+        scheduler.task_xml("4:5")
 
 
 def test_wrapper_script_exists_and_runs_headless_watchlist():
@@ -159,14 +181,6 @@ def test_invalid_time():
     for bad in ("3:00", "24:00", "12:60", "", None, "abc"):
         with pytest.raises(SchedulerError, match="HH:MM"):
             sched.create(bad)
-    assert fake.calls == []
-
-
-def test_too_long_command(monkeypatch):
-    sched, fake = make()
-    monkeypatch.setattr(scheduler, "task_command", lambda exe=None: "x" * 300)
-    with pytest.raises(SchedulerError, match="zu lang"):
-        sched.create("03:00")
     assert fake.calls == []
 
 

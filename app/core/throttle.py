@@ -18,6 +18,7 @@ from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from . import locks
 from .db import Database
 
 log = logging.getLogger(__name__)
@@ -30,6 +31,7 @@ K_DL_DAY = "downloads_day"
 K_DL_TODAY = "downloads_today"
 K_DL_RUN = "downloads_run"
 K_LAST_DL_END = "last_download_end"
+K_LAST_REQUEST = "last_request"
 
 _RATE_LIMIT_PATTERNS = [
     re.compile(r"http error 429", re.I),
@@ -103,7 +105,10 @@ class Throttle:
         self._clock = clock
         self._sleep = sleep
         self._uniform = uniform
-        self._last_request: datetime | None = None
+        # N5: the time of the last request and the search timestamps live in DB `state`; their
+        # read-modify-write runs under a cross-process file lock (`_xlock`), so a GUI search
+        # and a headless watchlist run keep the request spacing and count searches together.
+        self._xdepth = 0
         # Guards read-modify-write sequences (counters, backoff, request spacing). Re-entrant:
         # public methods call each other. Held across the request sleep on purpose, so requests
         # of different threads run serially with the configured spacing.
@@ -119,6 +124,24 @@ class Throttle:
         # soon as the media transfer starts (docs/decisions.md). Never acquired while `_lock`
         # is held (lock order: metadata lock -> `_lock`).
         self._meta_lock = threading.Lock()
+
+    @contextmanager
+    def _xlock(self, cancel_event: threading.Event | None = None) -> Iterator[None]:
+        """Cross-process critical section (re-entrant; always taken under `self._lock`)."""
+        with self._lock:
+            if self._xdepth:
+                self._xdepth += 1
+                try:
+                    yield
+                finally:
+                    self._xdepth -= 1
+                return
+            with locks.cross_process_lock(locks.THROTTLE_LOCK, cancel=cancel_event):
+                self._xdepth = 1
+                try:
+                    yield
+                finally:
+                    self._xdepth = 0
 
     @property
     def cfg(self) -> Any:
@@ -157,7 +180,7 @@ class Throttle:
 
         Triggering while a backoff is already active does not escalate further.
         """
-        with self._lock:
+        with self._xlock():
             active = self.backoff_until()
             if active:
                 return active
@@ -230,6 +253,15 @@ class Throttle:
         # the oldest search that keeps the count at the limit must drop out of the hour
         return datetime.fromtimestamp(times[len(times) - limit] + 3600, UTC)
 
+    def _last_request(self) -> datetime | None:
+        raw = self.db.get_state(K_LAST_REQUEST)
+        if not raw:
+            return None
+        try:
+            return datetime.fromisoformat(raw)
+        except ValueError:
+            return None
+
     def _wait(self, seconds: float, cancel_event: threading.Event | None) -> None:
         """Sleep `seconds` (injectable); abortable through `cancel_event` -> WaitCancelled."""
         if seconds > 0:
@@ -275,7 +307,7 @@ class Throttle:
         *,
         limits: bool,
     ) -> None:
-        with self._lock:
+        with self._xlock(cancel_event):
             if limits:
                 self.check_download()
             else:
@@ -287,10 +319,13 @@ class Throttle:
                     raise LimitReached("searches_per_hour", cfg.max_searches_per_hour)
                 times.append(self._now().timestamp())
                 self.db.set_state(K_SEARCH_TIMES, json.dumps(times))
-            if self._last_request is not None and cfg.sleep_requests > 0:
-                wait = cfg.sleep_requests - (self._now() - self._last_request).total_seconds()
+            last = self._last_request()
+            if last is not None and cfg.sleep_requests > 0:
+                since = (self._now() - last).total_seconds()
+                # a clock set back must not produce an endless wait
+                wait = min(cfg.sleep_requests - since, float(cfg.sleep_requests))
                 self._wait(wait, cancel_event)
-            self._last_request = self._now()
+            self.db.set_state(K_LAST_REQUEST, self._now().isoformat())
             if count_attempt:
                 self.register_download()
 

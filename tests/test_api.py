@@ -71,12 +71,19 @@ class FakeWatchdog:
 class FakeSchtasks:
     def __init__(self):
         self.calls = []
+        self.xml = []  # text of the task XML of every /Create (temp file is removed afterwards)
         self.registered = False
         self.fail = False
+
+    def times(self):
+        """HH:MM of every created task (StartBoundary in the XML)."""
+        return [re.search(r"<StartBoundary>[^T]+T(\d\d:\d\d)", x).group(1) for x in self.xml]
 
     def __call__(self, args):
         args = list(args)
         self.calls.append(args)
+        if args[1] == "/Create":
+            self.xml.append(Path(args[args.index("/XML") + 1]).read_bytes().decode("utf-16"))
         if self.fail:
             return subprocess.CompletedProcess(args, 1, b"", b"FEHLER: Zugriff verweigert")
         if args[1] == "/Create":
@@ -531,7 +538,8 @@ def test_create_get_remove_task(env):
     res = a.create_task("05:45")
     assert res["ok"] and res["registered"] and res["time"] == "05:45"
     assert {"name", "next_run"} <= set(res)
-    assert env.schtasks.calls[1][:6] == ["schtasks", "/Create", "/SC", "DAILY", "/ST", "05:45"]
+    assert env.schtasks.calls[1][:5] == ["schtasks", "/Create", "/TN", "HCLoader-Watchlist", "/XML"]
+    assert env.schtasks.times() == ["05:45"]
     saved = env.make().get_settings()["values"]["schedule"]
     assert saved["task_scheduler_enabled"] is True and saved["task_time"] == "05:45"
     assert a.get_status()["next_check"] is not None
@@ -564,7 +572,7 @@ def test_task_switch_in_settings_form_syncs_windows_task(env):
     assert env.schtasks.registered
     v["schedule"]["task_time"] = "02:45"
     assert a.save_settings(v)["ok"]
-    assert env.schtasks.calls[-2][5] == "02:45"
+    assert env.schtasks.times() == ["02:15", "02:45"]
     v["schedule"]["task_scheduler_enabled"] = False
     assert a.save_settings(v)["ok"]
     assert not env.schtasks.registered
@@ -848,10 +856,12 @@ def test_library_from_db(env, tmp_path):
 
 
 PLACEHOLDER_CALLS = {
-    "save_source": ({"name": "x"},),
-    "check_sources": (None,),
     "retag": ("abcdefghijk",),
     "delete_library_item": ("abcdefghijk",),
+}
+PHASE4_CALLS = {
+    "save_source": ({"name": "x"},),
+    "check_sources": (None,),
 }
 PHASE3_CALLS = {
     "get_last_search": (),
@@ -897,6 +907,7 @@ def test_every_method_json_serializable(env):
     args = {
         **PLACEHOLDER_CALLS,
         **PHASE3_CALLS,
+        **PHASE4_CALLS,
         "save_settings": (a.get_settings()["values"],),
         "reset_settings": (None,),
         "open_path": ("data",),

@@ -223,6 +223,15 @@
     V('cGabb4Fail1', 'Gabba Nation Liveset (Full Set, Members Only)', 'concrete', 66, 2, 11, 5200, 'Hardcore', 'failed'),
     V('zUpt3mpoZH2', 'Uptempo Warm Up Mix – Road to Winter Edition', 'zrh', 37, 52, 0, 1200, 'Uptempo', 'inbox'),
   ];
+  /* Eingang: Treffer kennen ihre Watchlist-Quelle (Video.source_id, siehe bridge.js). */
+  Object.entries({ cN1ndstr017: 5, rFr3nchC0re: 5, dP0dcast042: 3, rMainstrHC1: 4, zUpt3mpoZH2: 7 }).forEach(([id, src]) => { VIDEOS.find((v) => v.id === id).source_id = src; });
+  /* Was die nächste simulierte Watchlist-Prüfung pro Quelle neu findet (einmalig). */
+  const FRESH = {
+    1: [V('kRawSunday9', 'Raw Sunday Session #9 – Full Liveset', 'kick', 71, 8, 0, 640, 'Hardstyle')],
+    2: [V('gThunderd96', 'Thunderdome ’96 Tribute Mix – Oldschool Gabber', 'vault', 67, 21, 0, 2100, 'Hardcore')],
+    4: [V('rAfterh0urs', 'Afterhours Hardcore Set – Recorded Live in Basel', 'rave', 92, 14, 1, 980, 'Hardcore'),
+      V('rTekn0Raid4', 'Hardtekno Raid Vol. 4 – Liveset', 'rave', 54, 30, 0, 310, 'Unsortiert')],
+  };
   const byId = (id) => VIDEOS.find((v) => v.id === id);
   const SEARCH_IDS = VIDEOS.filter((v) => v.id !== 'cGabb4Fail1').map((v) => v.id);
   /* Die flache Suche liefert das Datum nur ungefähr («vor 3 Monaten») -> date_approx. */
@@ -272,14 +281,16 @@
 
   /* ---------- Watchlist ---------- */
   let SOURCES = [
-    { id: 1, type: 'channel', name: 'Kickdrum Collective', url_or_query: 'https://www.youtube.com/@kickdrumcollective', default_genre: 'Hardstyle', enabled: true, auto_download: true, max_entries: 30, last_checked: isoAt(0, 3, 0), new_count: 2 },
-    { id: 2, type: 'channel', name: 'Gabber Vault', url_or_query: 'https://www.youtube.com/@gabbervault', default_genre: 'Hardcore', enabled: true, auto_download: false, max_entries: 30, last_checked: isoAt(0, 3, 1), new_count: 0 },
-    { id: 3, type: 'channel', name: 'Distortion Unit', url_or_query: 'https://www.youtube.com/@distortionunit', default_genre: 'Uptempo', enabled: true, auto_download: false, max_entries: 30, last_checked: isoAt(0, 3, 2), new_count: 1 },
-    { id: 4, type: 'channel', name: 'Rave Archive CH', url_or_query: 'https://www.youtube.com/@ravearchivech', default_genre: null, enabled: true, auto_download: false, max_entries: 50, last_checked: isoAt(0, 3, 3), new_count: 2 },
-    { id: 5, type: 'search', name: 'Frenchcore Livesets', url_or_query: 'frenchcore liveset', default_genre: 'Hardcore', enabled: true, auto_download: false, max_entries: 20, last_checked: isoAt(0, 3, 4), new_count: 0 },
-    { id: 6, type: 'playlist', name: 'Hard Classics Playlist', url_or_query: 'https://www.youtube.com/playlist?list=PLhardclassics', default_genre: 'Hardcore', enabled: false, auto_download: false, max_entries: 30, last_checked: isoAt(6, 3, 0), new_count: 0 },
-    { id: 7, type: 'search', name: 'Uptempo Podcasts', url_or_query: 'uptempo podcast mix', default_genre: 'Uptempo', enabled: true, auto_download: true, max_entries: 15, last_checked: null, new_count: 0 },
+    { id: 1, type: 'channel', name: 'Kickdrum Collective', url_or_query: 'https://www.youtube.com/@kickdrumcollective', default_genre: 'Hardstyle', enabled: true, auto_download: true, max_entries: 30, last_checked: isoAt(1, 21, 40) },
+    { id: 2, type: 'channel', name: 'Gabber Vault', url_or_query: 'https://www.youtube.com/@gabbervault', default_genre: 'Hardcore', enabled: true, auto_download: false, max_entries: 30, last_checked: isoAt(1, 21, 41) },
+    { id: 3, type: 'channel', name: 'Distortion Unit', url_or_query: 'https://www.youtube.com/@distortionunit', default_genre: 'Uptempo', enabled: true, auto_download: false, max_entries: 30, last_checked: isoAt(1, 21, 42) },
+    { id: 4, type: 'channel', name: 'Rave Archive CH', url_or_query: 'https://www.youtube.com/@ravearchivech', default_genre: null, enabled: true, auto_download: false, max_entries: 50, last_checked: isoAt(1, 21, 43) },
+    { id: 5, type: 'search', name: 'Frenchcore Livesets', url_or_query: 'frenchcore liveset', default_genre: 'Hardcore', enabled: true, auto_download: false, max_entries: 20, last_checked: isoAt(1, 21, 44) },
+    { id: 6, type: 'playlist', name: 'Hard Classics Playlist', url_or_query: 'https://www.youtube.com/playlist?list=PLhardclassics', default_genre: 'Hardcore', enabled: false, auto_download: false, max_entries: 30, last_checked: isoAt(6, 3, 0) },
+    { id: 7, type: 'search', name: 'Uptempo Podcasts', url_or_query: 'uptempo podcast mix', default_genre: 'Uptempo', enabled: true, auto_download: false, max_entries: 15, last_checked: isoAt(1, 21, 45) },
   ];
+  /* new_count = Treffer dieser Quelle, die noch im Eingang liegen (wie api.get_sources). */
+  const sourceView = (x) => Object.assign(clone(x), { new_count: VIDEOS.filter((v) => v.status === 'inbox' && v.source_id === x.id).length });
   let nextSourceId = 8;
   let BLACKLIST = [
     { channel_id: 'UCreact0001', channel_name: 'Reaction Bros', added: isoDay(34) },
@@ -356,6 +367,10 @@
     po: { state: 'active', detail: 'Token erzeugt vor 4 min', created: Date.now() - 4 * 60000 },
     backoff: { active: false, until: null, level: 0 },
     task: { registered: false },
+    appNext: isoAt(0, 21, 45), // nächste In-App-Prüfung = letzte Prüfung + Intervall
+    checking: false, // läuft gerade eine Watchlist-Prüfung?
+    hold: null, // Demo: {id, release} – Prüfung hält bei dieser Quelle an
+    sourceErrors: {}, // Demo: {id: Meldung} – nächste Prüfung dieser Quelle schlägt fehl
     local: null, // [code, Meldung] – lokale Sperre «pot» / «target» / «error» (nur Demo)
     versions: { ytdlp: '2026.11.02', plugin: '1.3.0' },
     lastBackup: isoAt(5, 19, 2),
@@ -365,12 +380,19 @@
   };
   const SLEEP_STEP = 2; // Zeitraffer: ein Tick (450 ms) = 2 s Pause
 
-  const nextCheck = () => {
+  const nextTask = () => {
     const [hh, mm] = settings.schedule.task_time.split(':').map(Number);
     const d = new Date();
     d.setHours(hh, mm, 0, 0);
     if (d <= new Date()) d.setDate(d.getDate() + 1);
     return d.toISOString();
+  };
+  /* Wie core/status.next_check: das frühere von Aufgabe (falls registriert) und In-App-Intervall. */
+  const nextCheck = () => {
+    const c = [];
+    if (state.task.registered) c.push(nextTask());
+    if (settings.schedule.in_app_check && state.appNext) c.push(state.appNext);
+    return c.length ? c.sort()[0] : null;
   };
   const activeQueue = () => state.queue.filter((q) => q.state !== 'failed');
   function status() {
@@ -383,7 +405,7 @@
         active: state.backoff.active, until: state.backoff.until, level: state.backoff.level,
         remaining_s: state.backoff.active ? Math.max(0, Math.round((new Date(state.backoff.until) - Date.now()) / 1000)) : 0,
       },
-      next_check: settings.schedule.in_app_check || state.task.registered ? nextCheck() : null,
+      next_check: nextCheck(),
       queue_length: activeQueue().length, queue_paused: state.paused,
       inbox_count: VIDEOS.filter((v) => v.status === 'inbox').length,
       counters: clone(state.counters),
@@ -548,7 +570,7 @@
     },
     get_task_status: () => later(60, () => (state.task.unknown ? { registered: null, name: '\\HCLoader\\Watchlist', time: settings.schedule.task_time, next_run: null, error: 'schtasks antwortet nicht (Zeitüberschreitung nach 20 s)' } : {
       registered: state.task.registered, name: '\\HCLoader\\Watchlist', time: settings.schedule.task_time,
-      next_run: state.task.registered ? nextCheck() : null, error: null,
+      next_run: state.task.registered ? nextTask() : null, error: null,
     })),
     create_task(time) {
       return later(600, () => {
@@ -558,7 +580,7 @@
         settings.schedule.task_time = time;
         pushLog('ok', `Aufgabenplanung: \\HCLoader\\Watchlist täglich ${time} angelegt`);
         pushStatus();
-        return { ok: true, registered: true, name: '\\HCLoader\\Watchlist', time, next_run: nextCheck() };
+        return { ok: true, registered: true, name: '\\HCLoader\\Watchlist', time, next_run: nextTask() };
       });
     },
     remove_task() {
@@ -630,10 +652,10 @@
       return later(80, () => {
         let s = SOURCES.find((x) => x.name === channelName);
         if (!s) {
-          s = { id: nextSourceId++, type: 'channel', name: channelName, url_or_query: `https://www.youtube.com/channel/${channelId}`, default_genre: null, enabled: true, auto_download: false, max_entries: settings.schedule.entries_per_source, last_checked: null, new_count: 0 };
+          s = { id: nextSourceId++, type: 'channel', name: channelName, url_or_query: `https://www.youtube.com/channel/${channelId}`, default_genre: null, enabled: true, auto_download: false, max_entries: settings.schedule.entries_per_source, last_checked: null };
           SOURCES.push(s);
         }
-        return { ok: true, source: clone(s) };
+        return { ok: true, source: sourceView(s) };
       });
     },
     block_channel(channelId, channelName) {
@@ -644,36 +666,77 @@
     },
 
     /* Watchlist */
-    get_sources: () => later(40, () => clone(SOURCES)),
+    get_sources: () => later(40, () => SOURCES.map(sourceView)),
     save_source(src) {
       return later(120, () => {
         const errors = {};
-        if (!String(src.name || '').trim()) errors.name = 'Name fehlt.';
-        if (!String(src.url_or_query || '').trim()) errors.url_or_query = src.type === 'search' ? 'Suchbegriff fehlt.' : 'URL fehlt.';
-        else if (src.type !== 'search' && !/^https?:\/\/(www\.)?youtube\.com\//.test(src.url_or_query)) errors.url_or_query = 'YouTube-URL erwartet (https://www.youtube.com/…).';
-        if (!(src.max_entries >= 1 && src.max_entries <= 200)) errors.max_entries = 'Wert muss zwischen 1 und 200 liegen.';
+        const url = String(src.url_or_query || '').trim();
+        const name = String(src.name || '').trim();
+        if (!['channel', 'playlist', 'search'].includes(src.type)) errors.type = 'Unbekannter Typ.';
+        if (!name) errors.name = 'Name fehlt.';
+        else if (SOURCES.some((x) => x.id !== src.id && x.name.toLowerCase() === name.toLowerCase())) errors.name = 'Eine Quelle mit diesem Namen gibt es bereits.';
+        if (!url) errors.url_or_query = src.type === 'search' ? 'Suchbegriff fehlt.' : 'URL fehlt.';
+        else if (src.type !== 'search' && !/^https?:\/\/(www\.|music\.)?youtube\.com\//.test(url)) errors.url_or_query = 'YouTube-URL erwartet (https://www.youtube.com/…).';
+        else if (src.type === 'playlist' && !/[?&]list=[\w-]+/.test(url)) errors.url_or_query = 'Playlist-URL erwartet (…/playlist?list=…).';
+        if (!(Number.isInteger(src.max_entries) && src.max_entries >= 1 && src.max_entries <= 200)) errors.max_entries = 'Ganze Zahl zwischen 1 und 200 erwartet.';
+        if (src.default_genre && !settings.genres.items.some((g) => g.name === src.default_genre)) errors.default_genre = 'Dieses Genre gibt es nicht (mehr).';
         if (Object.keys(errors).length) return { ok: false, errors };
+        const fields = { type: src.type, name, url_or_query: url, default_genre: src.default_genre || null, enabled: !!src.enabled, auto_download: !!src.auto_download, max_entries: src.max_entries };
         let s = SOURCES.find((x) => x.id === src.id);
-        if (s) Object.assign(s, src);
-        else { s = Object.assign({ last_checked: null, new_count: 0 }, src, { id: nextSourceId++ }); SOURCES.push(s); }
-        return { ok: true, source: clone(s) };
+        if (s) Object.assign(s, fields);
+        else { s = Object.assign({ id: nextSourceId++, last_checked: null }, fields); SOURCES.push(s); }
+        return { ok: true, source: sourceView(s) };
       });
     },
     delete_source(id) {
       return later(60, () => { SOURCES = SOURCES.filter((s) => s.id !== id); return { ok: true }; });
     },
     check_sources(ids) {
+      if (state.backoff.active) return later(30, { ok: false, error: 'Backoff aktiv – die Watchlist-Prüfung ist gesperrt.' });
+      if (state.checking) return later(30, { ok: false, error: 'Die Watchlist wird bereits geprüft.' });
       const list = SOURCES.filter((s) => s.enabled && (!ids || ids.includes(s.id)));
+      if (!list.length) return later(30, { ok: true, started: 0 });
+      state.checking = true;
       pushLog('info', `Watchlist-Prüfung gestartet · ${list.length} Quelle(n)`);
       (async () => {
+        let found = 0, errors = 0, queued = 0;
         for (const s of list) {
+          if (!SOURCES.includes(s)) continue; // inzwischen gelöscht
           emit('source', { id: s.id, checking: true });
-          await later(650);
+          await later(900);
+          if (state.hold && state.hold.id === s.id) await new Promise((r) => { state.hold.release = r; });
+          const err = state.sourceErrors[s.id];
+          if (err) {
+            delete state.sourceErrors[s.id];
+            errors++;
+            pushLog('error', `Watchlist · ${s.name}: ${err}`);
+            emit('source', { id: s.id, checking: false, error: err });
+            continue;
+          }
+          const hits = FRESH[s.id] || [];
+          delete FRESH[s.id];
+          hits.forEach((v) => {
+            Object.assign(v, { source_id: s.id, status: 'inbox' });
+            if (s.default_genre) v.genre = s.default_genre;
+            VIDEOS.push(v);
+            if (s.auto_download) {
+              state.queue.push({ id: v.id, state: 'waiting', phase: 'waiting', pct: 0, speed: 0, eta: 0, error: null });
+              v.status = 'queued';
+              queued++;
+            }
+          });
+          found += hits.length;
           s.last_checked = new Date().toISOString();
-          emit('source', { id: s.id, checking: false, last_checked: s.last_checked, new_count: s.new_count });
+          if (hits.length) pushLog('ok', `Watchlist · ${s.name}: ${hits.length} neue(r) Treffer${s.auto_download ? ' → Warteschlange' : ' → Eingang'}`);
+          emit('source', { id: s.id, checking: false, last_checked: s.last_checked, new_count: sourceView(s).new_count });
+          if (hits.length) { if (queued) emit('queue', {}); pushStatus(); }
         }
-        pushLog('ok', `Watchlist-Prüfung beendet · ${list.length} Quelle(n) · 0 neue Treffer`);
-        emit('watchlist_done', { checked: list.length, found: 0 });
+        state.checking = false;
+        if (!ids) state.appNext = new Date(Date.now() + settings.schedule.watchlist_interval_hours * 3600000).toISOString();
+        RUNS.unshift({ id: RUNS[0].id + 1, kind: 'watchlist', started: new Date().toISOString(), finished: new Date().toISOString(), found, downloaded: 0, errors, note: '' });
+        pushLog(errors ? 'warn' : 'ok', `Watchlist-Prüfung beendet · ${list.length} Quelle(n) · ${found} neue Treffer${errors ? ` · ${errors} Fehler` : ''}`);
+        emit('watchlist_done', { checked: list.length, found });
+        pushStatus();
       })();
       return later(30, { ok: true, started: list.length });
     },
@@ -769,6 +832,11 @@
         pushStatus();
       },
       taskUnknown(on) { state.task.unknown = on !== false; },
+      /** Watchlist-Prüfung hält bei dieser Quelle im Zustand «prüft …» an, bis checkRelease(). */
+      checkHold(id) { state.hold = { id, release: null }; },
+      checkRelease() { const h = state.hold; state.hold = null; if (h && h.release) h.release(); },
+      /** Die nächste Prüfung dieser Quelle schlägt mit der Meldung fehl. */
+      sourceError(id, msg) { state.sourceErrors[id] = msg || 'Kanal nicht gefunden (HTTP 404)'; },
       /** Lokale Sperre der Warteschlange (code "pot" | "target" | "error", null = aufheben). */
       local(code, msg) {
         const texts = {

@@ -22,7 +22,17 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .core import binaries, config, discover, locks, maintenance, paths, potoken, scheduler
+from .core import (
+    binaries,
+    config,
+    discover,
+    locks,
+    maintenance,
+    paths,
+    potoken,
+    scheduler,
+    watchlist,
+)
 from .core import status as status_mod
 from .core.config import Settings
 from .core.db import Database
@@ -36,6 +46,7 @@ from .worker import (
     PotWatchdog,
     Ticker,
     WatchdogPotServer,
+    WatchlistScheduler,
     Worker,
     YtdlpGate,
     local_preflight,
@@ -45,7 +56,6 @@ from .worker import (
 
 log = logging.getLogger("hcloader.api")
 
-PHASE4 = "Folgt in Phase 4"
 PHASE5 = "Folgt in Phase 5"
 JOB_TIMEOUT_S = maintenance.UPDATE_TIMEOUT_S + 60
 STATUS_INTERVAL_S = 30.0
@@ -103,9 +113,11 @@ class Api:
         update_runner: Callable[..., dict[str, Any]] | None = None,
         update_checker: Callable[[], dict[str, Any]] | None = None,
         run_lock: Callable[[], Any] | None = None,
+        watchlist_lock: Callable[[], Any] | None = None,
         client_factory: Callable[[], Any] | None = None,
         throttle: Throttle | None = None,
         queue_options: dict[str, Any] | None = None,
+        schedule_options: dict[str, Any] | None = None,
         configure_logging: bool = True,
     ) -> None:
         self._config_file = config_file or config.config_path()
@@ -132,6 +144,7 @@ class Api:
         self._update_runner = update_runner or maintenance.run_update
         self._update_checker = update_checker or maintenance.check_updates
         self._run_lock = run_lock or locks.acquire_run_lock
+        self._watchlist_lock = watchlist_lock or locks.acquire_watchlist_lock
         self._client_factory = client_factory or self._make_client
         qopts: dict[str, Any] = {"pot_wait": POT_START_WAIT_S, **(queue_options or {})}
         self._queue = DownloadQueue(
@@ -147,6 +160,16 @@ class Api:
             ),
             on_thread_start=self._cleanup_partials,  # n6: in the queue thread, before downloads
             **qopts,
+        )
+        # Watchlist checks: own thread (never blocks maintenance jobs), one check at a time
+        self._wl_worker = Worker("hcloader-watchlist")
+        self._wl_cancel = threading.Event()
+        self._wl_sched = WatchlistScheduler(
+            self._db,
+            self._throttle,
+            lambda: self._settings,
+            self._trigger_scheduled_check,
+            **(schedule_options or {}),
         )
         self._configure_logging = configure_logging
         self._window: Any = None
@@ -173,6 +196,7 @@ class Api:
         self._worker.start()
         self._watchdog.start()
         self._queue.start()
+        self._wl_sched.start()
         self._ticker = Ticker(STATUS_INTERVAL_S, self._push)
         self._ticker.start()
 
@@ -185,6 +209,9 @@ class Api:
         self._logs.stop()
         if self._ticker:
             self._ticker.stop()
+        self._wl_sched.stop()
+        self._wl_cancel.set()  # a running check stops before the next source
+        self._wl_worker.stop()
         ended = self._queue.stop(queue_timeout)
         self._search_worker.stop()
         self._watchdog.stop()
@@ -366,6 +393,7 @@ class Api:
             self._db,
             po_token=self._po_state(),
             queue_paused=self._queue.paused,
+            in_app_next=self._wl_sched.next_check(),
         )
 
     def _job(self, key: str, fn: Callable[[], dict[str, Any]], timeout: float) -> dict[str, Any]:
@@ -744,34 +772,135 @@ class Api:
 
     # ================================================================== watchlist
 
+    def _source_dict(self, s: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "id": s["id"],
+            "type": s["type"],
+            "name": s["name"],
+            "url_or_query": s["url_or_query"],
+            "default_genre": s.get("default_genre") or None,
+            "enabled": bool(s.get("enabled")),
+            "auto_download": bool(s.get("auto_download")),
+            "max_entries": s.get("max_entries"),
+            "last_checked": s.get("last_checked"),
+            "new_count": self._db.count_videos(status="inbox", source_id=s["id"]),
+        }
+
     def get_sources(self) -> list[dict[str, Any]]:
-        out = []
-        for s in self._db.list_sources():
-            out.append(
-                {
-                    "id": s["id"],
-                    "type": s["type"],
-                    "name": s["name"],
-                    "url_or_query": s["url_or_query"],
-                    "default_genre": s.get("default_genre") or None,
-                    "enabled": bool(s.get("enabled")),
-                    "auto_download": bool(s.get("auto_download")),
-                    "max_entries": s.get("max_entries"),
-                    "last_checked": s.get("last_checked"),
-                    "new_count": self._db.count_videos(status="inbox", source_id=s["id"]),
-                }
-            )
-        return out
+        return [self._source_dict(s) for s in self._db.list_sources()]
 
     def save_source(self, source: dict[str, Any]) -> dict[str, Any]:
-        return {**self._later(PHASE4), "errors": {}}
+        if not isinstance(source, dict):
+            return {"ok": False, "error": "Ungültige Quelle", "errors": {}}
+        clean, errors = watchlist.validate_source(
+            source, self._cfg, existing=self._db.list_sources()
+        )
+        if errors:
+            return {"ok": False, "errors": errors}
+        raw_id = source.get("id")
+        if raw_id in (None, ""):
+            sid = self._db.add_source(
+                clean.pop("type"), clean.pop("name"), clean.pop("url_or_query"), **clean
+            )
+            log.info("Quelle hinzugefügt: %s", source.get("name"))
+        else:
+            sid = int(raw_id)
+            if self._db.get_source(sid) is None:
+                return {"ok": False, "error": "Quelle existiert nicht mehr", "errors": {}}
+            self._db.update_source(sid, **clean)
+            log.info("Quelle gespeichert: %s", clean["name"])
+        self._push()  # next planned check may change (first source / enabled flag)
+        return {"ok": True, "source": self._source_dict(self._db.get_source(sid))}
 
     def delete_source(self, source_id: int) -> dict[str, Any]:
         self._db.delete_source(int(source_id))
+        self._push()
         return {"ok": True}
 
     def check_sources(self, ids: list[int] | None = None) -> dict[str, Any]:
-        return {**self._later(PHASE4), "started": 0}
+        """Start a check in the watchlist thread; progress comes as `source` events and a final
+        `watchlist_done`. `started` = number of sources that will be checked."""
+        if ids is not None and not isinstance(ids, (list, tuple)):
+            return {"ok": False, "error": "Ungültige Auswahl", "started": 0}
+        try:
+            wanted = None if ids is None else sorted({int(i) for i in ids})
+        except (TypeError, ValueError):
+            return {"ok": False, "error": "Ungültige Auswahl", "started": 0}
+        refusal = self._watchlist_refusal()
+        if refusal:
+            return {"ok": False, "error": refusal, "started": 0}
+        sources = self._db.list_sources(enabled_only=wanted is None)
+        count = len(sources) if wanted is None else sum(1 for s in sources if s["id"] in wanted)
+        if count == 0:
+            return {"ok": True, "started": 0}
+        self._submit_check(wanted)
+        return {"ok": True, "started": count}
+
+    def _watchlist_refusal(self) -> str | None:
+        """Why no check may start right now (German), else None."""
+        if self._queue.restart_required:
+            return "Neustart nötig – yt-dlp wurde aktualisiert"
+        if self._ytdlp_gate.updating:
+            return _UPDATE_BUSY
+        until = self._throttle.backoff_until()
+        if until:
+            return f"Backoff aktiv bis {discover.format_until(until)} – Prüfung gesperrt"
+        return None
+
+    @staticmethod
+    def _check_key(ids: list[int] | None) -> str:
+        return "watchlist:all" if ids is None else "watchlist:" + ",".join(map(str, ids))
+
+    def _submit_check(self, ids: list[int] | None) -> None:
+        self._wl_worker.submit(self._check_key(ids), self._do_watchlist, ids)
+
+    def _trigger_scheduled_check(self) -> bool:
+        """In-app interval (WatchlistScheduler): start a full check unless one is queued/running
+        or something forbids it. Never during a backoff, a yt-dlp update or a headless run."""
+        if self._watchlist_refusal() or self._wl_worker.busy(self._check_key(None)):
+            return False
+        log.info("Geplante Watchlist-Prüfung (Intervall in der App)")
+        self._submit_check(None)
+        return True
+
+    def _do_watchlist(self, ids: list[int] | None) -> dict[str, Any]:
+        lock = self._watchlist_lock()
+        if lock is None:  # a headless run checks right now
+            msg = "Die Watchlist wird gerade von einem anderen Lauf geprüft (z.B. geplante Prüfung)"
+            log.warning(msg)
+            self._bus.toast(msg, "warn")
+            self._bus.emit("watchlist_done", {"checked": 0, "found": 0})
+            return {"ok": False, "error": msg}
+        result = watchlist.WatchlistResult()
+        try:
+            with self._ytdlp_gate.search():  # no yt-dlp update meanwhile (n2)
+                client = self._client_factory()
+                try:
+                    result = watchlist.check_all(
+                        client=client,
+                        db=self._db,
+                        throttle=self._throttle,
+                        settings=self._cfg,
+                        ids=ids,
+                        enqueue=lambda vids: self._queue.enqueue(vids, auto=True),
+                        on_source=lambda payload: self._bus.emit("source", payload),
+                        cancel=self._wl_cancel,
+                    )
+                finally:
+                    client.close()
+        except GateBusy:
+            self._bus.toast(_UPDATE_BUSY, "warn")
+        except Exception as exc:
+            log.exception("Watchlist-Prüfung fehlgeschlagen")
+            self._bus.toast(f"Watchlist-Prüfung fehlgeschlagen: {exc}", "err")
+        finally:
+            lock.release()
+        if result.backoff:
+            self._bus.toast(f"Watchlist abgebrochen: {result.note}", "warn")
+        checked = result.checked + result.errors  # sources processed (checked or failed)
+        self._bus.emit("watchlist_done", {"checked": checked, "found": result.found})
+        self._push()
+        return {"ok": True, "checked": checked, "found": result.found}
 
     # ================================================================== downloads
 

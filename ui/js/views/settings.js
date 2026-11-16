@@ -103,6 +103,7 @@
       { k: 'network.proxy', type: 'text', mono: true, placeholder: 'set.network.proxy.ph' },
     ] },
     { id: 'schedule', fields: [
+      { custom: 'nextCheck' },
       { h: 'set.h.in_app' },
       { k: 'schedule.in_app_check', type: 'bool' },
       { k: 'schedule.watchlist_interval_hours', type: 'float', min: 1, max: 168, unit: 'unit.h' },
@@ -382,6 +383,32 @@
       host._update = () => {
         const on = !!work.network.cookies_from_browser;
         host.innerHTML = `<div class="field plain" style="padding-top:0"><div class="fl"></div><div class="fc"><div class="fc-main">${ui.notice(on ? 'warn' : 'info', t(on ? 'set.cookies.warn_on' : 'set.cookies.warn_off'))}</div></div></div>`;
+      };
+      host._update();
+    },
+
+    /* Zeitplan: wann wird als Nächstes geprüft – in der App oder über die Windows-Aufgabe? */
+    nextCheck(host) {
+      host._update = () => {
+        const sc = HC.settings.values.schedule, n = HC.schedule.next();
+        const bo = HC.status && HC.status.backoff;
+        const h = util.trimNum(+sc.watchlist_interval_hours || 0);
+        const dirty = ['in_app_check', 'watchlist_interval_hours', 'task_scheduler_enabled', 'task_time'].some((k) => isDirtyKey('schedule.' + k));
+        let extra = bo && bo.active && (n.at || sc.in_app_check || sc.task_scheduler_enabled) ? ui.notice('warn', t('set.next.backoff', { t: esc(util.fmtWhen(bo.until)) })) : '';
+        if (dirty) extra += ui.notice('info', t('set.next.unsaved'));
+        let html;
+        if (n.at) {
+          const detail = n.kind === 'task' ? t('set.next.task_detail', { time: `<b>${esc(sc.task_time)}</b>` }) + (sc.in_app_check ? ` ${t('set.next.also_app', { h })}` : '')
+            : n.kind === 'app' ? t('set.next.app_detail', { h: `<b>${h}</b>` }) + (sc.task_scheduler_enabled ? ` ${t('set.next.also_task', { time: esc(sc.task_time) })}` : '')
+              : t('set.next.any_detail');
+          const when = n.due ? t('set.next.due') : util.fmtWhen(n.at);
+          html = box(bo && bo.active ? 'warn' : 'ok', `${t('set.next.title')}: ${esc(when)}`, detail, `<span class="st-kind">${n.kind ? esc(t('schedule.kind_' + n.kind)) : ''}</span>`, extra, bo && bo.active ? 'warn' : 'live');
+        } else if (sc.in_app_check || sc.task_scheduler_enabled) {
+          html = box('off', `${t('set.next.title')}: ${t('set.next.pending')}`, t('set.next.pending_detail'), '', extra, 'off');
+        } else {
+          html = box('off', t('set.next.off'), t('set.next.off_detail'), '', extra, 'off');
+        }
+        if (host._html !== html) { host.innerHTML = html; host._html = html; }
       };
       host._update();
     },

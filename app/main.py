@@ -12,16 +12,12 @@ from .core import binaries, config, locks
 from .core.db import Database
 from .core.logging_setup import setup_logging
 from .core.throttle import Throttle, ThrottleError
+from .exitcodes import EXIT_BLOCKED, EXIT_BUSY, EXIT_FAILED, EXIT_OK, EXIT_USAGE
 
 # yt-dlp is imported lazily (run_smoke / first search or download in the GUI): an in-app update
 # before that takes effect without restart, and Windows does not lock its .pyd files (m2).
 
 log = logging.getLogger("hcloader")
-
-EXIT_OK = 0
-EXIT_FAILED = 1
-EXIT_BLOCKED = 2
-EXIT_USAGE = 3
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -30,9 +26,6 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--headless", action="store_true", help="ohne GUI laufen")
     p.add_argument("--run-watchlist", action="store_true", help="Watchlist prüfen (mit --headless)")
     return p
-
-
-EXIT_BUSY = 4
 
 
 def _reset_interrupted(db: Database) -> None:
@@ -205,17 +198,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.smoke:
         return run_smoke(args.smoke)
-    if args.headless or args.run_watchlist:
-        if args.run_watchlist:
-            run_lock = locks.acquire_run_lock()
-            if run_lock is None:
-                print("Ein anderer Download-Lauf ist aktiv (GUI oder Headless).", file=sys.stderr)
-                return EXIT_BUSY
-            try:
-                print("Watchlist-Lauf folgt in Phase 4.")
-                return EXIT_OK
-            finally:
-                run_lock.release()
+    if args.run_watchlist:
+        from .headless import run_watchlist
+
+        return run_watchlist()
+    if args.headless:
         print("--headless braucht --run-watchlist.", file=sys.stderr)
         return EXIT_USAGE
     instance = locks.acquire_single_instance()

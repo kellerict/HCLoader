@@ -1,8 +1,11 @@
 """Windows task scheduler (schtasks) for the daily headless watchlist run (SPEC §2, §3.2).
 
-The task runs `pythonw.exe scripts/run_watchlist.pyw`. schtasks has no working-directory
-option; the wrapper script finds the repo root from its own location, so no `cd` is needed and
-no console window opens (docs/decisions.md). `run` (subprocess) is injectable for tests.
+The task runs `pythonw.exe scripts/run_watchlist.pyw` and is created from a Task Scheduler XML
+(`schtasks /Create /XML`, UTF-16), because the command line cannot set the conditions a laptop
+needs (Review Phase 2 n6): run missed starts as soon as possible (`StartWhenAvailable`), also
+on battery, one instance at a time, 6 h time limit. The wrapper script finds the repo root from
+its own location and no console window opens (docs/decisions.md). `run` (subprocess) is
+injectable for tests.
 """
 
 from __future__ import annotations
@@ -10,19 +13,22 @@ from __future__ import annotations
 import csv
 import io
 import logging
+import os
 import re
 import subprocess
 import sys
+import tempfile
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
+from xml.sax.saxutils import escape
 
 log = logging.getLogger(__name__)
 
 TASK_NAME = "HCLoader-Watchlist"
-MAX_TR_LENGTH = 261  # schtasks limit for /TR
+EXECUTION_TIME_LIMIT = "PT6H"
 TIMEOUT_S = 20
 _TIME_RE = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
 _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
@@ -92,8 +98,64 @@ def pythonw_path(executable: str | None = None) -> Path:
 
 
 def task_command(executable: str | None = None) -> str:
-    """The /TR value: `"<pythonw>" "<repo>\\scripts\\run_watchlist.pyw"`."""
+    """Human-readable command line: `"<pythonw>" "<repo>\\scripts\\run_watchlist.pyw"`."""
     return f'"{pythonw_path(executable)}" "{wrapper_script()}"'
+
+
+def task_xml(time_str: str, executable: str | None = None, now: datetime | None = None) -> str:
+    """Task Scheduler XML (schema 1.2) of the daily watchlist task (docs/decisions.md).
+
+    Daily at `time_str` (local time); missed runs start as soon as possible; no battery
+    restrictions; a second start while one runs is ignored (`IgnoreNew`); 6 h limit.
+    """
+    hhmm = validate_time(time_str)
+    start = (now or datetime.now()).strftime("%Y-%m-%d") + f"T{hhmm}:00"
+    command = escape(str(pythonw_path(executable)))
+    arguments = escape(f'"{wrapper_script()}"')
+    workdir = escape(str(repo_root()))
+    return f"""<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo>
+    <Description>HCLoader: Watchlist prüfen und neue Mixes laden (headless)</Description>
+  </RegistrationInfo>
+  <Triggers>
+    <CalendarTrigger>
+      <StartBoundary>{start}</StartBoundary>
+      <Enabled>true</Enabled>
+      <ScheduleByDay>
+        <DaysInterval>1</DaysInterval>
+      </ScheduleByDay>
+    </CalendarTrigger>
+  </Triggers>
+  <Principals>
+    <Principal id="Author">
+      <LogonType>InteractiveToken</LogonType>
+      <RunLevel>LeastPrivilege</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <AllowHardTerminate>true</AllowHardTerminate>
+    <StartWhenAvailable>true</StartWhenAvailable>
+    <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
+    <AllowStartOnDemand>true</AllowStartOnDemand>
+    <Enabled>true</Enabled>
+    <Hidden>false</Hidden>
+    <WakeToRun>false</WakeToRun>
+    <ExecutionTimeLimit>{EXECUTION_TIME_LIMIT}</ExecutionTimeLimit>
+    <Priority>7</Priority>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>{command}</Command>
+      <Arguments>{arguments}</Arguments>
+      <WorkingDirectory>{workdir}</WorkingDirectory>
+    </Exec>
+  </Actions>
+</Task>
+"""
 
 
 def validate_time(value: Any) -> str:
@@ -197,14 +259,17 @@ class TaskScheduler:
     def create(self, time_str: str) -> TaskStatus:
         self._require()
         time_str = validate_time(time_str)
-        tr = self.command()
-        if len(tr) > MAX_TR_LENGTH:
-            raise SchedulerError(
-                f"Pfad zu lang für die Aufgabenplanung ({len(tr)} > {MAX_TR_LENGTH} Zeichen)."
-            )
-        code, msg = self._call(
-            "/Create", "/SC", "DAILY", "/ST", time_str, "/TN", self.name, "/TR", tr, "/F"
-        )
+        fd, name = tempfile.mkstemp(prefix="hcloader-task-", suffix=".xml")
+        xml_path = Path(name)
+        try:
+            with os.fdopen(fd, "wb") as fh:
+                fh.write(task_xml(time_str, self._executable).encode("utf-16"))  # BOM + LE
+            code, msg = self._call("/Create", "/TN", self.name, "/XML", str(xml_path), "/F")
+        finally:
+            try:
+                xml_path.unlink()
+            except OSError:
+                pass
         if code != 0:
             raise SchedulerError(f"Aufgabe konnte nicht angelegt werden: {msg}")
         log.info("Aufgabenplanung: %s täglich um %s angelegt", self.name, time_str)

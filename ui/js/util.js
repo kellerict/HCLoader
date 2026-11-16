@@ -128,6 +128,21 @@
       if (diff < 0 && diff > -30) return HC.t('fmt.days_ago', { n: -diff });
       return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}. ${time}`;
     },
+    /** ISO → «gerade eben» / «vor 12 Min.» / «vor 6 Std.», älter wie fmtWhen («gestern 03:00», «vor 6 T.») */
+    fmtRel(s) {
+      const d = parseDate(s);
+      if (!d) return HC.t('fmt.never');
+      const sec = (Date.now() - d) / 1000;
+      if (sec < 0 || sec >= 86400) return util.fmtWhen(s);
+      if (sec < 90) return HC.t('fmt.just_now');
+      if (sec < 3600) return HC.t('fmt.min_ago', { n: Math.round(sec / 60) });
+      return HC.t('fmt.hours_ago', { n: Math.floor(sec / 3600) });
+    },
+    /** ISO → «16.11.2026 03:00» (für Tooltips) */
+    fmtFull(s) {
+      const d = parseDate(s);
+      return d ? `${util.fmtDate(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}` : '';
+    },
     /** Sekunden → «5 h 12 min» / «42 s» */
     fmtSpan(sec) {
       sec = Math.max(0, Math.round(sec));

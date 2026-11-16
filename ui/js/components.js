@@ -218,6 +218,7 @@
 
   /* ---------- Mix-Karte ---------- */
   const CAN_LOAD = ['new', 'inbox', 'failed'];
+  /** o: {selected, source: Name der Watchlist-Quelle (Badge im Eingang)} */
   ui.card = function (v, o) {
     const opt = o || {};
     const can = CAN_LOAD.includes(v.status);
@@ -227,6 +228,7 @@
       ${ui.thumb(v)}
         ${ui.gtag(v.genre)}
         ${can ? `<span class="selbox" data-act="sel" title="${esc(t('card.select'))}"></span>` : ''}
+        ${opt.source ? `<span class="src" title="${esc(t('card.source', { name: opt.source }))}">${I.eye}<span>${esc(opt.source)}</span></span>` : ''}
         <span class="dur">${HC.util.fmtDur(v.duration)}</span></div>
       <div class="cbody">
         <div class="ctitle" title="${esc(v.title)}">${esc(v.title)}</div>

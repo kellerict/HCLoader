@@ -6,16 +6,29 @@ Two independent locks:
   GUI worker, `--headless --run-watchlist` or `--smoke`. This keeps the throttle's persisted
   counters and pacing consistent across processes.
 
-On Windows a named mutex (ctypes, kernel32) is used. Everywhere else, and as a fallback if the
-mutex cannot be created, an OS-level file lock (`msvcrt.locking` / `fcntl.flock`) on a file in
-`<app_home>/locks/` is used; the OS releases it automatically when the process dies, so there
-are no stale locks.
+On Windows a named mutex (ctypes, kernel32) is used, preferably in the `Global\\` namespace (N3):
+a scheduled task that runs independently of the logon lives in session 0 and would never see a
+`Local\\` mutex of the GUI session. If `Global\\` is not allowed, `Local\\` is used. Everywhere
+else, and as a fallback if no mutex can be created, an OS-level file lock (`msvcrt.locking` /
+`fcntl.flock`) on a file in `<app_home>/locks/` is used; the OS releases it automatically when the
+process dies, so there are no stale locks.
+
+Further:
+- `acquire_watchlist_lock()`: only one watchlist check at a time (GUI interval check vs. headless).
+- `cross_process_lock(name)`: blocking, short-lived critical section (N5: request spacing and
+  search counters of the throttle across processes).
 """
 
 from __future__ import annotations
 
 import logging
+import os
+import re
 import sys
+import threading
+import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +41,15 @@ ERROR_ALREADY_EXISTS = 183
 
 SINGLE_INSTANCE = "single-instance"
 RUN_LOCK = "run"
+WATCHLIST_LOCK = "watchlist"
+THROTTLE_LOCK = "throttle"
+MUTEX_NAMESPACES = ("Global\\", "Local\\")
+
+
+def _user_tag() -> str:
+    """Per-user part of the Global mutex name (the Global namespace is machine-wide)."""
+    raw = os.environ.get("USERNAME") or os.environ.get("USER") or "user"
+    return re.sub(r"[^0-9A-Za-z_.-]", "_", raw)[:40]
 
 
 def _kernel32() -> Any:
@@ -82,13 +104,21 @@ class ProcessLock:
     # -- strategies
 
     def _acquire_mutex(self) -> bool | None:
-        """Named mutex; None if it cannot be used (-> file fallback)."""
+        """Named mutex (`Global\\` first, then `Local\\`); None if none can be used (-> file)."""
         try:
             kernel = self._kernel or _kernel32()
-            handle = kernel.CreateMutexW(None, False, f"Local\\HCLoader.{self.name}")
+            handle = None
+            already = False
+            for prefix in MUTEX_NAMESPACES:
+                handle = kernel.CreateMutexW(
+                    None, False, f"{prefix}HCLoader.{_user_tag()}.{self.name}"
+                )
+                if handle:
+                    already = kernel.GetLastError() == ERROR_ALREADY_EXISTS
+                    break
+                log.debug("Mutex im Namensraum %s nicht erlaubt", prefix)
             if not handle:
                 return None
-            already = kernel.GetLastError() == ERROR_ALREADY_EXISTS
         except Exception:
             log.debug("Named Mutex nicht verfügbar, Datei-Lock als Fallback", exc_info=True)
             return None
@@ -156,3 +186,54 @@ def acquire_run_lock() -> ProcessLock | None:
     """
     lock = ProcessLock(RUN_LOCK)
     return lock if lock.acquire() else None
+
+
+def acquire_watchlist_lock() -> ProcessLock | None:
+    """Exclusive watchlist-check lock; None if another check (GUI interval or headless) runs."""
+    lock = ProcessLock(WATCHLIST_LOCK)
+    return lock if lock.acquire() else None
+
+
+@contextmanager
+def cross_process_lock(
+    name: str,
+    *,
+    timeout: float = 120.0,
+    poll: float = 0.05,
+    cancel: threading.Event | None = None,
+    path: Path | None = None,
+) -> Iterator[bool]:
+    """Blocking OS file lock for short critical sections shared by all HCLoader processes.
+
+    Always a file lock (never the mutex): it can be waited for and is released by the OS if the
+    process dies. Yields True if the lock is held. After `timeout` seconds (or if the lock file
+    is unusable) it yields False instead of blocking the user forever - callers then continue
+    without cross-process protection (logged). `cancel` aborts the wait (yields False).
+    """
+    lock_path = path or (config.app_home() / "locks" / f"{name}.lock")
+    fh: Any = None
+    try:
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        fh = lock_path.open("a+b")
+    except OSError as exc:
+        log.warning("Lock-Datei nicht verfügbar (%s): %s", lock_path, exc)
+    held = False
+    if fh is not None:
+        deadline = time.monotonic() + max(0.0, timeout)
+        while True:
+            if _try_lock_file(fh):
+                held = True
+                break
+            if (cancel is not None and cancel.is_set()) or time.monotonic() >= deadline:
+                log.warning("Prozess-Lock «%s» nicht erhalten – fahre ohne fort", name)
+                break
+            time.sleep(poll)
+    try:
+        yield held
+    finally:
+        if fh is not None:
+            try:
+                if held:
+                    _unlock_file(fh)
+            finally:
+                fh.close()

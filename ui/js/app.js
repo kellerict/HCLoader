@@ -44,6 +44,42 @@
     ink: (name) => util.inkFor(HC.genres.color(name)),
   };
 
+  /* ---------- Zeitplan: nächste Watchlist-Prüfung ---------- */
+  /* Status.next_check ist das frühere von In-App-Intervall und Windows-Aufgabe. Woher der Termin
+     stammt, leitet die UI aus den Einstellungen ab: sind beide aktiv, ist es die Aufgabe, wenn der
+     Termin auf die nächste tägliche Uhrzeit (schedule.task_time) fällt – sonst die App. */
+  HC.schedule = {
+    /** -> {at: ISO|null, kind: "app"|"task"|null, due: bool, blocked: bool (Backoff aktiv)} */
+    next() {
+      const st = HC.status, sc = HC.settings.values && HC.settings.values.schedule;
+      const d = st && util.parseDate(st.next_check);
+      const blocked = !!(st && st.backoff && st.backoff.active);
+      if (!d || !sc) return { at: null, kind: null, due: false, blocked };
+      let kind = sc.in_app_check ? 'app' : sc.task_scheduler_enabled ? 'task' : null;
+      if (sc.in_app_check && sc.task_scheduler_enabled) {
+        const m = /^(\d{1,2}):(\d{2})$/.exec(sc.task_time || '');
+        if (m) {
+          const daily = new Date(d);
+          daily.setHours(+m[1], +m[2], 0, 0);
+          if (Math.abs(daily - d) < 90000) kind = 'task';
+        }
+      }
+      return { at: st.next_check, kind, due: d.getTime() <= Date.now(), blocked };
+    },
+    /** «heute 21:45 · App» / «fällig» / «aus» */
+    label(n, short) {
+      const x = n || HC.schedule.next();
+      if (!x.at) return t('statusbar.next_off');
+      const when = x.due ? t('schedule.due') : util.fmtWhen(x.at);
+      return x.kind && !short ? `${when} · ${t('schedule.kind_' + x.kind)}` : when;
+    },
+    title(n) {
+      const x = n || HC.schedule.next();
+      if (!x.at) return t('schedule.tip_off');
+      return t(x.kind ? 'schedule.tip_' + x.kind : 'schedule.tip_any', { t: util.fmtFull(x.at) }) + (x.blocked ? ` ${t('schedule.tip_backoff')}` : '');
+    },
+  };
+
   /* ---------- Darstellung (appearance.*) ---------- */
   function applyAppearance(a) {
     const ap = a || HC.settings.values.appearance;
@@ -144,11 +180,14 @@
 
     fx.count($('#sb-day'), s.counters.downloads_day);
     $('#sb-day-max').textContent = th.max_downloads_per_day;
-    $('#sb-next').textContent = s.next_check ? util.fmtWhen(s.next_check) : t('statusbar.next_off');
+    const nx = HC.schedule.next();
+    $('#sb-next').textContent = HC.schedule.label(nx);
+    $('#sb-next').classList.toggle('held', !!nx.at && nx.blocked);
+    $('#sb-next').parentElement.title = HC.schedule.title(nx);
 
     fx.count($('#nf-today'), s.counters.downloads_day);
     $('#nf-today-max').textContent = th.max_downloads_per_day;
-    $('#nf-next').textContent = s.next_check ? util.fmtTime(s.next_check) : '–';
+    $('#nf-next').textContent = nx.at ? (nx.due ? t('schedule.due') : util.fmtTime(nx.at)) : '–';
 
     setBadge($('#b-inbox'), s.inbox_count || 0);
     setBadge($('#b-queue'), qn);
@@ -168,7 +207,16 @@
     B.on('done', (d) => HC.ui.toast(t('toast.done', { title: d.title })));
     B.on('failed', (d) => HC.ui.toast(t('toast.failed', { title: d.title, error: d.error }), 'err'));
     B.on('toast', (d) => HC.ui.toast(d.msg, d.kind));
-    B.on('watchlist_done', (d) => HC.ui.toast(t(d.found ? 'toast.wl_done_found' : 'toast.wl_done', { n: d.checked, found: d.found }), d.found ? 'ok' : 'info'));
+    /* Watchlist-Lauf: Fehler pro Quelle mitzählen, am Ende eine Zusammenfassung. */
+    let wlErrors = 0;
+    B.on('source', (d) => { if (!d.checking && d.error) wlErrors++; });
+    B.on('watchlist_done', (d) => {
+      const found = +d.found || 0, errors = wlErrors;
+      wlErrors = 0;
+      let msg = found ? t(found === 1 ? 'toast.wl_done_found_one' : 'toast.wl_done_found', { found }) : t(d.checked === 1 ? 'toast.wl_done_one' : 'toast.wl_done', { n: d.checked });
+      if (errors) msg += ` · ${t(errors === 1 ? 'toast.wl_errors_one' : 'toast.wl_errors', { n: errors })}`;
+      HC.ui.toast(msg, errors ? 'warn' : found ? 'ok' : 'info', errors ? 5200 : 0);
+    });
   }
 
   /* ---------- Start ---------- */
@@ -191,7 +239,7 @@
       inited = true;
     }
     setStatus(await HC.bridge.safe('get_status'));
-    const m = /^#([a-z]+)(?:\/([a-z_-]+))?/.exec(location.hash || '');
+    const m = /^#([a-z]+)(?:\/([a-z0-9_-]+))?/.exec(location.hash || '');
     go(m && VIEWS.includes(m[1]) ? m[1] : s.values.general.start_view, m ? m[2] : undefined);
     document.body.classList.add('ready');
   }
@@ -231,6 +279,8 @@
     go,
     current: () => current,
     applyAppearance,
+    /** Status neu holen (z.B. Eingang-Zähler nach einer Aktion, falls das Backend kein Event schickt). */
+    refreshStatus: util.debounce(async () => setStatus(await HC.bridge.safe('get_status')), 250),
     /** Nach dem Speichern: neue Werte übernehmen und alles Abhängige auffrischen. */
     settingsSaved(values) {
       HC.settings.values = util.clone(values);

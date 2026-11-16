@@ -28,10 +28,10 @@ from collections.abc import Callable, Iterator
 from concurrent.futures import Future
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from .core import binaries, locks, preflight
+from .core import binaries, locks, preflight, watchlist
 from .core.discover import format_until
 from .core.logging_setup import live_handler
 from .core.preflight import LocalError
@@ -420,6 +420,7 @@ class DownloadQueue:
         preflight: Callable[[float, threading.Event], LocalError | None] | None = None,
         pot_wait: float = 20.0,
         on_thread_start: Callable[[], Any] | None = None,
+        record_run: bool = True,
         idle_interval: float = 30.0,
         progress_interval: float = 0.5,
         monotonic: Callable[[], float] = time.monotonic,
@@ -434,6 +435,9 @@ class DownloadQueue:
         self._preflight = preflight
         self._pot_wait = pot_wait
         self._on_thread_start = on_thread_start
+        # False: the caller (headless run) writes its own `runs` entry from `last_session`
+        self._record_run = record_run
+        self.last_session: dict[str, Any] = {"downloaded": 0, "errors": 0, "note": ""}
         self._idle_interval = idle_interval
         self._progress_interval = progress_interval
         self._mono = monotonic
@@ -624,15 +628,21 @@ class DownloadQueue:
 
     # ------------------------------------------------------------------ user actions
 
-    def enqueue(self, ids: list[str]) -> list[str]:
+    def enqueue(self, ids: list[str], *, auto: bool = False) -> list[str]:
+        """Queue videos. `auto=True` (watchlist auto-download) is no user action: it neither
+        starts a new run after the run limit nor retries a failed client."""
         accepted = self._db.enqueue([str(i) for i in ids or []])
         for vid in accepted:
             self._emit_video(vid)
         if accepted:
             log.info("%d Mix(es) zur Warteschlange hinzugefügt", len(accepted))
-            self._run_limit_hit = False  # explicit user action = new run
+            if not auto:
+                self._run_limit_hit = False  # explicit user action = new run
         self._changed()
-        self.user_action()
+        if auto:
+            self.wake()
+        else:
+            self.user_action()
         return accepted
 
     def set_paused(self, paused: bool) -> bool:
@@ -700,6 +710,7 @@ class DownloadQueue:
         """One scheduling step: start a run if entries wait and nothing blocks (also tests)."""
         if self._stop.is_set():
             return
+        self.last_session = {"downloaded": 0, "errors": 0, "note": ""}
         if self._paused or self._db.next_queued() is None:
             self._note_block(None)
             return
@@ -772,7 +783,7 @@ class DownloadQueue:
             self._changed()
 
     def _session(self, run: RunSession, client: Any) -> None:
-        run_id = self._db.start_run("manual")
+        run_id = self._db.start_run("manual") if self._record_run else None
         downloaded = errors = 0
         note = ""
         log.info("Download-Lauf gestartet")
@@ -805,7 +816,9 @@ class DownloadQueue:
                     break
         finally:
             self._set_current(None)
-            self._db.finish_run(run_id, downloaded=downloaded, errors=errors, note=note or None)
+            self.last_session = {"downloaded": downloaded, "errors": errors, "note": note}
+            if run_id is not None:
+                self._db.finish_run(run_id, downloaded=downloaded, errors=errors, note=note or None)
             log.info("Download-Lauf beendet: %d geladen, %d Fehler", downloaded, errors)
             self._changed()
 
@@ -1264,3 +1277,82 @@ class Ticker:
 
     def stop(self) -> None:
         self._stop.set()
+
+
+# --------------------------------------------------------------------------- in-app interval
+
+
+class WatchlistScheduler:
+    """Checks the whole watchlist every `schedule.watchlist_interval_hours` while the app is open
+    (`schedule.in_app_check`). One daemon thread ticks every `tick` seconds and calls `trigger()`
+    (the API submits a watchlist job; True = started) when a check is due.
+
+    The time of the last complete check (GUI or headless) is persisted in
+    `state.watchlist_last_run`, so a restart or a headless run just before does not cause an
+    immediate second check. Without a previous check the first one starts `start_delay` seconds
+    after the app start. Never during a backoff (then at the end of the backoff at the earliest).
+    """
+
+    def __init__(
+        self,
+        db: Any,
+        throttle: Any,
+        settings_provider: Callable[[], Any],
+        trigger: Callable[[], bool],
+        *,
+        tick: float = 30.0,
+        start_delay: float = 60.0,
+        clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+    ) -> None:
+        self._db = db
+        self._throttle = throttle
+        self._settings = settings_provider
+        self._trigger = trigger
+        self._tick = tick
+        self._start_delay = start_delay
+        self._clock = clock
+        self._started = clock()
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+
+    def next_check(self) -> datetime | None:
+        """When the next in-app check is planned (tz-aware), None if there is none."""
+        sched = self._settings().schedule
+        if not sched.in_app_check or not self._db.list_sources(enabled_only=True):
+            return None
+        last = watchlist.last_run(self._db)
+        if last is None:
+            due = self._started + timedelta(seconds=self._start_delay)
+        else:
+            due = last + timedelta(hours=sched.watchlist_interval_hours)
+        until = self._throttle.backoff_until()
+        return max(due, until) if until else due
+
+    def due(self) -> bool:
+        nxt = self.next_check()
+        return nxt is not None and self._clock() >= nxt
+
+    def check_now(self) -> bool:
+        """One scheduling step (also for tests): trigger a check if one is due."""
+        if self._stop.is_set() or not self.due():
+            return False
+        return bool(self._trigger())
+
+    def start(self) -> None:
+        if self._thread is None or not self._thread.is_alive():
+            self._stop.clear()
+            self._thread = threading.Thread(target=self._loop, name="hcloader-wlsched", daemon=True)
+            self._thread.start()
+
+    def _loop(self) -> None:
+        while not self._stop.wait(self._tick):
+            try:
+                self.check_now()
+            except Exception:
+                log.debug("Watchlist-Zeitplan", exc_info=True)
+
+    def stop(self) -> None:
+        self._stop.set()
+        thread = self._thread
+        if thread is not None and thread.is_alive() and thread is not threading.current_thread():
+            thread.join(timeout=2)
