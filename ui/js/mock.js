@@ -34,9 +34,9 @@
   /* ---------- Einstellungen (docs/settings-schema.md) ---------- */
   const DEFAULTS = {
     general: { start_view: 'discover', log_level: 'INFO', confirm_delete: true },
-    search: { results_count: 30 },
+    search: { results_count: 30, append_year: true },
     filters: {
-      min_duration: 600, max_duration: 0, upload_period: 'all',
+      min_duration: 600, max_duration: 0, upload_period: 'all', upload_year: 0, upload_from: '', upload_to: '',
       include_keywords: ['mix', 'set', 'liveset', 'live set', 'podcast', 'continuous', 'megamix', 'yearmix', 'radio show', 'session', 'warm up', 'closing'],
       exclude_keywords: ['reaction', 'tutorial', 'how to', 'shorts', 'trailer', 'aftermovie', 'teaser', 'preview', 'lyrics', 'karaoke', 'sample pack', 'ableton', 'fl studio'],
       match_description: false, hide_done_ignored: true, apply_channel_blacklist: true,
@@ -83,7 +83,8 @@
     'search.results_count': { int: 1, min: 1, max: 100 },
     'filters.min_duration': { int: 1, min: 0 },
     'filters.max_duration': { int: 1, min: 0 },
-    'filters.upload_period': { oneOf: ['all', '7d', '30d', '1y'] },
+    'search.append_year': { bool: 1 },
+    'filters.upload_period': { oneOf: ['all', '7d', '30d', '1y', 'year', 'custom'] },
     'filters.include_keywords': { list: 1 },
     'filters.exclude_keywords': { list: 1 },
     'filters.match_description': { bool: 1 },
@@ -126,6 +127,7 @@
     'maintenance.check_updates_on_start': { bool: 1 },
   };
   const PLACEHOLDERS = ['genre', 'artist', 'channel', 'year', 'date', 'title', 'id'];
+  const MIN_YEAR = 2005;
 
   function validate(v) {
     const errors = {};
@@ -163,6 +165,16 @@
       if (bad.length) errors['storage.path_template'] = `Unbekannter Platzhalter: {${bad[0]}}`;
       else if (!s.path_template.includes('{id}')) errors['storage.path_template'] = 'Der Platzhalter {id} muss enthalten sein (eindeutige Dateinamen).';
     }
+    /* Jahr-/Zeitraum-Filter (docs/settings-schema.md, Phase 3) */
+    const yNow = new Date().getFullYear(), isDay = (x) => /^\d{4}-\d{2}-\d{2}$/.test(x) && !isNaN(new Date(x));
+    if (!Number.isInteger(f.upload_year)) errors['filters.upload_year'] = M.int;
+    else if (f.upload_year !== 0 && (f.upload_year < MIN_YEAR || f.upload_year > yNow)) errors['filters.upload_year'] = `Jahr muss zwischen ${MIN_YEAR} und ${yNow} liegen.`;
+    else if (f.upload_year === 0 && f.upload_period === 'year') errors['filters.upload_year'] = 'Jahr fehlt (Pflicht beim Zeitraum «Bestimmtes Jahr»).';
+    ['upload_from', 'upload_to'].forEach((k) => {
+      if (typeof f[k] !== 'string' || (f[k] && !isDay(f[k]))) errors[`filters.${k}`] = 'Ungültiges Datum (Format JJJJ-MM-TT).';
+    });
+    if (!errors['filters.upload_from'] && !errors['filters.upload_to'] && f.upload_from && f.upload_to && f.upload_to < f.upload_from)
+      errors['filters.upload_to'] = 'Bis-Datum liegt vor dem Von-Datum.';
     const items = (v.genres && v.genres.items) || [];
     const seen = new Set();
     items.forEach((g, i) => {
@@ -213,7 +225,50 @@
   ];
   const byId = (id) => VIDEOS.find((v) => v.id === id);
   const SEARCH_IDS = VIDEOS.filter((v) => v.id !== 'cGabb4Fail1').map((v) => v.id);
-  let lastQuery = 'hardcore liveset 2026';
+  /* Die flache Suche liefert das Datum nur ungefähr («vor 3 Monaten») -> date_approx. */
+  const asSearchHit = (v) => Object.assign(clone(v), v.date_approx == null && v.upload_date && (Date.now() - new Date(v.upload_date)) / 86400000 >= 30 ? { date_approx: true } : {});
+  let lastSearch = { query: 'hardcore liveset 2026', effective_query: 'hardcore liveset 2026', genre: null, year: null, ids: SEARCH_IDS };
+
+  /* Treffer einer Suche mit Jahr (z.B. «hardcore liveset 2013»): Jahr im Titel, ungefähres Datum im Jahr,
+     ±1 Jahr daneben, weit daneben, ohne Datum – damit der Jahr-Filter alle Fälle zeigt. */
+  const YEAR_HITS = [
+    ['Yearmix0', (y) => `Hardcore Yearmix ${y} – Best of Gabber & Mainstream`, 'vault', 92, 14, [0, 11, 28], true, 184300, 'Hardcore'],
+    ['Thunder1', (y) => `Thunder Arena ${y} | Full Liveset – Raw Hardstyle`, 'kick', 61, 40, [1, 0, 15], true, 96100, 'Hardstyle'],
+    ['EarlyRv2', () => 'Early Rave Classics Mix (Vinyl Only)', 'vault', 74, 3, [0, 5, 10], true, 41800, 'Hardcore'],
+    ['FrenchC3', () => 'Frenchcore Session – Closing Set Indoor', 'rave', 58, 20, [-1, 10, 2], true, 22700, 'Hardcore'],
+    ['UptWarm4', () => 'Uptempo Warm Up Mix Vol. 3', 'dist', 45, 11, [1, 2, 9], true, 8700, 'Uptempo'],
+    ['IndPod05', () => 'Industrial Hardcore Podcast #12', 'concrete', 63, 0, [0, 2, 22], false, 15200, 'Hardcore'],
+    ['Top100x6', (y) => `Hardstyle Top 100 ${y} Megamix`, 'euph', 118, 30, null, false, 310500, 'Hardstyle'],
+    ['Classic7', (y) => `Hardcore Classics Liveset ${y} (Members Night)`, 'rave', 80, 0, [0, 8, 14], true, 12400, 'Hardcore', 'done'],
+    ['MillBst8', (y) => `Millennium Hardcore Mix – Best of ${y - 3}`, 'vault', 66, 45, [4, 3, 1], true, 59000, 'Hardcore'],
+    ['TerrLv09', () => 'Terror Liveset @ Bunker 303', 'terror', 49, 50, [3, 6, 20], true, 4100, 'Uptempo'],
+    ['RawWarmA', (y) => `Raw Hardstyle Mix ${y + 1} | Warm Up`, 'kick', 52, 8, [2, 1, 5], true, 27900, 'Hardstyle'],
+    ['SpeedTpB', () => 'Speedcore Session (old tape rip)', 'terror', 39, 27, null, false, 1900, 'Uptempo'],
+  ];
+  function yearHits(year) {
+    return YEAR_HITS.map(([sfx, title, ch, min, sec, date, approx, views, genre, status]) => {
+      const id = `y${String(year).slice(2)}${sfx}`;
+      let v = byId(id);
+      if (!v) {
+        v = {
+          id, title: title(year), channel_id: CH[ch][0], channel_name: CH[ch][1], duration: min * 60 + sec,
+          upload_date: date ? `${year + date[0]}-${pad(date[1] + 1)}-${pad(date[2])}` : null,
+          view_count: views, thumbnail: null, genre, genre_manual: false, status: status || 'new',
+        };
+        v.date_approx = !!approx;
+        VIDEOS.push(v);
+      }
+      return id;
+    });
+  }
+  /** Stellvertreter für das Backend: Genre-Begriffe und Jahr an den Suchtext hängen. */
+  function effectiveQuery(query, opts) {
+    const parts = [query], has = (w) => query.toLowerCase().includes(String(w).toLowerCase());
+    const g = opts.genre && settings.genres.items.find((x) => x.name === opts.genre);
+    if (g) g.keywords.slice(0, 2).filter((k) => !has(k)).forEach((k) => parts.push(k));
+    if (opts.year && settings.search.append_year && !has(opts.year)) parts.push(String(opts.year));
+    return parts.join(' ');
+  }
 
   /* ---------- Watchlist ---------- */
   let SOURCES = [
@@ -303,9 +358,11 @@
     task: { registered: false },
     versions: { ytdlp: '2026.11.02', plugin: '1.3.0' },
     lastBackup: isoAt(5, 19, 2),
-    sleepTicks: 0,
+    sleepLeft: 0, // Sekunden bis zum nächsten Download (Throttle-Pause)
+    sleepTotal: 0,
     convertTicks: 0,
   };
+  const SLEEP_STEP = 2; // Zeitraffer: ein Tick (450 ms) = 2 s Pause
 
   const nextCheck = () => {
     const [hh, mm] = settings.schedule.task_time.split(':').map(Number);
@@ -333,28 +390,45 @@
   }
   const pushStatus = () => emit('status', status());
   const targetOf = (v) => `${v.genre}\\${v.channel_name}\\${(v.upload_date || '').slice(0, 4)}\\`;
-  const queueView = () => ({
-    paused: state.paused,
-    items: state.queue.map((q) => Object.assign({}, q, { video: clone(byId(q.id)), target: targetOf(byId(q.id)) })),
-  });
+  /** Wie worker.DownloadQueue.blocked(): (code, Meldung), warum wartende Einträge nicht laufen. */
+  function blocked() {
+    const th = settings.throttle, c = state.counters;
+    if (!state.queue.some((q) => q.state === 'waiting')) return [null, null];
+    if (state.backoff.active) return ['backoff', 'Backoff aktiv – Rest bleibt in der Warteschlange'];
+    if (c.downloads_day >= th.max_downloads_per_day) return ['day_limit', `Tageslimit erreicht (${c.downloads_day}/${th.max_downloads_per_day}) – Rest bleibt in der Warteschlange`];
+    if (c.downloads_run >= th.max_downloads_per_run) return ['run_limit', `Limit pro Lauf erreicht (${th.max_downloads_per_run}/${th.max_downloads_per_run}) – Rest bleibt in der Warteschlange; «Fortsetzen» startet einen neuen Lauf`];
+    return [null, null];
+  }
+  const queueView = () => {
+    const [code, msg] = blocked();
+    return {
+      paused: state.paused,
+      items: state.queue.map((q) => Object.assign({}, q, { video: clone(byId(q.id)), target: targetOf(byId(q.id)) })),
+      blocked_code: code, blocked_reason: msg,
+    };
+  };
   const setStatus = (v, st) => { v.status = st; emit('video', { id: v.id, status: st, genre: v.genre }); };
 
   /* ---------- Simulation von worker.py ---------- */
+  const limitHit = () => state.counters.downloads_day >= settings.throttle.max_downloads_per_day || state.counters.downloads_run >= settings.throttle.max_downloads_per_run;
+  const unsleep = (except) => state.queue.forEach((x) => { if (x !== except && x.phase === 'sleep') { x.phase = 'waiting'; x.eta = 0; } });
   function tick() {
     if (state.paused || state.backoff.active) return;
     const q = state.queue.find((x) => x.state !== 'failed');
     if (!q) return;
     const v = byId(q.id);
+    unsleep(q);
     if (q.phase === 'waiting') {
-      if (state.sleepTicks > 0) { q.phase = 'sleep'; q.eta = state.sleepTicks; emit('queue', {}); return; }
+      if (limitHit()) return; // Rest bleibt in der Warteschlange
+      if (state.sleepLeft > 0) { q.phase = 'sleep'; q.eta = state.sleepLeft; q.sleep_total = state.sleepTotal; emit('queue', {}); return; }
       q.phase = 'download'; q.state = 'active';
       setStatus(v, 'downloading');
       pushLog('info', `Starte Download: ${v.title}`);
       emit('queue', {});
     } else if (q.phase === 'sleep') {
-      state.sleepTicks--; q.eta = state.sleepTicks;
-      if (state.sleepTicks <= 0) q.phase = 'waiting';
-      emit('progress', { id: q.id, phase: q.phase === 'waiting' ? 'sleep' : q.phase, pct: 0, speed: 0, eta: q.eta });
+      state.sleepLeft = Math.max(0, state.sleepLeft - SLEEP_STEP); q.eta = state.sleepLeft;
+      emit('progress', { id: q.id, phase: 'sleep', pct: 0, speed: 0, eta: q.eta });
+      if (state.sleepLeft <= 0) q.phase = 'waiting';
       return;
     }
     if (q.phase === 'download') {
@@ -375,7 +449,12 @@
       });
       setStatus(v, 'done');
       pushLog('ok', `Fertig: ${v.title} · ${LIBRARY[0].size_mb} MB`);
-      state.sleepTicks = activeQueue().length ? 6 : 0;
+      if (activeQueue().length && !limitHit()) {
+        const th = settings.throttle;
+        state.sleepTotal = state.sleepLeft = Math.round(th.sleep_interval + rnd() * Math.max(0, th.max_sleep_interval - th.sleep_interval));
+        if (state.sleepLeft) pushLog('debug', `Throttle: ${state.sleepLeft} s Pause bis zum nächsten Download`);
+      } else state.sleepLeft = 0;
+      if (activeQueue().length && limitHit()) pushLog('warn', 'Download-Limit erreicht – der Rest bleibt in der Warteschlange');
       emit('done', { id: v.id, title: v.title });
       emit('queue', {});
       pushStatus();
@@ -495,16 +574,23 @@
     },
 
     /* Entdecken / Eingang */
-    get_last_search: () => later(60, () => ({ query: lastQuery, results: clone(SEARCH_IDS.map(byId)) })),
-    search(query) {
+    get_last_search: () => later(60, () => ({
+      query: lastSearch.query, effective_query: lastSearch.effective_query, genre: lastSearch.genre, year: lastSearch.year,
+      results: lastSearch.ids.map((id) => asSearchHit(byId(id))),
+    })),
+    /* opts = {genre: <Name>|null, year: <int>|null} – das Backend hängt die Begriffe an (siehe bridge.js). */
+    search(query, opts) {
       return later(1100, () => {
+        const o = Object.assign({ genre: null, year: null }, opts);
         if (state.backoff.active) return { ok: false, error: 'Backoff aktiv – Suche ist gesperrt.' };
         if (state.counters.searches_hour >= settings.throttle.max_searches_per_hour) return { ok: false, error: 'Limit «Suchen pro Stunde» erreicht.' };
-        lastQuery = query;
+        const effective = effectiveQuery(query, o);
+        const ids = o.year ? yearHits(o.year) : SEARCH_IDS;
+        lastSearch = { query, effective_query: effective, genre: o.genre, year: o.year || null, ids };
         state.counters.searches_hour++;
-        pushLog('info', `Suche «${query}» · ${settings.search.results_count} Treffer (flach)`);
+        pushLog('info', `Suche «${effective}» · ${ids.length} Treffer (flach)`);
         pushStatus();
-        return { ok: true, results: clone(SEARCH_IDS.map(byId)) };
+        return { ok: true, results: ids.map((id) => asSearchHit(byId(id))), effective_query: effective, query, genre: o.genre, year: o.year || null, hidden_count: 0 };
       });
     },
     get_inbox: () => later(40, () => clone(VIDEOS.filter((v) => v.status === 'inbox'))),
@@ -593,7 +679,15 @@
     /* Downloads */
     get_queue: () => later(30, queueView),
     set_queue_paused(paused) {
-      return later(40, () => { state.paused = !!paused; pushLog('info', paused ? 'Warteschlange pausiert' : 'Warteschlange fortgesetzt'); emit('queue', {}); pushStatus(); return { ok: true, paused: state.paused }; });
+      return later(40, () => {
+        state.paused = !!paused;
+        /* «Fortsetzen» nach dem Lauf-Limit = neuer Lauf (Zähler des Laufs beginnt neu). */
+        if (!paused && state.counters.downloads_run >= settings.throttle.max_downloads_per_run) { state.counters.downloads_run = 0; pushLog('info', 'Neuer Download-Lauf gestartet'); }
+        pushLog('info', paused ? 'Warteschlange pausiert' : 'Warteschlange fortgesetzt');
+        emit('queue', {});
+        pushStatus();
+        return { ok: true, paused: state.paused };
+      });
     },
     queue_move(id, delta) {
       return later(30, () => {
@@ -601,6 +695,11 @@
         if (i < 0 || j < 0 || j >= state.queue.length) return { ok: false };
         if (state.queue[i].state !== 'waiting' || state.queue[j].state !== 'waiting') return { ok: false };
         [state.queue[i], state.queue[j]] = [state.queue[j], state.queue[i]];
+        /* Die Pause gilt für den Eintrag, der als Nächstes dran ist. */
+        const sleeping = state.queue.some((x) => x.phase === 'sleep');
+        unsleep(null);
+        const head = state.queue.find((x) => x.state !== 'failed');
+        if (sleeping && head && head.phase === 'waiting') Object.assign(head, { phase: 'sleep', eta: state.sleepLeft, sleep_total: state.sleepTotal });
         emit('queue', {});
         return { ok: true };
       });
@@ -669,6 +768,33 @@
       },
       poError() {
         state.po = { state: 'error', detail: 'Deno-Script lieferte keinen Token (Timeout nach 15 s)', created: 0 };
+        pushStatus();
+      },
+      /** Der laufende Download ist fertig, der nächste wartet in der Throttle-Pause. */
+      sleep(left, total) {
+        state.queue = state.queue.filter((q) => q.state !== 'active');
+        VIDEOS.filter((v) => v.status === 'downloading').forEach((v) => setStatus(v, 'done'));
+        unsleep(null);
+        const head = state.queue.find((q) => q.state !== 'failed');
+        state.sleepLeft = left || 47;
+        state.sleepTotal = total || 74;
+        if (head) Object.assign(head, { phase: 'sleep', eta: state.sleepLeft, sleep_total: state.sleepTotal });
+        state.counters.downloads_run = Math.max(2, state.counters.downloads_run);
+        state.counters.downloads_day = Math.max(4, state.counters.downloads_day);
+        emit('queue', {});
+        pushStatus();
+      },
+      /** Limit erreicht: kind = "run" | "day". Die wartenden Einträge bleiben stehen. */
+      limit(kind) {
+        const th = settings.throttle;
+        state.queue = state.queue.filter((q) => q.state !== 'active');
+        VIDEOS.filter((v) => v.status === 'downloading').forEach((v) => setStatus(v, 'done'));
+        unsleep(null);
+        state.sleepLeft = 0;
+        if (kind === 'day') { state.counters.downloads_day = th.max_downloads_per_day; state.counters.downloads_run = Math.min(th.max_downloads_per_run, 7); }
+        else { state.counters.downloads_run = th.max_downloads_per_run; state.counters.downloads_day = Math.max(state.counters.downloads_day, th.max_downloads_per_run + 2); }
+        pushLog('warn', 'Download-Limit erreicht – der Rest bleibt in der Warteschlange');
+        emit('queue', {});
         pushStatus();
       },
     },

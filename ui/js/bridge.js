@@ -40,9 +40,10 @@
 
    Entdecken / Eingang
      get_last_search()                  -> {query, results:[Video]} | null   (ohne Netzwerk, aus DB)
-                                           optional: effective_query, genre, year (wie bei search) – dann
-                                           zeigt die UI den Suchbegriff und den «Suche veraltet»-Hinweis korrekt
-     search(query, opts)                -> {ok:true, results:[Video], effective_query?} | {ok:false, error}
+                                           zusätzlich effective_query, genre, year, hidden_count (wie search);
+                                           daraus zeigt die UI «Gesucht mit …» und den Hinweis «neu suchen»
+     search(query, opts)                -> {ok:true, results:[Video], effective_query, query, genre, year,
+                                            hidden_count} | {ok:false, error}
                                            opts = {genre: <Genre-Name>|null, year: <int>|null}
                                            genre: genau ein aktiver Genre-Chip (sonst null); year: nur beim
                                            Upload-Zeitraum «Jahr». Das Backend hängt die Begriffe an
@@ -63,11 +64,13 @@
      check_sources(ids?)                -> {ok, started}   Fortschritt über Events "source" / "watchlist_done"
 
    Downloads
-     get_queue()                        -> {paused, items:[QueueItem], blocked_reason?}
-                                           blocked_reason (Wunsch der UI, optional):
-                                           "backoff" | "day_limit" | "run_limit" | null – warum wartende
-                                           Einträge gerade nicht laufen. Fehlt das Feld, leitet die UI es aus
-                                           Status.backoff / Status.counters und den Throttle-Limits ab.
+     get_queue()                        -> {paused, items:[QueueItem], blocked_code, blocked_reason}
+                                           blocked_code: "restart" | "backoff" | "day_limit" | "run_limit" |
+                                           "busy" | null – warum wartende Einträge gerade nicht laufen;
+                                           blocked_reason: deutsche Meldung dazu (oder null). Fehlt
+                                           blocked_code, leitet die UI den Grund aus Status.backoff /
+                                           Status.counters und den Throttle-Limits ab.
+                                           Nach "run_limit" startet set_queue_paused(false) einen neuen Lauf.
      set_queue_paused(paused)           -> {ok, paused}
      queue_move(id, delta)              -> {ok}       delta: -1 nach oben, +1 nach unten
      queue_cancel(id)                   -> {ok}
@@ -87,6 +90,8 @@
    ---------------------------------------------------------------------
      Video       {id, title, channel_id, channel_name, duration (s), upload_date "YYYY-MM-DD"|"YYYYMMDD"|null,
                   date_approx (bool, optional: Datum aus der flachen Suche, nur ungefähr),
+                  filter_reason (nur Suchtreffer: Grund laut gespeicherten Filtern oder ""; die UI filtert
+                  selbst live und wertet nur "Livestream" aus), is_live (optional),
                   view_count, thumbnail (URL|null – geladen wird nur https://*.ytimg.com), genre, genre_manual,
                   status: "new"|"inbox"|"queued"|"downloading"|"done"|"ignored"|"failed"}
      Source      {id, type: "channel"|"playlist"|"search", name, url_or_query, default_genre|null,

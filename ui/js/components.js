@@ -17,7 +17,11 @@
     if (!host) return;
     const k = kind || 'ok';
     const dur = ms || (k === 'err' ? 5200 : 3000);
+    /* Gleiche Meldung nicht stapeln (z.B. Backend-Toast + Rückgabe derselben Aktion). */
+    const last = host.lastElementChild;
+    if (last && last._msg === String(msg) && !last.classList.contains('out')) { HC.fx.pop(last, 'again'); return; }
     const el = document.createElement('div');
+    el._msg = String(msg);
     el.className = `toast ${k}`;
     el.setAttribute('role', 'status');
     el.innerHTML = `${TOAST_ICON[k] || I.check}<span>${esc(msg)}</span><i class="timer" style="animation-duration:${dur}ms"></i>`;
@@ -199,9 +203,16 @@
     const h = HC.util.hash(v.id);
     const bars = Array.from({ length: 34 }, (_, i) => `<i style="height:${Math.round((Math.abs(Math.sin(i * 0.7 + h)) * 0.8 + 0.15) * 100)}%;--n:${(i * 7 + h) % 11}"></i>`).join('');
     const art = `<div class="art" style="background:linear-gradient(${h % 360}deg,#000 15%,${g}55 60%,#000),radial-gradient(circle at ${h % 100}% 30%,${g}aa,transparent 45%)"></div><div class="wave">${bars}</div>`;
-    const img = v.thumbnail ? `<img src="${esc(v.thumbnail)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : '';
+    /* Bild nur vom YouTube-Bild-CDN (m10); alles andere zeigt den generierten Platzhalter. */
+    const src = HC.util.safeThumb(v.thumbnail);
+    const img = src ? `<img src="${esc(src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">` : '';
     return `<div class="thumb ${cls || ''}">${art}${img}`;
   };
+  /* Kaputte Thumbnails entfernen -> Platzhalter bleibt sichtbar (kein Inline-onerror wegen CSP). */
+  document.addEventListener('error', (e) => {
+    const n = e.target;
+    if (n && n.tagName === 'IMG' && n.parentElement && n.parentElement.classList.contains('thumb')) n.remove();
+  }, true);
   ui.gtag = (genre) => `<span class="gtag" style="background:${HC.genres.color(genre)};color:${HC.genres.ink(genre)}">${esc(genre)}</span>`;
   ui.genreDot = (genre) => `<span class="okline"><span class="dot" style="background:${HC.genres.color(genre)}"></span>${esc(genre)}</span>`;
 
@@ -210,16 +221,18 @@
   ui.card = function (v, o) {
     const opt = o || {};
     const can = CAN_LOAD.includes(v.status);
-    return `<div class="card is-${v.status}${opt.selected ? ' sel' : ''}" data-id="${esc(v.id)}">
+    const up = HC.util.uploadLabel(v);
+    const upTitle = up.approx ? t('card.date_approx') : up.known ? HC.util.fmtDate(v.upload_date) : t('card.date_unknown');
+    return `<div class="card is-${esc(v.status)}${opt.selected ? ' sel' : ''}" data-id="${esc(v.id)}">
       ${ui.thumb(v)}
         ${ui.gtag(v.genre)}
         ${can ? `<span class="selbox" data-act="sel" title="${esc(t('card.select'))}"></span>` : ''}
         <span class="dur">${HC.util.fmtDur(v.duration)}</span></div>
       <div class="cbody">
         <div class="ctitle" title="${esc(v.title)}">${esc(v.title)}</div>
-        <div class="cmeta"><span class="ch" title="${esc(v.channel_name)}">${esc(v.channel_name)}</span><span>·</span><span>${HC.util.fmtAgo(v.upload_date)}</span><span>·</span><span>${HC.util.fmtViews(v.view_count)}</span></div>
+        <div class="cmeta"><span class="ch" title="${esc(v.channel_name)}">${esc(v.channel_name)}</span><span>·</span><span class="${up.approx ? 'approx' : up.known ? '' : 'nodate'}" title="${esc(upTitle)}">${esc(up.text)}</span><span>·</span><span>${HC.util.fmtViews(v.view_count)}</span></div>
         <div class="cfoot">
-          <span class="status st-${v.status}">${esc(t('status.' + v.status))}</span><span class="spacer"></span>
+          <span class="status st-${esc(v.status)}">${esc(t('status.' + v.status))}</span><span class="spacer"></span>
           <button class="iconbtn" data-act="yt" title="${esc(t('card.open'))}">${I.external}</button>
           <button class="iconbtn" data-act="ign" title="${esc(t(v.status === 'ignored' ? 'card.unignore' : 'card.ignore'))}" ${can || v.status === 'ignored' ? '' : 'disabled'}>${v.status === 'ignored' ? I.retry : I.ban}</button>
           <button class="iconbtn" data-act="more" title="${esc(t('card.more'))}">${I.more}</button>
@@ -249,33 +262,48 @@
   };
 
   /* ---------- Video-Aktionen (über die Bridge) ---------- */
+  /** Fehlermeldung einer Aktion zeigen ({ok:false, error}); null = Bridge-Fehler, den hat safe() schon gemeldet. */
+  const fail = (r) => { if (r && !r.ok) ui.toast(r.error || t('err.generic'), 'err'); };
   HC.actions = {
     async download(ids) {
       if (!ids.length) return;
       const r = await HC.bridge.safe('enqueue', ids);
-      if (r && r.ok) ui.toast(t(r.ids.length === 1 ? 'toast.enqueued_one' : 'toast.enqueued', { n: r.ids.length }));
+      if (!r || !r.ok) return fail(r);
+      const done = r.ids || [];
+      /* Sofort sichtbar machen, auch wenn das Backend kein «video»-Event pro Eintrag sendet. */
+      done.forEach((id) => {
+        const v = HC.store.get(id);
+        if (v && CAN_LOAD.includes(v.status)) HC.bridge.emit('video', { id, status: 'queued' });
+      });
+      if (!done.length) ui.toast(t('toast.enqueued_none'), 'info');
+      else ui.toast(t(done.length === 1 ? 'toast.enqueued_one' : 'toast.enqueued', { n: done.length }) + (done.length < ids.length ? ` · ${t('toast.enqueued_skipped', { n: ids.length - done.length })}` : ''));
     },
     async ignore(v, on) {
       const r = await HC.bridge.safe('set_video_status', v.id, on ? 'ignored' : 'new');
       if (r && r.ok) ui.toast(t(on ? 'toast.ignored' : 'toast.unignored', { title: v.title }), 'info');
+      else fail(r);
     },
     async open(v) {
       const r = await HC.bridge.safe('open_video', v.id);
       if (r && r.ok) ui.toast(t('toast.opening'), 'info', 1800);
+      else fail(r);
     },
     async watch(v) {
       const r = await HC.bridge.safe('add_channel_source', v.channel_id, v.channel_name);
       if (r && r.ok) { ui.toast(t('toast.watch_added', { ch: v.channel_name })); HC.bridge.emit('sources_changed', {}); }
+      else fail(r);
     },
     async block(v) {
       const yes = await ui.confirm(t('dlg.block.title'), t('dlg.block.text', { ch: v.channel_name }), { okLabel: t('dlg.block.ok'), danger: true });
       if (!yes) return;
       const r = await HC.bridge.safe('block_channel', v.channel_id, v.channel_name);
       if (r && r.ok) { ui.toast(t('toast.blocked', { ch: v.channel_name }), 'warn'); HC.bridge.emit('blacklist_changed', {}); }
+      else fail(r);
     },
     async genre(v, name) {
       const r = await HC.bridge.safe('set_genre', v.id, name);
       if (r && r.ok) ui.toast(t('toast.genre_set', { genre: name }), 'info', 1800);
+      else fail(r);
     },
     menu(v, anchor) {
       ui.menu(anchor, [

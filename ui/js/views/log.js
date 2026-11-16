@@ -20,7 +20,7 @@
   const on = new Set(LEVELS);
 
   const ts = (iso) => { const d = util.parseDate(iso); return d ? `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}` : '--:--:--'; };
-  const lineHtml = (l, fresh) => `<div class="log-line ${l.level}${fresh ? ' new' : ''}"><span class="t">${ts(l.ts)}</span><span class="l">[${TAG[l.level] || 'INFO'}]</span><span class="m">${esc(l.msg)}</span></div>`;
+  const lineHtml = (l, fresh) => `<div class="log-line ${esc(l.level)}${fresh ? ' new' : ''}"><span class="t">${ts(l.ts)}</span><span class="l">[${TAG[l.level] || 'INFO'}]</span><span class="m">${esc(l.msg)}</span></div>`;
 
   function renderLog() {
     const box = $('#logbox', el);
@@ -48,7 +48,7 @@
       const dur = sec == null ? t('log.running') : sec < 60 ? `${sec} s` : sec < 3600 ? `${Math.round(sec / 60)} min` : `${Math.floor(sec / 3600)} h ${pad(Math.round((sec % 3600) / 60))} min`;
       const cls = r.errors ? (r.downloaded || r.found ? 'warn' : 'error') : '';
       return `<div class="run ${cls}">
-        <div class="run-top"><b>${t('run_kind.' + r.kind)}</b><span>${util.fmtDate(r.started)} · ${util.fmtTime(r.started)}</span></div>
+        <div class="run-top"><b>${util.esc(t('run_kind.' + r.kind))}</b><span>${util.fmtDate(r.started)} · ${util.fmtTime(r.started)}</span></div>
         <div class="run-stats"><span>${t('log.found')} <b>${r.found}</b></span><span>${t('log.downloaded')} <b>${r.downloaded}</b></span><span class="${r.errors ? 'bad' : ''}">${t('log.errors')} <b>${r.errors}</b></span><span class="dur">${dur}</span></div>
         ${r.note ? `<div class="run-note">${esc(r.note)}</div>` : ''}</div>`;
     }).join('') : `<div class="muted" style="font-size:13px">${t('log.no_runs')}</div>`;

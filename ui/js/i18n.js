@@ -22,7 +22,7 @@
     },
 
     fmt: {
-      today: 'heute', yesterday: 'gestern', never: 'noch nie',
+      today: 'heute', yesterday: 'gestern', never: 'noch nie', no_date: 'Datum unbekannt',
       days_ago: 'vor {n} T.', months_ago: 'vor {n} Mt.', years_ago: 'vor {n} J.',
       today_at: 'heute {t}', tomorrow_at: 'morgen {t}', yesterday_at: 'gestern {t}',
       views: '{n} Aufrufe', views_k: '{n}k Aufrufe', views_m: '{n} Mio. Aufrufe',
@@ -38,11 +38,11 @@
       new: 'Neu', inbox: 'Im Eingang', queued: 'In Queue', downloading: 'Lädt', done: 'Geladen',
       ignored: 'Ignoriert', failed: 'Fehler',
     },
-    period: { all: 'Alle', '7d': 'Letzte 7 Tage', '30d': 'Letzte 30 Tage', '1y': 'Letztes Jahr' },
+    period: { all: 'Alle', '7d': 'Letzte 7 Tage', '30d': 'Letzte 30 Tage', '1y': 'Letzte 12 Monate', year: 'Bestimmtes Jahr', custom: 'Benutzerdefiniert' },
     source_type: { channel: 'Kanal', playlist: 'Playlist', search: 'Suche' },
     run_kind: { watchlist: 'Watchlist', headless: 'Aufgabenplanung', manual: 'Manuell' },
     phase: {
-      waiting: 'Wartet', sleep: 'Pause (Schonung)', download: 'Laden', convert: 'Konvertieren', tag: 'Taggen', failed: 'Fehlgeschlagen',
+      waiting: 'Wartet', sleep: 'Pause bis zum nächsten Download', download: 'Laden', convert: 'Konvertieren', tag: 'Taggen', failed: 'Fehlgeschlagen',
     },
     po_mode: { off: 'Aus', script: 'Script', http: 'HTTP' },
     po_mode_long: { off: 'Aus', script: 'Script (Deno)', http: 'HTTP-Server (lokal)' },
@@ -58,6 +58,8 @@
       select: 'Auswählen', open: 'Auf YouTube öffnen', ignore: 'Ignorieren', unignore: 'Nicht mehr ignorieren',
       more: 'Weitere Aktionen', download: 'Herunterladen', watch: 'Kanal zur Watchlist', block: 'Kanal blockieren',
       set_genre: 'Genre setzen',
+      date_approx: 'Ungefähres Datum – YouTube liefert in der Suche nur «vor X Jahren»',
+      date_unknown: 'YouTube hat kein Upload-Datum geliefert',
     },
 
     discover: {
@@ -67,12 +69,22 @@
       quota: 'Suchen diese Stunde: {n} / {max}',
       filters: 'Filter', toggle_filters: 'Filter-Panel ein-/ausblenden',
       f_duration: 'Dauer (Minuten)', f_min: 'Minimum', f_max: 'Maximum (leer = offen)', f_max_ph: 'max',
-      f_period: 'Upload-Zeitraum', f_inc: 'Include-Keywords', f_exc: 'Exclude-Keywords', f_show: 'Anzeige',
+      f_period: 'Upload-Zeitraum', f_year: 'Jahr', f_year_prev: 'Ein Jahr zurück', f_year_next: 'Ein Jahr vor',
+      f_from: 'Von', f_to: 'Bis',
+      f_hint_year: 'YouTube liefert das Datum in der Suche nur ungefähr («vor 13 Jahren»). Darum zählt ±1 Jahr – und ebenso jeder Mix mit «{year}» im Titel.',
+      f_hint_custom: 'YouTube liefert das Datum in der Suche nur ungefähr. Bei ungefährem Datum gilt an beiden Rändern ±1 Jahr Toleranz.',
+      chip_title: 'Klick: Genre ein-/ausblenden · Doppelklick: nur dieses Genre (seine Begriffe werden an die Suche angehängt)',
+      scope: 'Suche ergänzt um', scope_title: 'Diese Begriffe hängt die nächste Suche an deinen Suchtext an.',
+      searched: 'Gesucht mit', stale: 'Filter seither geändert', re_search: 'Neu suchen',
+      re_search_title: 'Die Treffer stammen aus der letzten Suche. Neu suchen, damit Genre und Jahr in den Suchbegriff einfliessen (zählt als eine Suche).',
+      need_query: 'Bitte zuerst einen Suchbegriff eingeben.',
+      f_inc: 'Include-Keywords', f_exc: 'Exclude-Keywords', f_show: 'Anzeige',
       f_hide: 'Geladene & ignorierte ausblenden', f_blacklist: 'Kanal-Blacklist anwenden',
       count: '{n} Treffer · {hidden} herausgefiltert', selected: '{n} ausgewählt',
       select_all: 'Alle wählen', download_sel: 'Auswahl laden',
       ready_title: 'Bereit', ready_text: 'Suchbegriff eingeben und mit Enter starten.',
       none_title: 'Nichts gefunden', none_text: 'Filter lockern oder andere Suchbegriffe probieren.',
+      none_year: 'Kein Treffer aus {year}. Neu suchen, damit die Jahreszahl in den Suchbegriff einfliesst – oder das Jahr ändern.',
     },
 
     inbox: {
@@ -100,12 +112,25 @@
       title: 'Downloads', sub: 'Sequenziell, ein Download gleichzeitig',
       pause: 'Pausieren', resume: 'Fortsetzen', cancel: 'Abbrechen', retry: 'Wiederholen', remove: 'Entfernen',
       up: 'Nach oben', down: 'Nach unten', eta: 'ETA', position: 'Position {n}', sleep_left: 'weiter in',
+      sleep_why: 'Schonung: zufällige Pause von {min}–{max} s zwischen zwei Downloads',
+      next_up: 'Als Nächstes', sleeping: 'Pause läuft', sleep_range: 'von {min}–{max} s',
+      blocked_wait: 'Wartet – {why}', why_backoff: 'Backoff', why_day: 'Tageslimit', why_run: 'Lauf-Limit', why_paused: 'pausiert',
+      why_restart: 'Neustart nötig', why_busy: 'anderer Lauf aktiv',
+      summary: 'Heute {day}/{day_max} · Lauf {run}/{run_max}',
       steps: 'Laden · Konvertieren · Taggen', unlimited: 'unbegrenzt',
       l_run: 'Dieser Lauf', l_day: 'Heute', l_rate: 'Rate-Limit', l_sleep: 'Pause zw. Downloads',
       sec_queue: 'Warteschlange', sec_failed: 'Fehlgeschlagen',
       empty_title: 'Warteschlange leer', empty_text: 'Mixes unter «Entdecken» oder im «Eingang» auswählen.',
       paused: '<b>Warteschlange pausiert.</b> Der laufende Download wird angehalten, bis du fortsetzt.',
       backoff: '<b>Backoff aktiv bis {t}</b> (noch {rest}). Downloads, Suche und Watchlist sind gesperrt.',
+      backoff_rest: '<b>Backoff aktiv bis {t}</b> (noch {rest}). Downloads, Suche und Watchlist sind gesperrt – {n} bleiben in der Warteschlange.',
+      limit_day: '<b>Tageslimit erreicht ({n}/{max}).</b> Der Rest bleibt in der Warteschlange und läuft morgen weiter.',
+      limit_day_rest: '<b>Tageslimit erreicht ({n}/{max}).</b> {rest} bleiben in der Warteschlange und laufen morgen weiter.',
+      limit_run: '<b>Limit erreicht – {max}/{max} in diesem Lauf.</b> Der Rest bleibt in der Warteschlange und läuft im nächsten Lauf weiter.',
+      limit_run_rest: '<b>Limit erreicht – {max}/{max} in diesem Lauf.</b> {rest} bleiben in der Warteschlange und laufen im nächsten Lauf weiter.',
+      limits_link: 'Limits ändern', new_run: 'Neuen Lauf starten',
+      need_restart: '<b>Neustart nötig.</b> yt-dlp wurde aktualisiert – bitte HCLoader neu starten. Die Warteschlange bleibt erhalten.',
+      busy: 'Ein anderer Download-Lauf ist aktiv (z.B. die geplante Prüfung). Die Warteschlange wartet, bis er fertig ist.',
     },
 
     library: {
@@ -145,7 +170,7 @@
     },
 
     set: {
-      default: 'Standard', range: 'Bereich', browse: 'Wählen',
+      default: 'Standard', range: 'Bereich', browse: 'Wählen', not_set: 'nicht gesetzt',
       saving: 'Speichert …', discard: 'Verwerfen', tab_reset: 'Tab auf Standard', tab_reset_title: 'Alle Felder dieses Tabs auf die Standardwerte setzen (wird erst mit «Speichern» wirksam)',
       state_clean: 'Alles gespeichert', state_dirty_one: '1 ungespeicherte Änderung', state_dirty: '{n} ungespeicherte Änderungen',
       state_error: '1 Fehler – bitte korrigieren', state_errors: '{n} Fehler – bitte korrigieren',
@@ -165,11 +190,15 @@
       },
       search: {
         results_count: { label: 'Treffer pro Suche', help: 'Anzahl Ergebnisse, die eine Suche flach abfragt. Mehr Treffer = mehr Last für YouTube.' },
+        append_year: { label: 'Jahreszahl an Suche anhängen', help: 'Beim Upload-Zeitraum «Bestimmtes Jahr» wird die Jahreszahl an den Suchbegriff angehängt (z.B. «hardcore liveset 2013»). So findet YouTube mehr Mixes aus diesem Jahr.' },
       },
       filters: {
         min_duration: { label: 'Mindestlänge', help: 'Kürzere Videos werden nie als Mix behandelt.' },
         max_duration: { label: 'Maximallänge', help: '0 = unbegrenzt.' },
-        upload_period: { label: 'Upload-Zeitraum', help: 'Ältere Uploads werden ausgeblendet.' },
+        upload_period: { label: 'Upload-Zeitraum', help: 'Welche Uploads standardmässig angezeigt werden. «Bestimmtes Jahr» zeigt nur Mixes aus einem Jahr, «Benutzerdefiniert» einen Bereich von/bis.' },
+        upload_year: { label: 'Jahr', help: 'Ein Mix zählt, wenn das Upload-Jahr passt oder die Jahreszahl im Titel steht. YouTube liefert das Datum in der Suche nur ungefähr – dort gilt ±1 Jahr.' },
+        upload_from: { label: 'Von', help: 'Frühestes Upload-Datum. Leer = offen.' },
+        upload_to: { label: 'Bis', help: 'Spätestes Upload-Datum. Leer = offen. Bei ungefährem Datum gilt an beiden Rändern ±1 Jahr Toleranz.' },
         include_keywords: { label: 'Include-Keywords', help: 'Mindestens eines muss im Titel vorkommen. Leer = alles zulassen. Enter oder Komma fügt hinzu.' },
         exclude_keywords: { label: 'Exclude-Keywords', help: 'Kommt eines davon im Titel vor, wird das Video verworfen.' },
         match_description: { label: 'Beschreibung durchsuchen', help: 'Keywords auch in der Videobeschreibung prüfen. Flache Abfragen liefern sie oft nicht.' },
@@ -220,7 +249,7 @@
       network: {
         po_token_mode: { label: 'Modus', help: 'bgutil-Plugin für yt-dlp. Script startet Deno bei Bedarf, HTTP lässt einen lokalen Server mitlaufen.' },
         po_token_port: { label: 'HTTP-Port', help: 'Nur im HTTP-Modus. Der Server lauscht auf 127.0.0.1.' },
-        po_token_ttl_hours: { label: 'Token-Gültigkeit', help: 'Nach dieser Zeit wird ein neuer Token erzeugt.' },
+        po_token_ttl_hours: { label: 'Token-Gültigkeit', help: 'Nach dieser Zeit wird ein neuer Token erzeugt. Der Wert wird auf ganze Stunden gerundet (mindestens 1 h).' },
         cookies_from_browser: { label: 'Cookies aus Browser', help: 'Meldet yt-dlp mit deinem Browser-Login an. Nur einschalten, wenn es ohne nicht mehr geht.' },
         proxy: { label: 'Proxy', help: 'Optional, z.B. socks5://127.0.0.1:1080. Leer = direkte Verbindung.', ph: 'kein Proxy' },
       },
@@ -292,6 +321,9 @@
 
     toast: {
       enqueued_one: '1 Mix zur Warteschlange hinzugefügt', enqueued: '{n} Mixes zur Warteschlange hinzugefügt',
+      enqueued_none: 'Nichts hinzugefügt – bereits in der Warteschlange oder geladen', enqueued_skipped: '{n} übersprungen',
+      queue_cancelled: 'Abgebrochen: {title}', queue_removed: 'Entfernt: {title}', queue_retry: 'Erneut eingereiht: {title}',
+      queue_paused: 'Warteschlange pausiert', queue_resumed: 'Warteschlange läuft weiter', new_run: 'Neuer Lauf gestartet',
       ignored: 'Ignoriert: {title}', unignored: 'Wieder sichtbar: {title}', ignored_n: '{n} Treffer ignoriert',
       opening: 'Öffnet YouTube im Browser …', watch_added: 'Zur Watchlist hinzugefügt: {ch}', blocked: 'Kanal blockiert: {ch}',
       genre_set: 'Genre gesetzt: {genre}',
@@ -309,6 +341,13 @@
 
     err: {
       generic: 'Unbekannter Fehler', bridge: 'Fehler bei «{name}»: {msg}', boot: 'Start fehlgeschlagen: {msg}',
+      no_backend: 'Keine Verbindung zum Backend',
+    },
+
+    fatal: {
+      title: 'Verbindung zum Backend fehlgeschlagen',
+      text: 'Die Oberfläche hat keine Antwort vom Python-Teil von HCLoader erhalten. Es wird nichts angezeigt oder gespeichert, was nicht echt ist.',
+      waiting: 'Wartet weiter auf das Backend …', reload: 'Neu laden',
     },
   };
 
@@ -318,7 +357,8 @@
     let s = key.split('.').reduce((o, k) => (o == null ? undefined : o[k]), DE);
     if (typeof s !== 'string') {
       console.error(`[i18n] fehlt: ${key}`);
-      return key;
+      /* Der Schlüssel kann Daten enthalten (z.B. 'phase.' + wert) und landet oft in innerHTML -> entschärfen. */
+      return String(key).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
     }
     if (vars) s = s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] != null ? vars[k] : m));
     return s;

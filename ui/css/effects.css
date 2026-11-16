@@ -44,6 +44,8 @@ body::after{ /* Vignette + roter Hauch */
 @keyframes gl1{0%{transform:translate(-2px,-1px);opacity:1}33%{transform:translate(2px,1px)}66%{transform:translate(-1px,0)}99%{opacity:1}100%{opacity:0}}
 @keyframes gl2{0%{transform:translate(2px,1px);opacity:1}33%{transform:translate(-2px,-1px)}66%{transform:translate(1px,0)}99%{opacity:1}100%{opacity:0}}
 @keyframes spin{to{transform:rotate(360deg)}}
+@keyframes breathe{0%,100%{opacity:1}50%{opacity:.55}}
+@keyframes yearTick{from{color:var(--accent);text-shadow:0 0 14px var(--accent-glow)}to{color:var(--text);text-shadow:none}}
 
 /* ---------- Ansichtswechsel ---------- */
 .view.active{animation:viewIn var(--t-med) var(--ease-out) backwards}
@@ -120,6 +122,15 @@ body::after{ /* Vignette + roter Hauch */
 .log-line.new{animation:flashLine 900ms ease-out}
 .spinner{animation:spin .7s linear infinite}
 tr.checking td:first-child::before{animation:blink 1s steps(2) infinite}
+
+/* ---------- Phase 3: Jahr-Stepper, Pause zwischen Downloads, Suchkopf ---------- */
+.stepper .input.tick{animation:yearTick 320ms var(--ease-out)}
+.progress .bar.sleep{animation:breathe 2.4s ease-in-out infinite}
+.paused .progress .bar.sleep{animation-play-state:paused}
+.search-info{animation:fadeIn 200ms ease-out}
+.toast.again{animation:shake 220ms ease-in-out 1}
+.fatal{animation:fadeIn 200ms ease-out}
+.fatal-box{animation:modalIn 240ms var(--ease-out)}
 
 /* =====================================================================
    Effekte reduzieren (Setting appearance.reduce_effects → body.reduced)

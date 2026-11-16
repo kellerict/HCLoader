@@ -8,22 +8,31 @@
   const { $, $$, util, fx, ui } = HC;
   const t = (k, v) => HC.t(k, v);
   const I = HC.icons;
-  const PERIOD_DAYS = { all: 0, '7d': 7, '30d': 30, '1y': 365 };
+  const PERIODS = ['all', '7d', '30d', '1y', 'year', 'custom'];
   const CAN_LOAD = ['new', 'inbox', 'failed'];
+  const MIN_YEAR = 2005; // wie core/config.MIN_UPLOAD_YEAR
+  const FALLBACK_GENRE = 'Unsortiert'; // hat keine Suchbegriffe
+  const maxYear = () => new Date().getFullYear();
+  const clampYear = (n) => Math.min(maxYear(), Math.max(MIN_YEAR, Math.round(n)));
 
   let el;
   let results = null; // null = noch keine Suche
   let searching = false;
   let blocked = new Set();
   const sel = new Set();
-  const f = { min: 10, max: 0, period: 'all', inc: [], exc: [], hide: true, blacklist: true, genres: new Set() };
+  const f = { min: 10, max: 0, period: 'all', year: 0, from: '', to: '', inc: [], exc: [], hide: true, blacklist: true, genres: new Set() };
   let incEd, excEd;
+  /* Womit die angezeigten Treffer gesucht wurden (für «Gesucht mit …» und den Veraltet-Hinweis). */
+  let last = null; // {query, effective, genre, year, known}
 
   function defaultsFromSettings() {
     const s = HC.settings.values.filters;
     f.min = s.min_duration / 60;
     f.max = s.max_duration / 60;
-    f.period = s.upload_period;
+    f.period = PERIODS.includes(s.upload_period) ? s.upload_period : 'all';
+    f.year = s.upload_year ? clampYear(s.upload_year) : maxYear();
+    f.from = s.upload_from || '';
+    f.to = s.upload_to || '';
     f.inc = s.include_keywords.slice();
     f.exc = s.exclude_keywords.slice();
     f.hide = s.hide_done_ignored;
@@ -34,6 +43,9 @@
     $('#f-min', el).value = f.min ? util.trimNum(f.min) : 0;
     $('#f-max', el).value = f.max ? util.trimNum(f.max) : '';
     $('#f-date', el).value = f.period;
+    $('#f-from', el).value = f.from;
+    $('#f-to', el).value = f.to;
+    syncPeriod();
     $('#f-hide', el).checked = f.hide;
     $('#f-blacklist', el).checked = f.blacklist;
     incEd.set(f.inc);
@@ -41,11 +53,50 @@
     renderChips();
   }
 
+  /** Jahr-/Zeitraum-Felder passend zum gewählten Zeitraum zeigen und füllen. */
+  function syncPeriod() {
+    const isYear = f.period === 'year', isCustom = f.period === 'custom';
+    $('#f-year-box', el).hidden = !isYear;
+    $('#f-custom-box', el).hidden = !isCustom;
+    const hint = $('#f-date-hint', el);
+    hint.hidden = !isYear && !isCustom;
+    hint.textContent = isYear ? t('discover.f_hint_year', { year: f.year }) : isCustom ? t('discover.f_hint_custom') : '';
+    const inp = $('#f-year', el), rng = $('#f-year-range', el);
+    inp.max = rng.max = maxYear();
+    if (document.activeElement !== inp || +inp.value !== f.year) inp.value = f.year;
+    rng.value = f.year;
+    rng.style.setProperty('--p', `${((f.year - MIN_YEAR) / Math.max(1, maxYear() - MIN_YEAR)) * 100}%`);
+    $('#f-year-dec', el).disabled = f.year <= MIN_YEAR;
+    $('#f-year-inc', el).disabled = f.year >= maxYear();
+    $('#f-year-max', el).textContent = maxYear();
+  }
+  function setYear(n, animate) {
+    const y = clampYear(n);
+    if (y === f.year) { syncPeriod(); return; }
+    f.year = y;
+    syncPeriod();
+    if (animate) fx.pop($('#f-year', el), 'tick');
+    renderScope();
+    renderGrid();
+  }
+
+  /** Was die nächste Suche mitschickt: genau ein aktiver Genre-Chip und – beim Zeitraum «Jahr» – das Jahr. */
+  function searchOpts() {
+    const on = [...f.genres];
+    return {
+      genre: on.length === 1 && on[0] !== FALLBACK_GENRE ? on[0] : null,
+      year: f.period === 'year' ? f.year : null,
+    };
+  }
+  /** Das Jahr landet nur im Suchbegriff, wenn search.append_year an ist. */
+  const appendYear = () => HC.settings.values.search.append_year !== false;
+  const yearInQuery = (o) => (o.year && appendYear() ? o.year : null);
+
   function passes(v) {
+    if (v.is_live || v.filter_reason === 'Livestream') return false; // Livestreams nie (SPEC §4); nur das Backend erkennt sie
     if (v.duration == null || v.duration < f.min * 60) return false;
     if (f.max && v.duration > f.max * 60) return false;
-    const days = PERIOD_DAYS[f.period];
-    if (days) { const ago = util.daysAgo(v.upload_date); if (ago != null && ago > days) return false; }
+    if (!util.inUploadPeriod(v, f)) return false;
     if (!f.genres.has(v.genre)) return false;
     if (f.inc.length && !f.inc.some((k) => util.kwMatch(v.title, k))) return false;
     if (f.exc.some((k) => util.kwMatch(v.title, k))) return false;
@@ -76,8 +127,37 @@
       c.textContent = g.name;
       c.dataset.genre = g.name;
       c.setAttribute('aria-pressed', f.genres.has(g.name));
+      c.title = t('discover.chip_title');
       box.insertBefore(c, meta);
     });
+    renderScope();
+  }
+  /** Zeigt, welche Begriffe die nächste Suche anhängt, und ob die Treffer dazu noch passen. */
+  function renderScope() {
+    const o = searchOpts(), y = yearInQuery(o);
+    const parts = [];
+    if (o.genre) parts.push(`<span class="scope-tag" style="--c:${HC.genres.color(o.genre)}">${util.esc(o.genre)}</span>`);
+    if (y) parts.push(`<span class="scope-tag">${y}</span>`);
+    const box = $('#scope', el);
+    box.hidden = !parts.length;
+    box.innerHTML = parts.length ? `${t('discover.scope')} ${parts.join('')}` : '';
+    renderSearchInfo();
+  }
+  function renderSearchInfo() {
+    const box = $('#search-info', el);
+    if (!results || !last || searching) { box.hidden = true; return; }
+    const o = searchOpts();
+    const stale = last.known && (o.genre !== last.genre || (appendYear() && (o.year || null) !== last.year));
+    const eff = last.effective;
+    if (!eff && !stale) { box.hidden = true; return; }
+    let q = '';
+    if (eff) {
+      const base = last.query || '';
+      const split = base && eff.toLowerCase().startsWith(base.toLowerCase()) ? base.length : 0;
+      q = `<span class="k">${t('discover.searched')}</span><span class="q" title="${util.esc(eff)}">${util.esc(eff.slice(0, split))}<b>${util.esc(eff.slice(split))}</b></span>`;
+    }
+    box.innerHTML = `${q}${stale ? `<span class="stale" title="${util.esc(t('discover.re_search_title'))}"><span class="led warn"></span>${t('discover.stale')}<button class="linkbtn" data-re>${t('discover.re_search')}</button></span>` : ''}`;
+    box.hidden = false;
   }
   function renderQuota() {
     const s = HC.status;
@@ -103,24 +183,31 @@
     const list = visible();
     [...sel].forEach((id) => { const v = HC.store.get(id); if (!v || !CAN_LOAD.includes(v.status) || !list.includes(v)) sel.delete(id); });
     if (!results) grid.innerHTML = `<div class="empty">${I.search}<h4>${t('discover.ready_title')}</h4>${t('discover.ready_text')}</div>`;
-    else if (!list.length) grid.innerHTML = `<div class="empty">${I.filter}<h4>${t('discover.none_title')}</h4>${t('discover.none_text')}</div>`;
+    else if (!list.length) grid.innerHTML = `<div class="empty">${I.filter}<h4>${t('discover.none_title')}</h4>${f.period === 'year' ? t('discover.none_year', { year: f.year }) : t('discover.none_text')}</div>`;
     else grid.innerHTML = list.map((v) => ui.card(v, { selected: sel.has(v.id) })).join('');
     renderCount(list);
+    renderSearchInfo();
     if (animate) fx.stagger(grid);
   }
 
   async function search() {
-    const q = $('#q', el).value.trim();
-    if (!q || searching) return;
+    if (searching) return;
+    const inp = $('#q', el);
+    const q = inp.value.trim();
+    if (!q) { ui.toast(t('discover.need_query'), 'info'); inp.focus(); return; }
+    const opts = searchOpts();
     searching = true;
     const btn = $('#btn-search', el);
     ui.busy(btn, true, t('discover.searching_btn'));
     renderGrid();
-    const r = await HC.bridge.safe('search', q);
+    const r = await HC.bridge.safe('search', q, opts);
     searching = false;
     ui.busy(btn, false);
-    if (r && r.ok) { results = HC.store.put(r.results); sel.clear(); }
-    else if (r) ui.toast(r.error || t('err.generic'), 'err');
+    if (r && r.ok) {
+      results = HC.store.put(r.results || []);
+      sel.clear();
+      last = { query: q, effective: typeof r.effective_query === 'string' ? r.effective_query : '', genre: opts.genre, year: opts.year || null, known: true };
+    } else if (r) ui.toast(r.error || t('err.generic'), 'err');
     renderGrid(true);
   }
 
@@ -143,7 +230,7 @@
         </select>
         <button class="btn primary" id="btn-search">${I.search}${t('discover.search')}</button>
       </div>
-      <div class="chips" id="genre-chips"><span class="meta" id="quota"></span></div>
+      <div class="chips" id="genre-chips"><span class="meta"><span class="scope" id="scope" title="${util.esc(t('discover.scope_title'))}" hidden></span><span id="quota"></span></span></div>
       <div class="discover" id="disc">
         <aside class="filters"><div class="filters-inner">
           <h3>${t('discover.filters')} <button class="linkbtn" id="f-reset">${t('common.reset')}</button></h3>
@@ -153,7 +240,21 @@
               <input class="input mono" id="f-max" type="number" min="0" placeholder="${util.esc(t('discover.f_max_ph'))}" title="${util.esc(t('discover.f_max'))}">
             </div></div>
           <div class="fgroup"><label class="lbl" for="f-date">${t('discover.f_period')}</label>
-            <select class="select" id="f-date">${Object.keys(PERIOD_DAYS).map((k) => `<option value="${k}">${t('period.' + k)}</option>`).join('')}</select></div>
+            <select class="select" id="f-date">${PERIODS.map((k) => `<option value="${k}">${t('period.' + k)}</option>`).join('')}</select>
+            <div class="yearpick" id="f-year-box" hidden>
+              <div class="stepper">
+                <button type="button" class="iconbtn" id="f-year-dec" title="${util.esc(t('discover.f_year_prev'))}">${I.left}</button>
+                <input class="input" id="f-year" type="number" inputmode="numeric" min="${MIN_YEAR}" step="1" aria-label="${util.esc(t('discover.f_year'))}">
+                <button type="button" class="iconbtn" id="f-year-inc" title="${util.esc(t('discover.f_year_next'))}">${I.right}</button>
+              </div>
+              <input class="range" id="f-year-range" type="range" min="${MIN_YEAR}" step="1" aria-label="${util.esc(t('discover.f_year'))}" tabindex="-1">
+              <div class="range-ends"><span>${MIN_YEAR}</span><span id="f-year-max"></span></div>
+            </div>
+            <div class="datepick" id="f-custom-box" hidden>
+              <label><span>${t('discover.f_from')}</span><input class="input mono" id="f-from" type="date" min="${MIN_YEAR}-01-01"></label>
+              <label><span>${t('discover.f_to')}</span><input class="input mono" id="f-to" type="date" min="${MIN_YEAR}-01-01"></label>
+            </div>
+            <p class="fhint" id="f-date-hint" hidden></p></div>
           <div class="fgroup"><label class="lbl">${t('discover.f_inc')}</label><div id="t-inc"></div></div>
           <div class="fgroup"><label class="lbl">${t('discover.f_exc')}</label><div id="t-exc"></div></div>
           <div class="fgroup"><label class="lbl">${t('discover.f_show')}</label>
@@ -168,6 +269,7 @@
             <button class="btn sm ghost" id="sel-all">${t('discover.select_all')}</button>
             <button class="btn sm primary" id="dl-sel" disabled>${I.download}${t('discover.download_sel')}<span id="dl-sel-n"></span></button>
           </div>
+          <div class="search-info" id="search-info" hidden></div>
           <div class="grid" id="grid"></div>
         </div>
       </div>`;
@@ -183,7 +285,29 @@
     $('#sort', el).addEventListener('change', () => renderGrid(true));
     $('#f-min', el).addEventListener('input', (e) => { f.min = Math.max(0, +e.target.value || 0); renderGrid(); });
     $('#f-max', el).addEventListener('input', (e) => { f.max = Math.max(0, +e.target.value || 0); renderGrid(); });
-    $('#f-date', el).addEventListener('change', (e) => { f.period = e.target.value; renderGrid(); });
+    $('#f-date', el).addEventListener('change', (e) => {
+      f.period = e.target.value;
+      syncPeriod();
+      renderScope();
+      renderGrid();
+      if (f.period === 'year') $('#f-year', el).select();
+    });
+    /* Jahr: Tippen, Pfeiltasten, Mausrad, Stepper und Schieber – alles filtert sofort. */
+    const yearInp = $('#f-year', el);
+    yearInp.addEventListener('input', () => { const n = +yearInp.value; if (Number.isInteger(n) && n >= MIN_YEAR && n <= maxYear()) setYear(n); });
+    yearInp.addEventListener('change', () => { setYear(+yearInp.value || f.year); yearInp.value = f.year; });
+    yearInp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { yearInp.blur(); search(); } });
+    $('#f-year-dec', el).onclick = () => setYear(f.year - 1, true);
+    $('#f-year-inc', el).onclick = () => setYear(f.year + 1, true);
+    $('#f-year-range', el).addEventListener('input', (e) => setYear(+e.target.value));
+    $('#f-year-box', el).addEventListener('wheel', (e) => { e.preventDefault(); setYear(f.year + (e.deltaY < 0 ? 1 : -1), true); }, { passive: false });
+    $('#f-from', el).addEventListener('change', (e) => { f.from = e.target.value; renderGrid(); });
+    $('#f-to', el).addEventListener('change', (e) => { f.to = e.target.value; renderGrid(); });
+    $('#search-info', el).addEventListener('click', (e) => {
+      if (!e.target.closest('[data-re]')) return;
+      if (!$('#q', el).value.trim() && last) $('#q', el).value = last.query || '';
+      search();
+    });
     $('#f-hide', el).addEventListener('change', (e) => { f.hide = e.target.checked; renderGrid(); });
     $('#f-blacklist', el).addEventListener('change', (e) => { f.blacklist = e.target.checked; renderGrid(); });
     $('#f-reset', el).onclick = () => { defaultsFromSettings(); syncControls(); renderGrid(true); };
@@ -195,6 +319,18 @@
       if (f.genres.has(g)) f.genres.delete(g); else f.genres.add(g);
       c.classList.toggle('on', f.genres.has(g));
       c.setAttribute('aria-pressed', f.genres.has(g));
+      renderScope();
+      renderGrid();
+    });
+    /* Doppelklick = Solo: nur dieses Genre (wird an die Suche angehängt); nochmals = wieder alle. */
+    $('#genre-chips', el).addEventListener('dblclick', (e) => {
+      const c = e.target.closest('.chip');
+      if (!c) return;
+      const g = c.dataset.genre;
+      /* Die zwei Klicks davor haben den Chip aus- und wieder eingeschaltet: Zustand = wie vor dem Doppelklick. */
+      const solo = f.genres.size === 1 && f.genres.has(g);
+      f.genres = solo ? new Set(HC.genres.names()) : new Set([g]);
+      renderChips();
       renderGrid();
     });
     $('#sel-all', el).onclick = () => {
@@ -219,6 +355,7 @@
     HC.bridge.on('status_rendered', renderQuota);
     HC.bridge.on('blacklist_changed', loadBlacklist);
     HC.bridge.on('settings_changed', () => { defaultsFromSettings(); syncControls(); renderGrid(); renderQuota(); });
+    HC.bridge.on('status_rendered', () => { if (maxYear() !== +$('#f-year', el).max) syncPeriod(); }); // Jahreswechsel bei laufender App
   }
 
   let loaded = false;
@@ -226,10 +363,13 @@
     if (!loaded) {
       loaded = true;
       loadBlacklist();
-      const last = await HC.bridge.safe('get_last_search');
-      if (last && last.results && !results) {
-        $('#q', el).value = last.query || '';
-        results = HC.store.put(last.results);
+      const prev = await HC.bridge.safe('get_last_search');
+      if (prev && prev.results && !results) {
+        $('#q', el).value = prev.query || '';
+        results = HC.store.put(prev.results);
+        /* genre/year liefert das Backend evtl. nicht mit -> dann kein «veraltet»-Hinweis. */
+        const known = 'genre' in prev || 'year' in prev;
+        last = { query: prev.query || '', effective: typeof prev.effective_query === 'string' ? prev.effective_query : '', genre: prev.genre || null, year: prev.year || null, known };
       }
       renderGrid(true);
     } else if (changed) {
@@ -238,5 +378,5 @@
     renderQuota();
   }
 
-  HC.views.discover = { init, show, reset() { loaded = false; results = null; sel.clear(); } };
+  HC.views.discover = { init, show, reset() { loaded = false; results = null; last = null; sel.clear(); } };
 })();

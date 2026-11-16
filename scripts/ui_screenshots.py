@@ -221,6 +221,63 @@ class Shooter:
         page.wait_for_selector(".statebox .notice.ok")
         self.settle()
         self.shot("settings-network-cookies")
+        page.click("#btn-discard")
+
+        # Phase 3: Jahr-Filter (Einstellungen + Entdecken), Pause/Limit in den Downloads.
+        # Am Schluss, damit die Bilder davor unverändert bleiben.
+        self.tab("filters")
+        page.select_option('.field[data-k="filters.upload_period"] select', "year")
+        page.fill('.field[data-k="filters.upload_year"] [data-c]', "2013")
+        page.evaluate(
+            "document.querySelector('.field[data-k=\"filters.upload_period\"]')"
+            ".scrollIntoView({block: 'start'})"
+        )
+        self.settle()
+        self.shot("settings-filters-year")
+        page.click("#btn-discard")
+        page.evaluate("HC.mock.api.clear_backoff()")
+
+        self.go("discover")
+        page.select_option("#f-date", "year")
+        page.fill("#f-year", "2013")
+        page.dblclick('#genre-chips .chip[data-genre="Hardcore"]')
+        page.fill("#q", "hardcore liveset")
+        page.click("#btn-search")
+        page.wait_for_selector("#grid .card:not(.skeleton)")
+        self.settle()
+        self.shot("discover-year-filter")
+        page.click("#f-year-inc")  # Jahr geändert -> Hinweis «neu suchen»
+        self.settle()
+        self.shot("discover-year-stale")
+        page.select_option("#f-date", "custom")
+        page.fill("#f-from", "2012-01-01")
+        page.fill("#f-to", "2014-12-31")
+        page.dispatch_event("#f-from", "change")
+        page.dispatch_event("#f-to", "change")
+        self.settle()
+        self.shot("discover-custom-filter")
+
+        self.go("downloads")
+        page.evaluate("HC.mock.demo.sleep(47, 74)")
+        self.settle(500)
+        self.shot("downloads-sleep")
+        page.evaluate("HC.mock.demo.limit('run')")
+        self.settle(300)
+        self.shot("downloads-limit")
+        page.evaluate("HC.mock.demo.backoff(6)")
+        self.settle(300)
+        self.shot("downloads-backoff")
+
+        # m9: in pywebview gestartet, Backend antwortet nicht -> Fehlerzustand statt Mock
+        page.clock.install(time=FIXED_NOW)
+        page.goto(INDEX.as_uri() + "?host=pywebview")
+        page.wait_for_function("window.HC && HC.bridge && HC.bridge.ready")
+        page.clock.run_for(31000)
+        page.wait_for_selector("#fatal")
+        if self.reduced:
+            page.evaluate("document.body.classList.add('reduced')")
+        page.clock.run_for(600)
+        self.shot("error-backend")
 
 
 def main() -> int:

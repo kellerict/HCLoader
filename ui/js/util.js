@@ -62,6 +62,51 @@
       if (d < 365) return HC.t('fmt.months_ago', { n: Math.round(d / 30) });
       return HC.t('fmt.years_ago', { n: Math.round(d / 365) });
     },
+    /** Upload-Datum einer Karte: genau → «vor 3 T.», aus der flachen Suche (date_approx) → «~vor 5 Mt.» / «~2013».
+        -> {text, approx, known} */
+    uploadLabel(v) {
+      const d = parseDate(v.upload_date), ago = util.daysAgo(v.upload_date);
+      if (!d) return { text: HC.t('fmt.no_date'), approx: false, known: false };
+      if (!v.date_approx || ago < 30) return { text: util.fmtAgo(v.upload_date), approx: false, known: true };
+      return { text: `~${ago < 365 ? util.fmtAgo(v.upload_date) : d.getFullYear()}`, approx: true, known: true };
+    },
+    /** Jahreszahl steht als eigenes Wort im Titel (wie core/filters.title_has_year). */
+    titleHasYear(title, year) {
+      if (!title || !year) return false;
+      return new RegExp(`(?<![\\p{L}\\p{N}])${Math.trunc(year)}(?![\\p{L}\\p{N}])`, 'u').test(String(title));
+    },
+    /** Upload-Zeitraum wie core/filters.within_upload_period (docs/settings-schema.md, Phase 3).
+        p = {period, year, from, to}; unbekanntes Datum besteht nur bei «all» bzw. per Jahreszahl im Titel. */
+    inUploadPeriod(v, p) {
+      if (!p || p.period === 'all') return true;
+      const d = parseDate(v.upload_date), approx = !!v.date_approx;
+      if (p.period === 'year') {
+        if (util.titleHasYear(v.title, p.year)) return true;
+        if (!d || !p.year) return false;
+        return approx ? Math.abs(d.getFullYear() - p.year) <= 1 : d.getFullYear() === p.year;
+      }
+      if (!d) return false;
+      if (p.period === 'custom') {
+        let a = parseDate(p.from), z = parseDate(p.to);
+        if (approx) {
+          if (a) a = new Date(a.getTime() - 365 * DAY);
+          if (z) z = new Date(z.getTime() + 365 * DAY);
+        }
+        return !((a && d < a) || (z && d > z));
+      }
+      const days = { '7d': 7, '30d': 30, '1y': 365 }[p.period];
+      return days ? util.daysAgo(v.upload_date) <= days : true;
+    },
+    /** Thumbnails nur vom YouTube-Bild-CDN (https://i.ytimg.com, https://*.ytimg.com) – sonst Platzhalter. */
+    safeThumb(url) {
+      if (typeof url !== 'string' || !url) return null;
+      try {
+        const u = new URL(url);
+        return u.protocol === 'https:' && !u.username && !u.port && /(^|\.)ytimg\.com$/i.test(u.hostname) ? u.href : null;
+      } catch (e) {
+        return null;
+      }
+    },
     /** 2026-11-14 → 14.11.2026 */
     fmtDate(s) {
       const d = parseDate(s);
@@ -132,6 +177,8 @@
     external: svg('<path d="M14 3h7v7"/><path d="M10 14L21 3"/><path d="M21 14v7H3V3h7"/>'),
     ban: svg('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>'),
     more: svg('<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>'),
+    left: svg('<path d="M15 6l-6 6 6 6"/>'),
+    right: svg('<path d="M9 6l6 6-6 6"/>'),
     up: svg('<path d="M6 15l6-6 6 6"/>'),
     down: svg('<path d="M6 9l6 6 6-6"/>'),
     x: svg('<path d="M6 6l12 12M18 6L6 18"/>'),

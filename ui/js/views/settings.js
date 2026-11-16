@@ -14,11 +14,17 @@
   const FALLBACK_GENRE = 'Unsortiert';
   const PALETTE = ['#00e5ff', '#ff7a00', '#ff3bd4', '#ffe600', '#3bff9d', '#7a8cff'];
   const PLACEHOLDERS = ['genre', 'artist', 'channel', 'year', 'date', 'title', 'id'];
+  const MIN_YEAR = 2005; // wie core/config.MIN_UPLOAD_YEAR
+  const thisYear = () => new Date().getFullYear();
 
   /* ---------- Schema der Tabs ----------
-     type: bool | int | float | select | text | time | chips
+     type: bool | int | float | select | text | time | date | chips
      scale: Anzeige = Wert / scale (z.B. Sekunden -> Minuten)
      enabled(w): Feld nur bedienbar, wenn die Funktion true liefert
+     visible(w): Feld nur sichtbar, wenn die Funktion true liefert (Fehler zeigen es trotzdem)
+     zeroEmpty: 0 bedeutet «nicht gesetzt» (leeres Feld)
+     max: Zahl oder Funktion
+     after(w): nach einer Änderung abhängige Werte nachziehen -> Liste der neu zu zeichnenden Schlüssel
      {h: key} = Zwischenüberschrift, {custom: name} = Sonderblock          */
   const TABS = [
     { id: 'general', fields: [
@@ -29,10 +35,16 @@
     { id: 'filters', fields: [
       { h: 'set.h.search' },
       { k: 'search.results_count', type: 'int', min: 1, max: 100, unit: 'unit.results' },
+      { k: 'search.append_year', type: 'bool' },
       { h: 'set.h.duration' },
       { k: 'filters.min_duration', type: 'int', min: 0, scale: 60, unit: 'unit.minutes' },
       { k: 'filters.max_duration', type: 'int', min: 0, scale: 60, unit: 'unit.minutes' },
-      { k: 'filters.upload_period', type: 'select', options: ['all', '7d', '30d', '1y'], optLabel: (v) => t('period.' + v) },
+      { k: 'filters.upload_period', type: 'select', options: ['all', '7d', '30d', '1y', 'year', 'custom'], optLabel: (v) => t('period.' + v),
+        /* «Bestimmtes Jahr» braucht ein Jahr (Pflicht im Schema) -> aktuelles Jahr vorschlagen. */
+        after: (w) => (w.filters.upload_period === 'year' && !w.filters.upload_year ? ((w.filters.upload_year = thisYear()), ['filters.upload_year']) : []) },
+      { k: 'filters.upload_year', type: 'int', min: MIN_YEAR, max: thisYear, zeroEmpty: true, stepper: true, visible: (w) => w.filters.upload_period === 'year' },
+      { k: 'filters.upload_from', type: 'date', visible: (w) => w.filters.upload_period === 'custom' },
+      { k: 'filters.upload_to', type: 'date', visible: (w) => w.filters.upload_period === 'custom' },
       { h: 'set.h.keywords' },
       { k: 'filters.include_keywords', type: 'chips', kind: 'inc' },
       { k: 'filters.exclude_keywords', type: 'chips', kind: 'exc' },
@@ -137,13 +149,16 @@
     if (def.type === 'bool') return t(v ? 'common.on' : 'common.off');
     if (def.type === 'select') return optLabel(def, v);
     if (def.type === 'chips') return v.length ? (v.length > 5 ? `${v.slice(0, 5).join(', ')} … (+${v.length - 5})` : v.join(', ')) : t('common.empty_list');
+    if ((def.type === 'int' || def.type === 'float') && def.zeroEmpty && !v) return t('set.not_set');
     if (def.type === 'int' || def.type === 'float') return `${util.trimNum(v / (def.scale || 1))}${def.unit ? ' ' + t(def.unit) : ''}`;
+    if (def.type === 'date') return v ? util.fmtDate(v) : t('common.empty');
     return v === '' ? t('common.empty') : String(v);
   }
+  const maxOf = (def) => (typeof def.max === 'function' ? def.max() : def.max);
   function rangeText(def) {
     if (def.rangeKey) return t(def.rangeKey);
-    const s = def.scale || 1;
-    if (def.min != null && def.max != null) return `${util.trimNum(def.min / s)}–${util.trimNum(def.max / s)}`;
+    const s = def.scale || 1, max = maxOf(def);
+    if (def.min != null && max != null) return `${util.trimNum(def.min / s)}–${util.trimNum(max / s)}`;
     if (def.min != null) return `≥ ${util.trimNum(def.min / s)}`;
     return '';
   }
@@ -158,7 +173,9 @@
         return `<select class="select" data-c>${def.options.map((o) => `<option value="${esc(o)}"${o === v ? ' selected' : ''}>${esc(optLabel(def, o))}</option>`).join('')}</select>`;
       case 'int':
       case 'float':
-        return `<input class="input mono num" data-c type="number" inputmode="decimal" step="${def.type === 'int' && !def.scale ? 1 : 'any'}" value="${v == null ? '' : util.trimNum(v / (def.scale || 1))}">${def.unit ? `<span class="unit">${t(def.unit)}</span>` : ''}`;
+        return `${def.stepper ? `<button type="button" class="iconbtn" data-step="-1" title="${esc(t('discover.f_year_prev'))}">${I.left}</button>` : ''}<input class="input mono num" data-c type="number" inputmode="decimal" step="${def.type === 'int' && !def.scale ? 1 : 'any'}" value="${v == null || (def.zeroEmpty && !v) ? '' : util.trimNum(v / (def.scale || 1))}"${def.zeroEmpty ? ` placeholder="${esc(t('set.not_set'))}"` : ''}>${def.stepper ? `<button type="button" class="iconbtn" data-step="1" title="${esc(t('discover.f_year_next'))}">${I.right}</button>` : ''}${def.unit ? `<span class="unit">${t(def.unit)}</span>` : ''}`;
+      case 'date':
+        return `<input class="input mono" data-c type="date" value="${esc(v || '')}" min="${MIN_YEAR}-01-01" style="width:170px">`;
       case 'time':
         return `<input class="input mono" data-c type="text" inputmode="numeric" maxlength="5" placeholder="HH:MM" value="${esc(v)}" style="width:92px" spellcheck="false" autocomplete="off"><span class="unit">${t('unit.clock')}</span>`;
       case 'chips':
@@ -184,7 +201,14 @@
   }
   function bindField(d, def) {
     const c = $('[data-c]', d);
-    const commit = (val) => { set(work, def.k, val); delete errors[def.k]; onChange(def.k); };
+    const commit = (val) => {
+      set(work, def.k, val);
+      delete errors[def.k];
+      const redo = def.after ? def.after(work) : [];
+      onChange(def.k);
+      redo.forEach((k) => { delete errors[k]; refreshField(k); });
+      if (redo.length) paintChrome();
+    };
     if (def.type === 'bool') {
       c.addEventListener('click', () => {
         const v = !get(work, def.k);
@@ -196,11 +220,17 @@
       c.addEventListener('change', () => commit(c.value));
     } else if (def.type === 'int' || def.type === 'float') {
       c.addEventListener('input', () => {
-        if (c.value.trim() === '') return commit(null);
+        if (c.value.trim() === '') return commit(def.zeroEmpty ? 0 : null);
         let n = Number(c.value.replace(',', '.')) * (def.scale || 1);
         if (def.scale && def.type === 'int') n = Math.round(n);
         commit(n);
       });
+      $$('[data-step]', d).forEach((b) => b.addEventListener('click', () => {
+        const curV = +get(work, def.k) || 0, max = maxOf(def);
+        const n = Math.min(max, Math.max(def.min, (curV || (b.dataset.step > 0 ? def.min - 1 : max + 1)) + +b.dataset.step));
+        c.value = n;
+        commit(n);
+      }));
     } else if (def.type === 'chips') {
       const o = { list: get(work, def.k), kind: def.kind, lower: def.lower !== false, commaSplits: def.commaSplits !== false, onChange: (list) => commit(list) };
       if (def.placeholder) o.placeholder = t(def.placeholder);
@@ -221,6 +251,11 @@
       onChange(def.k);
     });
   }
+  /** Feld neu aufbauen (z.B. wenn ein anderes Feld seinen Wert gesetzt hat). */
+  function refreshField(k) {
+    const def = TABS.flatMap((x) => x.fields).find((x) => x.k === k), d = $(`.field[data-k="${k}"]`, el);
+    if (def && d) d.replaceWith(fieldEl(def));
+  }
   /** Zustand eines Feldes (geändert, Fehler, bedienbar) ohne Neuaufbau aktualisieren. */
   function paintField(d, def) {
     d.classList.toggle('dirty', isDirtyKey(def.k));
@@ -230,8 +265,9 @@
     e.hidden = !err;
     e.textContent = err || '';
     $('[data-reset]', d).disabled = eq(get(work, def.k), get(defaults, def.k));
+    d.hidden = !!def.visible && !def.visible(work) && !err;
     const on = !def.enabled || def.enabled(work);
-    $$('[data-c]', d).forEach((c) => { c.disabled = !on; });
+    $$('[data-c],[data-step]', d).forEach((c) => { c.disabled = !on; });
     const chips = $('[data-chips]', d);
     if (chips) chips.classList.toggle('disabled', !on);
   }

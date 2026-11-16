@@ -17,7 +17,7 @@
     return `<tr data-id="${s.id}" class="${s.enabled ? '' : 'off'}${checking.has(s.id) ? ' checking' : ''}">
       <td>${ui.toggle(s.enabled, `data-k="enabled" title="${esc(t('watchlist.col_active'))}"`)}</td>
       <td class="clip"><div class="cell-title"><div><b>${esc(s.name)}</b><small title="${esc(s.url_or_query)}">${esc(s.url_or_query)}</small></div></div></td>
-      <td class="mono">${t('source_type.' + s.type)}</td>
+      <td class="mono">${esc(t('source_type.' + s.type))}</td>
       <td>${s.default_genre ? ui.genreDot(s.default_genre) : `<span class="unit">${t('watchlist.genre_auto')}</span>`}</td>
       <td><span class="okline">${ui.toggle(s.auto_download, 'data-k="auto_download"')}<span class="toggle-label">${t(s.auto_download ? 'watchlist.auto_on' : 'watchlist.auto_off')}</span></span></td>
       <td class="mono num">${s.max_entries}</td>
