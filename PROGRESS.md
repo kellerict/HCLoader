@@ -8,7 +8,7 @@ Cloud-Session (Linux-Container). Abweichend von `build-all.md`: alle Phasen auf 
 ## Vorbedingungen
 - [x] git OK, Remote `origin` = github.com/kellerict/HCLoader (Repo war leer; `gh` hier nicht nutzbar → GitHub-Tools)
 - [x] Python 3.12+ vorhanden (3.13 im Container, CI: 3.12 auf windows-latest)
-- [ ] `MV_SMOKE_URL` gesetzt – **fehlt**, ausserdem ist youtube.com aus dem Container gesperrt → Smoke-Tests lokal unter Windows durch den User
+- [~] `MV_SMOKE_URL` vom User geliefert: `https://www.youtube.com/watch?v=QeD-amb0vA0` – aber ist youtube.com aus dem Container gesperrt (Proxy 403; Audio-Streams kommen von wechselnden `*.googlevideo.com`-Hosts, die sich nicht als exakte Hosts freigeben lassen) → Smoke-Tests lokal unter Windows durch den User
 
 ## Phasen
 | Phase | Status | Branch | PR | Tag |
