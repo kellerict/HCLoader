@@ -294,6 +294,7 @@ tr.checking td:first-child::before{content:"";position:absolute;left:0;top:0;bot
 .field .fc-main .input.num{width:104px}
 .field .fc-main .input.wide{max-width:none;flex:1 1 220px;min-width:0;width:auto}
 .field .fc-main:has(.input.wide){flex-wrap:nowrap}
+.field:has(.input.wide){grid-template-columns:minmax(0,1fr);gap:8px}
 .field .reset{margin-top:9px}
 .field-error{grid-column:1/-1;color:var(--error);font:12px var(--f-mono);display:flex;gap:6px;align-items:baseline}
 .field-error::before{content:"!";font-weight:600;background:var(--error);color:#000;padding:0 5px;border-radius:1px;flex:none}

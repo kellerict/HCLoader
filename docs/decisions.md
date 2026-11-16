@@ -410,6 +410,34 @@ Kurze Notizen zu Architekturentscheiden (Datum, Entscheid, Grund).
 - **Explorer:** `explorer /select,"<pfad>"` als ein String (eine Liste würde als Ganzes gequotet);
   der Exit-Code 1 von Explorer wird ignoriert.
 
+## 2026-11-16 – Review Phase 5: Fixes
+
+- **M1:** Neu-Taggen (`write_tags(..., keep_existing=True)`) lädt den vorhandenen ID3-Tag und ersetzt nur
+  die eigenen Frames; fremde Frames bleiben. Der Erst-Download startet weiterhin mit leerem Tag. Ohne
+  Kapitel (z.B. `write_id3_chapters` aus) werden alte CHAP/CTOC entfernt, ein altes Cover bleibt ohne neues.
+- **m1:** `PathTooLongError`/`ValueError`/`OSError` beim Pfadbau in `retag` -> `{ok:false, error}` (Deutsch), nichts geändert.
+- **m2 – eigene Methode statt neuem Rückgabetyp:** `get_library` bleibt `[LibraryItem]` (kein Bruch für
+  Mock, Tests, Bridge); neu `get_library_status() -> {target_ok, target}` und pro Eintrag `unknown`.
+  Die Prüfung (`library.target_reachable`, Thread + `join(3 s)`) läuft einmal pro `get_library`;
+  Einträge unter dem Zielordner werden dann nicht per `stat` geprüft (kein Hängen auf toter SMB-Freigabe),
+  `missing=false, unknown=true`. `delete_item` verweigert in dem Zustand (`unreachable`), die UI sperrt
+  «Neu taggen»/«Eintrag entfernen» und zeigt das Banner. Folge: Wurde der Zielordner bewusst gelöscht,
+  lassen sich Einträge erst nach Neuanlegen oder Ändern von `storage.target_dir` entfernen.
+- **m3:** Alte Dateien bleiben nach einer Änderung des Zielordners liegen und werden nie automatisch
+  verschoben oder gelöscht. Löschen ausserhalb verweigert (`outside:true`), die UI bietet «Nur Eintrag
+  entfernen» (`delete_file=false`); Neu-Taggen taggt sie an Ort und Stelle.
+- **n1:** `library.FS_LOCK` (RLock) um letztes Verschieben im Downloader (`ytclient`), `retag`, `delete_item`, `prune_empty_dirs`.
+- **n2:** Löschen: erst `.cue`, dann MP3; scheitert etwas, bleibt die DB `done`.
+- **n3/n4:** `_same_file` über `os.path.samefile`; reine Gross/Kleinschreibung läuft über einen Zwischennamen
+  (`*.hcl-rename`); nach gescheitertem `shutil.move` wird die Kopie am Ziel entfernt.
+- **n5:** `desktop.ini`/`Thumbs.db`/`cover.jpg` zählen beim Aufräumen als leer und werden mitgelöscht.
+- **n6:** Backups nur mit Muster `hcloader-\d{8}-\d{6}(-\d+)?\.db`; `stat`-Fehler werden übersprungen.
+- **n7:** Meldung «Wartung läuft gerade (Neu taggen)».
+- **n12:** Sidecar heisst `<id>.<sha1(id)[:8]>.json`; alte `<id>.json` werden gelesen (nur wenn `id` passt),
+  beim Schreiben migriert, beim Löschen mitentfernt.
+- **n13:** `HCLOADER_REQUIRE_NETWORK=1` (im CI-Network-Schritt) macht aus dem PyPI-Skip einen Fehler; Docstring: Netzsperre gilt nur für Python.
+- **Offen (bewusst):** n8 (get_library bei jedem `done`), n9, n10 (Log-Rotation mit zwei Prozessen), n11, n14.
+
 ## 2026-11-16 – Review Phase 4: Abbruch pro Quelle, Zeitplan-Kollision, Grenzen
 
 - **M1 – «bekannt» = von dieser Quelle gesehen.** Neue Tabelle `source_videos(source_id, video_id,

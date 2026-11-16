@@ -242,6 +242,7 @@ Aufgaben-Felder unverändert (sie spiegeln den Zustand der Windows-Aufgabe).
 | Methode | Parameter | Rückgabe | Phase |
 |---|---|---|---|
 | `get_library(filters?)` | `{search?, genre?, channel?, year?, missing?}` | `[LibraryItem]` (Status `done`, neueste Downloads zuerst, aus DB) | 5 |
+| `get_library_status()` | | `{target_ok, target}` – Zielordner-Prüfung (Thread mit 3-s-Timeout) des letzten `get_library` | 5 |
 | `open_folder(id)` | | `{ok}` \| `{ok:false, error}` – Windows: Explorer mit markierter Datei, sonst Ordner | 5 |
 | `retag(id)` | | `{ok:true, path, moved, genre, cue, sidecar}` \| `{ok:false, error}` | 5 |
 | `delete_library_item(id, delete_file=true)` | | `{ok:true, deleted:[Dateinamen]}` \| `{ok:false, error}` | 5 |
@@ -253,7 +254,12 @@ Aufgaben-Felder unverändert (sie spiegeln den Zustand der Windows-Aufgabe).
   Kein Filter / kein Objekt = alles. Die UI leitet die Auswahllisten (Genres, Kanäle, Jahre) aus der
   Gesamtliste ab.
 - `LibraryItem` = `{id, title, artist, channel_id, genre, duration, upload_date, year, downloaded_at,
-  file_path, size_mb, missing, has_cue}`. `missing: true`: die Datei existiert nicht mehr (`size_mb` 0).
+  file_path, size_mb, missing, unknown, has_cue}`. `missing: true`: die Datei existiert nicht mehr (`size_mb` 0).
+  `unknown: true`: der Zielordner ist nicht erreichbar (Laufwerk/Freigabe weg oder hängt >3 s); für
+  Dateien darunter wird nichts geprüft, `missing` bleibt `false`. `get_library` bleibt eine Liste, damit
+  bestehende Aufrufer nicht brechen; die UI holt Pfad/Zustand mit `get_library_status()` und zeigt das
+  Banner «Zielordner nicht erreichbar: <Pfad>». Auch `delete_library_item` verweigert dann
+  (`{ok:false, error:"Zielordner nicht erreichbar: …", unreachable:true}`).
   `duration` aus der DB, sonst aus der Datei gelesen (`null` wenn unlesbar). `artist` = Kanalname
   (Anzeige); der ID3-Artist kann bei `storage.artist_from_title` abweichen.
 - `open_folder`: Windows `explorer /select,"<Datei>"` (Datei markiert); existiert die Datei nicht, bzw.
@@ -268,10 +274,10 @@ Aufgaben-Felder unverändert (sie spiegeln den Zustand der Windows-Aufgabe).
   `{ok:false, error:"Zieldatei existiert bereits: …"}`, nichts wird verändert. Dateien ausserhalb des
   Zielordners werden an Ort und Stelle getaggt, nie verschoben (`moved:false`). Ohne Sidecar (ältere
   Downloads): Titel/Kanal/Datum aus der DB, Kapitel aus den ID3-CHAP-Frames der Datei (`sidecar:false`).
-  Fehlt die Datei: `{ok:false, error:"Datei fehlt: …"}`. Event `video {id, status:"done", genre}`.
+  Fehlt die Datei: `{ok:false, error:"Datei fehlt: …"}`. Ist der neue Pfad zu lang: `{ok:false, error:"Neuer Ablagepfad ist zu lang …"}`, nichts geändert. MP3: vorhandene ID3-Frames, die die App nicht selbst schreibt (BPM, Key, POPM, ReplayGain, USLT …), bleiben erhalten; ersetzt werden nur die eigenen Frames (Titel/Künstler/Album/Track/Genre/Datum, App-Kommentar, `YOUTUBE_ID`, `SOURCE`, CHAP/CTOC, APIC nur mit neuem Cover). Event `video {id, status:"done", genre}`.
 - `delete_library_item(id, delete_file=true)`: löscht Datei + `.cue` (nur innerhalb des Zielordners!;
   liegt die Datei draussen, kommt `{ok:false, error:"Datei liegt ausserhalb des Zielordners (…) – nicht
-  gelöscht"}` und nichts ändert sich), `cover.jpg` nur wenn der Ordner sonst leer ist, danach leere Ordner
+  gelöscht", outside:true}` und nichts ändert sich; die UI bietet dann «Nur Eintrag entfernen» = `delete_file=false`), `cover.jpg` nur wenn der Ordner sonst leer ist, danach leere Ordner
   bis (ohne) Zielordner, entfernt den Sidecar und setzt den DB-Eintrag auf `ignored` (ohne `file_path`).
   `archive.txt` bleibt unverändert, das Video wird also nie wieder automatisch geladen. Mit
   `delete_file=false` bleibt die Datei liegen (nur der Eintrag verschwindet). Nicht löschbare Datei

@@ -5,6 +5,15 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
 
 ## [Unreleased]
 
+### Fixed
+- Review Phase 5: **M1** Neu-Taggen behält fremde ID3-Frames (BPM, Key, Rating, ReplayGain, Lyrics …);
+  **m1** zu langer Pfad beim Neu-Taggen als saubere Fehlermeldung; **m2** nicht erreichbarer Zielordner
+  (`get_library_status`, `unknown`, Banner, Timeout-Prüfung); **m3** «Nur Eintrag entfernen» für Dateien
+  ausserhalb des Zielordners; Hinweise n1-n7, n12, n13 (gemeinsamer Dateisperre, .cue vor MP3, Gross/Klein-
+  Umbenennung, Aufräumen nach fehlgeschlagenem Verschieben, desktop.ini/Thumbs.db, Backup-Namensmuster,
+  lesbarer Job-Name, Sidecar-Name mit Hash, CI `HCLOADER_REQUIRE_NETWORK`). UI: Felder «Zielordner»/«Pfadmuster»
+  volle Breite, Trefferzeile ohne Umbruch, Bibliothek-Grösse unter 1 MB in KB.
+
 ### Added
 - Phase 5 Backend: Bibliothek (`core/library.py`: `get_library(filters)` mit Suche/Genre/Kanal/Jahr/
   `missing`, `open_folder` mit Explorer-Markierung, `retag` ohne Netzwerk inkl. Verschieben nach
