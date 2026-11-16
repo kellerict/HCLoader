@@ -15,8 +15,8 @@ Cloud-Session (Linux-Container). Abweichend von `build-all.md`: alle Phasen auf 
 |---|---|---|---|---|
 | 1 – Gerüst & Kern-Download | **abgeschlossen** (QA bestanden bis auf extern blockierten Smoke; Review Runde 2: N1/N2 behoben) | claude/compassionate-thompson-zgetlu | – | – |
 | 2 – GUI-Grundgerüst | **abgeschlossen** (QA bestanden, Review freigegeben, 12 Minor → Phase 3) | claude/compassionate-thompson-zgetlu | – | – |
-| 3 – Entdecken & Downloads | in Arbeit | | | |
-| 4 – Watchlist & Zeitplan | offen | | | |
+| 3 – Entdecken & Downloads | QA bestanden; Review: M1 + Minors behoben (00f165c), Nach-Review läuft | | | |
+| 4 – Watchlist & Zeitplan | in Arbeit (Backend + UI parallel) | | | |
 | 5 – Bibliothek, Protokoll, Feinschliff | offen | | | |
 
 ## Aktueller Plan
@@ -52,3 +52,5 @@ Offene Review-Punkte (docs/reviews/phase-1.md, Runde 2)
 - 2026-11-16 – QA Phase 1 + Nach-Review gestartet; Phase-2-Integration gestartet
 - 2026-11-16 – QA Phase 1 BESTANDEN (Smoke extern blockiert); Review Runde 2 → N1/N2 behoben → Phase 1 abgeschlossen
 - 2026-11-16 – Phase 2: Integration (86de529), QA BESTANDEN, Review FREIGEGEBEN → abgeschlossen; Phase 3 gestartet
+- 2026-11-16 – Phase 3: 3a (66f3f8f), 3b (e205214), UI (561dae2/e48b7e4); QA BESTANDEN; Review ÄNDERUNGEN NÖTIG (M1) → behoben (00f165c); Nach-Review läuft
+- 2026-11-16 – Phase 4 gestartet: backend-dev (watchlist, headless, N3/N5/n6), ui-designer (Watchlist/Eingang/Zeitplan)
