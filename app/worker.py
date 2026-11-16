@@ -1305,7 +1305,7 @@ class WatchlistScheduler:
     Review Phase 4: a full check of another process (`state.watchlist_running_since`, set at the
     start of every full check) or a busy watchlist lock (`defer()`) postpones the check by
     `grace` seconds (re-evaluated then, no toast). A full check without any successful source
-    is retried at `state.watchlist_retry_at` (1 h later) instead of after the full interval.
+    is retried at `state.watchlist_retry_at` (escalating 1 h, 2 h, 4 h ... max 24 h) instead of after the full interval.
     """
 
     GRACE_S = 600.0

@@ -41,7 +41,17 @@ K_LAST_RUN = "watchlist_last_run"
 K_RUNNING_SINCE = "watchlist_running_since"
 # m3: a full check without any successful source -> retry at this time (ISO UTC)
 K_RETRY_AT = "watchlist_retry_at"
+K_RETRY_COUNT = "watchlist_retry_count"
 RETRY_AFTER = timedelta(hours=1)
+RETRY_MAX = timedelta(hours=24)
+
+
+def retry_delay(failures: int) -> timedelta:
+    """Review P4 R2-m1: escalate retries after fully failed checks (1 h, 2 h, 4 h ... max 24 h),
+    so a permanent error (deleted playlist, unrecognised block) costs at most a few checks a day."""
+    return min(RETRY_AFTER * (2 ** max(0, failures - 1)), RETRY_MAX)
+
+
 # a running-marker older than this is stale (crashed process; task limit is 6 h)
 RUNNING_STALE = timedelta(hours=6)
 MAX_ENTRIES = 200
@@ -479,8 +489,11 @@ def _finish_full_run(db: Database, result: WatchlistResult) -> None:
         if result.checked > 0:
             db.set_state(K_LAST_RUN, now_iso())
             db.delete_state(K_RETRY_AT)
+            db.delete_state(K_RETRY_COUNT)
         elif result.errors:
-            retry = datetime.now(UTC) + RETRY_AFTER
+            failures = int(db.get_state(K_RETRY_COUNT, "0") or 0) + 1
+            db.set_state(K_RETRY_COUNT, failures)
+            retry = datetime.now(UTC) + retry_delay(failures)
             db.set_state(K_RETRY_AT, retry.isoformat(timespec="seconds"))
             log.warning(
                 "Keine Quelle erfolgreich geprüft – neuer Versuch um %s", format_until(retry)

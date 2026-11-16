@@ -468,3 +468,9 @@ Kurze Notizen zu Architekturentscheiden (Datum, Entscheid, Grund).
   `--disable-component-update`. Zusätzlich blockiert eine autouse-Fixture in `tests/conftest.py`
   `socket.connect`/`connect_ex`/`create_connection`/`getaddrinfo` für alle Nicht-Loopback-Ziele,
   ausser bei Tests mit Marker `network`.
+
+## 2026-11-16 – Watchlist-Retry eskaliert (Review Phase 4, Runde 2, R2-m1)
+- Scheitern bei einer Prüfung alle Quellen (ohne Backoff), wird nicht stündlich endlos wiederholt, sondern mit
+  wachsendem Abstand: 1 h, 2 h, 4 h, 8 h, 16 h, dann höchstens 24 h (`watchlist.retry_delay`, Zähler
+  `state.watchlist_retry_count`). Eine erfolgreiche Prüfung setzt Zähler und Retry zurück. So kostet ein
+  dauerhafter Fehler (gelöschte Playlist, unerkannte Sperre) wenige Abfragen pro Tag statt 24.

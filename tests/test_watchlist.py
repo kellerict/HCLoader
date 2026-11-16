@@ -616,6 +616,22 @@ def test_all_sources_failed_sets_retry_not_last_run(db, settings):
     assert watchlist.last_run(db) is not None and watchlist.retry_at(db) is None
 
 
+def test_failed_checks_escalate_retry_delay(db, settings):
+    """Review P4 R2-m1: repeated full failures back off 1 h, 2 h, 4 h ... capped at 24 h."""
+    s = src(db)
+    client = FakeClient({s["url_or_query"]: [entry("a1")]}, error=RuntimeError("Playlist weg"))
+    delays = []
+    for _ in range(7):
+        watchlist.check_all(client=client, db=db, throttle=FakeThrottle(), settings=settings)
+        delays.append(watchlist.retry_at(db) - datetime.now(UTC))
+    hours = [round(d.total_seconds() / 3600) for d in delays]
+    assert hours == [1, 2, 4, 8, 16, 24, 24]
+    client.error = None
+    watchlist.check_all(client=client, db=db, throttle=FakeThrottle(), settings=settings)
+    assert db.get_state(watchlist.K_RETRY_COUNT) is None and watchlist.retry_at(db) is None
+    assert watchlist.retry_delay(1) == timedelta(hours=1)
+
+
 def test_cancel_inside_a_request_ends_the_run(db, settings):
     """n5: the cancel event reaches the client; WaitCancelled ends the run as cancelled."""
     from app.core.throttle import WaitCancelled

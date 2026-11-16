@@ -16,7 +16,7 @@ Cloud-Session (Linux-Container). Abweichend von `build-all.md`: alle Phasen auf 
 | 1 – Gerüst & Kern-Download | **abgeschlossen** (QA bestanden bis auf extern blockierten Smoke; Review Runde 2: N1/N2 behoben) | claude/compassionate-thompson-zgetlu | – | – |
 | 2 – GUI-Grundgerüst | **abgeschlossen** (QA bestanden, Review freigegeben, 12 Minor → Phase 3) | claude/compassionate-thompson-zgetlu | – | – |
 | 3 – Entdecken & Downloads | **abgeschlossen** (QA bestanden; Review R1 behoben 00f165c, R2 behoben ba6ccbd) | | | |
-| 4 – Watchlist & Zeitplan | in Arbeit (Backend + UI parallel) | | | |
+| 4 – Watchlist & Zeitplan | **abgeschlossen** (QA bestanden; Review R1 behoben 06503c8, R2 freigegeben, R2-m1 behoben) | | | |
 | 5 – Bibliothek, Protokoll, Feinschliff | in Arbeit |
 | 6 – Portable (User-Wunsch) | geplant nach Phase 5 | | | |
 
@@ -66,3 +66,5 @@ Phase 6 – Portable (User-Wunsch, Variante 2: komplett portable)
 - 2026-11-16 – Phase 3 abgeschlossen (R2-Funde in ba6ccbd). Phase-4-Backend fertig (ba6ccbd); UI läuft
 - Offen (Phase 4/5 klären): Playlists hängen neue Videos hinten an → Abbruch beim ersten bekannten Video + max_entries passt schlecht (decisions.md)
 - 2026-11-16 – User wählt Portable-Variante 2 (eingebettetes Python) → als Phase 6 nach Phase 5 eingeplant
+- 2026-11-16 – Phase 4: QA BESTANDEN, Review R1 ÄNDERUNGEN NÖTIG (M1) → behoben (06503c8), Runde 2 FREIGEGEBEN; R2-m1 (eskalierender Retry) behoben → abgeschlossen. Tests laufen offline (Netzwerksperre); Marker `network` nur gezielt/CI.
+- 2026-11-16 – Phase-5-Backend fertig (06503c8); UI läuft
