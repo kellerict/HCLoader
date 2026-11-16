@@ -74,11 +74,24 @@ def materialize(root: Path) -> int:
     return count
 
 
+def long_path(path: Path) -> Path:
+    """Windows: extended-length form (\\\\?\\C:\\...) so copies deep inside node_modules are not
+    limited to MAX_PATH (260). Derived paths keep the prefix. No-op elsewhere."""
+    if os.name != "nt":
+        return path
+    text = os.path.abspath(str(path))
+    if text.startswith("\\\\?\\"):
+        return Path(text)
+    if text.startswith("\\\\"):  # UNC share
+        return Path("\\\\?\\UNC\\" + text[2:])
+    return Path("\\\\?\\" + text)
+
+
 def main(argv: list[str]) -> int:
     if len(argv) != 1:
         print("Aufruf: materialize_links.py <Ordner>", file=sys.stderr)
         return 2
-    folder = Path(argv[0])
+    folder = long_path(Path(argv[0]))
     if not folder.is_dir():
         print(f"Ordner fehlt: {folder}", file=sys.stderr)
         return 2
