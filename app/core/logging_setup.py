@@ -42,6 +42,8 @@ class CallbackHandler(logging.Handler):
                 "level": record.levelname,
                 "logger": record.name,
                 "message": record.getMessage(),
+                # optional UI level, e.g. log.info(..., extra={"ui_level": "ok"})
+                "ui_level": getattr(record, "ui_level", None),
             }
         except Exception:
             self.handleError(record)

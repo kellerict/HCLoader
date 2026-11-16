@@ -10,13 +10,14 @@ from __future__ import annotations
 import importlib
 import json
 import logging
+import os
 import platform
 import re
 import sqlite3
 import subprocess
 import sys
 import urllib.request
-from collections.abc import Callable, Iterable
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -277,5 +278,11 @@ def versions_info(
     }
 
 
-def tail(lines: Iterable[str], n: int = 200) -> str:
-    return "\n".join(list(lines)[-n:])
+def open_in_shell(path: Path) -> None:
+    """Open a folder/file with the OS (Explorer on Windows)."""
+    if sys.platform == "win32":
+        os.startfile(str(path))  # type: ignore[attr-defined]  # noqa: S606
+    elif sys.platform == "darwin":
+        subprocess.Popen(["open", str(path)])  # noqa: S603, S607
+    else:
+        subprocess.Popen(["xdg-open", str(path)])  # noqa: S603, S607
