@@ -77,11 +77,13 @@ jobs:
           $drive = 'D:\'
           if ($ws.StartsWith('D:', [StringComparison]::OrdinalIgnoreCase) -or -not (Test-Path 'D:\')) { $drive = 'C:\' }
           $moved = Join-Path $drive 'moved'
-          if (Test-Path $moved) { Remove-Item -Path $moved -Recurse -Force -ErrorAction Stop }
+          if (Test-Path $moved) { cmd.exe /d /c "rmdir /s /q `"\\?\$moved`"" }
           New-Item -ItemType Directory -Path $moved -ErrorAction Stop | Out-Null
           Expand-Archive -Path '${{ steps.build.outputs.zip }}' -DestinationPath $moved -ErrorAction Stop
           # the old location must be gone: absolute paths/links to it would otherwise still work
-          Remove-Item -Path (Join-Path $ws 'dist\HCLoader') -Recurse -Force -ErrorAction Stop
+          $old = Join-Path $ws 'dist\HCLoader'
+          cmd.exe /d /c "rmdir /s /q `"\\?\$old`""
+          if (Test-Path $old) { throw "Build-Ordner nicht entfernt: $old" }
           $root = Join-Path $moved 'HCLoader'
           "HCL_MOVED=$root" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           if (Test-Path (Join-Path $root 'data')) { throw 'data\ darf nicht im ZIP liegen' }

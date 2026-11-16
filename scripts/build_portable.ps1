@@ -59,6 +59,16 @@ $GetPipUrl = 'https://bootstrap.pypa.io/get-pip.py'
 
 function Write-Step([string]$Text) { Write-Host "==> $Text" -ForegroundColor Cyan }
 
+function Remove-Tree([string]$Path) {
+    # Remove-Item fails on paths > 260 characters (deep node_modules). rmdir with the
+    # extended-length prefix \\?\ has no such limit.
+    if (-not (Test-Path -LiteralPath $Path)) { return }
+    $full = [IO.Path]::GetFullPath($Path)
+    if (-not $full.StartsWith('\\')) { $full = '\\?\' + $full }
+    cmd.exe /d /c "rmdir /s /q `"$full`"" | Out-Null
+    if (Test-Path -LiteralPath $Path) { throw "Ordner konnte nicht entfernt werden: $Path" }
+}
+
 function Expand-ZipFile([string]$Path, [string]$Destination) {
     # .NET instead of Expand-Archive: no module dependency, works in PS 5.1 and 7.
     Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -149,7 +159,7 @@ if (Test-Path $Dist) {
         throw "$Dist\data existiert (Benutzerdaten eines Testlaufs?). Sichern oder mit -Force neu bauen."
     }
     Write-Step 'Entferne alten Build ...'
-    Remove-Item -Path $Dist -Recurse -Force
+    Remove-Tree $Dist
 }
 New-Item -ItemType Directory -Path $Dist -Force | Out-Null
 
@@ -302,15 +312,11 @@ try {
 
     # Explorer cannot extract paths longer than 260 characters. Show the longest relative path:
     # the folder the user unpacks to must leave room for it.
-    $prefix = $Dist.Length + 1
-    $longest = Get-ChildItem -Path $Dist -Recurse -File -Force |
-        Sort-Object -Property { $_.FullName.Length } -Descending | Select-Object -First 1
-    if ($longest) {
-        $rel = $longest.FullName.Length - $prefix
-        $color = 'DarkGray'
-        if ($rel -gt 180) { $color = 'Yellow' }
-        Write-Host "    Laengster Pfad im Build: $rel Zeichen ab HCLoader\" -ForegroundColor $color
-    }
+    $tools = Join-Path $PSScriptRoot 'portable_tools.py'
+    $rel = [int](& $Py $tools 'longest' $Dist)
+    $color = 'DarkGray'
+    if ($rel -gt 180) { $color = 'Yellow' }
+    Write-Host "    Laengster Pfad im Build: $rel Zeichen ab HCLoader\" -ForegroundColor $color
 }
 finally {
     Remove-Item -Path $tmp -Recurse -Force -ErrorAction SilentlyContinue
@@ -321,9 +327,9 @@ if ($Zip) {
     $zipPath = Join-Path $OutDir "HCLoader-portable-$AppVersion-win64.zip"
     if (Test-Path $zipPath) { Remove-Item -Path $zipPath -Force }
     Write-Step "Erzeuge $zipPath ..."
-    # ZipFile instead of Compress-Archive: faster, keeps dot/hidden files, '/' as separator
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-    [IO.Compression.ZipFile]::CreateFromDirectory($Dist, $zipPath, [IO.Compression.CompressionLevel]::Optimal, $true)
+    # Python zipfile instead of .NET ZipFile/Compress-Archive: long paths (> 260), dot files,
+    # '/' as separator, 'HCLoader/' as top folder.
+    Invoke-Native -Exe $Py -Arguments @((Join-Path $PSScriptRoot 'portable_tools.py'), 'zip', $Dist, $zipPath) -What 'ZIP erzeugen'
     $sizeMb = [math]::Round((Get-Item $zipPath).Length / 1MB, 1)
     Write-Host "    $sizeMb MB" -ForegroundColor DarkGray
     if ($env:GITHUB_OUTPUT) {

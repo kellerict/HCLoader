@@ -38,6 +38,16 @@ $ProviderRepo = 'https://github.com/Brainicism/bgutil-ytdlp-pot-provider'
 
 function Write-Step([string]$Text) { Write-Host "==> $Text" -ForegroundColor Cyan }
 
+function Remove-Tree([string]$Path) {
+    # Remove-Item fails on paths > 260 characters (deep node_modules). rmdir with the
+    # extended-length prefix \\?\ has no such limit.
+    if (-not (Test-Path -LiteralPath $Path)) { return }
+    $full = [IO.Path]::GetFullPath($Path)
+    if (-not $full.StartsWith('\\')) { $full = '\\?\' + $full }
+    cmd.exe /d /c "rmdir /s /q `"$full`"" | Out-Null
+    if (Test-Path -LiteralPath $Path) { throw "Ordner konnte nicht entfernt werden: $Path" }
+}
+
 function Expand-ZipFile([string]$Path, [string]$Destination) {
     # .NET instead of Expand-Archive: no module dependency, works in PS 5.1 and 7.
     Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -178,7 +188,7 @@ if ($ready -and -not $Force) {
 }
 else {
     Write-Step "Hole bgutil-Provider $Version ..."
-    if (Test-Path $ProviderDir) { Remove-Item -Path $ProviderDir -Recurse -Force }
+    Remove-Tree $ProviderDir
     $git = Get-Command git -ErrorAction SilentlyContinue
     if ($git) {
         Invoke-Native 'git' @('-c', 'advice.detachedHead=false', 'clone', '--quiet', '--depth', '1', '--single-branch', '--branch', $Version, "$ProviderRepo.git", $ProviderDir) 'git clone'
