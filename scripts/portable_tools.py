@@ -15,7 +15,6 @@ import zipfile
 from pathlib import Path
 
 
-
 def long_path(path: Path) -> Path:
     """Windows extended-length form (no MAX_PATH limit); no-op elsewhere. Kept local on purpose:
     the embedded Python (._pth, isolated) does not put the script folder on sys.path."""
