@@ -15,7 +15,7 @@ Cloud-Session (Linux-Container). Abweichend von `build-all.md`: alle Phasen auf 
 |---|---|---|---|---|
 | 1 – Gerüst & Kern-Download | **abgeschlossen** (QA bestanden bis auf extern blockierten Smoke; Review Runde 2: N1/N2 behoben) | claude/compassionate-thompson-zgetlu | – | – |
 | 2 – GUI-Grundgerüst | **abgeschlossen** (QA bestanden, Review freigegeben, 12 Minor → Phase 3) | claude/compassionate-thompson-zgetlu | – | – |
-| 3 – Entdecken & Downloads | QA bestanden; Review: M1 + Minors behoben (00f165c), Nach-Review läuft | | | |
+| 3 – Entdecken & Downloads | **abgeschlossen** (QA bestanden; Review R1 behoben 00f165c, R2 behoben ba6ccbd) | | | |
 | 4 – Watchlist & Zeitplan | in Arbeit (Backend + UI parallel) | | | |
 | 5 – Bibliothek, Protokoll, Feinschliff | offen | | | |
 
@@ -54,3 +54,5 @@ Offene Review-Punkte (docs/reviews/phase-1.md, Runde 2)
 - 2026-11-16 – Phase 2: Integration (86de529), QA BESTANDEN, Review FREIGEGEBEN → abgeschlossen; Phase 3 gestartet
 - 2026-11-16 – Phase 3: 3a (66f3f8f), 3b (e205214), UI (561dae2/e48b7e4); QA BESTANDEN; Review ÄNDERUNGEN NÖTIG (M1) → behoben (00f165c); Nach-Review läuft
 - 2026-11-16 – Phase 4 gestartet: backend-dev (watchlist, headless, N3/N5/n6), ui-designer (Watchlist/Eingang/Zeitplan)
+- 2026-11-16 – Phase 3 abgeschlossen (R2-Funde in ba6ccbd). Phase-4-Backend fertig (ba6ccbd); UI läuft
+- Offen (Phase 4/5 klären): Playlists hängen neue Videos hinten an → Abbruch beim ersten bekannten Video + max_entries passt schlecht (decisions.md)
