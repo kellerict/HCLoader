@@ -1,0 +1,139 @@
+/* =====================================================================
+   effects.css – Overlays, Animationen, Mikro-Interaktionen
+   Alles hier ist Dekoration: abschaltbar über body.reduced
+   (Setting appearance.reduce_effects) und prefers-reduced-motion.
+   Dauer meist 120–300 ms, ease-out.
+   ===================================================================== */
+
+/* ---------- Hintergrund-Overlays ---------- */
+body::before{ /* Scanlines + feines Rauschen (Setting appearance.scanlines) */
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:100;
+  background:
+    repeating-linear-gradient(0deg,rgba(255,255,255,.02) 0 1px,transparent 1px 3px),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .055 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+body.no-scanlines::before{display:none}
+body::after{ /* Vignette + roter Hauch */
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:99;
+  background:radial-gradient(ellipse at 80% -10%,rgba(255,31,31,.10),transparent 55%),
+             radial-gradient(ellipse at 50% 120%,rgba(0,0,0,.7),transparent 60%);
+}
+
+/* ---------- Keyframes ---------- */
+@keyframes viewIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes paneIn{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:none}}
+@keyframes riseIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes popIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:none}}
+@keyframes badgePop{0%{transform:scale(1)}40%{transform:scale(1.4);filter:brightness(1.5)}100%{transform:scale(1)}}
+@keyframes kick{0%{filter:brightness(1.55);box-shadow:0 0 18px var(--acid)}35%,100%{filter:brightness(1);box-shadow:0 0 4px var(--acid)}}
+@keyframes kickDim{0%{opacity:1}35%,100%{opacity:.55}}
+@keyframes eq{0%{transform:scaleY(1)}100%{transform:scaleY(.35)}}
+@keyframes ledPulse{0%{box-shadow:0 0 6px currentColor,0 0 0 0 currentColor}70%,100%{box-shadow:0 0 6px currentColor,0 0 0 6px transparent}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes shimmer{from{background-position:-150% 0}to{background-position:250% 0}}
+@keyframes sweep{from{transform:translateX(-100%)}to{transform:translateX(400%)}}
+@keyframes ripple{from{transform:scale(0);opacity:.35}to{transform:scale(1);opacity:0}}
+@keyframes toastIn{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}
+@keyframes toastOut{to{opacity:0;transform:translateX(28px)}}
+@keyframes toastTimer{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+@keyframes modalIn{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes shake{0%,100%{transform:none}25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+@keyframes flashLine{from{background:rgba(255,255,255,.07)}to{background:transparent}}
+@keyframes flashAcid{from{box-shadow:0 0 0 1px var(--acid),0 0 22px var(--acid-glow)}to{box-shadow:0 0 0 1px transparent,0 0 0 transparent}}
+@keyframes gl1{0%{transform:translate(-2px,-1px);opacity:1}33%{transform:translate(2px,1px)}66%{transform:translate(-1px,0)}99%{opacity:1}100%{opacity:0}}
+@keyframes gl2{0%{transform:translate(2px,1px);opacity:1}33%{transform:translate(-2px,-1px)}66%{transform:translate(1px,0)}99%{opacity:1}100%{opacity:0}}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ---------- Ansichtswechsel ---------- */
+.view.active{animation:viewIn var(--t-med) var(--ease-out) backwards}
+.spane-body.enter{animation:paneIn var(--t-med) var(--ease-out) backwards}
+
+/* ---------- Gestaffeltes Einblenden (Karten, Zeilen, Felder) ---------- */
+.stagger>*{animation:riseIn 260ms var(--ease-out) backwards;animation-delay:calc(min(var(--i,0),14) * 28ms)}
+
+/* ---------- Glitch auf Logo / Seitentitel (kurz, einmal pro Hover) ---------- */
+.glitch{position:relative;display:inline-block}
+.glitch::before,.glitch::after{content:attr(data-text);position:absolute;left:0;top:0;width:100%;overflow:hidden;opacity:0;pointer-events:none;white-space:nowrap}
+.glitch::before{color:var(--accent);clip-path:inset(0 0 55% 0)}
+.glitch::after{color:#00e5ff;clip-path:inset(55% 0 0 0)}
+.glitch:hover::before{animation:gl1 .42s steps(3) 1}
+.glitch:hover::after{animation:gl2 .36s steps(3) 1}
+
+/* ---------- Navigation: gleitender Aktiv-Indikator ---------- */
+.nav-ind{transition:transform 260ms var(--ease-snap),height var(--t-med) var(--ease-out),opacity var(--t-med)}
+
+/* ---------- Badge-Pop ---------- */
+.badge.pop{animation:badgePop 300ms var(--ease-out)}
+
+/* ---------- Buttons: Press + Ripple ---------- */
+.btn,.iconbtn,.chip,.stab,.nav-item{-webkit-tap-highlight-color:transparent}
+.btn:active:not(:disabled),.iconbtn:active:not(:disabled){transform:translateY(1px) scale(.97)}
+.chip:active{transform:scale(.96)}
+.ripple{position:absolute;border-radius:50%;pointer-events:none;background:currentColor;animation:ripple 420ms var(--ease-out) forwards}
+
+/* ---------- Fokus-Glow ---------- */
+:focus-visible{outline:none}
+.btn:focus-visible,.iconbtn:focus-visible,.chip:focus-visible,.toggle:focus-visible,.seg button:focus-visible,
+.check input:focus-visible,.swatch:focus-within{box-shadow:0 0 0 1px var(--accent),0 0 14px var(--accent-glow)}
+.nav-item:focus-visible,.stab:focus-visible{color:var(--text);background:var(--panel-2)}
+
+/* ---------- Status-LEDs ---------- */
+.led.live{animation:ledPulse 1.8s var(--ease-out) infinite}
+.led.blink{animation:blink 1s steps(2) infinite}
+
+/* ---------- Fortschritt: Kick-Puls im Takt (appearance.pulse_bpm) ---------- */
+.progress .bar.kick{animation:kick var(--beat) linear infinite}
+.progress .bar.kick::after{content:"";position:absolute;inset:0;width:30%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);animation:sweep 1.6s linear infinite}
+.progress.indet .bar{width:35%!important;animation:sweep 1.1s var(--ease-out) infinite}
+.qitem.active .wave i{transform-origin:bottom;animation:eq calc(var(--beat) * 2) ease-in-out infinite alternate;animation-delay:calc(var(--n,0) * -73ms)}
+.qitem.active .phase::before{animation:kickDim var(--beat) linear infinite}
+.qitem.enter{animation:riseIn 240ms var(--ease-out) backwards}
+.qitem.leave{transition:opacity 200ms,transform 200ms var(--ease-out);opacity:0;transform:translateX(24px)}
+
+/* ---------- Skeleton-Loader ---------- */
+.skel{background:linear-gradient(100deg,var(--panel-2) 30%,var(--panel-3) 50%,var(--panel-2) 70%);background-size:200% 100%;
+  animation:shimmer 1.2s linear infinite}
+
+/* ---------- Karten ---------- */
+.card.flash{animation:flashAcid 600ms var(--ease-out)}
+
+/* ---------- Chips / Tags ---------- */
+.tag.new{animation:popIn 160ms var(--ease-out)}
+
+/* ---------- Toasts ---------- */
+.toast{animation:toastIn 240ms var(--ease-out) backwards}
+.toast.out{animation:toastOut 180ms ease-in forwards}
+.toast .timer{animation:toastTimer linear forwards}
+
+/* ---------- Modal / Menü ---------- */
+.modal-back{animation:fadeIn 160ms ease-out}
+.modal{animation:modalIn 200ms var(--ease-out)}
+.menu{animation:popIn 130ms var(--ease-out);transform-origin:top right}
+
+/* ---------- Formular ---------- */
+.field.has-error .fc-main{animation:shake 240ms ease-in-out 1}
+.field-error{animation:riseIn 180ms var(--ease-out)}
+.notice{animation:riseIn 200ms var(--ease-out)}
+.log-line.new{animation:flashLine 900ms ease-out}
+.spinner{animation:spin .7s linear infinite}
+tr.checking td:first-child::before{animation:blink 1s steps(2) infinite}
+
+/* =====================================================================
+   Effekte reduzieren (Setting appearance.reduce_effects → body.reduced)
+   ===================================================================== */
+body.reduced *,body.reduced *::before,body.reduced *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+body.reduced::before{display:none}
+body.reduced .glitch::before,body.reduced .glitch::after,body.reduced .ripple,body.reduced .progress .bar.kick::after{display:none}
+body.reduced .card:hover,body.reduced .btn:active,body.reduced .iconbtn:active,body.reduced .chip:active{transform:none!important}
+body.reduced .skel{background:var(--panel-2)}
+body.reduced .progress.indet .bar{width:100%!important;opacity:.45}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+  .glitch::before,.glitch::after,.ripple,.progress .bar.kick::after{display:none}
+  .card:hover,.btn:active,.iconbtn:active,.chip:active{transform:none!important}
+  .skel{background:var(--panel-2)}
+  .progress.indet .bar{width:100%!important;opacity:.45}
+}

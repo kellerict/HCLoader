@@ -1,0 +1,6 @@
+yt-dlp
+bgutil-ytdlp-pot-provider
+mutagen
+pydantic>=2
+ruamel.yaml
+pywebview

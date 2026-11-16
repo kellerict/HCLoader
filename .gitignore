@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Binaries (deno, ffmpeg)
+bin/
+
+# Medien
+*.mp3
+*.opus
+*.m4a
+
+# User-Daten
+*.db
+*.db-wal
+*.db-shm
+config.yaml
+archive.txt
+cookies*.txt
+*.log
+logs/
+
+# IDE / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+
+# Screenshots (docs/screenshots/*.png) gehören ins Repo

@@ -1,0 +1,196 @@
+# HCLoader - Konfiguration
+# Alle Werte sind optional; fehlende Werte nehmen den Standard. Kommentare bleiben erhalten.
+# --- Allgemein ---
+general:
+  # Startansicht: discover, inbox, watchlist, downloads, library, log
+  start_view: discover
+  # Log-Stufe: DEBUG, INFO, WARNING, ERROR
+  log_level: INFO
+  # Vor dem Löschen aus der Bibliothek nachfragen
+  confirm_delete: true
+
+# --- Suche ---
+search:
+  # Anzahl Treffer pro Suche (1-100)
+  results_count: 30
+
+# --- Filter & Keywords ---
+filters:
+  # Mindestdauer in Sekunden (600 = 10 Minuten)
+  min_duration: 600
+  # Maximaldauer in Sekunden, 0 = unbegrenzt
+  max_duration: 0
+  # Upload-Zeitraum: all, 7d, 30d, 1y
+  upload_period: all
+  # Include-Keywords: mindestens eines muss im Titel vorkommen (leer = egal)
+  include_keywords:
+    - mix
+    - set
+    - liveset
+    - live set
+    - podcast
+    - continuous
+    - megamix
+    - yearmix
+    - radio show
+    - session
+    - warm up
+    - closing
+  # Exclude-Keywords: Treffer mit einem dieser Begriffe werden verworfen
+  exclude_keywords:
+    - reaction
+    - tutorial
+    - how to
+    - shorts
+    - trailer
+    - aftermovie
+    - teaser
+    - preview
+    - lyrics
+    - karaoke
+    - sample pack
+    - ableton
+    - fl studio
+  # Keywords auch in der Beschreibung suchen (flache Abfragen liefern sie oft nicht)
+  match_description: false
+  # Bereits geladene/ignorierte Videos ausblenden
+  hide_done_ignored: true
+  # Kanal-Blacklist anwenden
+  apply_channel_blacklist: true
+
+# --- Genres ---
+genres:
+  # Genres in Prioritätsreihenfolge; 'Unsortiert' ist immer vorhanden
+  items:
+    - name: Uptempo
+      color: '#b6ff00'
+      keywords:
+        - uptempo
+        - up-tempo
+        - terror
+        - terrorcore
+        - speedcore
+      priority: 1
+    - name: Hardcore
+      color: '#ff1f1f'
+      keywords:
+        - hardcore
+        - gabber
+        - gabba
+        - frenchcore
+        - industrial
+        - early hardcore
+        - millennium
+        - mainstream hardcore
+      priority: 2
+    - name: Hardstyle
+      color: '#a43bff'
+      keywords:
+        - hardstyle
+        - rawstyle
+        - raw
+        - euphoric
+        - xtra raw
+        - reverse bass
+      priority: 3
+    - name: Unsortiert
+      color: '#6b6b78'
+      keywords: []
+      priority: 99
+
+# --- Download & Qualität ---
+download:
+  # mp3 oder original (keine Umwandlung)
+  audio_format: mp3
+  # MP3-Qualität: 320 (CBR) oder v0 (VBR)
+  mp3_quality: '320'
+  # Cover (quadratisch zugeschnitten) in die MP3 einbetten
+  embed_cover: true
+  # Zusätzlich cover.jpg neben die Datei legen
+  write_cover_jpg: false
+  # CUE-Datei aus Kapiteln erzeugen
+  write_cue: true
+  # ID3-Kapitel (CHAP/CTOC) einbetten
+  write_id3_chapters: true
+
+# --- Ablage & Tags ---
+storage:
+  # Zielordner; %USERPROFILE% wird ersetzt
+  target_dir: '%USERPROFILE%\Music\HCLoader'
+  # Ordner-/Dateimuster; Platzhalter: genre, artist, channel, year, date, title, id
+  path_template: '{genre}/{artist}/{year}/{date} - {title} [{id}]'
+  # Maximale Titellänge im Dateinamen (20-200)
+  max_title_length: 120
+  # Maximale Gesamtpfadlänge (100-259, Windows-Limit)
+  max_path_length: 240
+  # Artist aus dem Titel ableiten (ARTIST @ EVENT / ARTIST - TITEL)
+  artist_from_title: false
+  # Reguläre Ausdrücke, die aus dem Titel entfernt werden
+  title_cleanup_patterns:
+    - \(Official[^)]*\)
+    - \[HQ\]
+    - \[HD\]
+    - \(HQ\)
+    - \(HD\)
+    - \[Official[^\]]*\]
+
+# --- Schonung von YouTube ---
+throttle:
+  # Pause zwischen Metadaten-Requests in Sekunden (0-60)
+  sleep_requests: 3.0
+  # Minimale Pause zwischen Downloads in Sekunden
+  sleep_interval: 30
+  # Maximale Pause zwischen Downloads (>= minimal)
+  max_sleep_interval: 120
+  # Download-Tempo in MB/s, 0 = unbegrenzt
+  limit_rate_mb: 3.0
+  # Maximale Downloads pro Lauf (1-100)
+  max_downloads_per_run: 10
+  # Maximale Downloads pro Tag (1-500)
+  max_downloads_per_day: 25
+  # Maximale Suchen pro Stunde (1-200)
+  max_searches_per_hour: 20
+  # Sperrzeit nach HTTP 429 / Bot-Check in Stunden (0.5-168)
+  backoff_initial_hours: 6.0
+  # Obergrenze der Sperrzeit (Verdopplung bis hierhin)
+  backoff_max_hours: 48.0
+
+# --- Netzwerk & PO-Token ---
+network:
+  # PO-Token: off, script (Deno) oder http (Provider-Server)
+  po_token_mode: script
+  # Port des PO-Token-Servers (HTTP-Modus)
+  po_token_port: 4416
+  # Gültigkeit des PO-Tokens in Stunden
+  po_token_ttl_hours: 6.0
+  # Notlösung: Cookies aus Browser (edge, chrome, firefox, brave); leer = aus
+  cookies_from_browser: ''
+  # Optionaler Proxy, z.B. http://127.0.0.1:8080
+  proxy: ''
+
+# --- Zeitplan ---
+schedule:
+  # Prüfintervall der Watchlist in Stunden (1-168)
+  watchlist_interval_hours: 24.0
+  # Watchlist auch prüfen, solange die App offen ist
+  in_app_check: true
+  # Windows-Aufgabenplanung nutzen
+  task_scheduler_enabled: false
+  # Uhrzeit der geplanten Aufgabe (HH:MM)
+  task_time: 03:00
+  # Einträge pro Quelle und Prüfung (1-200)
+  entries_per_source: 30
+
+# --- Darstellung ---
+appearance:
+  # Effekte reduzieren
+  reduce_effects: false
+  # Scanlines-Overlay anzeigen
+  scanlines: true
+  # Takt des Fortschrittsbalkens in BPM (60-300)
+  pulse_bpm: 200
+
+# --- Wartung ---
+maintenance:
+  # Beim Start auf yt-dlp-Updates prüfen (max. 1x pro Tag)
+  check_updates_on_start: true
