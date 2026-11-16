@@ -268,6 +268,20 @@ class Shooter:
         self.settle(300)
         self.shot("downloads-backoff")
 
+        # Aufgabenplanung antwortet nicht -> Zustand «unbekannt», Schalter bleibt
+        page.evaluate("HC.mock.api.clear_backoff(); HC.mock.demo.taskUnknown()")
+        self.go("settings")
+        page.evaluate("HC.views.settings.reset()")
+        self.go("settings")
+        self.tab("schedule")
+        page.wait_for_selector("[data-task=refresh]")
+        page.evaluate(
+            "document.querySelector('[data-task=refresh]').scrollIntoView({block: 'center'})"
+        )
+        self.settle()
+        self.shot("settings-schedule-unknown")
+        page.evaluate("HC.mock.demo.taskUnknown(false)")
+
         # m9: in pywebview gestartet, Backend antwortet nicht -> Fehlerzustand statt Mock
         page.clock.install(time=FIXED_NOW)
         page.goto(INDEX.as_uri() + "?host=pywebview")
