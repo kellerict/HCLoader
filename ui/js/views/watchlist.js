@@ -18,7 +18,7 @@
       <td>${ui.toggle(s.enabled, `data-k="enabled" title="${esc(t('watchlist.col_active'))}"`)}</td>
       <td class="clip"><div class="cell-title"><div><b>${esc(s.name)}</b><small title="${esc(s.url_or_query)}">${esc(s.url_or_query)}</small></div></div></td>
       <td class="mono">${t('source_type.' + s.type)}</td>
-      <td>${s.default_genre ? ui.genreDot(s.default_genre) : `<span class="mono muted">${t('watchlist.genre_auto')}</span>`}</td>
+      <td>${s.default_genre ? ui.genreDot(s.default_genre) : `<span class="unit">${t('watchlist.genre_auto')}</span>`}</td>
       <td><span class="okline">${ui.toggle(s.auto_download, 'data-k="auto_download"')}<span class="toggle-label">${t(s.auto_download ? 'watchlist.auto_on' : 'watchlist.auto_off')}</span></span></td>
       <td class="mono num">${s.max_entries}</td>
       <td class="mono">${checking.has(s.id) ? `<span style="color:var(--warn)">${t('watchlist.checking')}</span>` : s.last_checked ? util.fmtWhen(s.last_checked) : t('fmt.never')}</td>
@@ -102,8 +102,8 @@
       <div class="scroll">
         <table>
           <thead><tr><th style="width:62px">${t('watchlist.col_active')}</th><th>${t('watchlist.col_name')}</th><th style="width:90px">${t('watchlist.col_type')}</th>
-            <th style="width:130px">${t('watchlist.col_genre')}</th><th style="width:150px">${t('watchlist.col_auto')}</th><th class="num" style="width:70px">${t('watchlist.col_max')}</th>
-            <th style="width:150px">${t('watchlist.col_last')}</th><th class="num" style="width:60px">${t('watchlist.col_new')}</th><th style="width:170px"></th></tr></thead>
+            <th style="width:124px">${t('watchlist.col_genre')}</th><th style="width:136px">${t('watchlist.col_auto')}</th><th class="num" style="width:70px">${t('watchlist.col_max')}</th>
+            <th style="width:136px">${t('watchlist.col_last')}</th><th class="num" style="width:60px">${t('watchlist.col_new')}</th><th style="width:170px"></th></tr></thead>
           <tbody id="wl-body"></tbody>
         </table>
       </div>`;

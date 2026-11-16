@@ -44,11 +44,12 @@
     const box = $('#runs', el);
     box.innerHTML = runs.length ? runs.map((r) => {
       const a = util.parseDate(r.started), b = util.parseDate(r.finished);
-      const dur = a && b ? util.fmtSpan((b - a) / 1000) : t('log.running');
+      const sec = a && b ? Math.round((b - a) / 1000) : null;
+      const dur = sec == null ? t('log.running') : sec < 60 ? `${sec} s` : sec < 3600 ? `${Math.round(sec / 60)} min` : `${Math.floor(sec / 3600)} h ${pad(Math.round((sec % 3600) / 60))} min`;
       const cls = r.errors ? (r.downloaded || r.found ? 'warn' : 'error') : '';
       return `<div class="run ${cls}">
-        <div class="run-top"><b>${t('run_kind.' + r.kind)}</b><span>${util.fmtDate(r.started)} · ${util.fmtTime(r.started)} · ${dur}</span></div>
-        <div class="run-stats"><span>${t('log.found')} <b>${r.found}</b></span><span>${t('log.downloaded')} <b>${r.downloaded}</b></span><span class="${r.errors ? 'bad' : ''}">${t('log.errors')} <b>${r.errors}</b></span></div>
+        <div class="run-top"><b>${t('run_kind.' + r.kind)}</b><span>${util.fmtDate(r.started)} · ${util.fmtTime(r.started)}</span></div>
+        <div class="run-stats"><span>${t('log.found')} <b>${r.found}</b></span><span>${t('log.downloaded')} <b>${r.downloaded}</b></span><span class="${r.errors ? 'bad' : ''}">${t('log.errors')} <b>${r.errors}</b></span><span class="dur">${dur}</span></div>
         ${r.note ? `<div class="run-note">${esc(r.note)}</div>` : ''}</div>`;
     }).join('') : `<div class="muted" style="font-size:13px">${t('log.no_runs')}</div>`;
     if (animate) fx.stagger(box);

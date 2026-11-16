@@ -30,7 +30,7 @@
 
     unit: {
       s: 's', h: 'h', minutes: 'Minuten', mbs: 'MB/s', bpm: 'BPM', chars: 'Zeichen',
-      results: 'Treffer', entries: 'Einträge',
+      results: 'Treffer', entries: 'Einträge', clock: 'Uhr',
     },
     range: { ge_sleep: '≥ Minimum', ge_initial: '≥ Startwert' },
 
@@ -40,7 +40,7 @@
     },
     period: { all: 'Alle', '7d': 'Letzte 7 Tage', '30d': 'Letzte 30 Tage', '1y': 'Letztes Jahr' },
     source_type: { channel: 'Kanal', playlist: 'Playlist', search: 'Suche' },
-    run_kind: { watchlist: 'Watchlist (App)', headless: 'Aufgabenplanung', manual: 'Manuell' },
+    run_kind: { watchlist: 'Watchlist', headless: 'Aufgabenplanung', manual: 'Manuell' },
     phase: {
       waiting: 'Wartet', sleep: 'Pause (Schonung)', download: 'Laden', convert: 'Konvertieren', tag: 'Taggen', failed: 'Fehlgeschlagen',
     },

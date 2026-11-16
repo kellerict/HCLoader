@@ -160,7 +160,7 @@
       case 'float':
         return `<input class="input mono num" data-c type="number" inputmode="decimal" step="${def.type === 'int' && !def.scale ? 1 : 'any'}" value="${v == null ? '' : util.trimNum(v / (def.scale || 1))}">${def.unit ? `<span class="unit">${t(def.unit)}</span>` : ''}`;
       case 'time':
-        return `<input class="input mono" data-c type="time" value="${esc(v)}" style="width:120px">`;
+        return `<input class="input mono" data-c type="text" inputmode="numeric" maxlength="5" placeholder="HH:MM" value="${esc(v)}" style="width:92px" spellcheck="false" autocomplete="off"><span class="unit">${t('unit.clock')}</span>`;
       case 'chips':
         return '<div data-chips></div>';
       default:
@@ -202,10 +202,9 @@
         commit(n);
       });
     } else if (def.type === 'chips') {
-      ui.chips($('[data-chips]', d), {
-        list: get(work, def.k), kind: def.kind, lower: def.lower !== false, commaSplits: def.commaSplits !== false,
-        placeholder: def.placeholder ? t(def.placeholder) : undefined, onChange: (list) => commit(list),
-      });
+      const o = { list: get(work, def.k), kind: def.kind, lower: def.lower !== false, commaSplits: def.commaSplits !== false, onChange: (list) => commit(list) };
+      if (def.placeholder) o.placeholder = t(def.placeholder);
+      ui.chips($('[data-chips]', d), o);
     } else {
       c.addEventListener('input', () => commit(c.value));
     }
@@ -315,7 +314,7 @@
         if (a > 0 && m >= a) { for (let h = a; steps.length < 8; h *= 2) { steps.push(Math.min(h, m)); if (h >= m) break; } }
         const level = (HC.status && HC.status.backoff && HC.status.backoff.active && HC.status.backoff.level) || 0;
         host.innerHTML = row('set.ladder', steps.length
-          ? `<div class="ph-list" style="align-items:center">${steps.map((h, i) => `${i ? `<span class="unit">›</span>` : ''}<span class="tag" style="${i + 1 === level ? 'border-color:var(--warn);color:var(--warn);background:var(--warn-soft)' : ''}"><span>${util.trimNum(h)} h</span>&nbsp;</span>`).join('')}<span class="unit">· ${t('set.ladder.reset')}</span></div>`
+          ? `<div class="ph-list" style="align-items:center">${steps.map((h, i) => `${i ? `<span class="unit">›</span>` : ''}<span class="tag" style="padding:1px 8px;${i + 1 === level ? 'border-color:var(--warn);color:var(--warn);background:var(--warn-soft)' : ''}"><span>${util.trimNum(h)} h</span></span>`).join('')}<span class="unit">· ${t('set.ladder.reset')}</span></div>`
           : `<span class="unit">${t('set.ladder.invalid')}</span>`);
       };
       host._update();

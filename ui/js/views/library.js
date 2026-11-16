@@ -71,7 +71,7 @@
         </div></div>
       <div class="scroll">
         <table>
-          <thead><tr><th>${t('library.col_title')}</th><th style="width:17%">${t('library.col_artist')}</th><th style="width:120px">${t('library.col_genre')}</th>
+          <thead><tr><th>${t('library.col_title')}</th><th style="width:16%">${t('library.col_artist')}</th><th style="width:120px">${t('library.col_genre')}</th>
             <th class="num" style="width:84px">${t('library.col_duration')}</th><th class="num" style="width:84px">${t('library.col_size')}</th>
             <th style="width:104px">${t('library.col_upload')}</th><th style="width:104px">${t('library.col_loaded')}</th><th style="width:116px"></th></tr></thead>
           <tbody id="lib-body"></tbody>

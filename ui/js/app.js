@@ -75,6 +75,7 @@
     HC.ui.closeMenu();
     const changed = current !== name;
     current = name;
+    document.body.dataset.view = name;
     $$('.nav-item').forEach((n) => {
       const on = n.dataset.view === name;
       n.classList.toggle('active', on);
