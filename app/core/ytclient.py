@@ -25,7 +25,7 @@ from . import binaries, config, paths, tagging
 from .config import Settings
 from .db import Database
 from .genre import detect_genre
-from .throttle import Throttle, is_rate_limit_error
+from .throttle import Throttle, ThrottleError, WaitCancelled, is_rate_limit_error
 
 log = logging.getLogger(__name__)
 
@@ -158,7 +158,18 @@ def normalize_progress(d: Mapping[str, Any], phase: str = PHASE_DOWNLOAD) -> dic
 
 
 class _YdlLogger:
-    """Routes yt-dlp messages to our logging (no console output)."""
+    """Routes yt-dlp messages to our logging (no console output).
+
+    Remembers the first 429 / bot-check message: yt-dlp often reports it only as a warning and
+    carries on with other clients, so the caller starts the backoff afterwards (`rate_limit_hit`).
+    """
+
+    def __init__(self) -> None:
+        self.rate_limit_hit: str | None = None
+
+    def _watch(self, msg: str) -> None:
+        if self.rate_limit_hit is None and is_rate_limit_error(msg):
+            self.rate_limit_hit = _clean_error(Exception(msg))[:200]
 
     def debug(self, msg: str) -> None:
         log.debug("yt-dlp: %s", msg)
@@ -167,9 +178,11 @@ class _YdlLogger:
         log.debug("yt-dlp: %s", msg)
 
     def warning(self, msg: str) -> None:
+        self._watch(msg)
         log.warning("yt-dlp: %s", msg)
 
     def error(self, msg: str) -> None:
+        self._watch(msg)
         log.error("yt-dlp: %s", msg)
 
 
@@ -190,9 +203,15 @@ def build_ydl_opts(
     purpose: 'search' / 'list' (flat), 'resolve' (full metadata, no download), 'download'.
     Checked against `yt_dlp/YoutubeDL.py` (2026.10.x): js_runtimes, extractor_args,
     sleep_interval_requests, ratelimit, retries, fragment_retries, extractor_retries,
-    download_archive, paths/outtmpl, ffmpeg_location, cookiesfrombrowser, writethumbnail.
+    paths/outtmpl, playlist_items, ffmpeg_location, cookiesfrombrowser, writethumbnail.
     `remote_components` stays unset (nothing is fetched remotely; ejs comes from yt-dlp-ejs).
-    `sleep_interval` is deliberately not used: the throttle paces downloads.
+    `sleep_interval` is deliberately not used: `Throttle.before_request("download")` enforces
+    the pause between downloads (persisted, across YoutubeDL instances).
+    `download_archive` is deliberately not passed: HCLoader writes the archive itself, only
+    after the file is tagged, moved and stored as `done` (docs/decisions.md).
+    `max_downloads` is deliberately not set: yt-dlp raises MaxDownloadsReached after the (only)
+    successful download and drops the info dict. The single-video guarantee comes from
+    `download()` (video id required, URL rebuilt) plus `playlist_items=1` and a `_type` check.
     """
     if purpose not in PURPOSES:
         raise ValueError(f"Unbekannter Zweck: {purpose}")
@@ -257,7 +276,7 @@ def _download_opts(opts: dict[str, Any], settings: Settings, target_dir: Path | 
         {
             "format": "bestaudio/best",
             "ratelimit": int(rate_mb * 1024 * 1024) if rate_mb and rate_mb > 0 else None,
-            "download_archive": str(config.archive_path()),
+            "playlist_items": "1",
             "paths": {"home": str(tmp), "temp": str(tmp)},
             "outtmpl": {"default": "%(id)s.%(ext)s"},
             "writethumbnail": bool(dl.embed_cover or dl.write_cover_jpg),
@@ -305,10 +324,15 @@ class YtClient:
     # -- preparation
 
     def _prepare(self, settings: Settings) -> None:
-        """Environment for the bgutil provider (token TTL, HTTP server child process)."""
+        """Environment for the bgutil provider (token TTL, HTTP server child process).
+
+        `TOKEN_TTL` is read by the provider (script mode: token cache of generate_once; HTTP
+        mode: the server process inherits it at start) in whole hours (bgutil 2.0.2 README:
+        "in hours, defaults to 6"). Fractions are not safe (integer parsing), so the setting is
+        rounded to whole hours, minimum 1 (docs/decisions.md).
+        """
         net = settings.network
-        ttl = net.po_token_ttl_hours
-        os.environ["TOKEN_TTL"] = str(int(ttl)) if float(ttl).is_integer() else str(ttl)
+        os.environ["TOKEN_TTL"] = str(max(1, round(net.po_token_ttl_hours)))
         if net.po_token_mode != "http":
             return
         with self._lock:
@@ -316,7 +340,10 @@ class YtClient:
                 if self._pot_server:
                     self._pot_server.stop()
                 self._pot_server = binaries.PotServer(net.po_token_port)
-            self._pot_server.start()
+            if not self._pot_server.start():
+                raise YtClientError(
+                    "PO-Token-Server nicht bereit (Deno/Provider fehlt oder keine Antwort)"
+                )
 
     def _extract(
         self,
@@ -326,14 +353,27 @@ class YtClient:
         *,
         download: bool = False,
         settings: Settings,
+        cancel_event: threading.Event | None = None,
+        retry: bool = False,
     ) -> dict[str, Any]:
-        self.throttle.before_request(kind)
+        self.throttle.check_backoff()
         self._prepare(settings)
-        with yt_dlp.YoutubeDL(opts) as ydl:
-            info = ydl.extract_info(url, download=download)
-            if info is None:
-                raise YtClientError("Keine Daten von yt-dlp erhalten")
-            return ydl.sanitize_info(info)  # type: ignore[no-any-return]
+        self.throttle.before_request(
+            kind, cancel_event=cancel_event, count_attempt=download and not retry, retry=retry
+        )
+        logger = opts.get("logger")
+        try:
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(url, download=download)
+                if info is None:
+                    raise YtClientError("Keine Daten von yt-dlp erhalten")
+                if download and info.get("_type") == "playlist":
+                    raise YtClientError("Keine einzelne Video-URL (Playlist erkannt)")
+                return ydl.sanitize_info(info)  # type: ignore[no-any-return]
+        finally:
+            hit = getattr(logger, "rate_limit_hit", None)
+            if hit:
+                self.throttle.trigger_backoff(hit)
 
     def _metadata_call(self, kind: str, url: str, opts: dict[str, Any], settings: Settings):
         try:
@@ -392,15 +432,17 @@ class YtClient:
             return False
         return f"youtube {video_id}" in (ln.strip() for ln in lines)
 
-    def _remove_from_archive(self, video_id: str) -> None:
+    def _record_archive(self, video_id: str) -> None:
+        """Append `youtube <id>` to the archive; only called after the video is `done`."""
+        if self.in_archive(video_id):
+            return
         archive = config.archive_path()
         try:
-            lines = archive.read_text(encoding="utf-8").splitlines()
-        except OSError:
-            return
-        keep = [ln for ln in lines if ln.strip() != f"youtube {video_id}"]
-        if len(keep) != len(lines):
-            archive.write_text("".join(f"{ln}\n" for ln in keep), encoding="utf-8")
+            archive.parent.mkdir(parents=True, exist_ok=True)
+            with archive.open("a", encoding="utf-8", newline="\n") as fh:
+                fh.write(f"youtube {video_id}\n")
+        except OSError as exc:
+            log.warning("Download-Archiv nicht beschreibbar (%s): %s", archive, exc)
 
     def download(
         self,
@@ -411,27 +453,35 @@ class YtClient:
     ) -> DownloadResult:
         """Full pipeline: skip check -> throttle -> yt-dlp into .tmp -> tags -> move -> DB.
 
+        Only single videos: a video id (or a URL containing one) is required. Playlist, channel
+        and search URLs are refused before the throttle, and the URL passed to yt-dlp is always
+        rebuilt from the id (B1).
         Raises ThrottleError subclasses (BackoffActive / LimitReached) if downloads are blocked.
         Download failures are returned as DownloadResult(status='failed'/'cancelled').
         """
         settings = self.settings
         vid = extract_video_id(url_or_id)
-        url = watch_url(vid) if vid else url_or_id.strip()
+        if not vid:
+            msg = "Keine Video-URL oder Video-ID (Playlists, Kanäle und Suchen sind nicht erlaubt)"
+            log.error("Download abgelehnt: %s (%s)", msg, (url_or_id or "")[:100])
+            return DownloadResult("", "failed", error=msg)
+        url = watch_url(vid)
 
-        if vid:
-            skipped = self._skip_result(vid)
-            if skipped:
-                return skipped
+        skipped = self._skip_result(vid)
+        if skipped:
+            return skipped
         self.throttle.check_download()
 
         target_dir = settings.target_dir_path()
         tmp = paths.tmp_dir(target_dir)
         tmp.mkdir(parents=True, exist_ok=True)
         config.archive_path().parent.mkdir(parents=True, exist_ok=True)
-        if vid:
-            self.db.upsert_video({"id": vid})
-            self.db.set_status(vid, "downloading")
-            _cleanup_tmp(tmp, vid)
+        previous = self.db.get_video(vid)
+        prev_status = previous["status"] if previous else "new"
+        prev_error = previous.get("error") if previous else None
+        self.db.upsert_video({"id": vid})
+        self.db.set_status(vid, "downloading")
+        _cleanup_tmp(tmp, vid, keep_partial=True)
 
         emit = on_progress or (lambda _d: None)
         phase = {"value": PHASE_DOWNLOAD}
@@ -457,24 +507,32 @@ class YtClient:
             postprocessor_hook=pp_hook,
             target_dir=target_dir,
         )
-        info: dict[str, Any] = {}
         try:
-            info = self._download_with_retry(url, opts, settings, check_cancel)
-            vid = vid or str(info.get("id") or "")
-            if not vid:
-                raise YtClientError("Video-ID unbekannt")
+            info = self._download_with_retry(url, opts, settings, check_cancel, cancel_event)
             check_cancel()
             emit({**normalize_progress({}, PHASE_TAG), "percent": None})
-            result = self._finish(info, vid, settings, target_dir, tmp, check_cancel)
-        except DownloadCancelled:
-            return self._fail(vid, tmp, "Abgebrochen", status="cancelled", archive=bool(info))
+            return self._finish(info, vid, settings, target_dir, tmp, check_cancel)
+        except (DownloadCancelled, WaitCancelled):
+            return self._cancelled(vid, tmp, prev_status)
+        except ThrottleError:
+            self._restore_status(vid, prev_status, prev_error)
+            raise
         except Exception as exc:
             limited = self.throttle.handle_error(exc)
             msg = _clean_error(exc)
             if not isinstance(exc, (yt_dlp.utils.YoutubeDLError, OSError, YtClientError)):
-                log.exception("Unerwarteter Fehler beim Download von %s", vid or url)
-            return self._fail(vid, tmp, msg, rate_limited=limited, archive=bool(info))
-        return result
+                log.exception("Unerwarteter Fehler beim Download von %s", vid)
+            keep = (
+                not limited
+                and not _HTTP_403_RE.search(str(exc))
+                and bool(_NETWORK_RE.search(str(exc)))
+            )
+            return self._fail(vid, tmp, msg, rate_limited=limited, keep_partial=keep)
+
+    def _restore_status(self, vid: str, prev_status: str, prev_error: str | None) -> None:
+        status = "queued" if prev_status == "downloading" else prev_status
+        if self.db.is_known(vid):
+            self.db.set_status(vid, status, error=prev_error)
 
     def _skip_result(self, vid: str) -> DownloadResult | None:
         row = self.db.get_video(vid)
@@ -493,25 +551,45 @@ class YtClient:
         opts: dict[str, Any],
         settings: Settings,
         check_cancel: Callable[[], None],
+        cancel_event: threading.Event | None = None,
     ) -> dict[str, Any]:
         attempt = 0
-        while True:
-            try:
-                return self._extract("download", url, opts, download=True, settings=settings)
-            except DownloadCancelled:
-                raise
-            except Exception as exc:
-                msg = str(exc)
-                if is_rate_limit_error(msg) or _HTTP_403_RE.search(msg):
-                    raise
-                if attempt < 1 and _NETWORK_RE.search(msg):
-                    attempt += 1
-                    log.warning(
-                        "Netzwerkfehler, ein Versuch wird wiederholt: %s", _clean_error(exc)
+        reached_network = False
+        try:
+            while True:
+                try:
+                    info = self._extract(
+                        "download",
+                        url,
+                        opts,
+                        download=True,
+                        settings=settings,
+                        cancel_event=cancel_event,
+                        retry=attempt > 0,
                     )
-                    check_cancel()
-                    continue
-                raise
+                    reached_network = True
+                    return info
+                except (ThrottleError, WaitCancelled):
+                    raise
+                except DownloadCancelled:
+                    reached_network = True
+                    raise
+                except Exception as exc:
+                    reached_network = True
+                    msg = str(exc)
+                    if is_rate_limit_error(msg) or _HTTP_403_RE.search(msg):
+                        raise
+                    if attempt < 1 and _NETWORK_RE.search(msg):
+                        attempt += 1
+                        log.warning(
+                            "Netzwerkfehler, ein Versuch wird wiederholt: %s", _clean_error(exc)
+                        )
+                        check_cancel()
+                        continue
+                    raise
+        finally:
+            if reached_network:
+                self.throttle.mark_download_end()
 
     def _finish(
         self,
@@ -600,13 +678,20 @@ class YtClient:
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(audio), str(target))
 
+        # The file is in place: from here on nothing is fatal (a re-download would be wasteful).
         cue_path = None
         if chapters and dl.write_cue:
-            cue_path = tagging.write_cue(target, chapters, performer=artist, title=title)
+            try:
+                cue_path = tagging.write_cue(target, chapters, performer=artist, title=title)
+            except Exception as exc:
+                log.warning("CUE-Datei nicht geschrieben (%s): %s", vid, exc)
         if cover and dl.write_cover_jpg:
-            cover_file = target.parent / "cover.jpg"
-            if not cover_file.exists():
-                cover_file.write_bytes(cover)
+            try:
+                cover_file = target.parent / "cover.jpg"
+                if not cover_file.exists():
+                    cover_file.write_bytes(cover)
+            except OSError as exc:
+                log.warning("cover.jpg nicht geschrieben (%s): %s", vid, exc)
         _cleanup_tmp(tmp, vid)
 
         self.db.upsert_video(
@@ -623,33 +708,34 @@ class YtClient:
             }
         )
         self.db.set_status(vid, "done", file_path=str(target))
-        self.throttle.register_download()
+        self._record_archive(vid)  # only after `done`: no crash window blocks a video forever
         log.info("Geladen: %s -> %s", vid, target)
         return DownloadResult(
             vid, "done", target, title, cue_path=cue_path, info=normalize_entry(info)
         )
 
+    def _cancelled(self, vid: str, tmp: Path, prev_status: str) -> DownloadResult:
+        """Abort: keep resumable `.part` files, put the video back to its previous status."""
+        _cleanup_tmp(tmp, vid, keep_partial=True)
+        self._restore_status(vid, prev_status, "Abgebrochen")
+        log.info("Download cancelled: %s", vid)
+        return DownloadResult(vid, "cancelled", error="Abgebrochen")
+
     def _fail(
         self,
-        vid: str | None,
+        vid: str,
         tmp: Path,
         message: str,
         *,
-        status: str = "failed",
         rate_limited: bool = False,
-        archive: bool = False,
+        keep_partial: bool = False,
     ) -> DownloadResult:
-        if vid:
-            _cleanup_tmp(tmp, vid)
-            if archive:
-                # yt-dlp may already have recorded the id; a failed pipeline must stay retryable
-                self._remove_from_archive(vid)
-            if self.db.is_known(vid):
-                self.db.set_status(vid, "failed", error=message)
-        (log.info if status == "cancelled" else log.error)(
-            "Download %s: %s (%s)", status, vid or "?", message
-        )
-        return DownloadResult(vid or "", status, error=message, rate_limited=rate_limited)
+        """`keep_partial`: network errors keep `.part` so a manual retry resumes (m3)."""
+        _cleanup_tmp(tmp, vid, keep_partial=keep_partial)
+        if self.db.is_known(vid):
+            self.db.set_status(vid, "failed", error=message)
+        log.error("Download failed: %s (%s)", vid, message)
+        return DownloadResult(vid, "failed", error=message, rate_limited=rate_limited)
 
 
 # --------------------------------------------------------------------------- file helpers
@@ -660,10 +746,17 @@ def _clean_error(exc: BaseException) -> str:
     return re.sub(r"^ERROR:\s*", "", text)[:500] or exc.__class__.__name__
 
 
-def _cleanup_tmp(tmp: Path, vid: str) -> None:
+def _is_partial(name: str) -> bool:
+    return name.endswith((".part", ".ytdl")) or ".part-Frag" in name
+
+
+def _cleanup_tmp(tmp: Path, vid: str, *, keep_partial: bool = False) -> None:
+    """Remove `<id>.*` from the temp dir; `keep_partial` keeps resumable download leftovers."""
     if not tmp.is_dir():
         return
     for f in tmp.glob(f"{glob_escape(vid)}.*"):
+        if keep_partial and _is_partial(f.name):
+            continue
         try:
             f.unlink()
         except OSError:

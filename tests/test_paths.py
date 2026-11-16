@@ -129,3 +129,23 @@ def test_custom_template_and_reserved_segment(tmp_path):
 def test_tmp_dir_and_sibling(tmp_path):
     assert paths.tmp_dir(tmp_path) == tmp_path / ".tmp"
     assert paths.sibling(Path("a/b.mp3"), ".cue") == Path("a/b.cue")
+
+
+def test_path_length_counts_utf16_units():
+    from pathlib import Path
+
+    from app.core.paths import windows_length
+
+    assert windows_length("abc") == 3
+    assert windows_length("a😀") == 3  # emoji = surrogate pair = 2 units
+    base = Path("C:/Music")
+    title = "😀" * 150
+    p = paths.build_target_path(
+        base, "{title} [{id}]", {"id": "abc123XYZ_-", "title": title}, max_path_length=100
+    )
+    assert windows_length(p) < 100 and "abc123XYZ_-" in p.name
+
+
+def test_console_device_names_reserved():
+    assert paths.sanitize_filename("CONIN$").startswith("_")
+    assert paths.sanitize_filename("conout$.txt").startswith("_")

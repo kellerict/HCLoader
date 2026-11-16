@@ -32,3 +32,12 @@ Thumbs.db
 .DS_Store
 
 # Screenshots (docs/screenshots/*.png) gehören ins Repo
+
+# Temporäre Download-/Arbeitsdateien (falls der Zielordner im Repo liegt)
+.tmp/
+*.part
+*.ytdl
+*.webm
+*.cue
+config.yaml.tmp
+config.yaml.bak-*

@@ -169,7 +169,8 @@ def write_cue(
             lines.append(f'    PERFORMER "{_q(track_performer)}"')
         lines.append(f"    INDEX 01 {format_cue_time(ch.start)}")
     cue = audio_path.with_suffix(".cue")
-    cue.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+    # UTF-8 with BOM: foobar2000 & co. read BOM-less CUE files as ANSI and garble umlauts
+    cue.write_text("\n".join(lines) + "\n", encoding="utf-8-sig", newline="\n")
     return cue
 
 

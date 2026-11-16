@@ -23,12 +23,19 @@ _RESERVED = {
     "PRN",
     "AUX",
     "NUL",
+    "CONIN$",
+    "CONOUT$",
     *(f"COM{i}" for i in range(1, 10)),
     *(f"LPT{i}" for i in range(1, 10)),
 }
 _PLACEHOLDER = re.compile(r"\{(\w+)\}")
 MIN_TITLE_LENGTH = 5
 UNKNOWN_ARTIST = "Unbekannt"
+
+
+def windows_length(path: Path | str) -> int:
+    """Path length as Windows counts it: UTF-16 code units (emoji = 2), not code points."""
+    return len(str(path).encode("utf-16-le")) // 2
 
 
 class PathTooLongError(ValueError):
@@ -154,7 +161,7 @@ def build_target_path(
         return target.joinpath(*_render(template, _values(meta, title_len, other_len), ext))
 
     def fits(p: Path) -> bool:
-        return len(str(p)) < max_path_length
+        return windows_length(p) < max_path_length
 
     title_len = max_title_length
     for _ in range(100):
@@ -162,7 +169,7 @@ def build_target_path(
         if fits(path):
             return path
         actual = len(_values(meta, title_len, None)["title"])
-        excess = len(str(path)) - (max_path_length - 1)
+        excess = windows_length(path) - (max_path_length - 1)
         new_len = min(title_len, actual) - excess
         if new_len < MIN_TITLE_LENGTH:
             break

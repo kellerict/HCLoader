@@ -30,15 +30,21 @@ if (Test-Path $VenvPython) {
 else {
     Write-Step 'Lege venv an ...'
     $created = $false
+    $versionCheck = 'import sys; sys.exit(0 if sys.version_info >= (3, 12) else 1)'
     $py = Get-Command py -ErrorAction SilentlyContinue
     if ($py) {
-        & py -3.12 -m venv $VenvDir
-        if ($LASTEXITCODE -eq 0) { $created = $true }
+        # Prefer 3.13, then 3.12, then the newest installed Python 3 if it is >= 3.12.
+        foreach ($sel in @('-3.13', '-3.12', '-3')) {
+            & py $sel -c $versionCheck 2>$null
+            if ($LASTEXITCODE -ne 0) { continue }
+            & py $sel -m venv $VenvDir
+            if ($LASTEXITCODE -eq 0) { $created = $true; break }
+        }
     }
     if (-not $created) {
         $python = Get-Command python -ErrorAction SilentlyContinue
-        if (-not $python) { throw 'Python 3.12+ nicht gefunden (py -3.12 oder python im PATH).' }
-        & python -c "import sys; sys.exit(0 if sys.version_info >= (3, 12) else 1)"
+        if (-not $python) { throw 'Python 3.12+ nicht gefunden (py -3 oder python im PATH).' }
+        & python -c $versionCheck
         if ($LASTEXITCODE -ne 0) { throw 'Python 3.12 oder neuer wird benoetigt.' }
         & python -m venv $VenvDir
         if ($LASTEXITCODE -ne 0) { throw 'venv konnte nicht angelegt werden.' }

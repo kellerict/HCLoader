@@ -8,7 +8,9 @@ from __future__ import annotations
 import logging
 import os
 import re
+import shutil
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal
 
@@ -583,6 +585,16 @@ def _merge_into(existing: CommentedMap, settings: Settings) -> None:
         # unknown keys in the existing file stay untouched (forward compatibility)
 
 
+def _backup_unreadable(path: Path) -> None:
+    """Keep an unreadable config.yaml as `config.yaml.bak-<timestamp>` before it is replaced."""
+    backup = path.with_name(f"{path.name}.bak-{datetime.now():%Y%m%d-%H%M%S}")
+    try:
+        shutil.copy2(path, backup)
+        log.warning("Unlesbare Konfiguration gesichert als %s", backup)
+    except OSError as exc:
+        log.error("Backup der unlesbaren Konfiguration fehlgeschlagen: %s", exc)
+
+
 def save(settings: Settings, path: Path | None = None) -> Path:
     """Write settings to YAML (atomic), preserving comments of an existing file."""
     import io
@@ -598,6 +610,8 @@ def save(settings: Settings, path: Path | None = None) -> Path:
                 doc = loaded
         except Exception:  # corrupt file: overwrite with fresh content
             log.warning("Konfigurationsdatei unlesbar, wird neu geschrieben: %s", path)
+        if doc is None:
+            _backup_unreadable(path)
     if doc is None:
         doc = _build_commented(settings)
     else:

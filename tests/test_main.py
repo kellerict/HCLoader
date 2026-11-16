@@ -80,3 +80,66 @@ def test_smoke_blocked_by_throttle(monkeypatch, capsys):
     monkeypatch.setattr(app_main, "YtClient", FakeClient)
     assert app_main.run_smoke("u") == app_main.EXIT_BLOCKED
     assert "GESPERRT" in capsys.readouterr().err
+
+
+def test_smoke_finish_run_resets_backoff_on_done(monkeypatch, tmp_path):
+    from app.core.throttle import Throttle
+
+    resets = []
+    monkeypatch.setattr(Throttle, "reset_backoff", lambda self: resets.append(1))
+
+    class FakeClient:
+        def __init__(self, *a):
+            pass
+
+        def download(self, url, **kw):
+            return DownloadResult("abc", "done", tmp_path / "x.mp3")
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(app_main, "YtClient", FakeClient)
+    assert app_main.run_smoke("u") == 0 and resets == [1]
+    resets.clear()
+    FakeClient.download = lambda self, url, **kw: DownloadResult("a", "skipped", skipped=True)
+    app_main.run_smoke("u")
+    assert resets == []  # a skip is no successful network run
+
+
+def test_smoke_and_headless_refuse_when_run_lock_held(monkeypatch, capsys):
+    from app.core import locks
+
+    held = locks.acquire_run_lock()
+    try:
+        assert app_main.run_smoke("u") == app_main.EXIT_BUSY
+        assert app_main.main(["--headless", "--run-watchlist"]) == app_main.EXIT_BUSY
+        assert "anderer Download-Lauf" in capsys.readouterr().err
+    finally:
+        held.release()
+    assert app_main.main(["--headless", "--run-watchlist"]) == 0
+
+
+def test_second_gui_instance_exits(monkeypatch, capsys):
+    from app.core import locks
+
+    started = []
+    monkeypatch.setattr(app_main, "run_gui", lambda: started.append(1) or 0)
+    first = locks.acquire_single_instance()
+    try:
+        assert app_main.main([]) == 0 and started == []
+    finally:
+        first.release()
+    assert app_main.main([]) == 0 and started == [1]
+
+
+def test_gui_start_resets_interrupted_downloads(monkeypatch):
+    from app.core import config
+    from app.core.db import Database
+
+    with Database(config.db_path()) as db:
+        db.upsert_video({"id": "x", "status": "downloading"})
+    monkeypatch.setattr(app_main, "run_gui", lambda: 0)
+    app_main.main([])
+    with Database(config.db_path()) as db:
+        row = db.get_video("x")
+    assert row["status"] == "failed" and row["error"] == "Unterbrochen"

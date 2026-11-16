@@ -8,7 +8,7 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from .core import binaries, config
+from .core import binaries, config, locks
 from .core.db import Database
 from .core.logging_setup import setup_logging
 from .core.throttle import Throttle, ThrottleError
@@ -30,9 +30,14 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
-def acquire_single_instance() -> bool:
-    """Placeholder: the single-instance lock follows with the GUI (Phase 2/3)."""
-    return True
+EXIT_BUSY = 4
+
+
+def _reset_interrupted(db: Database) -> None:
+    """Startup housekeeping: rows left in 'downloading' by a crash become 'failed'."""
+    n = db.reset_interrupted_downloads()
+    if n:
+        log.warning("%d unterbrochene Downloads auf 'failed' gesetzt", n)
 
 
 def run_gui() -> int:
@@ -63,7 +68,12 @@ def run_smoke(url: str) -> int:
         st["deno_version"] or "FEHLT",
         st["ffmpeg_version"] or "FEHLT",
     )
+    run_lock = locks.acquire_run_lock()
+    if run_lock is None:
+        print("Ein anderer Download-Lauf ist aktiv (GUI oder Headless).", file=sys.stderr)
+        return EXIT_BUSY
     db = Database(config.db_path())
+    _reset_interrupted(db)
     throttle = Throttle(db, lambda: settings.throttle)
     client = YtClient(lambda: settings, db, throttle)
     throttle.start_run()
@@ -79,12 +89,14 @@ def run_smoke(url: str) -> int:
 
     try:
         result: DownloadResult = client.download(url, on_progress=on_progress)
+        throttle.finish_run(result.status == "done")
     except ThrottleError as exc:
         print(f"GESPERRT: {exc}", file=sys.stderr)
         return EXIT_BLOCKED
     finally:
         client.close()
         db.close()
+        run_lock.release()
     print(f"Ergebnis: {result.status}")
     if result.file_path:
         print(f"Datei: {result.file_path}")
@@ -101,13 +113,33 @@ def main(argv: Sequence[str] | None = None) -> int:
         return run_smoke(args.smoke)
     if args.headless or args.run_watchlist:
         if args.run_watchlist:
-            print("Watchlist-Lauf folgt in Phase 4.")
-            return EXIT_OK
+            run_lock = locks.acquire_run_lock()
+            if run_lock is None:
+                print("Ein anderer Download-Lauf ist aktiv (GUI oder Headless).", file=sys.stderr)
+                return EXIT_BUSY
+            try:
+                print("Watchlist-Lauf folgt in Phase 4.")
+                return EXIT_OK
+            finally:
+                run_lock.release()
         print("--headless braucht --run-watchlist.", file=sys.stderr)
         return EXIT_USAGE
-    if not acquire_single_instance():
+    instance = locks.acquire_single_instance()
+    if instance is None:
+        print("HCLoader läuft bereits.", file=sys.stderr)
         return EXIT_OK
-    return run_gui()
+    try:
+        # only while no download run is active (a headless run may be downloading right now)
+        run_lock = locks.acquire_run_lock()
+        if run_lock is not None:
+            try:
+                with Database(config.db_path()) as db:
+                    _reset_interrupted(db)
+            finally:
+                run_lock.release()
+        return run_gui()
+    finally:
+        instance.release()
 
 
 if __name__ == "__main__":

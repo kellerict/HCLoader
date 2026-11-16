@@ -74,7 +74,8 @@ def test_opts_download_mp3_320(settings, tmp_path):
     assert o["format"] == "bestaudio/best" and o["noplaylist"] is True
     assert o["paths"] == {"home": str(tmp), "temp": str(tmp)}
     assert o["outtmpl"]["default"] == "%(id)s.%(ext)s"
-    assert o["download_archive"] == str(config.archive_path())
+    assert "download_archive" not in o  # written by HCLoader after `done` (M2)
+    assert o["playlist_items"] == "1" and "max_downloads" not in o
     assert o["ratelimit"] == 3 * 1024 * 1024
     assert o["writethumbnail"] is True
     assert o["postprocessors"] == [
@@ -238,8 +239,6 @@ class FakeYDL:
             hook({"status": "started", "postprocessor": "FFmpegExtractAudio"})
         for hook in self.opts.get("progress_hooks", []):
             hook({"status": "finished", "downloaded_bytes": 100, "total_bytes": 100})
-        with open(self.opts["download_archive"], "a", encoding="utf-8") as fh:
-            fh.write(f"youtube {info['id']}\n")
         return info
 
 
@@ -445,8 +444,9 @@ def test_cancel_cleans_tmp(client, fake, db, settings, monkeypatch):
     monkeypatch.setattr(FakeYDL, "extract_info", raising)
     res = client.download(VID, cancel_event=ev)
     assert res.status == "cancelled" and not res.ok
-    assert not list(tmp.glob(f"{VID}.*"))
-    assert db.get_video(VID)["status"] == "failed"
+    assert [f.name for f in tmp.glob(f"{VID}.*")] == [f"{VID}.webm.part"]  # resumable (m3)
+    assert db.get_video(VID)["status"] == "new" and db.get_video(VID)["error"] == "Abgebrochen"
+    assert res.error == "Abgebrochen"
 
 
 def test_cancel_exception_type_is_ytdlp_cancel():
@@ -462,7 +462,7 @@ def test_limits_block_download(client, fake, settings, throttle):
 
 
 @needs_ffmpeg
-def test_failure_after_ytdlp_removes_archive_entry(client, fake, db, monkeypatch):
+def test_failure_before_done_does_not_write_archive(client, fake, db, monkeypatch):
     def boom(*a, **k):
         raise OSError("disk full")
 
@@ -510,3 +510,252 @@ def test_http_mode_starts_and_stops_server(client, fake, settings, monkeypatch):
     client.search("x", 1)
     client.close()
     assert started == [4501, "stop"]
+
+
+# ------------------------------------------------------------------ B1: single videos only
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://www.youtube.com/playlist?list=PLxxxxxxxxxxxxxxxx",
+        "https://www.youtube.com/@somechannel",
+        "https://www.youtube.com/channel/UCabcdefghijklmnopqrstuv",
+        "ytsearch10:hardcore mix",
+        "",
+    ],
+)
+def test_download_refuses_non_video_urls_before_throttle(client, fake, db, throttle, url):
+    res = client.download(url)
+    assert res.status == "failed" and not res.ok and res.error
+    assert not fake.instances
+    assert throttle.downloads_today() == 0 and throttle.downloads_this_run() == 0
+    assert db.list_videos() == []
+
+
+@needs_ffmpeg
+def test_download_url_is_rebuilt_from_id(client, fake):
+    url = f"https://www.youtube.com/watch?v={VID}&list=PLxxxxxxxxxxxxxxxx&index=3"
+    assert client.download(url).status == "done"
+    assert fake.instances[0].url == f"https://www.youtube.com/watch?v={VID}"
+    assert fake.instances[0].opts["playlist_items"] == "1"
+
+
+def test_playlist_result_is_an_error(client, fake, db):
+    fake.info = {**FakeYDL.info, "_type": "playlist"}
+    fake.make_files = False
+    res = client.download(VID)
+    assert res.status == "failed" and "Playlist" in res.error
+    assert db.get_video(VID)["status"] == "failed"
+
+
+# ------------------------------------------------------------------ M2: archive after done
+
+
+@needs_ffmpeg
+def test_archive_written_only_after_done(client, fake, db):
+    seen = {}
+
+    real = client._record_archive
+
+    def spy(vid):
+        seen["status"] = db.get_video(vid)["status"]
+        real(vid)
+
+    client._record_archive = spy
+    assert client.download(VID).status == "done"
+    assert seen["status"] == "done" and client.in_archive(VID)
+
+
+def test_crash_window_does_not_block_video(client, fake, db, monkeypatch):
+    """A hard stop after yt-dlp finished leaves no archive entry -> the video is retried."""
+
+    def crash(*a, **k):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(ytclient.tagging, "write_tags", crash)
+    if shutil.which("ffmpeg"):
+        with pytest.raises(KeyboardInterrupt):
+            client.download(VID)
+    assert not client.in_archive(VID)
+    assert client._skip_result(VID) is None
+
+
+# ------------------------------------------------------------------ M4/M5 through the client
+
+
+def _paced_client(settings, db, slept):
+    settings.throttle.sleep_interval = 30
+    settings.throttle.max_sleep_interval = 30
+    th = Throttle(db, lambda: settings.throttle, sleep=slept.append, uniform=lambda a, b: b)
+    return YtClient(lambda: settings, db, th), th
+
+
+def test_second_download_waits_pause(settings, db, fake):
+    slept = []
+    c, th = _paced_client(settings, db, slept)
+    fake.errors = [yt_dlp.utils.DownloadError("HTTP Error 404")] * 2
+    c.download("aaaaaaaaaaa")
+    assert slept == []  # first download: nothing to wait for
+    c.download("bbbbbbbbbbb")
+    assert len(slept) == 1 and 25 < slept[0] <= 30
+
+
+def test_skip_does_not_wait_or_count(settings, db, fake):
+    slept = []
+    c, th = _paced_client(settings, db, slept)
+    db.upsert_video({"id": VID})
+    db.set_status(VID, "done", file_path="/x.mp3")
+    th.mark_download_end()
+    assert c.download(VID).skipped
+    assert slept == [] and th.downloads_this_run() == 0
+
+
+def test_failed_attempts_count_against_run_limit(client, fake, settings, throttle):
+    settings.throttle.max_downloads_per_run = 2
+    fake.errors = [yt_dlp.utils.DownloadError("HTTP Error 403: Forbidden")] * 5
+    assert client.download("aaaaaaaaaaa").status == "failed"
+    assert client.download("bbbbbbbbbbb").status == "failed"
+    assert throttle.downloads_this_run() == 2 and throttle.downloads_today() == 2
+    with pytest.raises(LimitReached):
+        client.download("ccccccccccc")
+    assert len(fake.instances) == 2
+
+
+@needs_ffmpeg
+def test_network_retry_counts_once(client, fake, settings, throttle):
+    settings.throttle.max_downloads_per_run = 1
+    fake.errors = [yt_dlp.utils.DownloadError("Read timed out"), None]
+    assert client.download(VID).status == "done"
+    assert throttle.downloads_this_run() == 1
+
+
+def test_pause_wait_cancel_restores_status(client, db, fake, settings, monkeypatch):
+    ev = threading.Event()
+    ev.set()
+    db.upsert_video({"id": VID, "status": "queued"})
+    client.throttle.mark_download_end()
+    settings.throttle.sleep_interval = 60
+    settings.throttle.max_sleep_interval = 60
+    res = client.download(VID, cancel_event=ev)
+    assert res.status == "cancelled" and not fake.instances
+    assert db.get_video(VID)["status"] == "queued"
+
+
+# ------------------------------------------------------------------ m4: status handling
+
+
+def test_cancel_restores_queued(client, fake, db, monkeypatch):
+    ev = threading.Event()
+    ev.set()
+    db.upsert_video({"id": VID, "status": "queued"})
+
+    def hook_cancel(self, url, download=True):
+        for hook in self.opts["progress_hooks"]:
+            hook({"status": "downloading"})
+
+    monkeypatch.setattr(FakeYDL, "extract_info", hook_cancel)
+    res = client.download(VID, cancel_event=ev)
+    assert res.status == "cancelled"
+    row = db.get_video(VID)
+    assert row["status"] == "queued" and row["error"] == "Abgebrochen"
+
+
+def test_throttle_refusal_restores_status(client, fake, db, throttle):
+    db.upsert_video({"id": VID, "status": "queued"})
+    throttle.trigger_backoff("x")
+    with pytest.raises(BackoffActive):
+        client.download(VID)
+    assert db.get_video(VID)["status"] == "queued"
+
+
+# ------------------------------------------------------------------ m3: .part handling
+
+
+def _tmp(settings):
+    return Path(settings.storage.target_dir) / ".tmp"
+
+
+def test_network_error_keeps_part_file(client, fake, db, settings):
+    tmp = _tmp(settings)
+    tmp.mkdir(parents=True)
+    (tmp / f"{VID}.webm.part").write_text("partial")
+    (tmp / f"{VID}.webm").write_text("stale complete file")
+    fake.errors = [yt_dlp.utils.DownloadError("Read timed out")] * 3
+    assert client.download(VID).status == "failed"
+    assert [f.name for f in tmp.glob(f"{VID}.*")] == [f"{VID}.webm.part"]
+
+
+def test_403_removes_part_file(client, fake, db, settings):
+    tmp = _tmp(settings)
+    tmp.mkdir(parents=True)
+    (tmp / f"{VID}.webm.part").write_text("partial")
+    fake.errors = [yt_dlp.utils.DownloadError("HTTP Error 403: Forbidden")]
+    assert client.download(VID).status == "failed"
+    assert not list(tmp.glob(f"{VID}.*"))
+
+
+# ------------------------------------------------------------------ m2: post-move steps
+
+
+@needs_ffmpeg
+def test_cue_failure_after_move_still_done(client, fake, db, monkeypatch):
+    def boom(*a, **k):
+        raise OSError("cue blocked")
+
+    monkeypatch.setattr(ytclient.tagging, "write_cue", boom)
+    res = client.download(VID)
+    assert res.status == "done" and res.file_path.is_file() and res.cue_path is None
+    assert db.get_video(VID)["status"] == "done" and client.in_archive(VID)
+
+
+# ------------------------------------------------------------------ m5: warning-level 429
+
+
+def test_warning_429_triggers_backoff(client, fake, throttle, monkeypatch):
+    def warn_then_ok(self, url, download=True):
+        self.opts["logger"].warning("WARNING: HTTP Error 429: Too Many Requests, trying next")
+        return {"entries": []}
+
+    monkeypatch.setattr(FakeYDL, "extract_info", warn_then_ok)
+    client.search("x", 1)
+    assert throttle.backoff_until() is not None
+
+
+def test_logger_ignores_normal_warnings():
+    lg = ytclient._YdlLogger()
+    lg.warning("some other warning")
+    lg.error("ERROR: Video unavailable")
+    assert lg.rate_limit_hit is None
+    lg.warning("Sign in to confirm you’re not a bot")
+    assert lg.rate_limit_hit
+
+
+# ------------------------------------------------------------------ m7/m8: provider
+
+
+@pytest.mark.parametrize(("hours", "expected"), [(0.5, "1"), (6.0, "6"), (6.6, "7"), (48, "48")])
+def test_token_ttl_whole_hours(client, fake, settings, hours, expected):
+    settings.network.po_token_ttl_hours = hours
+    fake.info = {"entries": []}
+    client.search("x", 1)
+    assert ytclient.os.environ["TOKEN_TTL"] == expected
+
+
+def test_http_server_not_ready_fails_clean(client, fake, settings, monkeypatch):
+    class DeadServer:
+        def __init__(self, port):
+            self.port = port
+
+        def start(self):
+            return False
+
+        def stop(self):
+            pass
+
+    monkeypatch.setattr(ytclient.binaries, "PotServer", DeadServer)
+    settings.network.po_token_mode = "http"
+    with pytest.raises(ytclient.YtClientError):
+        client.search("x", 1)
+    assert not fake.instances
+    assert client.throttle.searches_last_hour() == 0

@@ -76,3 +76,76 @@ def test_pot_server_command_and_missing_provider():
     assert srv.base_url == "http://127.0.0.1:4417"
     assert srv.start() is False  # no deno / provider in the empty bin dir
     srv.stop()
+
+
+def test_pot_server_wait_ready_polls_ping(monkeypatch):
+    srv = binaries.PotServer(4418)
+
+    class Alive:
+        def poll(self):
+            return None
+
+    srv._proc = Alive()
+    answers = iter([False, False, True])
+    monkeypatch.setattr(srv, "ping", lambda: next(answers))
+    slept = []
+    assert srv.wait_ready(5, sleep=slept.append, clock=lambda: 0.0) is True
+    assert len(slept) == 2
+
+
+def test_pot_server_wait_ready_times_out(monkeypatch):
+    srv = binaries.PotServer(4418)
+
+    class Alive:
+        def poll(self):
+            return None
+
+    srv._proc = Alive()
+    monkeypatch.setattr(srv, "ping", lambda: False)
+    now = {"t": 0.0}
+
+    def sleep(s):
+        now["t"] += s
+
+    assert srv.wait_ready(1.0, interval=0.25, sleep=sleep, clock=lambda: now["t"]) is False
+    assert now["t"] >= 1.0
+
+
+def test_pot_server_wait_ready_stops_when_process_dies():
+    srv = binaries.PotServer(4418)
+
+    class Dead:
+        def poll(self):
+            return 1
+
+    srv._proc = Dead()
+    assert srv.wait_ready(5, sleep=lambda s: None) is False
+
+
+def test_pot_server_start_waits_and_stops_on_timeout(monkeypatch, tmp_path):
+    bin_dir = tmp_path / "bin"
+    (bin_dir / "bgutil-pot-provider" / "server" / "node_modules").mkdir(parents=True)
+    monkeypatch.setenv("HCLOADER_BIN_DIR", str(bin_dir))
+    monkeypatch.setattr(binaries, "deno_path", lambda: tmp_path / "deno")
+    (tmp_path / "deno").write_text("x")
+    monkeypatch.setattr(binaries, "provider_dir_ok", lambda: True)
+
+    class Proc:
+        terminated = False
+
+        def __init__(self, *a, **k):
+            pass
+
+        def poll(self):
+            return 0 if Proc.terminated else None
+
+        def terminate(self):
+            Proc.terminated = True
+
+        def wait(self, timeout=None):
+            pass
+
+    monkeypatch.setattr(binaries.subprocess, "Popen", Proc)
+    srv = binaries.PotServer(4419)
+    monkeypatch.setattr(srv, "wait_ready", lambda *a, **k: False)
+    assert srv.start() is False and Proc.terminated

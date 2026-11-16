@@ -103,7 +103,8 @@ def test_write_cue_format(tmp_path):
     chapters = [Chapter(0, 'Intro "x"'), Chapter(330, "DJ B - Second"), Chapter(6000, "End")]
     cue = tagging.write_cue(mp3, chapters, performer="Partyraiser", title="Mix")
     assert cue == tmp_path / "Mix [abc].cue"
-    lines = cue.read_text(encoding="utf-8").splitlines()
+    assert cue.read_bytes().startswith(b"\xef\xbb\xbf")  # UTF-8 BOM (m14)
+    lines = cue.read_text(encoding="utf-8-sig").splitlines()
     assert lines[0] == 'PERFORMER "Partyraiser"'
     assert lines[1] == 'TITLE "Mix"'
     assert lines[2] == 'FILE "Mix [abc].mp3" MP3'

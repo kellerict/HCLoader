@@ -178,3 +178,20 @@ def test_every_setting_has_comment():
     for sec, model in config.SECTION_MODELS.items():
         for key in model.model_fields:
             assert f"{sec}.{key}" in config.COMMENTS
+
+
+def test_save_backs_up_unreadable_config(tmp_path):
+    path = tmp_path / "config.yaml"
+    path.write_text("general: [unclosed\n  : : bad", encoding="utf-8")
+    config.save(config.defaults(), path)
+    backups = list(tmp_path.glob("config.yaml.bak-*"))
+    assert len(backups) == 1
+    assert backups[0].read_text(encoding="utf-8").startswith("general: [unclosed")
+    assert config.load(path).general.log_level  # new file is valid
+
+
+def test_save_readable_config_makes_no_backup(tmp_path):
+    path = tmp_path / "config.yaml"
+    config.save(config.defaults(), path)
+    config.save(config.defaults(), path)
+    assert not list(tmp_path.glob("config.yaml.bak-*"))

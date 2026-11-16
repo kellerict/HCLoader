@@ -20,7 +20,9 @@ $BinDir = Join-Path $RepoRoot 'bin'
 $VenvPython = Join-Path $RepoRoot '.venv\Scripts\python.exe'
 
 $DenoUrl = 'https://github.com/denoland/deno/releases/latest/download/deno-x86_64-pc-windows-msvc.zip'
+$DenoShaUrl = "$DenoUrl.sha256sum"
 $FfmpegUrl = 'https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip'
+$FfmpegShaUrl = "$FfmpegUrl.sha256"
 $ProviderRepo = 'https://github.com/Brainicism/bgutil-ytdlp-pot-provider'
 
 function Write-Step([string]$Text) { Write-Host "==> $Text" -ForegroundColor Cyan }
@@ -31,9 +33,32 @@ function New-TempDir {
     return $path
 }
 
-function Get-Zip([string]$Url, [string]$TempDir) {
+function Get-ExpectedSha256([string]$Url) {
+    # Returns the 64 hex chars of the published checksum, or $null if it cannot be fetched.
+    try {
+        $content = (Invoke-WebRequest -Uri $Url -UseBasicParsing).Content
+        if ($content -is [byte[]]) { $content = [Text.Encoding]::ASCII.GetString($content) }
+        $m = [regex]::Match([string]$content, '(?i)\b[0-9a-f]{64}\b')
+        if ($m.Success) { return $m.Value.ToLowerInvariant() }
+    }
+    catch { }
+    return $null
+}
+
+function Get-Zip([string]$Url, [string]$TempDir, [string]$ShaUrl) {
     $zip = Join-Path $TempDir 'download.zip'
     Invoke-WebRequest -Uri $Url -OutFile $zip -UseBasicParsing
+    if ($ShaUrl) {
+        $expected = Get-ExpectedSha256 $ShaUrl
+        if ($expected) {
+            $actual = (Get-FileHash -Path $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($actual -ne $expected) { throw "SHA256 stimmt nicht ueberein ($Url): erwartet $expected, erhalten $actual" }
+            Write-Host "    SHA256 geprueft ($Url)" -ForegroundColor DarkGray
+        }
+        else {
+            Write-Host "    WARNUNG: keine Pruefsumme verfuegbar ($ShaUrl) - Download nicht verifiziert" -ForegroundColor Yellow
+        }
+    }
     $extract = Join-Path $TempDir 'x'
     Expand-Archive -Path $zip -DestinationPath $extract -Force
     return $extract
@@ -50,7 +75,7 @@ else {
     Write-Step 'Lade deno ...'
     $tmp = New-TempDir
     try {
-        $dir = Get-Zip $DenoUrl $tmp
+        $dir = Get-Zip $DenoUrl $tmp $DenoShaUrl
         Copy-Item -Path (Join-Path $dir 'deno.exe') -Destination $DenoExe -Force
     }
     finally { Remove-Item -Path $tmp -Recurse -Force -ErrorAction SilentlyContinue }
@@ -66,7 +91,7 @@ else {
     Write-Step 'Lade ffmpeg (gyan.dev, release essentials) ...'
     $tmp = New-TempDir
     try {
-        $dir = Get-Zip $FfmpegUrl $tmp
+        $dir = Get-Zip $FfmpegUrl $tmp $FfmpegShaUrl
         $ff = Get-ChildItem -Path $dir -Recurse -Filter 'ffmpeg.exe' | Select-Object -First 1
         $fp = Get-ChildItem -Path $dir -Recurse -Filter 'ffprobe.exe' | Select-Object -First 1
         if (-not $ff -or -not $fp) { throw 'ffmpeg.exe/ffprobe.exe nicht im Archiv gefunden' }
@@ -108,9 +133,10 @@ else {
         Write-Host 'git nicht gefunden - lade Tag als ZIP' -ForegroundColor Yellow
         $tmp = New-TempDir
         try {
-            $dir = Get-Zip "$ProviderRepo/archive/refs/tags/$Version.zip" $tmp
+            $dir = Get-Zip "$ProviderRepo/archive/refs/tags/$Version.zip" $tmp $null
             $inner = Get-ChildItem -Path $dir -Directory | Select-Object -First 1
-            Move-Item -Path $inner.FullName -Destination $ProviderDir
+            # Copy (not Move): %TEMP% may be on another drive than the repo (Move-Item fails on PS 5.1)
+            Copy-Item -Path $inner.FullName -Destination $ProviderDir -Recurse -Force
         }
         finally { Remove-Item -Path $tmp -Recurse -Force -ErrorAction SilentlyContinue }
     }

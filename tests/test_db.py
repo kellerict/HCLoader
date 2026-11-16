@@ -174,3 +174,50 @@ def test_persists_on_reopen(tmp_path):
         d.set_state("a", 1)
     with Database(p) as d:
         assert d.get_state("a") == "1"
+
+
+def test_failing_migration_rolls_back_and_restarts(tmp_path):
+    path = tmp_path / "mig.db"
+    conn = sqlite3.connect(path)
+
+    def bad(c):
+        c.execute("CREATE TABLE half_done(x)")
+        c.execute("INSERT INTO no_such_table VALUES (1)")  # fails after a DDL statement
+
+    with pytest.raises(sqlite3.OperationalError):
+        dbmod.migrate(conn, [*dbmod.MIGRATIONS, bad])
+    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    assert "half_done" not in tables and "videos" in tables  # step 1 stays, step 2 rolled back
+    assert dbmod._current_version(conn) == 1
+
+    def good(c):
+        c.execute("CREATE TABLE half_done(x)")
+
+    assert dbmod.migrate(conn, [*dbmod.MIGRATIONS, good]) == 2
+    conn.close()
+
+
+def test_failing_first_migration_leaves_clean_db(tmp_path):
+    conn = sqlite3.connect(tmp_path / "first.db")
+
+    def bad_first(c):
+        c.execute("CREATE TABLE t(x)")
+        raise RuntimeError("boom")
+
+    with pytest.raises(RuntimeError):
+        dbmod.migrate(conn, [bad_first])
+    assert not conn.execute("SELECT 1 FROM sqlite_master WHERE name='t'").fetchone()
+    assert dbmod._current_version(conn) == 0
+    assert dbmod.migrate(conn) == len(dbmod.MIGRATIONS)  # real schema installs fine afterwards
+    conn.close()
+
+
+def test_reset_interrupted_downloads(db):
+    for i, status in enumerate(["downloading", "done", "queued", "downloading"]):
+        db.upsert_video({"id": f"v{i}", "status": status})
+    assert db.reset_interrupted_downloads() == 2
+    assert (
+        db.get_video("v0")["status"] == "failed" and db.get_video("v0")["error"] == "Unterbrochen"
+    )
+    assert db.get_video("v1")["status"] == "done" and db.get_video("v2")["status"] == "queued"
+    assert db.reset_interrupted_downloads() == 0

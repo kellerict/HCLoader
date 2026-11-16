@@ -56,34 +56,37 @@ def now_iso() -> str:
 # --------------------------------------------------------------------------- migrations
 
 
+_M1_STATEMENTS = (
+    """CREATE TABLE videos(
+      id TEXT PRIMARY KEY, title TEXT, channel_id TEXT, channel_name TEXT,
+      duration INTEGER, upload_date TEXT, view_count INTEGER, thumbnail TEXT,
+      genre TEXT, genre_manual INTEGER DEFAULT 0, source_id INTEGER,
+      status TEXT CHECK(status IN
+        ('new','inbox','queued','downloading','done','ignored','failed')),
+      file_path TEXT, error TEXT, first_seen TEXT, downloaded_at TEXT
+    )""",
+    "CREATE INDEX idx_videos_status ON videos(status)",
+    "CREATE INDEX idx_videos_channel ON videos(channel_id)",
+    """CREATE TABLE sources(
+      id INTEGER PRIMARY KEY, type TEXT, name TEXT, url_or_query TEXT,
+      default_genre TEXT, enabled INTEGER, auto_download INTEGER,
+      max_entries INTEGER, last_checked TEXT
+    )""",
+    """CREATE TABLE channel_blacklist(
+      channel_id TEXT PRIMARY KEY, channel_name TEXT, added TEXT
+    )""",
+    """CREATE TABLE runs(
+      id INTEGER PRIMARY KEY, kind TEXT, started TEXT, finished TEXT,
+      found INTEGER, downloaded INTEGER, errors INTEGER, note TEXT
+    )""",
+    "CREATE TABLE state(key TEXT PRIMARY KEY, value TEXT)",
+)
+
+
 def _m1_initial(conn: sqlite3.Connection) -> None:
-    conn.executescript(
-        """
-        CREATE TABLE videos(
-          id TEXT PRIMARY KEY, title TEXT, channel_id TEXT, channel_name TEXT,
-          duration INTEGER, upload_date TEXT, view_count INTEGER, thumbnail TEXT,
-          genre TEXT, genre_manual INTEGER DEFAULT 0, source_id INTEGER,
-          status TEXT CHECK(status IN
-            ('new','inbox','queued','downloading','done','ignored','failed')),
-          file_path TEXT, error TEXT, first_seen TEXT, downloaded_at TEXT
-        );
-        CREATE INDEX idx_videos_status ON videos(status);
-        CREATE INDEX idx_videos_channel ON videos(channel_id);
-        CREATE TABLE sources(
-          id INTEGER PRIMARY KEY, type TEXT, name TEXT, url_or_query TEXT,
-          default_genre TEXT, enabled INTEGER, auto_download INTEGER,
-          max_entries INTEGER, last_checked TEXT
-        );
-        CREATE TABLE channel_blacklist(
-          channel_id TEXT PRIMARY KEY, channel_name TEXT, added TEXT
-        );
-        CREATE TABLE runs(
-          id INTEGER PRIMARY KEY, kind TEXT, started TEXT, finished TEXT,
-          found INTEGER, downloaded INTEGER, errors INTEGER, note TEXT
-        );
-        CREATE TABLE state(key TEXT PRIMARY KEY, value TEXT);
-        """
-    )
+    # Single execute() calls only: executescript() would COMMIT implicitly and break atomicity.
+    for statement in _M1_STATEMENTS:
+        conn.execute(statement)
 
 
 # Append new steps at the end; never edit existing ones. Step i upgrades version i -> i+1.
@@ -112,6 +115,7 @@ def migrate(conn: sqlite3.Connection, migrations: Sequence[Callable] | None = No
             "bitte HCLoader aktualisieren"
         )
     for target in range(version + 1, len(steps) + 1):
+        # Migration steps must use conn.execute() only (never executescript(), which commits).
         try:
             conn.execute("BEGIN")
             steps[target - 1](conn)
@@ -250,6 +254,15 @@ class Database:
             "UPDATE videos SET genre=?, genre_manual=? WHERE id=?",
             (genre, int(manual), video_id),
         )
+
+    def reset_interrupted_downloads(self, message: str = "Unterbrochen") -> int:
+        """At startup: rows stuck in 'downloading' (crash/kill) become 'failed'. Returns count."""
+        with self._lock:
+            cur = self.execute(
+                "UPDATE videos SET status='failed', error=? WHERE status='downloading'",
+                (message,),
+            )
+            return int(cur.rowcount)
 
     def delete_video(self, video_id: str) -> None:
         self.execute("DELETE FROM videos WHERE id=?", (video_id,))

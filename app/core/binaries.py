@@ -13,6 +13,9 @@ import shutil
 import subprocess
 import sys
 import threading
+import time
+import urllib.error
+import urllib.request
 from importlib import metadata
 from pathlib import Path
 from typing import Any
@@ -21,6 +24,7 @@ log = logging.getLogger(__name__)
 
 IS_WINDOWS = sys.platform == "win32"
 VERSION_TIMEOUT_S = 8
+POT_READY_TIMEOUT_S = 10.0
 _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 _version_cache: dict[str, str | None] = {}
@@ -204,8 +208,40 @@ class PotServer:
         except OSError as exc:
             log.error("PO-Token-Server konnte nicht gestartet werden: %s", exc)
             return False
-        log.info("PO-Token-Server gestartet auf %s", self.base_url)
+        if not self.wait_ready():
+            log.error("PO-Token-Server antwortet nicht auf /ping (Port %s)", self.port)
+            self.stop()
+            return False
+        log.info("PO-Token-Server bereit auf %s", self.base_url)
         return True
+
+    def ping(self) -> bool:
+        """GET /ping on the local provider (127.0.0.1 only, never YouTube)."""
+        try:
+            opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))  # no proxy
+            with opener.open(f"{self.base_url}/ping", timeout=2) as resp:
+                return 200 <= resp.status < 300
+        except (OSError, urllib.error.URLError, ValueError):
+            return False
+
+    def wait_ready(
+        self,
+        timeout: float = POT_READY_TIMEOUT_S,
+        *,
+        interval: float = 0.25,
+        sleep=time.sleep,
+        clock=time.monotonic,
+    ) -> bool:
+        """Poll /ping until the server answers, the process dies or `timeout` passes."""
+        deadline = clock() + timeout
+        while True:
+            if not self.running():
+                return False
+            if self.ping():
+                return True
+            if clock() >= deadline:
+                return False
+            sleep(interval)
 
     def stop(self) -> None:
         proc, self._proc = self._proc, None

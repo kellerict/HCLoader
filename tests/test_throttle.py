@@ -190,28 +190,6 @@ def test_daily_counter_persistent(db):
     assert not t2.can_download()
 
 
-def test_sleep_between_downloads_in_range(db):
-    ft = FakeTime()
-    seen = []
-    t = Throttle(
-        db,
-        ThrottleSettings(),
-        clock=ft.clock,
-        sleep=ft.sleep,
-        uniform=lambda a, b: seen.append((a, b)) or a + 5,
-    )
-    assert t.sleep_between_downloads() == 35
-    assert seen == [(30, 120)] and ft.slept == [35]
-    t0, ft0 = make(db, sleep_interval=0, max_sleep_interval=0)
-    assert t0.sleep_between_downloads() == 0 and ft0.slept == []
-
-
-def test_real_random_within_bounds(db):
-    t = Throttle(db, ThrottleSettings(sleep_interval=1, max_sleep_interval=2), sleep=lambda s: None)
-    for _ in range(20):
-        assert 1 <= t.sleep_between_downloads() <= 2
-
-
 def test_limit_rate_and_live_settings(db):
     cfg = ThrottleSettings()
     t = Throttle(db, lambda: cfg)
@@ -224,3 +202,157 @@ def test_status_dict(db):
     t, _ = make(db)
     st = t.status()
     assert st["backoff_until"] is None and st["max_downloads_per_day"] == 25
+
+
+# ------------------------------------------------------------------ download pacing (M4)
+
+
+def test_download_pacing_waits_since_last_end(db):
+    seen = []
+    ft = FakeTime()
+    t = Throttle(
+        db,
+        ThrottleSettings(sleep_requests=0),
+        clock=ft.clock,
+        sleep=ft.sleep,
+        uniform=lambda a, b: seen.append((a, b)) or a + 5,
+    )
+    t.before_request("download")  # first download ever: no pause
+    assert ft.slept == []
+    t.mark_download_end()
+    ft.advance(seconds=10)
+    t.before_request("download")
+    assert seen == [(30, 120)] and ft.slept == [25]  # 35 s pause minus 10 s already elapsed
+
+
+def test_download_pacing_persisted_across_instances(db):
+    t, ft = make(db, sleep_requests=0, sleep_interval=30, max_sleep_interval=30)
+    t.mark_download_end()
+    t2, _ = make(db, ft, sleep_requests=0, sleep_interval=30, max_sleep_interval=30)
+    t2.before_request("download")
+    assert ft.slept == [30]
+
+
+def test_no_pause_after_long_time_or_zero_interval(db):
+    t, ft = make(db, sleep_requests=0, sleep_interval=30, max_sleep_interval=30)
+    t.mark_download_end()
+    ft.advance(seconds=31)
+    t.before_request("download")
+    assert ft.slept == []
+    t0, ft0 = make(db, sleep_requests=0, sleep_interval=0, max_sleep_interval=0)
+    t0.mark_download_end()
+    t0.before_request("download")
+    assert ft0.slept == []
+
+
+def test_pacing_not_applied_to_metadata_requests(db):
+    t, ft = make(db, sleep_requests=0)
+    t.mark_download_end()
+    t.before_request("search")
+    assert ft.slept == []
+
+
+def test_pacing_cancel_event_aborts(db):
+    import threading
+
+    ev = threading.Event()
+    ft = FakeTime()
+
+    def sleep_and_cancel(s):
+        ft.sleep(s)
+        ev.set()
+
+    t = Throttle(
+        db,
+        ThrottleSettings(sleep_requests=0),
+        clock=ft.clock,
+        sleep=sleep_and_cancel,
+        uniform=lambda a, b: b,
+    )
+    t.mark_download_end()
+    from app.core.throttle import WaitCancelled
+
+    with pytest.raises(WaitCancelled):
+        t.before_request("download", cancel_event=ev, count_attempt=True)
+    assert t.downloads_this_run() == 0  # cancelled while waiting: no attempt counted
+
+
+def test_real_wait_is_abortable_via_event(db):
+    import threading
+
+    ev = threading.Event()
+    ev.set()
+    t = Throttle(db, ThrottleSettings(sleep_requests=0, sleep_interval=60, max_sleep_interval=60))
+    t.mark_download_end()
+    from app.core.throttle import WaitCancelled
+
+    with pytest.raises(WaitCancelled):  # returns immediately instead of sleeping 60 s
+        t.before_request("download", cancel_event=ev)
+
+
+# ------------------------------------------------------------------ attempts count (M5)
+
+
+def test_attempt_counts_on_request_release_not_on_retry(db):
+    t, _ = make(
+        db, sleep_requests=0, sleep_interval=0, max_sleep_interval=0, max_downloads_per_run=2
+    )
+    t.before_request("download", count_attempt=True)
+    assert t.downloads_this_run() == 1 and t.downloads_today() == 1
+    t.before_request("download", retry=True)  # network retry: not counted again, no limit check
+    assert t.downloads_this_run() == 1
+    t.before_request("download", count_attempt=True)
+    with pytest.raises(LimitReached):
+        t.before_request("download", count_attempt=True)
+    assert t.downloads_this_run() == 2
+
+
+# ------------------------------------------------------------------ finish_run (m1)
+
+
+def test_finish_run_resets_backoff_only_on_success(db):
+    t, ft = make(db)
+    t.trigger_backoff("429")
+    ft.advance(hours=7)
+    t.finish_run(False)
+    assert t.backoff_level() == 1
+    t.finish_run(True)
+    assert t.backoff_level() == 0 and t.backoff_until() is None
+
+
+# ------------------------------------------------------------------ thread safety (M3)
+
+
+def test_concurrent_requests_are_serialised_with_spacing(db):
+    import threading
+
+    ft = FakeTime()
+    t = Throttle(db, ThrottleSettings(sleep_requests=3), clock=ft.clock, sleep=ft.sleep)
+    t.before_request("resolve")  # primes _last_request
+    stamps: list[datetime] = []
+    barrier = threading.Barrier(4)
+
+    def work():
+        barrier.wait()
+        t.before_request("resolve")
+        stamps.append(ft.now)
+
+    threads = [threading.Thread(target=work) for _ in range(4)]
+    for th in threads:
+        th.start()
+    for th in threads:
+        th.join()
+    stamps.sort()
+    assert all((b - a).total_seconds() >= 3 for a, b in zip(stamps, stamps[1:], strict=False))
+
+
+def test_concurrent_download_counter_does_not_lose_updates(db):
+    import threading
+
+    t, _ = make(db, sleep_requests=0)
+    threads = [threading.Thread(target=t.register_download) for _ in range(20)]
+    for th in threads:
+        th.start()
+    for th in threads:
+        th.join()
+    assert t.downloads_today() == 20 and t.downloads_this_run() == 20
