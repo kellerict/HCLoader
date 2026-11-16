@@ -108,9 +108,12 @@ def task_xml(time_str: str, executable: str | None = None, now: datetime | None 
 
     Daily at `time_str` (local time); missed runs start as soon as possible; no battery
     restrictions; a second start while one runs is ignored (`IgnoreNew`); 6 h limit.
+    `StartBoundary` = next occurrence of `time_str` (today if still ahead, else tomorrow).
     """
     hhmm = validate_time(time_str)
-    start = (now or datetime.now()).strftime("%Y-%m-%d") + f"T{hhmm}:00"
+    # n4: the next future occurrence (a time already past today would count as a missed run
+    # and start at once through StartWhenAvailable on some Windows versions)
+    start = next_daily(hhmm, now).strftime("%Y-%m-%dT%H:%M:00")
     command = escape(str(pythonw_path(executable)))
     arguments = escape(f'"{wrapper_script()}"')
     workdir = escape(str(repo_root()))

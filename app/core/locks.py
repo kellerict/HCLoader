@@ -55,8 +55,25 @@ def _user_tag() -> str:
 
 def _kernel32() -> Any:
     import ctypes
+    from ctypes import wintypes
 
-    return ctypes.WinDLL("kernel32", use_last_error=True)  # type: ignore[attr-defined]
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)  # type: ignore[attr-defined]
+    # n2: HANDLE is pointer-sized; without restype ctypes would truncate it to a C int
+    kernel.CreateMutexW.argtypes = (ctypes.c_void_p, wintypes.BOOL, wintypes.LPCWSTR)
+    kernel.CreateMutexW.restype = wintypes.HANDLE
+    kernel.ReleaseMutex.argtypes = (wintypes.HANDLE,)
+    kernel.ReleaseMutex.restype = wintypes.BOOL
+    kernel.CloseHandle.argtypes = (wintypes.HANDLE,)
+    kernel.CloseHandle.restype = wintypes.BOOL
+    return kernel
+
+
+def _last_error() -> int:
+    """n2: the error ctypes saved right after the last foreign call (`use_last_error=True`);
+    a separate `GetLastError()` call could see a value changed in between."""
+    import ctypes
+
+    return int(ctypes.get_last_error())  # type: ignore[attr-defined]
 
 
 class ProcessLock:
@@ -115,7 +132,8 @@ class ProcessLock:
                     None, False, f"{prefix}HCLoader.{_user_tag()}.{self.name}"
                 )
                 if handle:
-                    already = kernel.GetLastError() == ERROR_ALREADY_EXISTS
+                    # n2: with use_last_error=True ctypes saves the error right after the call
+                    already = _last_error() == ERROR_ALREADY_EXISTS
                     break
                 log.debug("Mutex im Namensraum %s nicht erlaubt", prefix)
             if not handle:

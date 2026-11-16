@@ -12,6 +12,7 @@ import os
 import re
 import shutil
 import threading
+from collections import deque
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -57,6 +58,8 @@ _NETWORK_RE = re.compile(
 _HTTP_403_RE = re.compile(r"http error 403", re.I)
 # max. wait of a search/list/resolve for the metadata lock held by a download's extraction (m4)
 METADATA_WAIT_S = 60.0
+# Review Phase 4 m4: hard limit for reading a playlist from the end (`newest_last`); ~20 pages
+NEWEST_LAST_MAX = 2000
 
 __all__ = [
     "DownloadCancelled",
@@ -438,8 +441,12 @@ class YtClient:
         cancel_event: threading.Event | None = None,
         retry: bool = False,
         on_request: Callable[[], None] | None = None,
+        handler: Callable[[Any, dict[str, Any]], dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """One yt-dlp call behind the throttle and the metadata lock (m4).
+
+        `handler(ydl, ie_result)` (metadata calls only): extract with `process=False` and let
+        the handler build the result (used for `newest_last`, which pages itself).
 
         Metadata calls (search/list/resolve) hold `Throttle.metadata_lock` for the whole call
         and give up after METADATA_WAIT_S (MetadataBusy). A download holds it only while
@@ -481,20 +488,37 @@ class YtClient:
                 self.throttle.before_request(kind, cancel_event=cancel_event)
                 if on_request:
                     on_request()
-                with yt_dlp.YoutubeDL(opts) as ydl:
-                    info = ydl.extract_info(url, download=False)
-                    if info is None:
-                        raise YtClientError("Keine Daten von yt-dlp erhalten")
-                    return ydl.sanitize_info(info)  # type: ignore[no-any-return]
+                try:
+                    with yt_dlp.YoutubeDL(opts) as ydl:
+                        info = ydl.extract_info(url, download=False, process=handler is None)
+                        if info is None:
+                            raise YtClientError("Keine Daten von yt-dlp erhalten")
+                        if handler is not None:
+                            info = handler(ydl, info)
+                        return ydl.sanitize_info(info)  # type: ignore[no-any-return]
+                finally:
+                    # m4: a multi-page listing ends long after its slot; space from now
+                    self.throttle.mark_request()
         finally:
             hit = getattr(logger, "rate_limit_hit", None)
             if hit:
                 self.throttle.trigger_backoff(hit)
 
-    def _metadata_call(self, kind: str, url: str, opts: dict[str, Any], settings: Settings):
+    def _metadata_call(
+        self,
+        kind: str,
+        url: str,
+        opts: dict[str, Any],
+        settings: Settings,
+        *,
+        cancel_event: threading.Event | None = None,
+        handler: Callable[[Any, dict[str, Any]], dict[str, Any]] | None = None,
+    ):
         try:
-            return self._extract(kind, url, opts, settings=settings)
-        except (DownloadCancelled, MetadataBusy):
+            return self._extract(
+                kind, url, opts, settings=settings, cancel_event=cancel_event, handler=handler
+            )
+        except (DownloadCancelled, MetadataBusy, WaitCancelled):
             raise
         except Exception as exc:
             if isinstance(exc, YtClientError):
@@ -513,32 +537,46 @@ class YtClient:
         *,
         genre: str | None = None,
         year: int | None = None,
+        cancel_event: threading.Event | None = None,
     ) -> list[dict[str, Any]]:
         """Flat search; genre search terms and (with `search.append_year`) the year are appended."""
         settings = self.settings
         n = n or settings.search.results_count
         full_query = build_search_query(query, genre=genre, year=year, settings=settings)
         opts = build_ydl_opts(settings, "search")
-        info = self._metadata_call("search", f"ytsearch{int(n)}:{full_query}", opts, settings)
+        info = self._metadata_call(
+            "search", f"ytsearch{int(n)}:{full_query}", opts, settings, cancel_event=cancel_event
+        )
         return [normalize_entry(e) for e in info.get("entries") or [] if e and e.get("id")]
 
     def list_source(
-        self, url: str, max_entries: int | None = None, *, newest_last: bool = False
+        self,
+        url: str,
+        max_entries: int | None = None,
+        *,
+        newest_last: bool = False,
+        cancel_event: threading.Event | None = None,
     ) -> list[dict[str, Any]]:
         """Flat listing, newest first. `newest_last`: the source appends new videos at the end
-        (playlists); the last `max_entries` are returned in reverse order. yt-dlp then has to
-        page through the whole playlist (~100 entries per request, `sleep_interval_requests`
-        between pages), see docs/decisions.md."""
+        (playlists); the last `max_entries` are returned in reverse order. The whole playlist
+        has to be paged (~100 entries per request, `sleep_interval_requests` between pages),
+        at most NEWEST_LAST_MAX entries (m4), see docs/decisions.md."""
         settings = self.settings
         max_entries = int(max_entries or settings.schedule.entries_per_source)
         opts = build_ydl_opts(settings, "list")
+        handler = None
         if newest_last:
-            # PlaylistEntries slice "-1:-N:-1" = last N items, last one first (checked against
-            # yt_dlp/utils/_utils.py; playlistreverse is ignored with lazy_playlist)
-            opts["playlist_items"] = f"-1:-{max_entries}:-1"
+            handler = _newest_last_handler(max_entries, cancel_event)
         else:
             opts["playlistend"] = max_entries
-        info = self._metadata_call("list", normalize_source_url(url), opts, settings)
+        info = self._metadata_call(
+            "list",
+            normalize_source_url(url),
+            opts,
+            settings,
+            cancel_event=cancel_event,
+            handler=handler,
+        )
         entries = [normalize_entry(e) for e in info.get("entries") or [] if e and e.get("id")]
         return entries[: int(max_entries)]
 
@@ -907,6 +945,50 @@ class YtClient:
 
 
 # --------------------------------------------------------------------------- file helpers
+
+
+def _playlist_too_long(n: int) -> YtClientError:
+    return YtClientError(
+        f"Playlist zu lang für Rückwärts-Lesen ({n} Einträge, max. {NEWEST_LAST_MAX})"
+    )
+
+
+def _newest_last_handler(
+    max_entries: int, cancel_event: threading.Event | None
+) -> Callable[[Any, dict[str, Any]], dict[str, Any]]:
+    """`newest_last` (Review Phase 4 m4): page through the flat playlist ourselves, keep the
+    last `max_entries` and return them newest first. `playlist_count` (from the first page,
+    `_tab.py` reads "N Videos" of the header) refuses a too long playlist before any
+    continuation request; while paging, NEWEST_LAST_MAX is a hard limit in any case (no
+    count in the header, playlist grows meanwhile). Replaces `playlist_items "-1:-N:-1"`,
+    which made yt-dlp load every page without a limit."""
+
+    def handle(ydl: Any, ie_result: dict[str, Any]) -> dict[str, Any]:
+        if ie_result.get("_type") not in ("playlist", "multi_video"):
+            # redirected URL (rare for …/playlist?list=): let yt-dlp resolve it, first N only
+            ydl.params["playlistend"] = max_entries
+            info = ydl.process_ie_result(ie_result, download=False)
+            if info is None:
+                raise YtClientError("Keine Daten von yt-dlp erhalten")
+            return info  # type: ignore[no-any-return]
+        count = ie_result.get("playlist_count")
+        if isinstance(count, int) and count > NEWEST_LAST_MAX:
+            raise _playlist_too_long(count)
+        tail: deque[dict[str, Any]] = deque(maxlen=max(1, max_entries))
+        seen = 0
+        for entry in ie_result.get("entries") or ():
+            if cancel_event is not None and cancel_event.is_set():
+                raise WaitCancelled
+            seen += 1
+            if seen > NEWEST_LAST_MAX:
+                raise _playlist_too_long(seen if not isinstance(count, int) else count)
+            if entry:
+                tail.append(dict(entry))
+        out = dict(ie_result)
+        out["entries"] = list(reversed(tail))
+        return out
+
+    return handle
 
 
 def _clean_error(exc: BaseException) -> str:

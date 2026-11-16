@@ -39,6 +39,7 @@ from .core import status as status_mod
 from .core.config import Settings
 from .core.db import Database
 from .core.logging_setup import setup_logging
+from .core.redact import redact
 from .core.throttle import Throttle
 from .worker import (
     DownloadQueue,
@@ -65,6 +66,7 @@ PO_TEST_TIMEOUT_S = 60
 SEARCH_TIMEOUT_S = 180
 # m5: an ffmpeg conversion has no cancel hook; wait this long for the queue thread at exit
 QUEUE_STOP_TIMEOUT_S = 60.0
+WATCHLIST_STOP_TIMEOUT_S = 10.0  # n5: a cancelled check ends after the current request
 # m2: at the first queue start in HTTP mode, wait this long for the PO-token watchdog
 POT_START_WAIT_S = 20.0
 _JOB_LABELS = {
@@ -204,8 +206,10 @@ class Api:
         if self._ticker:
             self._ticker.stop()
         self._wl_sched.stop()
-        self._wl_cancel.set()  # a running check stops before the next source
-        self._wl_worker.stop()
+        self._wl_cancel.set()  # n5: reaches the throttle/metadata-lock waits of the check
+        self._wl_worker.stop(WATCHLIST_STOP_TIMEOUT_S)
+        if self._wl_worker.alive():  # stuck in a request: close its run entry now
+            watchlist.close_interrupted(self._db, "Abgebrochen (App beendet)")
         ended = self._queue.stop(queue_timeout)
         self._search_worker.stop()
         self._watchdog.stop()
@@ -757,9 +761,7 @@ class Api:
             if s["url_or_query"].rstrip("/") == url:
                 return {"ok": False, "error": "Kanal ist bereits in der Watchlist", "source": s}
         name = str(channel_name or "").strip() or cid
-        sid = self._db.add_source(
-            "channel", name, url, max_entries=self._cfg.schedule.entries_per_source
-        )
+        sid = self._db.add_source("channel", name, url)  # n7: max_entries NULL = default
         log.info("Kanal zur Watchlist hinzugefügt: %s", name)
         source = next(s for s in self.get_sources() if s["id"] == sid)
         return {"ok": True, "source": source}
@@ -862,11 +864,16 @@ class Api:
         if self._watchlist_refusal() or self._wl_worker.busy(self._check_key(None)):
             return False
         log.info("Geplante Watchlist-Prüfung (Intervall in der App)")
-        self._submit_check(None)
+        self._wl_worker.submit(self._check_key(None), self._do_watchlist, None, scheduled=True)
         return True
 
-    def _do_watchlist(self, ids: list[int] | None) -> dict[str, Any]:
+    def _do_watchlist(self, ids: list[int] | None, *, scheduled: bool = False) -> dict[str, Any]:
         lock = self._watchlist_lock()
+        if lock is None and scheduled:  # m2: the headless task checks right now - quietly later
+            retry = self._wl_sched.defer()
+            log.debug("Watchlist-Lock belegt (Aufgabe läuft) – neuer Versuch ab %s", retry)
+            self._push()
+            return {"ok": False, "deferred": True}
         if lock is None:  # a headless run checks right now
             msg = "Die Watchlist wird gerade von einem anderen Lauf geprüft (z.B. geplante Prüfung)"
             log.warning(msg)
@@ -894,7 +901,7 @@ class Api:
             self._bus.toast(_UPDATE_BUSY, "warn")
         except Exception as exc:
             log.exception("Watchlist-Prüfung fehlgeschlagen")
-            self._bus.toast(f"Watchlist-Prüfung fehlgeschlagen: {exc}", "err")
+            self._bus.toast(f"Watchlist-Prüfung fehlgeschlagen: {redact(exc)}", "err")
         finally:
             lock.release()
         if result.backoff:

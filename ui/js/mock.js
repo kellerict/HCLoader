@@ -305,8 +305,9 @@
   const L = (id, title, ch, genre, min, upDays, dlDays, extra) => {
     const duration = min * 60 + (id.charCodeAt(1) % 60), date = isoDay(upDays), artist = CH[ch][1];
     return Object.assign({
-      id, title, artist, genre, duration, upload_date: date, downloaded_at: isoAt(dlDays, dlDays % 3 ? 3 : 20, 10 + (id.charCodeAt(2) % 40)),
-      file_path: libPath(genre, artist, date, title, id), size_mb: sizeOf(duration), missing: false, thumbnail: null,
+      id, title, artist, channel_id: CH[ch][0], genre, duration, upload_date: date, year: +date.slice(0, 4),
+      downloaded_at: isoAt(dlDays, dlDays % 3 ? 3 : 20, 10 + (id.charCodeAt(2) % 40)),
+      file_path: libPath(genre, artist, date, title, id), size_mb: sizeOf(duration), missing: false, has_cue: id.charCodeAt(3) % 3 !== 0,
     }, extra);
   };
   let LIBRARY = [
@@ -419,6 +420,8 @@
     { id: 32, kind: 'headless', started: isoAt(4, 3, 0), finished: isoAt(4, 3, 3), found: 0, downloaded: 0, errors: 0, note: '' },
     { id: 31, kind: 'manual', started: isoAt(5, 19, 5), finished: isoAt(5, 19, 58), found: 0, downloaded: 4, errors: 1, note: '1 Download fehlgeschlagen' },
   ];
+  const withDuration = (r) => Object.assign(r, { duration: r.finished ? Math.round((new Date(r.finished) - new Date(r.started)) / 1000) : null });
+  RUNS.forEach(withDuration);
   let runSeq = RUNS[0].id;
   const openRun = () => RUNS.find((r) => r.kind === 'manual' && !r.finished);
   /** Lauf der Warteschlange beenden -> Event «run» (wie worker.py am Laufende). */
@@ -427,7 +430,7 @@
     if (!r) return;
     r.finished = new Date().toISOString();
     if (note) r.note = note;
-    emit('run', clone(r));
+    emit('run', clone(withDuration(r)));
   };
 
   /* ---------- Laufzeit-Zustand ---------- */
@@ -528,7 +531,7 @@
       if (limitHit()) return; // Rest bleibt in der Warteschlange
       if (state.sleepLeft > 0) { q.phase = 'sleep'; q.eta = state.sleepLeft; q.sleep_total = state.sleepTotal; emit('queue', {}); return; }
       q.phase = 'download'; q.state = 'active';
-      if (!openRun()) RUNS.unshift({ id: ++runSeq, kind: 'manual', started: new Date().toISOString(), finished: null, found: 0, downloaded: 0, errors: 0, note: '' });
+      if (!openRun()) RUNS.unshift({ id: ++runSeq, kind: 'manual', started: new Date().toISOString(), finished: null, found: 0, downloaded: 0, errors: 0, note: '', duration: null });
       setStatus(v, 'downloading');
       pushLog('info', `Starte Download: ${v.title}`);
       emit('queue', {});
@@ -551,8 +554,9 @@
       state.counters.downloads_run++; state.counters.downloads_day++;
       const artist = v.channel_name;
       LIBRARY.unshift({
-        id: v.id, title: v.title, artist, genre: v.genre, duration: v.duration, upload_date: v.upload_date, downloaded_at: new Date().toISOString(),
-        file_path: libPath(v.genre, artist, v.upload_date, v.title, v.id), size_mb: sizeOf(v.duration), missing: false, thumbnail: null,
+        id: v.id, title: v.title, artist, channel_id: v.channel_id, genre: v.genre, duration: v.duration, upload_date: v.upload_date, year: +v.upload_date.slice(0, 4),
+        downloaded_at: new Date().toISOString(),
+        file_path: libPath(v.genre, artist, v.upload_date, v.title, v.id), size_mb: sizeOf(v.duration), missing: false, has_cue: true,
       });
       if (openRun()) openRun().downloaded++;
       setStatus(v, 'done');
@@ -835,7 +839,7 @@
         state.checking = false;
         if (!ids) state.appNext = new Date(Date.now() + settings.schedule.watchlist_interval_hours * 3600000).toISOString();
         const run = { id: ++runSeq, kind: 'watchlist', started: new Date(Date.now() - list.length * 900).toISOString(), finished: new Date().toISOString(), found, downloaded: 0, errors, note: errors ? `${errors} Quelle(n) mit Fehler` : '' };
-        RUNS.unshift(run);
+        RUNS.unshift(withDuration(run));
         emit('run', clone(run));
         pushLog(errors ? 'warn' : 'ok', `Watchlist-Prüfung beendet · ${list.length} Quelle(n) · ${found} neue Treffer${errors ? ` · ${errors} Fehler` : ''}`);
         emit('watchlist_done', { checked: list.length, found });
@@ -921,18 +925,20 @@
           pushLog('info', `Verschoben (Ablage-Muster): ${l.file_path}`);
         }
         pushLog('ok', `Neu getaggt: ${l.title}`);
-        return { ok: true, file_path: l.file_path, moved };
+        return { ok: true, path: l.file_path, moved, genre: l.genre, cue: !!l.has_cue, sidecar: true };
       });
     },
-    delete_library_item(id) {
+    delete_library_item(id, deleteFile) {
       return later(160, () => {
         const l = LIBRARY.find((x) => x.id === id);
         if (!l) return { ok: false, error: 'Eintrag nicht gefunden' };
+        const file = deleteFile !== false && !l.missing;
         LIBRARY = LIBRARY.filter((x) => x.id !== id);
-        pushLog('warn', l.missing ? `Eintrag entfernt (Datei fehlte): ${l.title}` : `Gelöscht: ${l.file_path}`);
+        pushLog('warn', file ? `Gelöscht: ${l.file_path}` : `Eintrag entfernt (Datei bleibt bzw. fehlte): ${l.title}`);
         const v = byId(id);
         if (v) setStatus(v, 'ignored'); // wird nicht erneut geladen
-        return { ok: true };
+        const name = l.file_path.split('\\').pop();
+        return { ok: true, deleted: file ? [name].concat(l.has_cue ? [name.replace(/\.mp3$/, '.cue')] : []) : [] };
       });
     },
 
@@ -965,7 +971,7 @@
       run(fields) {
         const now = Date.now();
         const run = Object.assign({ id: ++runSeq, kind: 'headless', started: new Date(now - 4 * 60000).toISOString(), finished: new Date(now).toISOString(), found: 0, downloaded: 0, errors: 0, note: '' }, fields);
-        RUNS.unshift(run);
+        RUNS.unshift(withDuration(run));
         emit('run', clone(run));
         return run;
       },

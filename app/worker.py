@@ -324,6 +324,11 @@ class Worker:
         if thread is not None and thread.is_alive() and not self.in_worker():
             thread.join(timeout)
 
+    def alive(self) -> bool:
+        """True while the worker thread runs (after `stop()`: a job did not end in time)."""
+        thread = self._thread
+        return thread is not None and thread.is_alive()
+
 
 # --------------------------------------------------------------------------- download runs
 
@@ -1296,7 +1301,14 @@ class WatchlistScheduler:
     `state.watchlist_last_run`, so a restart or a headless run just before does not cause an
     immediate second check. Without a previous check the first one starts `start_delay` seconds
     after the app start. Never during a backoff (then at the end of the backoff at the earliest).
+
+    Review Phase 4: a full check of another process (`state.watchlist_running_since`, set at the
+    start of every full check) or a busy watchlist lock (`defer()`) postpones the check by
+    `grace` seconds (re-evaluated then, no toast). A full check without any successful source
+    is retried at `state.watchlist_retry_at` (1 h later) instead of after the full interval.
     """
+
+    GRACE_S = 600.0
 
     def __init__(
         self,
@@ -1307,8 +1319,11 @@ class WatchlistScheduler:
         *,
         tick: float = 30.0,
         start_delay: float = 60.0,
+        grace: float = GRACE_S,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
+        self._grace = grace
+        self._deferred: datetime | None = None
         self._db = db
         self._throttle = throttle
         self._settings = settings_provider
@@ -1326,12 +1341,29 @@ class WatchlistScheduler:
         if not sched.in_app_check or not self._db.list_sources(enabled_only=True):
             return None
         last = watchlist.last_run(self._db)
-        if last is None:
+        retry = watchlist.retry_at(self._db)
+        if retry is not None and (last is None or retry > last):
+            due = retry if last is None else min(retry, last + self._interval(sched))
+        elif last is None:
             due = self._started + timedelta(seconds=self._start_delay)
         else:
-            due = last + timedelta(hours=sched.watchlist_interval_hours)
+            due = last + self._interval(sched)
+        running = watchlist.running_since(self._db, self._clock())
+        if running is not None:  # another process checks right now: look again later
+            due = max(due, running + timedelta(seconds=self._grace))
+        if self._deferred is not None:
+            due = max(due, self._deferred)
         until = self._throttle.backoff_until()
         return max(due, until) if until else due
+
+    @staticmethod
+    def _interval(sched: Any) -> timedelta:
+        return timedelta(hours=sched.watchlist_interval_hours)
+
+    def defer(self) -> datetime:
+        """The watchlist lock was busy (headless run): try again in `grace` seconds."""
+        self._deferred = self._clock() + timedelta(seconds=self._grace)
+        return self._deferred
 
     def due(self) -> bool:
         nxt = self.next_check()

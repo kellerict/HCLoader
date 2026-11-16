@@ -204,7 +204,7 @@ class Throttle:
 
     def reset_backoff(self) -> None:
         """After a successful run: clear backoff and reset the escalation level."""
-        with self._lock:
+        with self._xlock():  # n1: never between another process's check and trigger
             self.db.delete_state(K_BACKOFF_UNTIL)
             self.db.delete_state(K_BACKOFF_REASON)
             self.db.set_state(K_BACKOFF_LEVEL, 0)
@@ -217,7 +217,7 @@ class Throttle:
         """
         if not success:
             return
-        with self._lock:
+        with self._xlock():  # n1
             # Never lift a backoff that is still active (e.g. a 429 warning seen during this
             # run while the download itself succeeded) - only reset the escalation level.
             if self.backoff_until() is not None:
@@ -227,7 +227,7 @@ class Throttle:
 
     def clear_backoff_manual(self) -> None:
         """User override: lift the block but keep the level, so a repeat doubles again."""
-        with self._lock:
+        with self._xlock():  # n1
             self.db.delete_state(K_BACKOFF_UNTIL)
             self.db.delete_state(K_BACKOFF_REASON)
         log.warning("Backoff manuell aufgehoben")
@@ -351,6 +351,14 @@ class Throttle:
                 stamp = self._now().isoformat()
                 self.db.set_state(K_LAST_REQUEST, stamp)
                 self._local.slot = stamp
+
+    def mark_request(self) -> None:
+        """Review Phase 4 m4: a metadata call (possibly several pages) just ended. The request
+        spacing of the next request counts from now, not from the start of that call."""
+        with self._xlock():
+            stamp = self._now().isoformat()
+            self.db.set_state(K_LAST_REQUEST, stamp)
+            self._local.slot = stamp
 
     @contextmanager
     def metadata_lock(

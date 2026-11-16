@@ -173,6 +173,24 @@
       for (const c of String(str)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
       return h;
     },
+    /** Text in die Zwischenablage (Clipboard-API, sonst unsichtbares Textfeld + execCommand). -> Promise<bool> */
+    async copyText(text) {
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(text); return true; }
+      } catch (e) { /* nicht erlaubt (z.B. file:// ohne Fokus) -> Ausweichweg */ }
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
+      document.body.appendChild(ta);
+      const prev = document.activeElement;
+      ta.select();
+      let ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      ta.remove();
+      if (prev && prev.focus) prev.focus();
+      return ok;
+    },
     debounce(fn, ms) {
       let h;
       return (...a) => { clearTimeout(h); h = setTimeout(() => fn(...a), ms); };
@@ -213,6 +231,12 @@
     bolt: svg('<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>'),
     db: svg('<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>'),
     clock: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+    grid: svg('<path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/>'),
+    list: svg('<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/>'),
+    table: svg('<path d="M3 5h18v14H3z"/><path d="M3 10h18M3 15h18M9 5v14"/>'),
+    timeline: svg('<path d="M6 3v18"/><circle cx="6" cy="7" r="2"/><circle cx="6" cy="16" r="2"/><path d="M12 7h8M12 16h6"/>'),
+    copy: svg('<path d="M9 9h11v11H9z"/><path d="M5 15H4V4h11v1"/>'),
+    file_x: svg('<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9.5 12.5l5 5M14.5 12.5l-5 5"/>'),
   };
 
   /* ---------- Effekte ---------- */
@@ -261,6 +285,16 @@
         const dy = a.top - b.top;
         if (dy) el.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 240, easing: 'cubic-bezier(.2,.8,.2,1)' });
       });
+    },
+
+    /** Ein Element kurz aufleuchten lassen (z.B. neue oder geänderte Zeile). cls: CSS-Klasse mit der Animation. */
+    flash(el, cls) { fx.pop(el, cls || 'flash'); },
+
+    /** Element ausblenden (Klasse «leave»), danach cb. Ohne Effekte sofort. */
+    leave(el, cb, ms) {
+      if (!el || fx.reduced()) { if (cb) cb(); return; }
+      el.classList.add('leave');
+      setTimeout(() => { if (cb) cb(); }, ms || 190);
     },
 
     /** Stagger-Klasse nur für das erste Einblenden setzen. */

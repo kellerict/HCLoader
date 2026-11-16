@@ -38,6 +38,7 @@ def test_acquire_is_idempotent_for_holder():
 
 class FakeKernel:
     ERR = 0
+    last_err = 0  # what ctypes.get_last_error() would return (n2)
     existing: set = set()
 
     def __init__(self):
@@ -47,6 +48,7 @@ class FakeKernel:
     def CreateMutexW(self, attrs, owner, name):  # noqa: N802
         self.last = name
         self.ERR = locks.ERROR_ALREADY_EXISTS if name in self.existing else 0
+        FakeKernel.last_err = self.ERR
         self.existing.add(name)
         return 42
 
@@ -58,6 +60,31 @@ class FakeKernel:
 
     def ReleaseMutex(self, h):  # noqa: N802
         self.released.append(h)
+
+
+@pytest.fixture(autouse=True)
+def _fake_last_error(monkeypatch):
+    monkeypatch.setattr(locks, "_last_error", lambda: FakeKernel.last_err)
+
+
+def test_kernel32_sets_handle_restype(monkeypatch):
+    """n2: CreateMutexW returns a pointer-sized HANDLE (no truncation to int)."""
+    import ctypes
+    from ctypes import wintypes
+
+    class Fn:
+        argtypes = restype = None
+
+    class Dll:
+        def __init__(self, name, use_last_error=False):
+            self.use_last_error = use_last_error
+            self.CreateMutexW, self.ReleaseMutex, self.CloseHandle = Fn(), Fn(), Fn()
+
+    monkeypatch.setattr(ctypes, "WinDLL", Dll, raising=False)
+    k = locks._kernel32()
+    assert k.use_last_error is True
+    assert k.CreateMutexW.restype is wintypes.HANDLE
+    assert k.CloseHandle.argtypes == (wintypes.HANDLE,)
 
 
 def test_windows_named_mutex(monkeypatch):

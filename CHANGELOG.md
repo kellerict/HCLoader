@@ -6,6 +6,14 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
 ## [Unreleased]
 
 ### Added
+- Phase 5 Backend: Bibliothek (`core/library.py`: `get_library(filters)` mit Suche/Genre/Kanal/Jahr/
+  `missing`, `open_folder` mit Explorer-Markierung, `retag` ohne Netzwerk inkl. Verschieben nach
+  aktuellem Pfad-Template, `delete_library_item` mit Pfadprüfung und Aufräumen), Metadaten-Sidecar
+  (`<app_home>/meta/<id>.json`), Protokoll (`get_log(filters)`, Log-Historie aus der Logdatei, `Run.duration`,
+  Event `run`), gültige CUE-Dateien (Raster, erster Track 0, max. 99 Tracks, Kapitel hinter dem Ende
+  verworfen), DB-Backup-Aufbewahrung (letzte 10), `run_update(executable=…)` auf fremdem venv,
+  Abnahmetests (CUE-Validator, echtes venv-Update mit Marker `network`). `next_run` der Aufgabe aus
+  `schtasks /Query /XML` (Review Phase 2 n7).
 - Phase 4 Backend: Watchlist (`core/watchlist.py`: inkrementelle Prüfung bis zum ersten bekannten
   Video, Filter, Eingang bzw. Auto-Download, Backoff bricht den Lauf ab), API `save_source`,
   `check_sources` (Events `source`, `watchlist_done`), `get_inbox`, In-App-Intervall

@@ -31,7 +31,7 @@ from .db import Database, now_iso
 from .discover import format_until
 from .genre import detect_genre
 from .redact import redact
-from .throttle import BackoffActive, LimitReached
+from .throttle import BackoffActive, LimitReached, WaitCancelled
 
 log = logging.getLogger(__name__)
 
@@ -375,6 +375,8 @@ def check_all(
     result = WatchlistResult()
     if run_kind:
         result.run_id = db.start_run(run_kind)
+    if ids is None:  # m2: other processes see that a full check is running
+        db.set_state(K_RUNNING_SINCE, now_iso())
     log.info("Watchlist-Prüfung gestartet · %d Quelle(n)", len(sources))
 
     def emit(payload: dict[str, Any]) -> None:
@@ -394,8 +396,13 @@ def check_all(
             emit({"id": sid, "checking": True})
             try:
                 check = check_source(
-                    source, client=client, db=db, settings=settings, enqueue=enqueue
+                    source, client=client, db=db, settings=settings, enqueue=enqueue, cancel=cancel
                 )
+            except WaitCancelled:  # n5: app is closing (cancel reached the throttle wait)
+                result.cancelled = True
+                result.note = "Abgebrochen"
+                emit({"id": sid, "checking": False})
+                break
             except Exception as exc:
                 check = SourceCheck(sid)
                 if _is_rate_limited(exc):
@@ -444,8 +451,8 @@ def check_all(
             )
             result.queued_ids.extend(check.queued_ids)
     finally:
-        if ids is None and not result.backoff and not result.cancelled:
-            db.set_state(K_LAST_RUN, now_iso())
+        if ids is None:
+            _finish_full_run(db, result)
         if result.errors and not result.note and not result.backoff:
             result.note = f"{result.errors} Quelle(n) mit Fehler"
         if result.run_id is not None:
@@ -462,9 +469,42 @@ def check_all(
     return result
 
 
-def last_run(db: Database) -> datetime | None:
-    """When the last complete watchlist check of all sources finished (UTC), or None."""
-    raw = db.get_state(K_LAST_RUN)
+def _finish_full_run(db: Database, result: WatchlistResult) -> None:
+    """m2/m3: clear the running marker; `last_run` only after at least one successful source,
+    otherwise (all failed, no backoff) retry in an hour. Backoff/cancel: neither."""
+    try:
+        db.delete_state(K_RUNNING_SINCE)
+        if result.backoff or result.cancelled:
+            return
+        if result.checked > 0:
+            db.set_state(K_LAST_RUN, now_iso())
+            db.delete_state(K_RETRY_AT)
+        elif result.errors:
+            retry = datetime.now(UTC) + RETRY_AFTER
+            db.set_state(K_RETRY_AT, retry.isoformat(timespec="seconds"))
+            log.warning(
+                "Keine Quelle erfolgreich geprüft – neuer Versuch um %s", format_until(retry)
+            )
+    except Exception:
+        log.debug("Watchlist-Status nicht gespeichert", exc_info=True)
+
+
+def close_interrupted(db: Database, note: str) -> None:
+    """n5: the app closes while a check hangs in a request - finish its open `watchlist` run
+    entry and drop the running marker (the check thread may not reach its `finally`)."""
+    try:
+        db.execute(
+            "UPDATE runs SET finished=?, note=COALESCE(note, ?) "
+            "WHERE kind='watchlist' AND finished IS NULL",
+            (now_iso(), note),
+        )
+        db.delete_state(K_RUNNING_SINCE)
+    except Exception:
+        log.debug("Watchlist-Lauf nicht abgeschlossen", exc_info=True)
+
+
+def _state_time(db: Database, key: str) -> datetime | None:
+    raw = db.get_state(key)
     if not raw:
         return None
     try:
@@ -472,3 +512,23 @@ def last_run(db: Database) -> datetime | None:
     except ValueError:
         return None
     return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
+
+
+def retry_at(db: Database) -> datetime | None:
+    """m3: when a full check that failed for every source is retried (UTC), or None."""
+    return _state_time(db, K_RETRY_AT)
+
+
+def running_since(db: Database, now: datetime | None = None) -> datetime | None:
+    """m2: start of a full check that is running right now (any process), None if none or if
+    the marker is stale (older than 6 h: crashed process)."""
+    since = _state_time(db, K_RUNNING_SINCE)
+    now = now or datetime.now(UTC)
+    if since is None or now - since > RUNNING_STALE:
+        return None
+    return since
+
+
+def last_run(db: Database) -> datetime | None:
+    """When the last complete watchlist check of all sources finished (UTC), or None."""
+    return _state_time(db, K_LAST_RUN)

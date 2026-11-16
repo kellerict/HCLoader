@@ -33,5 +33,5 @@ testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-q"
 markers = [
-    "network: test may open real (non-loopback) network connections (opt-in; blocked otherwise)",
+    "network: needs real network access (e.g. PyPI, never YouTube); all other tests are blocked from non-loopback connections (tests/conftest.py)",
 ]

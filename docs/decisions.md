@@ -361,3 +361,49 @@ Kurze Notizen zu Architekturentscheiden (Datum, Entscheid, Grund).
   in `build_ydl_opts` gesetzt; `extractor/common.py::_request_webpage`, gilt auch für Continuations;
   die erste Anfrage einer Instanz ist ausgenommen). Der Throttle zählt das weiterhin als einen
   `list`-Aufruf. Empfehlung: Option nur für lange Playlists einschalten.
+
+## 2026-11-16 – Phase 5: Bibliothek, Sidecar, Protokoll, Wartung
+
+- **Sidecar statt DB-Spalte:** `<app_home>/meta/<id>.json` (`core/sidecar.py`), geschrieben nach jedem
+  erfolgreichen Download (Titel, Kanal, Upload-Datum, Dauer, **aufgelöste** Kapitel, Beschreibung auf 2000
+  Zeichen gekürzt, Thumbnail-URL, Genre, Quelle, URL). Keine Cookies/Header/Tokens (Whitelist beim
+  Bauen). Grund: gross, nie abgefragt, darf verloren gehen (Rückfall: DB-Zeile + ID3-CHAP der Datei),
+  keine Schema-Migration neben den Phase-4-Fixes. Die Kapitel werden immer aufgelöst (auch bei
+  ausgeschaltetem CUE/CHAP), damit ein späteres Neu-Taggen mit eingeschalteter Option funktioniert.
+- **Löschen = `ignored` + Archiv behalten:** `delete_library_item` setzt den DB-Eintrag auf `ignored`
+  (`file_path` leer) und lässt `archive.txt` unberührt. Damit lädt weder Suche noch Watchlist das Video
+  je wieder; ein Löschen der Zeile würde es beim nächsten Fund erneut einreihen. Folge: erneutes Laden
+  geht nur, wenn die Archivzeile von Hand entfernt wird (bewusst kein UI-Weg).
+- **Pfadsicherheit:** `library.within(path, root)` (aufgelöst, Symlinks/`..`, Ordner selbst ausgeschlossen).
+  Löschen verweigert Dateien ausserhalb des Zielordners vollständig; Neu-Taggen taggt sie, verschiebt
+  sie aber nie. `cover.jpg` wird nur gelöscht, wenn nichts anderes mehr im Ordner liegt (mehrere Mixes
+  desselben Künstlers/Jahres teilen den Ordner); leere Ordner werden bis ausschliesslich zum Zielordner
+  entfernt (`.tmp` wird nicht angefasst, weil nie ein Elternordner einer Bibliotheksdatei).
+- **Neu-Taggen:** Genre nach derselben Rangfolge wie der Download (manuell > Quelle > Keyword >
+  gespeichertes Genre); die Datei geht in den vom **aktuellen** Template ergebenen Pfad; Reihenfolge:
+  erst Tags in die Datei, dann verschieben, dann DB. Schlägt das Taggen fehl, ändert sich nichts; ein
+  Ausfall beim Verschieben lässt die (neu getaggte) Datei am alten Ort und die DB unverändert. Existiert
+  der Zielpfad, Abbruch ohne Änderung. Läuft im Wartungs-Worker (`retag:<id>` als Job-Schlüssel).
+- **CUE-Gültigkeit** (`tagging.cue_chapters`, Abnahmetest `tests/test_cue_acceptance.py`): sortiert,
+  streng steigende Zeiten auf dem 1/75-s-Raster (Duplikate fallen weg), erster Track immer `00:00:00`
+  (ein erster Zeitstempel > 0 wird auf 0 gezogen = Intro gehört zu Track 01), höchstens 99 Tracks
+  (Format), Minuten dürfen > 99 sein (`101:40:00`). `chapters_from_info` verwirft zusätzlich yt-dlp-
+  Kapitel ab dem Medienende und doppelte/ungeordnete Starts. Anführungszeichen werden zu `'`.
+- **Log-Historie:** `setup_logging(history=500)` (nur GUI-Start) lädt die letzten Zeilen aus
+  `hcloader.log` (letzte 512 KB) in den Live-Backlog, einmal pro Prozess. Keine Mehrfach-Zeilen
+  (Tracebacks) und kein `ok`-Level aus der Datei.
+- **Event `run`:** `Database.add_run_listener` ruft nach `finish_run` die Listener auf; `Api` sendet daraus
+  `run` (Form wie `Run`). So bleiben Worker/Watchlist/Headless unverändert.
+- **Backups:** `maintenance.BACKUP_KEEP = 10` als Konstante (kein Setting, keine Schema-Änderung);
+  `backup_database(keep=…)`, `0` = unbegrenzt. Falls es ein Setting werden soll: `maintenance.backup_keep`
+  in `config.py` ergänzen.
+- **Update-Abnahmetest:** `run_update(executable=…)` wirkt jetzt vollständig auf den angegebenen
+  Interpreter (Versionen und venv-Prüfung über `probe_python`, ein `python -I -c`-Aufruf in dessen
+  site-packages). Test `tests/test_update_real_venv.py` (Marker `network`, überspringt sich ohne PyPI):
+  echtes `python -m venv`, `yt-dlp==2025.1.15`, `run_update`, Version danach höher, Plugin installiert.
+- **n7 erledigt:** `next_run` der Aufgabe kommt aus `schtasks /Query /XML` (Trigger-Uhrzeit, ISO,
+  Locale-unabhängig), die CSV-Spalte ist nur Rückfall. Annahme: täglicher Trigger (so legt die App ihn
+  an); eine deaktivierte Aufgabe zeigt weiterhin die nächste Trigger-Zeit. Ungetestet auf echtem Windows
+  (Ausgabe von `/XML` wird nur per Regex nach `<StartBoundary>` gelesen).
+- **Explorer:** `explorer /select,"<pfad>"` als ein String (eine Liste würde als Ganzes gequotet);
+  der Exit-Code 1 von Explorer wird ignoriert.

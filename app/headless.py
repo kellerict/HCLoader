@@ -1,11 +1,13 @@
 """Headless watchlist run for the Windows task scheduler: `python -m app.main --headless
 --run-watchlist` (SPEC §2, §3.2, Phase 4). No GUI import (no pywebview).
 
-Sequence: config/DB/logging, run lock + watchlist lock (exit 4 if another run holds one), start the
-PO-token server (HTTP mode), check all enabled sources incrementally, then load the queued videos
-(auto-download entries and anything else already queued) sequentially through the normal
-`DownloadQueue` - `throttle.max_downloads_per_run` applies, the rest stays queued. One `runs`
-entry of kind `headless` (found, downloaded, errors, note). Exit codes: `app/exitcodes.py`.
+Sequence: config/DB/logging, run lock + watchlist lock (exit 4 if another run holds one), start
+the PO-token server (HTTP mode; if the GUI is open and its server answers on the configured port,
+that one is used without owning it, Review Phase 4 m1), check all enabled sources incrementally,
+then load the queued videos (auto-download entries and anything else already queued)
+sequentially through the normal `DownloadQueue` - `throttle.max_downloads_per_run` applies, the
+rest stays queued. One `runs` entry of kind `headless` (found, downloaded, errors, note).
+Exit codes: `app/exitcodes.py`.
 """
 
 from __future__ import annotations
@@ -29,6 +31,62 @@ log = logging.getLogger("hcloader.headless")
 ClientFactory = Callable[[], Any]
 
 
+def gui_running() -> bool:
+    """True if a HCLoader GUI holds the single-instance lock (probe: acquire + release)."""
+    lock = locks.acquire_single_instance()
+    if lock is None:
+        return True
+    lock.release()
+    return False
+
+
+def pot_answers(port: int) -> bool:
+    """GET /ping on the configured local PO-token port (127.0.0.1 only)."""
+    from .core.binaries import PotServer
+
+    return PotServer(port).ping()
+
+
+class SharedPotServer:
+    """Review Phase 4 m1: the PO-token server of the running GUI, used but not owned (never
+    started or stopped here). `running()` = it still answers /ping."""
+
+    def __init__(self, port: int, ping: Callable[[int], bool] = pot_answers) -> None:
+        self.port = port
+        self._ping = ping
+
+    def running(self) -> bool:
+        return bool(self._ping(self.port))
+
+    def start(self) -> bool:
+        return self.running()
+
+    def stop(self) -> None:  # owned by the GUI
+        pass
+
+
+class SharedPotWatchdog:
+    """Watchdog stand-in for `SharedPotServer` (same interface as `PotWatchdog` as far as
+    headless, `local_preflight` and `WatchdogPotServer` use it)."""
+
+    gave_up = False
+
+    def __init__(self, server: SharedPotServer) -> None:
+        self.server = server
+
+    def running(self) -> bool:
+        return self.server.running()
+
+    def wait_ready(self, timeout: float, stop: Any = None) -> bool:
+        return self.running()
+
+    def check(self) -> None:
+        pass
+
+    def stop(self) -> None:
+        pass
+
+
 class _HeldLock:
     """The run lock is held by the headless run itself; the queue's `run_session` gets this."""
 
@@ -46,12 +104,14 @@ def run_watchlist(
     settings: Settings | None = None,
     db: Database | None = None,
     client_factory: ClientFactory | None = None,
-    watchdog: PotWatchdog | None = None,
+    watchdog: PotWatchdog | SharedPotWatchdog | None = None,
     run_lock: Callable[[], Any] = locks.acquire_run_lock,
     watchlist_lock: Callable[[], Any] = locks.acquire_watchlist_lock,
     configure_logging: bool = True,
     throttle: Throttle | None = None,
     pot_wait: float = 20.0,
+    gui_probe: Callable[[], bool] = gui_running,
+    pot_ping: Callable[[int], bool] = pot_answers,
 ) -> int:
     """Run one headless watchlist cycle; returns the process exit code."""
     if settings is None:
@@ -70,8 +130,14 @@ def run_watchlist(
     wl = watchlist_lock()
     if wl is None:
         run.release()
-        _say("Die Watchlist wird gerade von einem anderen Lauf geprüft.")
+        # m2: usually the in-app check of the open GUI - it does the work, nothing is lost
+        _say(
+            "Die Watchlist wird gerade von einem anderen Lauf geprüft (z.B. In-App-Prüfung der "
+            "GUI) – dieser Lauf wird übersprungen."
+        )
         return EXIT_BUSY
+    if watchdog is None and settings.network.po_token_mode == "http":
+        watchdog = _shared_pot(settings.network.po_token_port, gui_probe, pot_ping)
     own_db = db is None
     db = db or Database(config.db_path())
     try:
@@ -88,6 +154,20 @@ def run_watchlist(
             db.close()
         wl.release()
         run.release()
+
+
+def _shared_pot(
+    port: int, gui_probe: Callable[[], bool], pot_ping: Callable[[int], bool]
+) -> SharedPotWatchdog | None:
+    """m1: GUI open and its PO-token server answers on our port -> use it (not owned)."""
+    try:
+        if not gui_probe() or not pot_ping(port):
+            return None
+    except Exception:
+        log.debug("PO-Token-Server der GUI nicht prüfbar", exc_info=True)
+        return None
+    log.info("PO-Token-Server der laufenden GUI wird mitbenutzt (Port %s)", port)
+    return SharedPotWatchdog(SharedPotServer(port, pot_ping))
 
 
 def _default_factory(
@@ -110,7 +190,7 @@ def _run(
     settings: Settings,
     db: Database,
     client_factory: ClientFactory | None,
-    watchdog: PotWatchdog | None,
+    watchdog: PotWatchdog | SharedPotWatchdog | None,
     throttle: Throttle,
     pot_wait: float,
 ) -> int:
@@ -133,7 +213,9 @@ def _run(
             log.warning(notes[-1])
             return EXIT_BLOCKED
 
-        watchdog.check()  # HTTP mode: start the PO-token server (stopped again in `finally`)
+        # HTTP mode: start the PO-token server (stopped again in `finally`); a shared server of
+        # the GUI (m1) is neither started nor stopped
+        watchdog.check()
         pre = local_preflight(settings, watchdog, wait=pot_wait)
         if pre is not None and pre.code == "pot":  # no request at all without the token server
             errors += 1

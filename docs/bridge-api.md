@@ -91,7 +91,12 @@ Aufgaben-Felder unverändert (sie spiegeln den Zustand der Windows-Aufgabe).
   solange eine Suche läuft.
 - Update-*Prüfung* beim Start (`maintenance.check_updates_on_start`, max. 1× pro Kalendertag):
   PyPI-JSON (`https://pypi.org/pypi/<paket>/json`), kein YouTube; bei neuer Version `toast` + Log.
-- `backup_db`: sqlite3-Backup-API → `<app_home>/backups/hcloader-<JJJJMMTT-HHMMSS>.db`.
+- `backup_db`: sqlite3-Backup-API → `<app_home>/backups/hcloader-<JJJJMMTT-HHMMSS>.db`. Danach bleiben nur
+  die neuesten `maintenance.BACKUP_KEEP` (10) Sicherungen, ältere `hcloader-*.db` werden gelöscht (die
+  neue nie).
+- `get_task_status().next_run`: seit Phase 5 aus dem Trigger der Aufgabe (`schtasks /Query /XML`,
+  `StartBoundary`-Uhrzeit → nächstes Auftreten, ISO mit Offset) statt aus dem lokalisierten Datum der
+  CSV-Ausgabe; die CSV ist nur noch der Rückfall.
 - `test_po_token`: Script-Modus führt `deno run … <server>/src/generate_once.ts --version` aus
   (gleicher Aufruf wie die Verfügbarkeitsprüfung des Plugins, Deno ≥ 2.4.3); HTTP-Modus
   `GET http://127.0.0.1:<port>/ping`. **Kein YouTube-Request.** Das Ergebnis bestimmt
@@ -217,11 +222,51 @@ Aufgaben-Felder unverändert (sie spiegeln den Zustand der Windows-Aufgabe).
 
 | Methode | Parameter | Rückgabe | Phase |
 |---|---|---|---|
-| `get_library()` | – | `[LibraryItem]` (Status `done`, aus DB) | 2 (lesend) / 5 |
-| `open_folder(id)` | | `{ok}` – Ordner der Datei | 2 |
-| `retag(id)` | | `{ok}` | 5 |
-| `delete_library_item(id)` | | `{ok}` | 5 |
-| `get_log()` | – | `{lines:[LogLine], runs:[Run]}` – Backlog (500 Zeilen) + letzte 50 Läufe | 2 |
+| `get_library(filters?)` | `{search?, genre?, channel?, year?, missing?}` | `[LibraryItem]` (Status `done`, neueste Downloads zuerst, aus DB) | 5 |
+| `open_folder(id)` | | `{ok}` \| `{ok:false, error}` – Windows: Explorer mit markierter Datei, sonst Ordner | 5 |
+| `retag(id)` | | `{ok:true, path, moved, genre, cue, sidecar}` \| `{ok:false, error}` | 5 |
+| `delete_library_item(id, delete_file=true)` | | `{ok:true, deleted:[Dateinamen]}` \| `{ok:false, error}` | 5 |
+| `get_log(filters?)` | `{level?, levels?, search?, limit?, kind?, runs_limit?}` | `{lines:[LogLine], runs:[Run]}` | 5 |
+
+- `get_library` Filter (alle optional, UND-verknüpft): `search` (Titel/Kanal/Genre, gross/klein- und
+  umlautunabhängig), `genre` (Name), `channel` (Kanal-ID **oder** Kanalname), `year` (Zahl oder `"2026"`,
+  aus `upload_date`), `missing` (`true` = nur Einträge mit fehlender Datei, `false` = nur vorhandene).
+  Kein Filter / kein Objekt = alles. Die UI leitet die Auswahllisten (Genres, Kanäle, Jahre) aus der
+  Gesamtliste ab.
+- `LibraryItem` = `{id, title, artist, channel_id, genre, duration, upload_date, year, downloaded_at,
+  file_path, size_mb, missing, has_cue}`. `missing: true`: die Datei existiert nicht mehr (`size_mb` 0).
+  `duration` aus der DB, sonst aus der Datei gelesen (`null` wenn unlesbar). `artist` = Kanalname
+  (Anzeige); der ID3-Artist kann bei `storage.artist_from_title` abweichen.
+- `open_folder`: Windows `explorer /select,"<Datei>"` (Datei markiert); existiert die Datei nicht, bzw.
+  auf anderen Systemen, wird der Ordner geöffnet. Fehlt der Ordner: `{ok:false, error:"Ordner fehlt: …"}`.
+- `retag(id)` (Wartungs-Worker, kein Netzwerk): schreibt Tags, Cover (aus der vorhandenen Datei
+  übernommen), CUE und ID3-CHAP aus dem Sidecar (`<app_home>/meta/<id>.json`) und den **aktuellen**
+  Einstellungen neu (Titelbereinigung, `artist_from_title`, Genre-Keywords, `write_cue`,
+  `write_id3_chapters`, `write_cover_jpg`). Genre: manuell > Quellen-Default > Keyword > bisher
+  gespeichertes Genre. Liegt die Datei im Zielordner und ergibt `storage.path_template` einen anderen
+  Pfad, wird sie verschoben (CUE geht mit, `file_path` in der DB wird angepasst, leere alte Ordner
+  verschwinden); `archive.txt` enthält nur IDs und bleibt gleich. Existiert der neue Pfad schon:
+  `{ok:false, error:"Zieldatei existiert bereits: …"}`, nichts wird verändert. Dateien ausserhalb des
+  Zielordners werden an Ort und Stelle getaggt, nie verschoben (`moved:false`). Ohne Sidecar (ältere
+  Downloads): Titel/Kanal/Datum aus der DB, Kapitel aus den ID3-CHAP-Frames der Datei (`sidecar:false`).
+  Fehlt die Datei: `{ok:false, error:"Datei fehlt: …"}`. Event `video {id, status:"done", genre}`.
+- `delete_library_item(id, delete_file=true)`: löscht Datei + `.cue` (nur innerhalb des Zielordners!;
+  liegt die Datei draussen, kommt `{ok:false, error:"Datei liegt ausserhalb des Zielordners (…) – nicht
+  gelöscht"}` und nichts ändert sich), `cover.jpg` nur wenn der Ordner sonst leer ist, danach leere Ordner
+  bis (ohne) Zielordner, entfernt den Sidecar und setzt den DB-Eintrag auf `ignored` (ohne `file_path`).
+  `archive.txt` bleibt unverändert, das Video wird also nie wieder automatisch geladen. Mit
+  `delete_file=false` bleibt die Datei liegen (nur der Eintrag verschwindet). Nicht löschbare Datei
+  (z.B. im Player geöffnet): `{ok:false, error:"Datei konnte nicht gelöscht werden (in Benutzung?) …"}`,
+  DB unverändert. Event `video {id, status:"ignored", genre:null}` + `status`. Die Bestätigung macht die UI.
+  Wieder laden: `set_video_status(id,"new")` reicht wegen des Archivs nicht; die Zeile in `archive.txt`
+  müsste entfernt werden (bewusst kein UI-Weg).
+- `get_log(filters?)`: `lines` = Live-Backlog (500 Zeilen). Beim App-Start (`app/main.py`:
+  `setup_logging(history=500)`) werden die letzten 500 Zeilen aus `logs/hcloader.log` vorgeladen, damit
+  nach einem Neustart die Historie da ist (Zeitstempel der Datei = lokale Zeit; Erfolgsmeldungen heissen
+  dort `info`, `ok` gibt es nur live; Traceback-Zeilen fehlen). Filter: `level` (Mindeststufe
+  `debug` < `info`/`ok` < `warn` < `error`), `levels` (genaue Liste, hat Vorrang), `search` (Teilstring,
+  ohne Gross/Klein), `limit` (die letzten N, max. 5000). `runs` = letzte `runs_limit` (Default 50, max.
+  500) Läufe, neueste zuerst; `kind` filtert sie.
 
 ## Datenformen
 
@@ -254,7 +299,9 @@ Status). Ergänzungen der Python-Seite:
   (das Früheste gewinnt). `null` = nichts geplant (auch ohne aktive Quelle).
 - `Status.queue_length`: Videos mit Status `queued`/`downloading`; `inbox_count`: Status `inbox`.
 - `Status.counters`: aus dem Throttle (`downloads_run`, `downloads_day`, `searches_hour`).
-- `Run.kind`: unbekannte Arten aus der DB werden als `manual` gemeldet.
+- `Run`: `{id, kind, started, finished, duration, found, downloaded, errors, note}`; `duration` in
+  Sekunden (`null` solange der Lauf läuft). `Run.kind`: unbekannte Arten aus der DB werden als `manual`
+  gemeldet.
 - `LogLine.level`: `DEBUG→debug`, `INFO→info`, `WARNING→warn`, `ERROR/CRITICAL→error`;
   `ok` für Erfolgsmeldungen (`log.info(..., extra={"ui_level": "ok"})`, Helfer `worker.log_ok`).
 
@@ -271,6 +318,7 @@ Status). Ergänzungen der Python-Seite:
 | `failed` | `{id, title, error}` | Download fehlgeschlagen (bei 429 zusätzlich Backoff → `status`) | 3 |
 | `queue` | `{}` | Warteschlange geändert (auch Sperre/Freigabe) → UI ruft `get_queue()` | 3 |
 | `source` | `{id, checking, last_checked?, new_count?, error?}` | `checking:true` vor, `checking:false` nach der Prüfung einer Quelle; `new_count` = Eingang dieser Quelle, `error` = deutscher Text | 4 |
+| `run` | `Run` (inkl. `duration`) | ein Lauf ist zu Ende (`DB.finish_run`: GUI-Watchlist-Prüfung, Download-Lauf der Warteschlange; Headless-Läufe sind ein anderer Prozess und senden nichts) | 5 |
 | `watchlist_done` | `{checked, found}` | Watchlist-Lauf beendet; `checked` = bearbeitete Quellen (auch fehlerhafte), `found` = neu gespeicherte Videos | 4 |
 
 ## Download-Queue (Phase 3)

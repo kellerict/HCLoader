@@ -1040,7 +1040,8 @@ def test_add_channel_source(env):
     res = a.add_channel_source("UCabcdefgh123", "Partyraiser")
     assert res["ok"] and res["source"]["type"] == "channel"
     assert res["source"]["url_or_query"] == "https://www.youtube.com/channel/UCabcdefgh123"
-    assert res["source"]["max_entries"] == 30 and res["source"]["name"] == "Partyraiser"
+    # n7: NULL = schedule.entries_per_source at check time
+    assert res["source"]["max_entries"] is None and res["source"]["name"] == "Partyraiser"
     again = a.add_channel_source("UCabcdefgh123", "x")
     assert again["ok"] is False and "bereits" in again["error"]
     assert a.add_channel_source("../evil", "x")["ok"] is False
