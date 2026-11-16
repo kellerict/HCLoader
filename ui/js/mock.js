@@ -298,24 +298,66 @@
   ];
 
   /* ---------- Bibliothek ---------- */
-  const L = (id, title, artist, genre, min, upDays, dlDays, size) => ({
-    id, title, artist, genre, duration: min * 60 + (id.charCodeAt(1) % 60), upload_date: isoDay(upDays), downloaded_at: isoAt(dlDays, 3, 10 + (id.charCodeAt(2) % 40)),
-    file_path: `${genre}\\${artist}\\${isoDay(upDays).slice(0, 4)}\\${isoDay(upDays)} - ${title} [${id}].mp3`, size_mb: size,
-  });
+  /* Absolute Pfade wie im Backend (Zielordner + Ordnerstruktur aus storage.path_template). */
+  const TARGET = 'D:\\Musik\\HCLoader';
+  const libPath = (genre, artist, date, title, id) => `${TARGET}\\${genre}\\${artist}\\${date.slice(0, 4)}\\${date} - ${title} [${id}].mp3`;
+  const sizeOf = (sec) => +((sec * 320) / 8 / 1024).toFixed(1); // 320 kbps CBR
+  const L = (id, title, ch, genre, min, upDays, dlDays, extra) => {
+    const duration = min * 60 + (id.charCodeAt(1) % 60), date = isoDay(upDays), artist = CH[ch][1];
+    return Object.assign({
+      id, title, artist, genre, duration, upload_date: date, downloaded_at: isoAt(dlDays, dlDays % 3 ? 3 : 20, 10 + (id.charCodeAt(2) % 40)),
+      file_path: libPath(genre, artist, date, title, id), size_mb: sizeOf(duration), missing: false, thumbnail: null,
+    }, extra);
+  };
   let LIBRARY = [
-    L('eEuph0ric26', 'Euphoric Hardstyle Yearmix 2026', 'Euphoria Sounds', 'Hardstyle', 95, 40, 2, 218.4),
-    L('gGabbClassM', 'Gabber Classics Marathon', 'Gabber Vault', 'Hardcore', 180, 31, 4, 412.6),
-    L('tTerrNight1', 'Terror Night Live Recording', 'Terror Transmission', 'Uptempo', 66, 20, 6, 151.9),
-    L('kRawNation4', 'Raw Nation Podcast #4', 'Kickdrum Collective', 'Hardstyle', 61, 26, 6, 140.2),
-    L('rIndoorCls2', 'Indoor Closing Set – Frenchcore Special', 'Rave Archive CH', 'Hardcore', 74, 44, 9, 170.3),
-    L('dOverdrive1', 'Overdrive – 1 Hour Uptempo Mix', 'Distortion Unit', 'Uptempo', 60, 52, 12, 138.0),
-    L('cIndVol016', 'Industrial Hardcore Mix Vol. 16', 'Concrete Noise Records', 'Hardcore', 63, 70, 14, 145.1),
-    L('zZrhPod0006', 'Hardfloor Zürich Podcast 006', 'Hardfloor Zürich', 'Hardstyle', 58, 33, 16, 133.7),
-    L('nNightShift', 'Night Shift FM – Hard Dance Session 12', 'Night Shift FM', 'Unsortiert', 90, 95, 21, 206.8),
-    L('gMillClass2', 'Millennium Hardcore Classics Vol. 2', 'Gabber Vault', 'Hardcore', 88, 410, 30, 202.2),
-    L('eReverse001', 'Reverse Bass Anthems Megamix', 'Euphoria Sounds', 'Hardstyle', 77, 380, 41, 177.0),
-    L('bBunkerSet2', 'Bunker Sessions #2 – Early Rave Set', 'Bunker 303', 'Hardcore', 122, 60, 48, 280.5),
+    L('eEuph0ric26', 'Euphoric Hardstyle Yearmix 2026', 'euph', 'Hardstyle', 95, 40, 2),
+    L('gGabbClassM', 'Gabber Classics Marathon – 3 Hours Oldschool', 'vault', 'Hardcore', 180, 31, 2),
+    L('tTerrNight1', 'Terror Night Live Recording', 'terror', 'Uptempo', 66, 20, 3),
+    L('kRawNation4', 'Raw Nation Podcast #4', 'kick', 'Hardstyle', 61, 26, 3),
+    L('rIndoorCls2', 'Indoor Closing Set – Frenchcore Special', 'rave', 'Hardcore', 74, 44, 4),
+    L('dOverdrive1', 'Overdrive – 1 Hour Uptempo Mix', 'dist', 'Uptempo', 60, 52, 4),
+    L('cIndVol016', 'Industrial Hardcore Mix Vol. 16', 'concrete', 'Hardcore', 63, 70, 5),
+    L('zZrhPod0006', 'Hardfloor Zürich Podcast 006', 'zrh', 'Hardstyle', 58, 33, 6),
+    L('nNightShift', 'Night Shift FM – Hard Dance Session 12', 'night', 'Unsortiert', 90, 95, 6),
+    L('bBunkerSet2', 'Bunker Sessions #2 – Early Rave Set', 'bunker', 'Hardcore', 122, 60, 7),
+    L('kRawNation3', 'Raw Nation Podcast #3 – Guest Mix', 'kick', 'Hardstyle', 59, 57, 8, { missing: true, size_mb: 0 }),
+    L('dP0dcast041', 'Uptempo Podcast #41 – 240 BPM Special', 'dist', 'Uptempo', 61, 38, 9),
+    L('gEarlyTp094', 'Early Hardcore Tape ’94 – Vinyl Rip', 'vault', 'Hardcore', 88, 150, 10),
+    L('eEuphSumm26', 'Euphoric Summer Mix 2026', 'euph', 'Hardstyle', 72, 130, 11),
+    L('rFrenchVol8', 'Frenchcore Session Vol. 8', 'rave', 'Hardcore', 65, 88, 12),
+    L('tSpeedRad08', 'Speedcore Radio Show Episode 8', 'terror', 'Uptempo', 119, 49, 13),
+    L('cIndVol015', 'Industrial Hardcore Mix Vol. 15', 'concrete', 'Hardcore', 64, 101, 14),
+    L('zZrhPod0005', 'Hardfloor Zürich Podcast 005 – Rawstyle', 'zrh', 'Hardstyle', 60, 64, 15),
+    L('bBunkerSet1', 'Bunker Sessions #1 – Opening Night', 'bunker', 'Hardcore', 96, 121, 16),
+    L('kXtraRaw054', 'Xtra Raw Liveset – Warehouse Edition', 'kick', 'Hardstyle', 54, 92, 17),
+    L('nNightShf11', 'Night Shift FM – Hard Dance Session 11', 'night', 'Unsortiert', 91, 126, 18),
+    L('dTerrMega25', 'UPTEMPO TERROR MEGAMIX 2025 – 250+ BPM', 'dist', 'Uptempo', 47, 380, 19),
+    L('gMillClass2', 'Millennium Hardcore Classics Vol. 2', 'vault', 'Hardcore', 88, 410, 21),
+    L('eReverse001', 'Reverse Bass Anthems Megamix', 'euph', 'Hardstyle', 77, 380, 22),
+    L('rMainIndoor', 'Mainstream Hardcore Set – Indoor Edition 2025', 'rave', 'Hardcore', 68, 395, 23),
+    L('eEuph0ric25', 'Euphoric Hardstyle Yearmix 2025', 'euph', 'Hardstyle', 98, 405, 24),
+    L('tTerrClos25', 'Terrorcore Closing Set – 300 BPM', 'terror', 'Uptempo', 42, 330, 25),
+    L('cGabbaNat04', 'Gabba Nation Liveset #4', 'concrete', 'Hardcore', 66, 290, 26),
+    L('zWinterWarm', 'Uptempo Warm Up Mix – Winter Edition 2025', 'zrh', 'Uptempo', 38, 350, 27),
+    L('kRawPress01', 'Raw Pressure – 90 Minute Rawstyle Liveset', 'kick', 'Hardstyle', 92, 310, 28),
+    L('gThunder98x', 'Thunderdome ’98 Tribute Mix', 'vault', 'Hardcore', 70, 520, 30),
+    L('bBunkerXmas', 'Bunker 303 – Xmas Hardcore Marathon (4 Hours)', 'bunker', 'Hardcore', 241, 325, 31),
+    L('nHardDnc010', 'Night Shift FM – Hard Dance Session 10', 'night', 'Unsortiert', 89, 440, 33),
+    L('dOverdrive0', 'Overdrive – Uptempo Mix (First Edition)', 'dist', 'Uptempo', 55, 470, 35),
+    L('eClassics08', 'Hardstyle Classics Mix 2008–2010', 'euph', 'Hardstyle', 104, 610, 38),
+    L('rAfterhrs24', 'Afterhours Hardcore Set – Recorded Live in Basel', 'rave', 'Hardcore', 93, 700, 41, { missing: true, size_mb: 0 }),
+    L('cIndVol012', 'Industrial Hardcore Mix Vol. 12', 'concrete', 'Hardcore', 62, 730, 44),
+    L('zZrhPod0001', 'Hardfloor Zürich Podcast 001', 'zrh', 'Hardstyle', 57, 760, 47),
+    L('tSpeedRad01', 'Speedcore Radio Show Episode 1', 'terror', 'Uptempo', 118, 790, 52),
+    L('gGabber1995', 'Gabber 1995 – Rotterdam Tapes Continuous Mix', 'vault', 'Hardcore', 84, 1150, 60),
   ];
+  /* Diese Dateien liegen noch am Ort eines älteren Ablage-Musters: «Neu taggen» verschiebt sie (neuer Pfad in der Antwort). */
+  const STALE = { cIndVol016: 'Concrete Noise', gMillClass2: 'Gabber Vault Archive' };
+  Object.entries(STALE).forEach(([id, folder]) => {
+    const l = LIBRARY.find((x) => x.id === id);
+    l.file_path = libPath(l.genre, folder, l.upload_date, l.title, l.id);
+  });
+  let libraryBackup = null;
 
   /* ---------- Protokoll ---------- */
   const LOG = [];
@@ -326,33 +368,67 @@
     if (!ts) emit('log', line);
   };
   [
-    [3, 0, 'info', 'Watchlist-Lauf gestartet (headless) · 6 aktive Quellen'],
-    [3, 0, 'debug', 'Throttle: sleep_requests=3s · limit_rate=3.0 MB/s'],
-    [3, 1, 'info', 'Quelle «Kickdrum Collective»: 30 Einträge flach geprüft, 2 neu'],
-    [3, 1, 'info', 'Quelle «Gabber Vault»: beim ersten bekannten Video abgebrochen, 0 neu'],
-    [3, 2, 'info', 'Quelle «Distortion Unit»: 1 neu'],
-    [3, 3, 'info', 'Quelle «Rave Archive CH»: 2 neu'],
-    [3, 4, 'warn', 'Quelle «Hard Classics Playlist» deaktiviert, übersprungen'],
-    [3, 4, 'info', 'Filter: 7 Treffer geprüft · 5 bestehen · 2 verworfen (Dauer < 10 min, Exclude «aftermovie»)'],
-    [3, 5, 'ok', 'Auto-Download «Raw Nation Podcast #4» fertig · 140.2 MB'],
-    [3, 9, 'error', 'Download fehlgeschlagen «Gabba Nation Liveset»: HTTP 403 – nur für Kanalmitglieder'],
-    [3, 9, 'ok', 'Watchlist-Lauf beendet · 5 gefunden · 1 geladen · 1 Fehler'],
-    [9, 12, 'info', 'HCLoader gestartet · Config %APPDATA%\\HCLoader\\config.yaml'],
-    [9, 12, 'info', 'yt-dlp 2026.11.02 · Deno 2.5.4 · ffmpeg 7.1 · bgutil-Plugin 1.3.0'],
-    [9, 12, 'ok', 'PO-Token-Provider (Script/Deno) bereit'],
-    [9, 14, 'info', 'Suche «hardcore liveset 2026» · 30 Treffer (flach) · 19 nach Filter'],
-    [9, 14, 'debug', 'Throttle: 4/20 Suchen diese Stunde'],
-  ].forEach(([h, m, lvl, msg]) => pushLog(lvl, msg, isoAt(0, h, m)));
+    [1, 20, 2, 'info', 'Watchlist-Prüfung gestartet · 6 Quelle(n)'],
+    [1, 20, 3, 'ok', 'Watchlist · Kickdrum Collective: 2 neue(r) Treffer → Eingang'],
+    [1, 20, 4, 'ok', 'Watchlist-Prüfung beendet · 6 Quelle(n) · 3 neue Treffer'],
+    [1, 20, 14, 'info', '3 Mix(es) zur Warteschlange hinzugefügt'],
+    [1, 20, 14, 'info', 'Starte Download: Gabber Classics Marathon – 3 Hours Oldschool'],
+    [1, 20, 14, 'debug', 'yt-dlp: format=bestaudio · client=web · PO-Token aus Cache (Alter 12 min)'],
+    [1, 20, 31, 'debug', 'ffmpeg: MP3 320 kbps CBR · Gabber Classics Marathon – 3 Hours Oldschool'],
+    [1, 20, 32, 'ok', 'Fertig: Gabber Classics Marathon – 3 Hours Oldschool · 421.9 MB'],
+    [1, 20, 32, 'debug', 'Throttle: 74 s Pause bis zum nächsten Download'],
+    [1, 20, 34, 'info', 'Starte Download: Euphoric Hardstyle Yearmix 2026'],
+    [1, 20, 43, 'warn', 'Kapitel: keine Kapitel und keine Zeitstempel in der Beschreibung – keine .cue für «Euphoric Hardstyle Yearmix 2026»'],
+    [1, 20, 43, 'ok', 'Fertig: Euphoric Hardstyle Yearmix 2026 · 223.1 MB'],
+    [1, 20, 52, 'ok', 'Fertig: Terror Night Live Recording · 155.2 MB'],
+    [1, 20, 52, 'info', 'Download-Lauf beendet · 3 geladen · 0 Fehler'],
+    [0, 3, 0, 'info', 'Watchlist-Lauf gestartet (headless) · 6 aktive Quellen'],
+    [0, 3, 0, 'debug', 'Throttle: sleep_requests=3s · limit_rate=3.0 MB/s'],
+    [0, 3, 1, 'info', 'Quelle «Kickdrum Collective»: 30 Einträge flach geprüft, 2 neu'],
+    [0, 3, 1, 'info', 'Quelle «Gabber Vault»: beim ersten bekannten Video abgebrochen, 0 neu'],
+    [0, 3, 2, 'info', 'Quelle «Distortion Unit»: 1 neu'],
+    [0, 3, 3, 'info', 'Quelle «Rave Archive CH»: 2 neu'],
+    [0, 3, 4, 'warn', 'Quelle «Hard Classics Playlist» deaktiviert, übersprungen'],
+    [0, 3, 4, 'info', 'Filter: 7 Treffer geprüft · 5 bestehen · 2 verworfen (Dauer < 10 min, Exclude «aftermovie»)'],
+    [0, 3, 5, 'ok', 'Auto-Download «Raw Nation Podcast #4» fertig · 140.2 MB'],
+    [0, 3, 6, 'debug', 'Throttle: 58 s Pause bis zum nächsten Download'],
+    [0, 3, 9, 'error', 'Download fehlgeschlagen «Gabba Nation Liveset»: HTTP 403 – nur für Kanalmitglieder'],
+    [0, 3, 9, 'ok', 'Watchlist-Lauf beendet · 5 gefunden · 1 geladen · 1 Fehler'],
+    [0, 9, 12, 'info', 'HCLoader gestartet · Config %APPDATA%\\HCLoader\\config.yaml'],
+    [0, 9, 12, 'info', 'yt-dlp 2026.11.02 · Deno 2.5.4 · ffmpeg 7.1 · bgutil-Plugin 1.3.0'],
+    [0, 9, 12, 'ok', 'PO-Token-Provider (Script/Deno) bereit'],
+    [0, 9, 12, 'warn', 'Bibliothek: 2 Dateien nicht gefunden (verschoben oder gelöscht?)'],
+    [0, 9, 13, 'info', 'yt-dlp und Plugin sind aktuell'],
+    [0, 9, 14, 'info', 'Suche «hardcore liveset 2026» · 30 Treffer (flach) · 19 nach Filter'],
+    [0, 9, 14, 'debug', 'Throttle: 4/20 Suchen diese Stunde'],
+    [0, 9, 14, 'info', 'Starte Download: Xtra Raw Liveset – Reverse Bass Only'],
+  ].forEach(([d, h, m, lvl, msg]) => pushLog(lvl, msg, isoAt(d, h, m)));
 
+  /* Läufe: neueste zuerst. Der oberste läuft noch (finished null) – es ist der Lauf der aktiven Warteschlange. */
   const RUNS = [
+    { id: 42, kind: 'manual', started: new Date(Date.now() - 60000).toISOString(), finished: null, found: 0, downloaded: 0, errors: 0, note: '' },
     { id: 41, kind: 'headless', started: isoAt(0, 3, 0), finished: isoAt(0, 3, 9), found: 5, downloaded: 1, errors: 1, note: '1 Download fehlgeschlagen (HTTP 403)' },
-    { id: 40, kind: 'manual', started: isoAt(1, 20, 14), finished: isoAt(1, 20, 52), found: 3, downloaded: 3, errors: 0, note: '' },
-    { id: 39, kind: 'headless', started: isoAt(1, 3, 0), finished: isoAt(1, 3, 4), found: 0, downloaded: 0, errors: 0, note: '' },
-    { id: 38, kind: 'headless', started: isoAt(2, 3, 0), finished: isoAt(2, 3, 1), found: 0, downloaded: 0, errors: 1, note: 'HTTP 429 – Backoff 6 h aktiviert, Lauf abgebrochen' },
-    { id: 37, kind: 'watchlist', started: isoAt(3, 18, 30), finished: isoAt(3, 19, 41), found: 9, downloaded: 6, errors: 0, note: '' },
-    { id: 36, kind: 'headless', started: isoAt(3, 3, 0), finished: isoAt(3, 3, 22), found: 2, downloaded: 2, errors: 0, note: '' },
-    { id: 35, kind: 'headless', started: isoAt(4, 3, 0), finished: isoAt(4, 3, 3), found: 0, downloaded: 0, errors: 0, note: '' },
+    { id: 40, kind: 'manual', started: isoAt(1, 20, 14), finished: isoAt(1, 20, 52), found: 0, downloaded: 3, errors: 0, note: '' },
+    { id: 39, kind: 'watchlist', started: isoAt(1, 20, 2), finished: isoAt(1, 20, 4), found: 3, downloaded: 0, errors: 0, note: '' },
+    { id: 38, kind: 'headless', started: isoAt(1, 3, 0), finished: isoAt(1, 3, 4), found: 0, downloaded: 0, errors: 0, note: '' },
+    { id: 37, kind: 'manual', started: isoAt(2, 21, 10), finished: isoAt(2, 21, 10), found: 0, downloaded: 0, errors: 0, note: 'Backoff aktiv bis 09:01 – Rest bleibt in der Warteschlange' },
+    { id: 36, kind: 'headless', started: isoAt(2, 3, 0), finished: isoAt(2, 3, 1), found: 0, downloaded: 0, errors: 1, note: 'HTTP 429 – Backoff 6 h bis 09:01, Lauf abgebrochen' },
+    { id: 35, kind: 'manual', started: isoAt(3, 18, 40), finished: isoAt(3, 20, 51), found: 0, downloaded: 10, errors: 0, note: 'Limit pro Lauf erreicht (10/10) – Rest bleibt in der Warteschlange' },
+    { id: 34, kind: 'watchlist', started: isoAt(3, 18, 30), finished: isoAt(3, 18, 33), found: 12, downloaded: 0, errors: 2, note: '2 Quelle(n) mit Fehler' },
+    { id: 33, kind: 'headless', started: isoAt(3, 3, 0), finished: isoAt(3, 3, 22), found: 2, downloaded: 2, errors: 0, note: '' },
+    { id: 32, kind: 'headless', started: isoAt(4, 3, 0), finished: isoAt(4, 3, 3), found: 0, downloaded: 0, errors: 0, note: '' },
+    { id: 31, kind: 'manual', started: isoAt(5, 19, 5), finished: isoAt(5, 19, 58), found: 0, downloaded: 4, errors: 1, note: '1 Download fehlgeschlagen' },
   ];
+  let runSeq = RUNS[0].id;
+  const openRun = () => RUNS.find((r) => r.kind === 'manual' && !r.finished);
+  /** Lauf der Warteschlange beenden -> Event «run» (wie worker.py am Laufende). */
+  const closeRun = (note) => {
+    const r = openRun();
+    if (!r) return;
+    r.finished = new Date().toISOString();
+    if (note) r.note = note;
+    emit('run', clone(r));
+  };
 
   /* ---------- Laufzeit-Zustand ---------- */
   const state = {
@@ -374,6 +450,12 @@
     local: null, // [code, Meldung] – lokale Sperre «pot» / «target» / «error» (nur Demo)
     versions: { ytdlp: '2026.11.02', plugin: '1.3.0' },
     lastBackup: isoAt(5, 19, 2),
+    backups: [
+      { name: 'hcloader-20261111-190200.db', size_mb: 1.7, created: isoAt(5, 19, 2) },
+      { name: 'hcloader-20261028-214410.db', size_mb: 1.5, created: isoAt(19, 21, 44) },
+      { name: 'hcloader-20261003-081530.db', size_mb: 1.2, created: isoAt(44, 8, 15) },
+    ],
+    restart: false, // nach einem Update mit neuer Version: «Neustart nötig»
     sleepLeft: 0, // Sekunden bis zum nächsten Download (Throttle-Pause)
     sleepTotal: 0,
     convertTicks: 0,
@@ -446,6 +528,7 @@
       if (limitHit()) return; // Rest bleibt in der Warteschlange
       if (state.sleepLeft > 0) { q.phase = 'sleep'; q.eta = state.sleepLeft; q.sleep_total = state.sleepTotal; emit('queue', {}); return; }
       q.phase = 'download'; q.state = 'active';
+      if (!openRun()) RUNS.unshift({ id: ++runSeq, kind: 'manual', started: new Date().toISOString(), finished: null, found: 0, downloaded: 0, errors: 0, note: '' });
       setStatus(v, 'downloading');
       pushLog('info', `Starte Download: ${v.title}`);
       emit('queue', {});
@@ -469,8 +552,9 @@
       const artist = v.channel_name;
       LIBRARY.unshift({
         id: v.id, title: v.title, artist, genre: v.genre, duration: v.duration, upload_date: v.upload_date, downloaded_at: new Date().toISOString(),
-        file_path: `${v.genre}\\${artist}\\${v.upload_date.slice(0, 4)}\\${v.upload_date} - ${v.title} [${v.id}].mp3`, size_mb: +((v.duration * 320) / 8 / 1024).toFixed(1),
+        file_path: libPath(v.genre, artist, v.upload_date, v.title, v.id), size_mb: sizeOf(v.duration), missing: false, thumbnail: null,
       });
+      if (openRun()) openRun().downloaded++;
       setStatus(v, 'done');
       pushLog('ok', `Fertig: ${v.title} · ${LIBRARY[0].size_mb} MB`);
       if (activeQueue().length && !limitHit()) {
@@ -480,6 +564,8 @@
       } else state.sleepLeft = 0;
       if (activeQueue().length && limitHit()) pushLog('warn', 'Download-Limit erreicht – der Rest bleibt in der Warteschlange');
       emit('done', { id: v.id, title: v.title });
+      if (!activeQueue().length) closeRun();
+      else if (limitHit()) closeRun('Download-Limit erreicht – Rest bleibt in der Warteschlange');
       emit('queue', {});
       pushStatus();
       return;
@@ -524,27 +610,42 @@
       app: '0.2.0', ytdlp: state.versions.ytdlp, plugin: state.versions.plugin, deno: '2.5.4', ffmpeg: '7.1', python: '3.13.1',
       data_dir: '%APPDATA%\\HCLoader', db_path: '%APPDATA%\\HCLoader\\hcloader.db', db_entries: 1234, db_size_mb: 1.8,
       last_backup: state.lastBackup, last_update_check: isoAt(0, 9, 12),
+      backups: clone(state.backups), restart_required: state.restart,
     })),
     update_ytdlp() {
+      const before = state.versions.ytdlp, fresh = before !== '2026.11.14';
+      /* Wie das Backend: jede Zeile der pip-Ausgabe kommt als «log»-Event, die Antwort erst am Schluss. */
+      const out = ['> python -m pip install -U "yt-dlp[default]" bgutil-ytdlp-pot-provider'].concat(fresh ? [
+        'Requirement already satisfied: yt-dlp[default] in .venv\\lib\\site-packages (2026.11.2)',
+        'Collecting yt-dlp[default]',
+        '  Downloading yt_dlp-2026.11.14-py3-none-any.whl (3.3 MB)',
+        'Collecting bgutil-ytdlp-pot-provider',
+        '  Downloading bgutil_ytdlp_pot_provider-1.3.1-py3-none-any.whl (18 kB)',
+        'Installing collected packages: yt-dlp, bgutil-ytdlp-pot-provider',
+        '  Attempting uninstall: yt-dlp',
+        '      Successfully uninstalled yt-dlp-2026.11.2',
+        'Successfully installed bgutil-ytdlp-pot-provider-1.3.1 yt-dlp-2026.11.14',
+      ] : [
+        'Requirement already satisfied: yt-dlp[default] in .venv\\lib\\site-packages (2026.11.14)',
+        'Requirement already satisfied: bgutil-ytdlp-pot-provider in .venv\\lib\\site-packages (1.3.1)',
+      ]);
+      pushLog('info', 'yt-dlp & Plugin werden aktualisiert …');
+      out.forEach((line, i) => setTimeout(() => pushLog('info', line), (150 + i * (2100 / out.length)) * speed.factor));
       return later(2400, () => {
-        const before = state.versions.ytdlp;
         state.versions = { ytdlp: '2026.11.14', plugin: '1.3.1' };
-        pushLog('ok', `yt-dlp ${before} → ${state.versions.ytdlp} · Plugin → ${state.versions.plugin}`);
+        if (fresh) state.restart = true;
+        pushLog('ok', `Aktualisierung fertig: yt-dlp ${state.versions.ytdlp}, Plugin ${state.versions.plugin}${fresh ? ' (neu)' : ' (bereits aktuell)'}`);
         pushStatus();
-        return {
-          ok: true, ytdlp: state.versions.ytdlp, plugin: state.versions.plugin, changed: before !== state.versions.ytdlp,
-          output: [
-            '> pip install -U yt-dlp bgutil-ytdlp-pot-provider',
-            before !== state.versions.ytdlp ? `Successfully installed yt-dlp-${state.versions.ytdlp} bgutil-ytdlp-pot-provider-${state.versions.plugin}` : 'Requirement already satisfied: yt-dlp, bgutil-ytdlp-pot-provider',
-          ].join('\n'),
-        };
+        return Object.assign({ ok: true, ytdlp: state.versions.ytdlp, plugin: state.versions.plugin, changed: fresh, output: out.join('\n') }, fresh ? { restart_required: true } : {});
       });
     },
     backup_db() {
       return later(700, () => {
         const d = new Date();
         state.lastBackup = d.toISOString();
-        const path = `%APPDATA%\\HCLoader\\backups\\hcloader-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.db`;
+        const name = `hcloader-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}.db`;
+        const path = `%APPDATA%\\HCLoader\\backups\\${name}`;
+        state.backups.unshift({ name, size_mb: 1.8, created: state.lastBackup });
         pushLog('ok', `Datenbank gesichert: ${path}`);
         return { ok: true, path };
       });
@@ -733,7 +834,9 @@
         }
         state.checking = false;
         if (!ids) state.appNext = new Date(Date.now() + settings.schedule.watchlist_interval_hours * 3600000).toISOString();
-        RUNS.unshift({ id: RUNS[0].id + 1, kind: 'watchlist', started: new Date().toISOString(), finished: new Date().toISOString(), found, downloaded: 0, errors, note: '' });
+        const run = { id: ++runSeq, kind: 'watchlist', started: new Date(Date.now() - list.length * 900).toISOString(), finished: new Date().toISOString(), found, downloaded: 0, errors, note: errors ? `${errors} Quelle(n) mit Fehler` : '' };
+        RUNS.unshift(run);
+        emit('run', clone(run));
         pushLog(errors ? 'warn' : 'ok', `Watchlist-Prüfung beendet · ${list.length} Quelle(n) · ${found} neue Treffer${errors ? ` · ${errors} Fehler` : ''}`);
         emit('watchlist_done', { checked: list.length, found });
         pushStatus();
@@ -798,23 +901,43 @@
     },
 
     /* Bibliothek */
+    /* filters (optional, Backend): die UI ruft ohne Argument auf und filtert selbst. */
     get_library: () => later(40, () => clone(LIBRARY)),
-    open_folder: () => later(30, { ok: true }),
+    open_folder(id) {
+      return later(30, () => {
+        const l = LIBRARY.find((x) => x.id === id);
+        return l ? { ok: true } : { ok: false, error: 'Keine Datei zu diesem Eintrag' };
+      });
+    },
     retag(id) {
-      return later(500, () => { const l = LIBRARY.find((x) => x.id === id); if (l) pushLog('ok', `Neu getaggt: ${l.title}`); return { ok: true }; });
+      return later(900, () => {
+        const l = LIBRARY.find((x) => x.id === id);
+        if (!l) return { ok: false, error: 'Eintrag nicht gefunden' };
+        if (l.missing) return { ok: false, error: `Datei fehlt: ${l.file_path}` };
+        const moved = !!STALE[id];
+        if (moved) {
+          delete STALE[id];
+          l.file_path = libPath(l.genre, l.artist, l.upload_date, l.title, l.id);
+          pushLog('info', `Verschoben (Ablage-Muster): ${l.file_path}`);
+        }
+        pushLog('ok', `Neu getaggt: ${l.title}`);
+        return { ok: true, file_path: l.file_path, moved };
+      });
     },
     delete_library_item(id) {
-      return later(80, () => {
+      return later(160, () => {
         const l = LIBRARY.find((x) => x.id === id);
+        if (!l) return { ok: false, error: 'Eintrag nicht gefunden' };
         LIBRARY = LIBRARY.filter((x) => x.id !== id);
-        if (l) pushLog('warn', `Gelöscht: ${l.title}`);
+        pushLog('warn', l.missing ? `Eintrag entfernt (Datei fehlte): ${l.title}` : `Gelöscht: ${l.file_path}`);
         const v = byId(id);
-        if (v) setStatus(v, 'new');
+        if (v) setStatus(v, 'ignored'); // wird nicht erneut geladen
         return { ok: true };
       });
     },
 
     /* Protokoll */
+    /* filters (optional, Backend): die UI ruft ohne Argument auf und filtert selbst. */
     get_log: () => later(30, () => ({ lines: clone(LOG), runs: clone(RUNS) })),
   };
 
@@ -832,6 +955,22 @@
         pushStatus();
       },
       taskUnknown(on) { state.task.unknown = on !== false; },
+      /** Leere Bibliothek zeigen (on = false stellt sie wieder her). */
+      libraryEmpty(on) {
+        if (on === false) { if (libraryBackup) LIBRARY = libraryBackup; libraryBackup = null; return; }
+        if (!libraryBackup) libraryBackup = LIBRARY;
+        LIBRARY = [];
+      },
+      /** Einen beendeten Lauf melden (Event «run»), z.B. demo.run({kind: 'headless', found: 4, downloaded: 2}). */
+      run(fields) {
+        const now = Date.now();
+        const run = Object.assign({ id: ++runSeq, kind: 'headless', started: new Date(now - 4 * 60000).toISOString(), finished: new Date(now).toISOString(), found: 0, downloaded: 0, errors: 0, note: '' }, fields);
+        RUNS.unshift(run);
+        emit('run', clone(run));
+        return run;
+      },
+      /** Eine Protokollzeile erzeugen (Event «log»). */
+      log(level, msg) { pushLog(level || 'info', msg || 'Testzeile'); },
       /** Watchlist-Prüfung hält bei dieser Quelle im Zustand «prüft …» an, bis checkRelease(). */
       checkHold(id) { state.hold = { id, release: null }; },
       checkRelease() { const h = state.hold; state.hold = null; if (h && h.release) h.release(); },

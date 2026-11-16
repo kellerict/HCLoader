@@ -107,6 +107,19 @@ def _fill_ends(chapters: list[Chapter], duration: float | None) -> list[Chapter]
     return chapters
 
 
+def _clean_chapters(chapters: list[Chapter], duration: float | None) -> list[Chapter]:
+    """Sorted, strictly increasing starts; chapters at/after the end of the media are dropped
+    (a wrong description or chapter list must not produce a broken CUE/CHAP)."""
+    out: list[Chapter] = []
+    last = -1.0
+    for ch in sorted(chapters, key=lambda c: c.start):
+        if ch.start <= last or (duration and ch.start >= duration):
+            continue
+        out.append(ch)
+        last = ch.start
+    return out
+
+
 def chapters_from_info(info: Mapping[str, Any]) -> list[Chapter]:
     """Chapters from yt-dlp `chapters` or, failing that, from the description."""
     duration = info.get("duration")
@@ -121,9 +134,34 @@ def chapters_from_info(info: Mapping[str, Any]) -> list[Chapter]:
             for i, c in enumerate(raw)
             if isinstance(c, Mapping)
         ]
+        out = _clean_chapters(out, duration)
         if out:
             return _fill_ends(out, duration) if out[-1].end is None else out
     return parse_timestamps(info.get("description"), duration)
+
+
+MAX_CUE_TRACKS = 99  # CUE sheets know TRACK 01..99 only
+
+
+def cue_chapters(chapters: Iterable[Chapter]) -> list[Chapter]:
+    """Chapters as a valid CUE track list: sorted, strictly increasing INDEX 01 (compared on
+    the 1/75 s frame grid), the first one at 00:00:00, at most 99 tracks."""
+    out: list[Chapter] = []
+    last_frame = -1
+    for ch in sorted(chapters, key=lambda c: c.start):
+        frame = int(round(max(0.0, ch.start) * 75))
+        if frame <= last_frame:
+            continue
+        out.append(ch)
+        last_frame = frame
+    if out and out[0].start > 0:
+        out[0] = Chapter(0.0, out[0].title, out[0].end)  # intro before the first stamp
+    if len(out) > MAX_CUE_TRACKS:
+        log.warning(
+            "CUE: %d Kapitel, nur die ersten %d werden geschrieben", len(out), MAX_CUE_TRACKS
+        )
+        out = out[:MAX_CUE_TRACKS]
+    return out
 
 
 def format_cue_time(seconds: float) -> str:
@@ -147,7 +185,7 @@ def write_cue(
 ) -> Path:
     """Write `<audio>.cue` next to the audio file and return its path."""
     audio_path = Path(audio_path)
-    chapters = list(chapters)
+    chapters = cue_chapters(chapters)
     if not chapters:
         raise TaggingError("Keine Kapitel für die CUE-Datei")
     ftype = "MP3" if audio_path.suffix.lower() == ".mp3" else "WAVE"

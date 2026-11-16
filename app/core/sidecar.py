@@ -59,9 +59,7 @@ def build(
         "url": meta.get("url") or "",
         "thumbnail": meta.get("thumbnail"),
         "description": (description or "")[:DESCRIPTION_MAX],
-        "chapters": [
-            {"start": c.start, "end": c.end, "title": c.title} for c in chapters
-        ],
+        "chapters": [{"start": c.start, "end": c.end, "title": c.title} for c in chapters],
         "genre": genre,
         "source": source,
         "written": datetime.now(UTC).isoformat(timespec="seconds"),
@@ -103,7 +101,11 @@ def chapters_of(data: Mapping[str, Any] | None) -> list[Chapter]:
         try:
             end = c.get("end")
             out.append(
-                Chapter(float(c["start"]), str(c.get("title") or ""), None if end is None else float(end))
+                Chapter(
+                    float(c["start"]),
+                    str(c.get("title") or ""),
+                    None if end is None else float(end),
+                )
             )
         except (KeyError, TypeError, ValueError, AttributeError):
             continue

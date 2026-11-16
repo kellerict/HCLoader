@@ -58,7 +58,6 @@ from .worker import (
 
 log = logging.getLogger("hcloader.api")
 
-PHASE5 = "Folgt in Phase 5"
 JOB_TIMEOUT_S = maintenance.UPDATE_TIMEOUT_S + 60
 STATUS_INTERVAL_S = 30.0
 PO_TEST_TIMEOUT_S = 60
@@ -201,6 +200,7 @@ class Api:
         (long ffmpeg conversion), the DB stays open until the process exits and a row left in
         `downloading` is put back to `queued`. Returns True if the queue thread ended."""
         self._logs.stop()
+        self._db.remove_run_listener(self._on_run_finished)
         if self._ticker:
             self._ticker.stop()
         self._wl_sched.stop()
@@ -961,8 +961,6 @@ class Api:
         return res
 
     def _do_retag(self, vid: str) -> dict[str, Any]:
-        if self._queue.is_active(vid):
-            return {"ok": False, "error": "Eintrag wird gerade geladen"}
         res = library.retag(self._db, self._cfg, vid)
         if res.get("ok"):
             self._bus.emit("video", {"id": vid, "status": "done", "genre": res.get("genre")})

@@ -4,11 +4,14 @@ Pure core logic: `client` is a `YtClient` (or a fake with `list_source`/`search`
 imports yt-dlp. Every request goes through the client and therefore through the throttle.
 
 Per source the flat listing (newest first; playlists with `newest_last` are read from the end,
-reversed) is walked in order and stops at the first video that
-is already known in the DB (`break_on_existing`, SPEC §3.2). New videos are stored with the genre
-of the source (or keyword detection); those that pass the filters land in the inbox (or in the
-download queue for `auto_download` sources), the others stay `new` and are not shown in the inbox.
-A 429 / bot check (backoff) aborts the whole run.
+reversed) is walked in order and stops at the first video that *this source* has already seen
+(table `source_videos`, Review Phase 4 M1; SPEC §3.2 `break_on_existing`). Videos known only from
+a search or another source are skipped without stopping; if they are still `new` they are
+evaluated for this source. The very first check of a source never stops early. New videos are
+stored with the genre of the source (or keyword detection); those that pass the filters land in
+the inbox (or in the download queue for `auto_download` sources), the others stay `new` and are
+not shown in the inbox. Upcoming premieres / running livestreams are not remembered, so they are
+evaluated again at the next check. A 429 / bot check (backoff) aborts the whole run.
 """
 
 from __future__ import annotations
@@ -18,7 +21,7 @@ import re
 import threading
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
@@ -34,13 +37,23 @@ log = logging.getLogger(__name__)
 
 SOURCE_TYPES = ("channel", "playlist", "search")
 K_LAST_RUN = "watchlist_last_run"
+# m2: a full check (GUI or headless) is running since (ISO UTC); deleted at its end
+K_RUNNING_SINCE = "watchlist_running_since"
+# m3: a full check without any successful source -> retry at this time (ISO UTC)
+K_RETRY_AT = "watchlist_retry_at"
+RETRY_AFTER = timedelta(hours=1)
+# a running-marker older than this is stale (crashed process; task limit is 6 h)
+RUNNING_STALE = timedelta(hours=6)
+MAX_ENTRIES = 200
+MAX_SEARCH_ENTRIES = 100  # SPEC §3.1: a search returns at most 100 results
+SKIP_LIVE_STATUS = ("is_upcoming", "is_live")
 MAX_NAME_LENGTH = 120
 MAX_QUERY_LENGTH = 300
 MAX_URL_LENGTH = 500
 
 _CHANNEL_PATH_RE = re.compile(
     r"^/(?:@[^/?#\s]+|channel/[^/?#\s]+|c/[^/?#\s]+|user/[^/?#\s]+)"
-    r"(?:/(?:videos|streams|releases|featured|playlists))?/?$"
+    r"(?:/(?:videos|streams))?/?$"
 )
 _YT_HOSTS = ("youtube.com", "www.youtube.com", "m.youtube.com")
 
@@ -98,23 +111,27 @@ def validate_source(
                 errors["url_or_query"] = err
             elif stype == "channel" and not _CHANNEL_PATH_RE.match(parsed.path):
                 errors["url_or_query"] = (
-                    "Kanal-URL erwartet (…/@name, …/channel/ID, …/c/name oder …/user/name)."
+                    "Kanal-URL erwartet (…/@name, …/channel/ID, …/c/name oder …/user/name; "
+                    "optional /videos oder /streams)."
                 )
             elif stype == "playlist" and not parse_qs(parsed.query).get("list"):
                 errors["url_or_query"] = "Playlist-URL erwartet (…/playlist?list=ID)."
     elif not target:
         errors["url_or_query"] = "URL oder Suchbegriff fehlt."
 
+    # n7: empty = "use the default" (schedule.entries_per_source at check time), stored as NULL
     raw_max = data.get("max_entries")
-    max_entries = settings.schedule.entries_per_source if raw_max in (None, "") else raw_max
-    try:
-        if isinstance(max_entries, bool) or int(max_entries) != float(max_entries):
-            raise ValueError
-        max_entries = int(max_entries)
-        if not 1 <= max_entries <= 200:
-            raise ValueError
-    except (TypeError, ValueError):
-        errors["max_entries"] = "Wert muss eine ganze Zahl zwischen 1 und 200 sein."
+    upper = MAX_SEARCH_ENTRIES if stype == "search" else MAX_ENTRIES
+    max_entries: int | None = None
+    if raw_max not in (None, ""):
+        try:
+            if isinstance(raw_max, bool) or int(raw_max) != float(raw_max):
+                raise ValueError
+            max_entries = int(raw_max)
+            if not 1 <= max_entries <= upper:
+                raise ValueError
+        except (TypeError, ValueError):
+            errors["max_entries"] = f"Wert muss eine ganze Zahl zwischen 1 und {upper} sein."
 
     genre = data.get("default_genre") or None
     if genre == UNSORTED:
@@ -161,7 +178,9 @@ class SourceCheck:
     queued: int = 0  # new and passing, put into the download queue (auto_download)
     queued_ids: list[str] = field(default_factory=list)
     filtered: int = 0  # new but rejected by the filters (status stays 'new')
-    seen: int = 0  # entries looked at (up to the first known one)
+    seen: int = 0  # entries looked at (up to the first one this source has seen)
+    adopted: int = 0  # known from a search/other source, still 'new', now passing (M1)
+    skipped_live: int = 0  # upcoming premieres / running livestreams (n8, not remembered)
     error: str | None = None
     backoff: bool = False
 
@@ -207,6 +226,14 @@ def _entry_row(entry: Mapping[str, Any], source_id: int, genre: str, status: str
     }
 
 
+def effective_max_entries(source: Mapping[str, Any], settings: Settings) -> int:
+    """`max_entries` of a source; NULL = `schedule.entries_per_source` (n7). Searches are capped
+    at 100 (SPEC §3.1), everything else at 200 (m4)."""
+    n = int(source.get("max_entries") or settings.schedule.entries_per_source)
+    cap = MAX_SEARCH_ENTRIES if source.get("type") == "search" else MAX_ENTRIES
+    return max(1, min(n, cap))
+
+
 def check_source(
     source: Mapping[str, Any],
     *,
@@ -214,24 +241,28 @@ def check_source(
     db: Database,
     settings: Settings,
     enqueue: Enqueue | None = None,
+    cancel: threading.Event | None = None,
 ) -> SourceCheck:
     """Check one source (a DB row). Raises on request errors (the caller decides); see
     `check_all` for the error handling. Marks the source as checked and returns the counts.
 
-    Channel/playlist: stop at the first known video (incremental). Search: relevance order is
-    not chronological, so known videos are skipped instead (no stop).
+    Channel/playlist: stop at the first video *this source* has already seen (M1), except on
+    the very first check of the source (`last_checked` empty: `max_entries` is the only limit).
+    Search: relevance order is not chronological, so seen videos are skipped (no stop).
+    Videos known only from a search or another source never stop the check; if they are still
+    `new` and pass the filters, they go to the inbox (or the queue) for this source.
     """
     sid = int(source["id"])
     stype = source["type"]
-    max_entries = int(source.get("max_entries") or settings.schedule.entries_per_source)
+    max_entries = effective_max_entries(source, settings)
     target = source["url_or_query"]
+    kwargs: dict[str, Any] = {"cancel_event": cancel} if cancel is not None else {}
     if stype == "search":
-        entries = client.search(target, max_entries)
+        entries = client.search(target, max_entries, **kwargs)
+    elif source.get("newest_last") and stype == "playlist":
+        entries = client.list_source(target, max_entries, newest_last=True, **kwargs)
     else:
-        if source.get("newest_last") and stype == "playlist":
-            entries = client.list_source(target, max_entries, newest_last=True)
-        else:
-            entries = client.list_source(target, max_entries)
+        entries = client.list_source(target, max_entries, **kwargs)
 
     res = SourceCheck(sid)
     genre_names = {g.name for g in settings.genres.items}
@@ -239,6 +270,7 @@ def check_source(
     if default not in genre_names or default == UNSORTED:
         default = None
     auto = bool(source.get("auto_download")) and enqueue is not None
+    incremental = stype != "search" and bool(source.get("last_checked"))
     blacklist = db.blacklist_ids()
     to_queue: list[str] = []
     for entry in entries:
@@ -246,39 +278,63 @@ def check_source(
         if not vid:
             continue
         res.seen += 1
-        if db.is_known(vid):
-            if stype == "search":
-                continue
-            break  # everything after this one was seen in an earlier check
-        genre = detect_genre(entry.get("title"), settings.genres.items, source_default=default)
+        if entry.get("live_status") in SKIP_LIVE_STATUS:
+            # n8: duration unknown before the broadcast - evaluate again at the next check
+            res.skipped_live += 1
+            continue
+        if db.source_has_seen(sid, vid):
+            if incremental:
+                break  # everything after this one was seen in an earlier check of this source
+            continue
+        existing = db.get_video(vid)
         ok, _reason = filters.passes(entry, settings.filters, status=None, blacklist=blacklist)
-        # auto-download rows start as 'new' and are enqueued below (queue_pos); the rest of the
-        # passing ones go straight to the inbox, rejected ones stay 'new' (not in the inbox)
-        status = "inbox" if ok and not auto else "new"
-        db.upsert_video(_entry_row(entry, sid, genre, status))
-        res.new += 1
-        if not ok:
-            res.filtered += 1
-        elif auto:
-            to_queue.append(vid)
-        else:
-            res.inbox += 1
+        if existing is None:
+            genre = detect_genre(entry.get("title"), settings.genres.items, source_default=default)
+            # n6: auto-download rows start in the inbox (visible if the process ends before
+            # they are enqueued below); rejected ones stay 'new' (not in the inbox)
+            with db.transaction():
+                db.upsert_video(_entry_row(entry, sid, genre, "inbox" if ok else "new"))
+                db.link_source_video(sid, vid)
+            res.new += 1
+            if not ok:
+                res.filtered += 1
+            elif auto:
+                to_queue.append(vid)
+            else:
+                res.inbox += 1
+            continue
+        # M1: known from a search or another source - never a reason to stop
+        promote = ok and existing["status"] == "new"
+        genre = (
+            detect_genre(entry.get("title"), settings.genres.items, source_default=default)
+            if promote
+            else None
+        )
+        with db.transaction():
+            db.upsert_video(_entry_row(entry, sid, genre, existing["status"]))
+            db.link_source_video(sid, vid)
+            if promote:
+                db.set_status(vid, "inbox")
+        if promote:
+            res.adopted += 1
+            if auto:
+                to_queue.append(vid)
+            else:
+                res.inbox += 1
     if to_queue:
         accepted = enqueue(to_queue) if enqueue else []
         res.queued = len(accepted)
         res.queued_ids = list(accepted)
-        for vid in to_queue:  # not accepted (should not happen): keep them visible
-            if vid not in accepted:
-                db.set_status(vid, "inbox")
-                res.inbox += 1
+        res.inbox += len([v for v in to_queue if v not in accepted])  # stay in the inbox
     db.mark_source_checked(sid)
     log.info(
-        "Quelle «%s»: %d neu (%d im Eingang, %d in der Warteschlange, %d gefiltert)",
+        "Quelle «%s»: %d neu (%d im Eingang, %d in der Warteschlange, %d gefiltert)%s",
         source.get("name"),
         res.new,
         res.inbox,
         res.queued,
         res.filtered,
+        f" · {res.adopted} schon bekannt übernommen" if res.adopted else "",
     )
     return res
 

@@ -5,9 +5,9 @@ from __future__ import annotations
 import logging
 import re
 import threading
-from datetime import datetime
 from collections import deque
 from collections.abc import Callable
+from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
@@ -77,9 +77,7 @@ def live_handler() -> CallbackHandler:
     return _live_handler
 
 
-_LINE_RE = re.compile(
-    r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}),\d{3} (\w+)\s+([\w.\-]+): (.*)$"
-)
+_LINE_RE = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}),\d{3} (\w+)\s+([\w.\-]+): (.*)$")
 _HISTORY_BYTES = 512 * 1024
 _history_loaded = False
 

@@ -776,6 +776,7 @@ def test_get_log_backlog_and_runs(env):
         "kind",
         "started",
         "finished",
+        "duration",
         "found",
         "downloaded",
         "errors",
@@ -853,11 +854,16 @@ def test_library_from_db(env, tmp_path):
         "downloaded_at",
         "file_path",
         "size_mb",
+        "channel_id",
+        "year",
+        "missing",
+        "has_cue",
     }
+    assert lib[0]["missing"] is False and lib[0]["has_cue"] is False
     assert a.open_folder("abcdefghijk") == {"ok": True} and env.opened == [f.parent]
 
 
-PLACEHOLDER_CALLS = {
+LIBRARY_CALLS = {
     "retag": ("abcdefghijk",),
     "delete_library_item": ("abcdefghijk",),
 }
@@ -878,11 +884,11 @@ PHASE3_CALLS = {
 }
 
 
-@pytest.mark.parametrize("name", sorted(PLACEHOLDER_CALLS))
-def test_placeholders_are_neutral(env, name):
-    res = getattr(env.make(), name)(*PLACEHOLDER_CALLS[name])
+@pytest.mark.parametrize("name", sorted(LIBRARY_CALLS))
+def test_library_actions_on_unknown_id_fail_cleanly(env, name):
+    res = getattr(env.make(), name)(*LIBRARY_CALLS[name])
     json.dumps(res)
-    assert res["ok"] is False and res["error"].startswith("Folgt in Phase")
+    assert res["ok"] is False and res["error"] == "Eintrag ist nicht in der Bibliothek"
 
 
 def test_phase3_methods_on_empty_db(env):
@@ -907,7 +913,7 @@ def test_phase3_methods_on_empty_db(env):
 def test_every_method_json_serializable(env):
     a = env.make()
     args = {
-        **PLACEHOLDER_CALLS,
+        **LIBRARY_CALLS,
         **PHASE3_CALLS,
         **PHASE4_CALLS,
         "save_settings": (a.get_settings()["values"],),

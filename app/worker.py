@@ -567,10 +567,14 @@ class DownloadQueue:
                 "Rest bleibt in der Warteschlange"
             )
         if self._run_limit_hit:
-            return "run_limit", (
+            head = (
                 f"Limit pro Lauf erreicht ({cfg.max_downloads_per_run}/"
-                f"{cfg.max_downloads_per_run}) – Rest bleibt in der Warteschlange; "
-                "«Fortsetzen» startet einen neuen Lauf"
+                f"{cfg.max_downloads_per_run}) – "
+            )
+            if not self._record_run:  # headless: no «Fortsetzen» button (QA Phase 4)
+                return "run_limit", head + "Rest wird beim nächsten Lauf geladen"
+            return "run_limit", (
+                head + "Rest bleibt in der Warteschlange; «Fortsetzen» startet einen neuen Lauf"
             )
         if self._client_error:
             return "error", self._client_error

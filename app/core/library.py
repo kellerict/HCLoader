@@ -228,11 +228,10 @@ def _chapters_from_file(path: Path) -> list[tagging.Chapter]:
 
 
 def _rewrite_cue_file_line(cue: Path, audio_name: str) -> None:
+    name = audio_name.replace('"', "'")
     try:
         text = cue.read_text(encoding="utf-8-sig")
-        text = re.sub(
-            r'^FILE ".*?"', lambda _m: f'FILE "{audio_name.replace(chr(34), chr(39))}"', text, 1, re.M
-        )
+        text = re.sub(r'^FILE ".*?"', lambda _m: f'FILE "{name}"', text, count=1, flags=re.M)
         cue.write_text(text, encoding="utf-8-sig", newline="\n")
     except OSError as exc:
         log.warning("CUE-Datei nicht angepasst (%s): %s", cue, exc)

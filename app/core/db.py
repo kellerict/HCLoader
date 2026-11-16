@@ -113,11 +113,33 @@ def _m3_newest_last(conn: sqlite3.Connection) -> None:
     conn.execute("ALTER TABLE sources ADD COLUMN newest_last INTEGER NOT NULL DEFAULT 0")
 
 
+def _m4_source_videos(conn: sqlite3.Connection) -> None:
+    """Review Phase 4 M1: which source has seen which video (a video can be in several
+    sources; `videos.source_id` only keeps the first one). The incremental stop of a watchlist
+    check uses this table, not "known in the DB". Existing rows are taken over from
+    `videos.source_id`."""
+    conn.execute(
+        """CREATE TABLE source_videos(
+          source_id INTEGER NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
+          video_id TEXT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+          first_seen TEXT,
+          PRIMARY KEY(source_id, video_id)
+        )"""
+    )
+    conn.execute("CREATE INDEX idx_source_videos_video ON source_videos(video_id)")
+    conn.execute(
+        "INSERT OR IGNORE INTO source_videos(source_id, video_id, first_seen) "
+        "SELECT source_id, id, first_seen FROM videos "
+        "WHERE source_id IS NOT NULL AND source_id IN (SELECT id FROM sources)"
+    )
+
+
 # Append new steps at the end; never edit existing ones. Step i upgrades version i -> i+1.
 MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [
     _m1_initial,
     _m2_queue,
     _m3_newest_last,
+    _m4_source_videos,
 ]
 # statuses a user may put into the download queue (enqueue / retry)
 ENQUEUEABLE = ("new", "inbox", "failed")
@@ -494,7 +516,7 @@ class Database:
         default_genre: str | None = None,
         enabled: bool = True,
         auto_download: bool = False,
-        max_entries: int = 30,
+        max_entries: int | None = None,
         newest_last: bool = False,
     ) -> int:
         if type not in SOURCE_TYPES:
@@ -540,7 +562,33 @@ class Database:
         self.update_source(source_id, last_checked=now_iso())
 
     def delete_source(self, source_id: int) -> None:
-        self.execute("DELETE FROM sources WHERE id=?", (source_id,))
+        with self.transaction():  # explicit: older DBs may run without foreign keys
+            self.execute("DELETE FROM source_videos WHERE source_id=?", (source_id,))
+            self.execute("DELETE FROM sources WHERE id=?", (source_id,))
+
+    # -- source <-> video (which source has already seen a video, Review Phase 4 M1)
+
+    def source_has_seen(self, source_id: int, video_id: str) -> bool:
+        return (
+            self.query_one(
+                "SELECT 1 AS x FROM source_videos WHERE source_id=? AND video_id=?",
+                (source_id, video_id),
+            )
+            is not None
+        )
+
+    def link_source_video(self, source_id: int, video_id: str) -> None:
+        """Remember that `source_id` listed `video_id` (the video row must exist)."""
+        self.execute(
+            "INSERT OR IGNORE INTO source_videos(source_id, video_id, first_seen) VALUES (?,?,?)",
+            (source_id, video_id, now_iso()),
+        )
+
+    def source_video_count(self, source_id: int) -> int:
+        row = self.query_one(
+            "SELECT COUNT(*) AS n FROM source_videos WHERE source_id=?", (source_id,)
+        )
+        return int((row or {}).get("n") or 0)
 
     # -- blacklist
 
