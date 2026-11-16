@@ -10,6 +10,16 @@ from app.worker import event_script
 
 ROOT = Path(__file__).resolve().parents[1]
 INDEX = ROOT / "ui" / "index.html"
+CHROMIUM_OFFLINE_ARGS = [
+    "--no-proxy-server",
+    "--host-resolver-rules=MAP * ~NOTFOUND",
+    "--disable-background-networking",
+    "--disable-component-update",
+    "--disable-sync",
+    "--disable-default-apps",
+    "--no-first-run",
+    "--no-pings",
+]
 
 
 @pytest.fixture(scope="module")
@@ -21,11 +31,16 @@ def browser():
     if Path("/opt/pw-browsers/chromium").exists():
         candidates.append({"executable_path": "/opt/pw-browsers/chromium"})
     candidates += [{}, {"channel": "msedge"}]
+    # The page is a local file: Chromium must not reach the network at all. Without these
+    # flags it inherits HTTPS_PROXY from the environment and its background services
+    # (component updater, GCM/account checks) connect to Google hosts.
+    env = {k: v for k, v in os.environ.items() if "proxy" not in k.lower()}
+    offline = {"args": CHROMIUM_OFFLINE_ARGS, "env": env}
     with sync_api.sync_playwright() as pw:
         b = None
         for kw in candidates:
             try:
-                b = pw.chromium.launch(**kw)
+                b = pw.chromium.launch(**kw, **offline)
                 break
             except Exception:
                 continue

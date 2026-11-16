@@ -167,6 +167,7 @@ class Database:
         if self.path != ":memory:":
             Path(self.path).parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
+        self._run_listeners: list[Callable[[dict[str, Any]], None]] = []
         self._conn = sqlite3.connect(
             self.path, check_same_thread=False, isolation_level=None, timeout=30
         )
@@ -298,6 +299,18 @@ class Database:
             sets.append("downloaded_at=?")
             params.append(now_iso())
         self.execute(f"UPDATE videos SET {', '.join(sets)} WHERE id=?", [*params, video_id])
+
+    def set_file_path(self, video_id: str, file_path: str | None) -> None:
+        """Change only `file_path` (re-tag move); status and `downloaded_at` stay."""
+        self.execute("UPDATE videos SET file_path=? WHERE id=?", (file_path, video_id))
+
+    def mark_removed(self, video_id: str) -> None:
+        """Library item deleted by the user: status `ignored` (never loaded again), no file."""
+        self.execute(
+            "UPDATE videos SET status='ignored', file_path=NULL, error=NULL, queue_pos=NULL "
+            "WHERE id=?",
+            (video_id,),
+        )
 
     def set_genre(self, video_id: str, genre: str, *, manual: bool = True) -> None:
         self.execute(
@@ -572,6 +585,22 @@ class Database:
             "UPDATE runs SET finished=?, found=?, downloaded=?, errors=?, note=? WHERE id=?",
             (now_iso(), found, downloaded, errors, note, run_id),
         )
+        row = self.query_one("SELECT * FROM runs WHERE id=?", (run_id,))
+        for fn in list(self._run_listeners):
+            try:
+                if row:
+                    fn(row)
+            except Exception:  # a broken listener must never break a run
+                pass
+
+    def add_run_listener(self, fn: Callable[[dict[str, Any]], None]) -> None:
+        """Called with the finished `runs` row after every `finish_run` (UI event `run`)."""
+        if fn not in self._run_listeners:
+            self._run_listeners.append(fn)
+
+    def remove_run_listener(self, fn: Callable[[dict[str, Any]], None]) -> None:
+        if fn in self._run_listeners:
+            self._run_listeners.remove(fn)
 
     def list_runs(self, limit: int = 50) -> list[dict[str, Any]]:
         return self.query("SELECT * FROM runs ORDER BY id DESC LIMIT ?", (limit,))

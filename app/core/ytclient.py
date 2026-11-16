@@ -21,7 +21,7 @@ from typing import Any
 import yt_dlp
 from yt_dlp.utils import DownloadCancelled
 
-from . import binaries, config, paths, preflight, tagging
+from . import binaries, config, paths, preflight, sidecar, tagging
 from .config import UNSORTED, Settings
 from .db import Database
 from .filters import normalize
@@ -808,9 +808,8 @@ class YtClient:
                 cover = tagging.make_square_cover(thumb, ffmpeg=binaries.ffmpeg_path())
             except tagging.TaggingError as exc:
                 log.warning("Cover übersprungen: %s", exc)
-        chapters = (
-            tagging.chapters_from_info(info) if (dl.write_cue or dl.write_id3_chapters) else []
-        )
+        # always resolved: the sidecar keeps them for a later re-tag even if CUE/CHAP are off
+        chapters = tagging.chapters_from_info(info)
         duration = float(meta["duration"]) if meta["duration"] else None
         check_cancel()
         tagging.write_tags(
@@ -873,6 +872,10 @@ class YtClient:
             }
         )
         self.db.set_status(vid, "done", file_path=str(target))
+        sidecar.write(
+            vid,
+            sidecar.build(meta, chapters=chapters, description=description, genre=genre),
+        )
         self._record_archive(vid)  # only after `done`: no crash window blocks a video forever
         log.info("Geladen: %s -> %s", vid, target)
         return DownloadResult(

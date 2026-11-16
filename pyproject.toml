@@ -32,3 +32,6 @@ select = ["E", "F", "I", "UP", "B"]
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-q"
+markers = [
+    "network: test may open real (non-loopback) network connections (opt-in; blocked otherwise)",
+]
