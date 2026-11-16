@@ -14,6 +14,10 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
   starten/stoppen, `max_downloads_per_run`), Watchlist-Lock.
 - Aufgabenplanung per XML (`StartWhenAvailable`, Akku erlaubt, `IgnoreNew`, 6 h; Review Phase 2 n6).
 
+- Playlist-Option «Neueste stehen hinten» (`Source.newest_last`, DB-Migration 3): liest die letzten
+  N Einträge rückwärts (`playlist_items "-1:-N:-1"`), damit neue Videos am Ende langer Playlists
+  gefunden werden; kostet ca. 1 Request pro 100 Einträge (siehe `docs/decisions.md`).
+
 ### Changed
 - Review Phase 1: **N3** Mutex im Namensraum `Global\` (Rückfall `Local\`, dann Datei-Lock);
   **N5** Request-Abstand, Suchzähler und Backoff-Eskalation prozessübergreifend (DB-State unter

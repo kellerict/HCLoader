@@ -290,8 +290,8 @@ Kurze Notizen zu Architekturentscheiden (Datum, Entscheid, Grund).
 - **Prüfung:** `core/watchlist.py`. Pro Quelle wird die flache Liste (neueste zuerst) bis zum ersten
   bekannten Video gelesen (DB `is_known`, jeder Status). Kanal-Root geht auf `/videos`
   (`ytclient.normalize_source_url`). **Suchquellen** überspringen Bekanntes nur, ohne Abbruch: die
-  Relevanz-Reihenfolge ist nicht chronologisch. Offen: Playlists hängen neue Videos standardmässig
-  hinten an; mit `max_entries` werden nur die ersten N gelesen (Playlist ggf. «neueste zuerst» sortieren).
+  Relevanz-Reihenfolge ist nicht chronologisch. Playlists hängen neue Videos meist hinten an: siehe
+  «Playlist-Option Neueste stehen hinten» unten.
 - Neue Videos: bestehen sie die Filter → `inbox` bzw. (Auto-Download) `DownloadQueue.enqueue(auto=True)`;
   sonst `new`. `auto=True` ist keine Nutzeraktion (hebt das Lauf-Limit und einen Client-Fehler nicht auf).
   `runs.found` = neu gespeicherte Videos (nicht nur die im Eingang).
@@ -338,3 +338,26 @@ Kurze Notizen zu Architekturentscheiden (Datum, Entscheid, Grund).
   `WorkingDirectory`. Das 261-Zeichen-Limit von `/TR` entfällt.
 - **Grund:** Diese Bedingungen sind per `schtasks`-Parameter nicht setzbar. «Unabhängig von der Anmeldung»
   bräuchte ein Passwort und wird bewusst nicht angeboten; der `Global\`-Mutex deckt es trotzdem ab.
+
+## 2026-11-16 – Playlist-Option «Neueste stehen hinten» (`sources.newest_last`)
+
+- **Problem:** Playlists hängen neue Videos hinten an; `list_source` las die ersten `max_entries` und brach
+  beim ersten bekannten Video ab, neue Videos in langen Playlists wurden nie gesehen.
+- **Lösung:** DB-Migration 3 (`sources.newest_last INTEGER NOT NULL DEFAULT 0`), nur für Typ `playlist`
+  (sonst erzwingt `validate_source` `false`). `YtClient.list_source(..., newest_last=True)` setzt
+  `playlist_items = "-1:-N:-1"` (die letzten N, letztes zuerst) statt `playlistend`; damit stimmt der
+  Abbruch beim ersten bekannten Video wieder. Default bleibt `false`.
+- **Gewählte Option (yt-dlp 2026.10.26):** `PlaylistEntries.__getitem__` (`yt_dlp/utils/_utils.py`)
+  löst negative Indizes über `len(self)` auf, das ganze Playlist durchläuft (`LazyList`, Seite für Seite);
+  eine negative Schrittweite liefert die Einträge rückwärts. `playlistreverse` ist mit `lazy_playlist`
+  (von uns für flache Listen gesetzt) wirkungslos (`YoutubeDL.py`: «not supported with lazy_playlist»)
+  und hätte ohnehin alle Einträge geladen; `"-N:"` + Reverse bringt nichts Besseres. Der YouTube-Tab-
+  Extractor (`_tab.py`) hat keine Sonderbehandlung von `playlist_items`, es gibt also keinen Weg, die
+  letzte Seite direkt zu holen. `-N` nur bei Playlists mit weniger als N Einträgen ist unkritisch
+  (negative Indizes werden übersprungen, es kommen alle).
+- **Request-Aufwand:** eine Seite ≈ 100 Einträge pro Request (Browse-Request + Continuations).
+  Normale Prüfung: 1 Request. `newest_last`: `ceil(Länge/100)` Requests, also 500er-Playlist ≈ 5,
+  2000er ≈ 20. Zwischen den Seiten greift `sleep_interval_requests` (`settings.throttle.sleep_requests`,
+  in `build_ydl_opts` gesetzt; `extractor/common.py::_request_webpage`, gilt auch für Continuations;
+  die erste Anfrage einer Instanz ist ausgenommen). Der Throttle zählt das weiterhin als einen
+  `list`-Aufruf. Empfehlung: Option nur für lange Playlists einschalten.

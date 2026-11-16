@@ -1317,8 +1317,19 @@ def test_save_source_validates_and_persists(env):
     assert ok["ok"] and ok["source"]["max_entries"] == 12 and ok["source"]["auto_download"] is True
     assert set(ok["source"]) == {
         "id", "type", "name", "url_or_query", "default_genre", "enabled", "auto_download",
-        "max_entries", "last_checked", "new_count",
+        "max_entries", "newest_last", "last_checked", "new_count",
     }  # fmt: skip
+    assert ok["source"]["newest_last"] is False
+    pl = a.save_source(
+        {
+            "type": "playlist",
+            "name": "PL",
+            "url_or_query": "https://www.youtube.com/playlist?list=PL1",
+            "newest_last": True,
+        }
+    )
+    assert pl["ok"] and pl["source"]["newest_last"] is True
+    a.delete_source(pl["source"]["id"])
     sid = ok["source"]["id"]
     # edit (extra UI fields ignored), toggle enabled
     upd = a.save_source({**ok["source"], "enabled": False, "new_count": 99, "name": "DJ2"})

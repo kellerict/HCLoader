@@ -100,7 +100,7 @@ def test_migration_2_numbers_existing_queue(tmp_path):
     conn.close()
     d = dbmod.Database(path)
     try:
-        assert d.schema_version() == 2
+        assert d.schema_version() == len(dbmod.MIGRATIONS)
         assert d.get_video("c")["queue_pos"] is None
         assert [r["id"] for r in d.list_queue()] == ["a", "b", "d"]
         assert d.get_video("a")["date_approx"] == 0

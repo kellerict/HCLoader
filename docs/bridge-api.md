@@ -156,6 +156,10 @@ Aufgaben-Felder unverändert (sie spiegeln den Zustand der Windows-Aufgabe).
   `list=`; Suche: nicht leer; doppelte Quelle gleichen Typs wird abgelehnt), `max_entries` (ganze Zahl
   1–200, leer = `schedule.entries_per_source`), `default_genre` (muss in den Einstellungen existieren,
   «Unsortiert»/leer = keins), `type`.
+- `Source.newest_last` (bool, Default `false`): nur für Typ `playlist` («Neueste stehen hinten»); bei
+  Kanal/Suche erzwingt `save_source` `false`. Die Prüfung liest dann die **letzten** `max_entries` Einträge
+  (neuester zuerst). Dafür muss yt-dlp die ganze Playlist durchblättern (~100 Einträge pro Request,
+  500er-Playlist ≈ 5 Requests statt 1, mit `sleep_requests` Pause dazwischen) – Hinweis in der UI-Hilfe.
 - `check_sources` läuft im eigenen Watchlist-Thread (`hcloader-watchlist`), nicht im Wartungs-Worker; die
   Quellen werden nacheinander geprüft. Abgelehnt (`ok:false`) bei Backoff («Backoff aktiv bis HH:MM –
   Prüfung gesperrt»), «Neustart nötig» und laufendem Update. Hält ein Headless-Lauf den Watchlist-Lock,
