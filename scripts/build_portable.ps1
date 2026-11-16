@@ -38,6 +38,11 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+# Started as Windows PowerShell 5.1 from a PowerShell 7 console, PSModulePath still lists the
+# PowerShell 7 module folders; 5.1 then fails to load e.g. Microsoft.PowerShell.Archive.
+if ($PSVersionTable.PSVersion.Major -lt 6) {
+    $env:PSModulePath = (($env:PSModulePath -split ';') | Where-Object { $_ -and $_ -notmatch '\\PowerShell\\' }) -join ';'
+}
 $ProgressPreference = 'SilentlyContinue'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
@@ -53,6 +58,29 @@ $PyFtp = 'https://www.python.org/ftp/python'
 $GetPipUrl = 'https://bootstrap.pypa.io/get-pip.py'
 
 function Write-Step([string]$Text) { Write-Host "==> $Text" -ForegroundColor Cyan }
+
+function Expand-ZipFile([string]$Path, [string]$Destination) {
+    # .NET instead of Expand-Archive: no module dependency, works in PS 5.1 and 7.
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    New-Item -ItemType Directory -Path $Destination -Force | Out-Null
+    $root = [IO.Path]::GetFullPath($Destination).TrimEnd('\') + '\'
+    $zip = [IO.Compression.ZipFile]::OpenRead($Path)
+    try {
+        foreach ($entry in $zip.Entries) {
+            $target = [IO.Path]::GetFullPath([IO.Path]::Combine($root, $entry.FullName))
+            if (-not $target.StartsWith($root, [StringComparison]::OrdinalIgnoreCase)) {
+                throw "Ungueltiger Pfad im ZIP: $($entry.FullName)"
+            }
+            if ($entry.FullName.EndsWith('/') -or $entry.FullName.EndsWith('\')) {
+                New-Item -ItemType Directory -Path $target -Force | Out-Null
+                continue
+            }
+            New-Item -ItemType Directory -Path ([IO.Path]::GetDirectoryName($target)) -Force | Out-Null
+            [IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $target, $true)
+        }
+    }
+    finally { $zip.Dispose() }
+}
 
 function Invoke-Native {
     # Runs a native program; output goes to the console. PS 5.1: with ErrorActionPreference=Stop
@@ -143,7 +171,7 @@ try {
     else {
         Write-Host "    SHA256 $hash (nicht verifiziert - mit -PythonSha256 pruefbar)" -ForegroundColor Yellow
     }
-    Expand-Archive -Path $embedZip -DestinationPath $PyDir -Force
+    Expand-ZipFile -Path $embedZip -Destination $PyDir
     if (-not (Test-Path $Py)) { throw "python.exe fehlt nach dem Entpacken ($PyDir)" }
 
     # ._pth: replaces sys.path completely and implies isolated mode (no PYTHON* variables,

@@ -14,6 +14,11 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+# Started as Windows PowerShell 5.1 from a PowerShell 7 console, PSModulePath still lists the
+# PowerShell 7 module folders; 5.1 then fails to load e.g. Microsoft.PowerShell.Archive.
+if ($PSVersionTable.PSVersion.Major -lt 6) {
+    $env:PSModulePath = (($env:PSModulePath -split ';') | Where-Object { $_ -and $_ -notmatch '\\PowerShell\\' }) -join ';'
+}
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $RepoRoot
 

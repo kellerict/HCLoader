@@ -17,6 +17,11 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+# Started as Windows PowerShell 5.1 from a PowerShell 7 console, PSModulePath still lists the
+# PowerShell 7 module folders; 5.1 then fails to load e.g. Microsoft.PowerShell.Archive.
+if ($PSVersionTable.PSVersion.Major -lt 6) {
+    $env:PSModulePath = (($env:PSModulePath -split ';') | Where-Object { $_ -and $_ -notmatch '\\PowerShell\\' }) -join ';'
+}
 $ProgressPreference = 'SilentlyContinue'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
@@ -32,6 +37,29 @@ $FfmpegShaUrl = "$FfmpegUrl.sha256"
 $ProviderRepo = 'https://github.com/Brainicism/bgutil-ytdlp-pot-provider'
 
 function Write-Step([string]$Text) { Write-Host "==> $Text" -ForegroundColor Cyan }
+
+function Expand-ZipFile([string]$Path, [string]$Destination) {
+    # .NET instead of Expand-Archive: no module dependency, works in PS 5.1 and 7.
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    New-Item -ItemType Directory -Path $Destination -Force | Out-Null
+    $root = [IO.Path]::GetFullPath($Destination).TrimEnd('\') + '\'
+    $zip = [IO.Compression.ZipFile]::OpenRead($Path)
+    try {
+        foreach ($entry in $zip.Entries) {
+            $target = [IO.Path]::GetFullPath([IO.Path]::Combine($root, $entry.FullName))
+            if (-not $target.StartsWith($root, [StringComparison]::OrdinalIgnoreCase)) {
+                throw "Ungueltiger Pfad im ZIP: $($entry.FullName)"
+            }
+            if ($entry.FullName.EndsWith('/') -or $entry.FullName.EndsWith('\')) {
+                New-Item -ItemType Directory -Path $target -Force | Out-Null
+                continue
+            }
+            New-Item -ItemType Directory -Path ([IO.Path]::GetDirectoryName($target)) -Force | Out-Null
+            [IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $target, $true)
+        }
+    }
+    finally { $zip.Dispose() }
+}
 
 function Invoke-Native([string]$Exe, [string[]]$Arguments, [string]$What) {
     # git/deno write progress to stderr. Under PS 5.1 with ErrorActionPreference=Stop this can
@@ -80,7 +108,7 @@ function Get-Zip([string]$Url, [string]$TempDir, [string]$ShaUrl) {
         }
     }
     $extract = Join-Path $TempDir 'x'
-    Expand-Archive -Path $zip -DestinationPath $extract -Force
+    Expand-ZipFile -Path $zip -Destination $extract
     return $extract
 }
 
