@@ -24,10 +24,9 @@
    Status / Wartung
      get_status()                       -> Status (siehe unten)
      get_versions()                     -> {app, ytdlp, plugin, deno, ffmpeg, python, data_dir, db_path,
-                                            db_entries, db_size_mb, last_backup, last_update_check}
-                                           Optional (Wunsch der UI, Phase 5 – fehlen die Felder, zeigt die UI nur
-                                           «Letztes Backup» und die in dieser Sitzung erstellten Backups):
-                                             backups: [{name, path?, size_mb, created (ISO)}]  neueste zuerst
+                                            db_entries, db_size_mb, last_backup, last_update_check,
+                                            backups, restart_required}
+                                             backups: [{name, path, size_mb, created (ISO)}]  neueste zuerst
                                              restart_required: bool  (yt-dlp aktualisiert, App noch nicht neu gestartet)
      update_ytdlp()                     -> {ok, ytdlp, plugin, changed, output, restart_required?} | {ok:false, error, output}
                                            Während des Aufrufs kommt jede pip-Zeile als "log"-Event: die UI zeigt

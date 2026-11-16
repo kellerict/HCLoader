@@ -413,11 +413,14 @@ class Api:
             }
 
     def get_versions(self) -> dict[str, Any]:
-        return maintenance.versions_info(
+        info = maintenance.versions_info(
             db_path=Path(self._db.path),
             db_entries=self._db.count_videos(),
             last_update_check=self._db.get_state(maintenance.K_LAST_UPDATE_CHECK),
         )
+        info["backups"] = maintenance.list_backups()
+        info["restart_required"] = bool(self._queue.restart_required)
+        return info
 
     def update_ytdlp(self) -> dict[str, Any]:
         res = self._job("update", self._do_update, JOB_TIMEOUT_S)

@@ -355,6 +355,29 @@ def last_backup(dest_dir: Path | None = None) -> str | None:
     return datetime.fromtimestamp(newest.stat().st_mtime).astimezone().isoformat(timespec="seconds")
 
 
+def list_backups(dest_dir: Path | None = None) -> list[dict[str, Any]]:
+    """Backups for the maintenance tab, newest first: {name, path, size_mb, created (ISO)}."""
+    dest_dir = dest_dir or backups_dir()
+    try:
+        files = [p for p in dest_dir.glob("hcloader-*.db") if p.is_file()]
+    except OSError:
+        return []
+    out = []
+    for p in sorted(files, key=lambda f: f.stat().st_mtime, reverse=True):
+        st = p.stat()
+        out.append(
+            {
+                "name": p.name,
+                "path": str(p),
+                "size_mb": round(st.st_size / 1_048_576, 2),
+                "created": datetime.fromtimestamp(st.st_mtime)
+                .astimezone()
+                .isoformat(timespec="seconds"),
+            }
+        )
+    return out
+
+
 def db_size_mb(db_path: Path) -> float:
     total = 0
     for suffix in ("", "-wal", "-shm"):

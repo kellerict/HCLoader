@@ -70,7 +70,7 @@ Aufgaben-Felder unverändert (sie spiegeln den Zustand der Windows-Aufgabe).
 | Methode | Parameter | Rückgabe | Phase |
 |---|---|---|---|
 | `get_status()` | – | `Status` (siehe unten) | 2 |
-| `get_versions()` | – | `{app, ytdlp, plugin, deno, ffmpeg, python, data_dir, db_path, db_entries, db_size_mb, last_backup, last_update_check}` | 2 |
+| `get_versions()` | – | `{app, ytdlp, plugin, deno, ffmpeg, python, data_dir, db_path, db_entries, db_size_mb, last_backup, last_update_check, backups:[{name, path, size_mb, created}], restart_required}` (backups neueste zuerst, max. 10) | 2 |
 | `update_ytdlp()` | – | `{ok, ytdlp, plugin, changed, output, restart_required?}` \| `{ok:false, error, output}` | 3 |
 | `backup_db()` | – | `{ok:true, path}` \| `{ok:false, error}` | 2 |
 | `open_path(kind)` | `"data"` \| `"target"` \| `"logs"` | `{ok}` | 2 |
