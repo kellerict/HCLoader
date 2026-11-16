@@ -51,6 +51,40 @@ def test_migration_from_older_version(tmp_path):
     conn.close()
 
 
+def test_migration_3_adds_newest_last(tmp_path):
+    path = tmp_path / "v2.db"
+    conn = sqlite3.connect(path)
+    dbmod.migrate(conn, dbmod.MIGRATIONS[:2])
+    conn.execute("INSERT INTO sources(type,name,url_or_query) VALUES ('playlist','P','u')")
+    conn.commit()
+    conn.close()
+    d = dbmod.Database(path)
+    try:
+        assert d.schema_version() == len(dbmod.MIGRATIONS) >= 3
+        assert d.list_sources()[0]["newest_last"] == 0
+        sid = d.add_source("playlist", "Q", "u2", newest_last=True)
+        assert d.get_source(sid)["newest_last"] == 1
+        d.update_source(sid, newest_last=False)
+        assert d.get_source(sid)["newest_last"] == 0
+    finally:
+        d.close()
+
+
+def test_migration_3_is_atomic(tmp_path):
+    conn = sqlite3.connect(tmp_path / "a.db")
+    dbmod.migrate(conn, dbmod.MIGRATIONS[:2])
+
+    def boom(c):
+        dbmod._m3_newest_last(c)
+        raise RuntimeError("x")
+
+    with pytest.raises(RuntimeError):
+        dbmod.migrate(conn, [*dbmod.MIGRATIONS[:2], boom])
+    assert dbmod._current_version(conn) == 2
+    assert "newest_last" not in [r[1] for r in conn.execute("PRAGMA table_info(sources)")]
+    conn.close()
+
+
 def test_migration_2_numbers_existing_queue(tmp_path):
     path = tmp_path / "v1.db"
     conn = sqlite3.connect(path)

@@ -27,10 +27,15 @@ class FakeClient:
         if err:
             raise err
 
-    def list_source(self, url, max_entries=None):
-        self.calls.append(("list", url, max_entries))
+    def list_source(self, url, max_entries=None, *, newest_last=False):
+        self.calls.append(
+            ("list", url, max_entries, newest_last) if newest_last else ("list", url, max_entries)
+        )
         self._raise(url)
-        return list(self.lists[url])
+        entries = list(self.lists[url])
+        if newest_last:  # like yt-dlp "-1:-N:-1": the last N, last one first
+            entries = entries[::-1][:max_entries]
+        return entries
 
     def search(self, query, n=None, **kw):
         self.calls.append(("search", query, n))
@@ -75,7 +80,9 @@ def test_valid_sources_and_defaults(settings):
         "enabled",
         "auto_download",
         "max_entries",
+        "newest_last",
     }
+    assert clean["newest_last"] is False
     for url in (
         "https://www.youtube.com/channel/UCabc123/videos",
         "https://youtube.com/c/Name",
@@ -325,3 +332,42 @@ def test_cancel_stops_before_next_source(db, settings):
         client=FakeClient(), db=db, throttle=FakeThrottle(), settings=settings, cancel=cancel
     )
     assert res.cancelled and res.checked == 0 and watchlist.last_run(db) is None
+
+
+# --------------------------------------------------------------------------- newest_last
+
+
+def test_newest_last_only_for_playlists(settings):
+    url = "https://www.youtube.com/playlist?list=PL1"
+    assert valid(settings, type="playlist", url_or_query=url)[0]["newest_last"] is False
+    assert valid(settings, type="playlist", url_or_query=url, newest_last=True)[0]["newest_last"]
+    assert valid(settings, newest_last=True)[0]["newest_last"] is False  # channel: forced off
+    assert (
+        valid(settings, type="search", url_or_query="x", newest_last=True)[0]["newest_last"]
+        is False
+    )
+
+
+def test_playlist_new_videos_at_the_end(db, settings):
+    url = "https://www.youtube.com/playlist?list=PL1"
+    vids = [entry(f"v{i:010d}") for i in range(8)]
+    for v in vids[:5]:  # known from earlier checks
+        db.upsert_video({"id": v["id"], "status": "inbox"})
+    client = FakeClient(lists={url: vids})
+
+    plain = src(db, "playlist", url, name="P", max_entries=3)
+    res = watchlist.check_source(plain, client=client, db=db, settings=settings)
+    assert res.new == 0  # first 3 are known: new ones at the end are never seen
+
+    s = src(db, "playlist", url, name="P2", max_entries=5, newest_last=True)
+    res = watchlist.check_source(s, client=client, db=db, settings=settings)
+    assert res.new == 3 and res.seen == 4  # stops at the first known one
+    assert client.calls[-1] == ("list", url, 5, True)
+    assert all(db.is_known(v["id"]) for v in vids)
+
+
+def test_newest_last_ignored_for_channels(db, settings):
+    client = FakeClient(lists={"https://www.youtube.com/@x": [entry("a" * 11)]})
+    s = src(db, "channel", newest_last=True)
+    watchlist.check_source(s, client=client, db=db, settings=settings)
+    assert client.calls == [("list", "https://www.youtube.com/@x", 30)]

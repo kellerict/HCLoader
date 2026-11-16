@@ -526,6 +526,12 @@ tr.checking.has-error td:first-child::before{background:var(--warn)}
 .seg.wide button{flex:1;padding:7px 12px}
 .seg.wide button.on{color:var(--text);background:var(--accent-soft);box-shadow:inset 0 -2px 0 var(--accent)}
 .modal-body .fhint{border:0;padding:0;margin-top:6px;font-size:12px;line-height:1.45}
+.cell-title small.has-rev{display:flex;align-items:center;gap:8px}
+.cell-title small.has-rev>span:last-child{overflow:hidden;text-overflow:ellipsis}
+.wl-rev{display:inline-flex;align-items:center;gap:3px;flex:none;padding:0 5px 0 3px;border:1px solid var(--line-2);border-radius:var(--radius-sm);color:var(--text);
+  font:600 10px/14px var(--f-mono);letter-spacing:.8px;text-transform:uppercase;cursor:help}
+.wl-rev svg{width:10px;height:10px;stroke:var(--accent);fill:none;stroke-width:2.8}
+.modal-body .fhint.indent{padding-left:24px;margin-top:2px}
 .with-unit{display:flex;align-items:center;gap:8px}
 .with-unit .input{min-width:0}
 .modal-body .field-error{margin-top:6px}

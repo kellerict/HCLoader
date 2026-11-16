@@ -224,6 +224,9 @@ class Shooter:
         self.shot("watchlist-dialog")
         # Feldfehler aus save_source ({ok:false, errors:{feld: msg}})
         page.click('.modal [data-seg=type] [data-v="playlist"]')
+        page.check(".modal [data-f=newest_last]")  # nur bei Playlists sichtbar
+        self.settle()
+        self.shot("watchlist-dialog-playlist")
         page.fill(".modal [data-f=name]", "Gabber Vault")
         page.fill(".modal [data-f=url_or_query]", "https://www.youtube.com/@gabbervault")
         page.fill(".modal [data-f=max_entries]", "500")

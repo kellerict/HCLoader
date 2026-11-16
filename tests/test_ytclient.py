@@ -344,6 +344,34 @@ def test_list_source(client, fake):
     assert inst.opts["playlistend"] == 3
 
 
+def test_list_source_newest_last_options(client, fake):
+    fake.info = {"entries": [_entry(i) for i in (7, 6, 5, 4)]}
+    res = client.list_source("https://www.youtube.com/playlist?list=PL1", 4, newest_last=True)
+    assert [r["id"] for r in res] == [f"id{i:09d}" for i in (7, 6, 5, 4)]
+    opts = fake.instances[0].opts
+    assert opts["playlist_items"] == "-1:-4:-1"
+    assert "playlistend" not in opts
+    assert opts["lazy_playlist"] is True and opts["extract_flat"] == "in_playlist"
+    assert opts["sleep_interval_requests"] == client.settings.throttle.sleep_requests
+    client.list_source("https://www.youtube.com/playlist?list=PL1", 4)
+    assert "playlist_items" not in fake.instances[1].opts
+
+
+@pytest.mark.parametrize(
+    ("total", "n", "expected"), [(8, 3, [8, 7, 6]), (2, 3, [2, 1]), (5, 1, [5])]
+)
+def test_newest_last_selection_order_in_real_yt_dlp(client, total, n, expected):
+    """The option string selects the last N items, newest (last) first - with yt-dlp's own
+    PlaylistEntries, no network."""
+    from yt_dlp.utils import PlaylistEntries
+
+    opts = build_ydl_opts(client.settings, "list")
+    opts["playlist_items"] = f"-1:-{n}:-1"
+    ydl = yt_dlp.YoutubeDL({**opts, "quiet": True})
+    entries = PlaylistEntries(ydl, {"entries": iter(range(1, total + 1))})
+    assert [e for _i, e in entries.get_requested_items()] == expected
+
+
 def test_resolve(client, fake):
     fake.info = {**FakeYDL.info, "chapters": [{"start_time": 0, "title": "A"}]}
     r = client.resolve(f"https://youtu.be/{VID}")
