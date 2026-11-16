@@ -133,7 +133,10 @@
                   die UI zeigt damit im Eingang das Quelle-Badge und den Filter pro Quelle. Fehlt das Feld oder
                   gibt es die Quelle nicht mehr: kein Badge, Gruppe «Ohne Quelle»)}
      Source      {id, type: "channel"|"playlist"|"search", name, url_or_query, default_genre|null,
-                  enabled, auto_download, max_entries, newest_last (bool), last_checked (ISO|null), new_count}
+                  enabled, auto_download, max_entries (int|null), newest_last (bool), last_checked (ISO|null), new_count}
+                  max_entries: null (Feld im Dialog leer) = Standard schedule.entries_per_source zum Zeitpunkt der
+                  Prüfung; die Liste zeigt dann «30 (Standard)», das Feld den Standard als Platzhalter. Obergrenze
+                  200, bei Suchquellen 100. Kanal-URL: nur Kanal-Root, /videos oder /streams (andere Tabs -> Fehler).
                   newest_last: nur bei type "playlist" – neue Videos stehen hinten, die Playlist wird von hinten
                   gelesen. Die UI schickt bei Kanal/Suche immer false und wählt es bei neuen Playlists nicht vor.
                   new_count = Treffer dieser Quelle, die noch im Eingang liegen (Status "inbox")

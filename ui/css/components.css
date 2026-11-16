@@ -766,3 +766,4 @@ tr.working td:first-child{box-shadow:inset 2px 0 0 var(--acid)}
 .colhead .seg,.colhead .follow{flex:none}
 .bk{grid-template-columns:14px minmax(0,1fr) 64px 128px}
 .bk .name .rtag{margin-left:10px}
+.wl-table .std{color:var(--dim)}

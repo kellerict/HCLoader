@@ -282,8 +282,8 @@
   /* ---------- Watchlist ---------- */
   let SOURCES = [
     { id: 1, type: 'channel', name: 'Kickdrum Collective', url_or_query: 'https://www.youtube.com/@kickdrumcollective', default_genre: 'Hardstyle', enabled: true, auto_download: true, max_entries: 30, last_checked: isoAt(1, 21, 40) },
-    { id: 2, type: 'channel', name: 'Gabber Vault', url_or_query: 'https://www.youtube.com/@gabbervault', default_genre: 'Hardcore', enabled: true, auto_download: false, max_entries: 30, last_checked: isoAt(1, 21, 41) },
-    { id: 3, type: 'channel', name: 'Distortion Unit', url_or_query: 'https://www.youtube.com/@distortionunit', default_genre: 'Uptempo', enabled: true, auto_download: false, max_entries: 30, last_checked: isoAt(1, 21, 42) },
+    { id: 2, type: 'channel', name: 'Gabber Vault', url_or_query: 'https://www.youtube.com/@gabbervault', default_genre: 'Hardcore', enabled: true, auto_download: false, max_entries: null, last_checked: isoAt(1, 21, 41) },
+    { id: 3, type: 'channel', name: 'Distortion Unit', url_or_query: 'https://www.youtube.com/@distortionunit/videos', default_genre: 'Uptempo', enabled: true, auto_download: false, max_entries: null, last_checked: isoAt(1, 21, 42) },
     { id: 4, type: 'channel', name: 'Rave Archive CH', url_or_query: 'https://www.youtube.com/@ravearchivech', default_genre: null, enabled: true, auto_download: false, max_entries: 50, last_checked: isoAt(1, 21, 43) },
     { id: 5, type: 'search', name: 'Frenchcore Livesets', url_or_query: 'frenchcore liveset', default_genre: 'Hardcore', enabled: true, auto_download: false, max_entries: 20, last_checked: isoAt(1, 21, 44) },
     { id: 6, type: 'playlist', name: 'Hard Classics Playlist', url_or_query: 'https://www.youtube.com/playlist?list=PLhardclassics', default_genre: 'Hardcore', enabled: false, auto_download: false, max_entries: 30, newest_last: true, last_checked: isoAt(6, 3, 0) },
@@ -757,7 +757,7 @@
       return later(80, () => {
         let s = SOURCES.find((x) => x.name === channelName);
         if (!s) {
-          s = { id: nextSourceId++, type: 'channel', name: channelName, url_or_query: `https://www.youtube.com/channel/${channelId}`, default_genre: null, enabled: true, auto_download: false, max_entries: settings.schedule.entries_per_source, last_checked: null };
+          s = { id: nextSourceId++, type: 'channel', name: channelName, url_or_query: `https://www.youtube.com/channel/${channelId}`, default_genre: null, enabled: true, auto_download: false, max_entries: null, last_checked: null };
           SOURCES.push(s);
         }
         return { ok: true, source: sourceView(s) };
@@ -782,11 +782,13 @@
         else if (SOURCES.some((x) => x.id !== src.id && x.name.toLowerCase() === name.toLowerCase())) errors.name = 'Eine Quelle mit diesem Namen gibt es bereits.';
         if (!url) errors.url_or_query = src.type === 'search' ? 'Suchbegriff fehlt.' : 'URL fehlt.';
         else if (src.type !== 'search' && !/^https?:\/\/(www\.|music\.)?youtube\.com\//.test(url)) errors.url_or_query = 'YouTube-URL erwartet (https://www.youtube.com/…).';
+        else if (src.type === 'channel' && /\/(playlists|releases|featured|shorts|community|podcasts|about)\/?$/.test(url)) errors.url_or_query = 'Nur die Kanal-URL selbst, /videos oder /streams – andere Tabs werden nicht unterstützt.';
         else if (src.type === 'playlist' && !/[?&]list=[\w-]+/.test(url)) errors.url_or_query = 'Playlist-URL erwartet (…/playlist?list=…).';
-        if (!(Number.isInteger(src.max_entries) && src.max_entries >= 1 && src.max_entries <= 200)) errors.max_entries = 'Ganze Zahl zwischen 1 und 200 erwartet.';
+        const cap = src.type === 'search' ? 100 : 200; // leer (null) = Standard schedule.entries_per_source
+        if (src.max_entries != null && !(Number.isInteger(src.max_entries) && src.max_entries >= 1 && src.max_entries <= cap)) errors.max_entries = `Ganze Zahl zwischen 1 und ${cap} erwartet (leer = Standard).`;
         if (src.default_genre && !settings.genres.items.some((g) => g.name === src.default_genre)) errors.default_genre = 'Dieses Genre gibt es nicht (mehr).';
         if (Object.keys(errors).length) return { ok: false, errors };
-        const fields = { type: src.type, name, url_or_query: url, default_genre: src.default_genre || null, enabled: !!src.enabled, auto_download: !!src.auto_download, max_entries: src.max_entries, newest_last: src.type === 'playlist' && !!src.newest_last };
+        const fields = { type: src.type, name, url_or_query: url, default_genre: src.default_genre || null, enabled: !!src.enabled, auto_download: !!src.auto_download, max_entries: src.max_entries == null ? null : src.max_entries, newest_last: src.type === 'playlist' && !!src.newest_last };
         let s = SOURCES.find((x) => x.id === src.id);
         if (s) Object.assign(s, fields);
         else { s = Object.assign({ id: nextSourceId++, last_checked: null }, fields); SOURCES.push(s); }

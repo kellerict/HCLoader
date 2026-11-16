@@ -24,6 +24,10 @@
 
   const FIELDS = ['type', 'name', 'url_or_query', 'default_genre', 'enabled', 'auto_download', 'max_entries', 'newest_last'];
   /** «Neueste stehen hinten» gibt es nur bei Playlists. */
+  /** Obergrenze pro Prüfung: Suchquellen 100, sonst 200 (wie das Backend). */
+  const maxLimit = (type) => (type === 'search' ? 100 : 200);
+  /** Wert, der bei leerem Feld (max_entries null) gilt: schedule.entries_per_source, begrenzt auf die Obergrenze. */
+  const defaultMax = (type) => Math.min(HC.settings.values.schedule.entries_per_source, maxLimit(type));
   const reversed = (s) => s.type === 'playlist' && !!s.newest_last;
   const payload = (s) => FIELDS.reduce((o, k) => { o[k] = k === 'newest_last' ? reversed(s) : s[k]; return o; }, s.id != null ? { id: s.id } : {});
   const backoff = () => (HC.status && HC.status.backoff && HC.status.backoff.active ? HC.status.backoff : null);
@@ -48,7 +52,7 @@
       <td class="mono">${esc(t('source_type.' + s.type))}</td>
       <td>${s.default_genre ? ui.genreDot(s.default_genre) : `<span class="unit">${t('watchlist.genre_auto')}</span>`}</td>
       <td><span class="okline" title="${esc(t(s.auto_download ? 'watchlist.auto_title_on' : 'watchlist.auto_title_off'))}">${ui.toggle(s.auto_download, 'data-k="auto_download"')}<span class="toggle-label">${t(s.auto_download ? 'watchlist.auto_on' : 'watchlist.auto_off')}</span></span></td>
-      <td class="mono num">${esc(s.max_entries)}</td>
+      <td class="mono num"${s.max_entries == null ? ` title="${esc(t('watchlist.max_default_title'))}"` : ''}>${s.max_entries == null ? `${esc(defaultMax(s.type))} <span class="std">${t('watchlist.max_default')}</span>` : esc(s.max_entries)}</td>
       <td class="mono">${lastCell(s)}</td>
       <td class="num">${s.new_count ? `<button type="button" class="badge" data-act="inbox" title="${esc(t('watchlist.new_title'))}">${esc(s.new_count)}</button>` : '<span class="mono muted">–</span>'}</td>
       <td class="act">
@@ -124,7 +128,7 @@
   /* ---------- Dialog: Quelle anlegen / bearbeiten ---------- */
   function edit(src) {
     const isNew = !src;
-    const s = Object.assign({ type: 'channel', name: '', url_or_query: '', default_genre: null, enabled: true, auto_download: false, newest_last: false, max_entries: HC.settings.values.schedule.entries_per_source }, src);
+    const s = Object.assign({ type: 'channel', name: '', url_or_query: '', default_genre: null, enabled: true, auto_download: false, newest_last: false, max_entries: null }, src);
     const genres = HC.genres.names().filter((g) => g !== 'Unsortiert');
     if (s.default_genre && !genres.includes(s.default_genre)) genres.push(s.default_genre);
     const err = (k) => `<div class="field-error" data-e="${k}" hidden></div>`;
@@ -141,7 +145,7 @@
         <div style="flex:1;min-width:0"><label class="lbl">${t('watchlist.f_genre')}</label>
           <select class="select" data-f="default_genre"><option value="">${t('watchlist.genre_auto_long')}</option>${genres.map((g) => `<option${s.default_genre === g ? ' selected' : ''}>${esc(g)}</option>`).join('')}</select>${err('default_genre')}</div>
         <div style="width:168px;flex:none"><label class="lbl">${t('watchlist.f_max')}</label>
-          <div class="with-unit"><input class="input mono" type="number" min="1" max="200" step="1" data-f="max_entries" value="${esc(s.max_entries)}"><span class="unit">${t('watchlist.hint_max')}</span></div>${err('max_entries')}</div>
+          <div class="with-unit"><input class="input mono" type="number" min="1" max="${maxLimit(s.type)}" step="1" data-f="max_entries" value="${esc(s.max_entries == null ? '' : s.max_entries)}" placeholder="${esc(defaultMax(s.type))}" title="${esc(t('watchlist.max_title'))}"><span class="unit">${t('watchlist.hint_max')}</span></div>${err('max_entries')}</div>
       </div>
       <div class="frow"><label class="lbl">${t('watchlist.f_hits')}</label>
         <div class="seg wide" data-seg="auto">${[['0', 'hits_inbox'], ['1', 'hits_auto']].map(([v, k]) => `<button type="button" data-v="${v}" class="${String(+s.auto_download) === v ? 'on' : ''}" aria-pressed="${String(+s.auto_download) === v}">${t('watchlist.' + k)}</button>`).join('')}</div>
@@ -173,6 +177,9 @@
           $('[data-f=url_or_query]', m).placeholder = t('watchlist.ph_' + type);
           $('[data-h=url]', m).textContent = t('watchlist.hint_' + type);
           $$('[data-only]', m).forEach((n) => { n.hidden = n.dataset.only !== type; });
+          const mx = $('[data-f=max_entries]', m);
+          mx.max = maxLimit(type);
+          mx.placeholder = defaultMax(type); // leer = Standard aus den Einstellungen
           $('[data-h=auto]', m).textContent = t(segVal(m, 'auto') === '1' ? 'watchlist.hint_auto' : 'watchlist.hint_inbox');
         };
         m.addEventListener('click', (e) => {

@@ -31,6 +31,18 @@ VIEWPORT = {"width": 1440, "height": 900}
 # Fixed "now" so relative dates in the mock data are stable between runs.
 FIXED_NOW = dt.datetime(2026, 11, 16, 8, 15, 0, tzinfo=dt.UTC)  # 09:15 in Zürich
 SYSTEM_CHROMIUM = Path("/opt/pw-browsers/chromium")
+# Same offline flags as tests/test_bridge_js.py: the UI must never reach the network, and Chromium
+# itself (proxy from the environment, background services) must not either.
+CHROMIUM_OFFLINE_ARGS = [
+    "--no-proxy-server",
+    "--host-resolver-rules=MAP * ~NOTFOUND",
+    "--disable-background-networking",
+    "--disable-component-update",
+    "--disable-sync",
+    "--disable-default-apps",
+    "--no-first-run",
+    "--no-pings",
+]
 
 VIEWS = ["discover", "inbox", "watchlist", "downloads", "library", "log", "settings"]
 SETTINGS_TABS = [
@@ -57,9 +69,10 @@ def launch(pw: Playwright) -> Browser:
         attempts.append({"executable_path": str(SYSTEM_CHROMIUM)})
     attempts += [{}, {"channel": "msedge"}, {"channel": "chrome"}]
     last: Exception | None = None
+    offline_env = {k: v for k, v in os.environ.items() if "proxy" not in k.lower()}
     for kwargs in attempts:
         try:
-            return pw.chromium.launch(**kwargs)
+            return pw.chromium.launch(**kwargs, args=CHROMIUM_OFFLINE_ARGS, env=offline_env)
         except Error as exc:  # try the next candidate
             last = exc
     raise SystemExit(f"Kein Chromium gefunden: {last}")
@@ -86,7 +99,8 @@ class Shooter:
         if self.only and name not in self.only:
             return
         path = self.out / f"{name}.png"
-        self.page.mouse.move(self.page.viewport_size["width"] - 260, 4)  # keep hover effects out of the picture
+        # keep hover effects out of the picture
+        self.page.mouse.move(self.page.viewport_size["width"] - 260, 4)
         self.page.screenshot(path=str(path), animations="disabled")
         self.written.append(path)
         print(f"  {path.relative_to(ROOT) if path.is_relative_to(ROOT) else path}")
@@ -245,6 +259,7 @@ class Shooter:
         page.dispatch_event("#log-q", "input")
         self.settle()
         # hochscrollen pausiert das Mitlaufen; neue Zeilen werden gezählt
+        page.wait_for_function("document.querySelectorAll('#logbox .log-line').length > 20")
         page.evaluate("document.querySelector('#logbox').scrollTop = 0")
         page.wait_for_selector("#log-jump:not([hidden])")
         page.evaluate(
