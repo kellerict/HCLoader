@@ -1,0 +1,5 @@
+HCLoader Portable-Modus
+Solange diese Datei im App-Ordner liegt, speichert HCLoader Einstellungen, Datenbank,
+Archiv und Protokolle im Unterordner data\ statt unter %APPDATA%\HCLoader.
+Loeschen = Daten wieder unter %APPDATA%\HCLoader (data\ bleibt unberuehrt).
+Die Umgebungsvariable HCLOADER_HOME hat Vorrang vor diesem Schalter.

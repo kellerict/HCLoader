@@ -176,3 +176,24 @@ def test_settings_adopt_task_state_from_get_task_status(browser):
     assert page.evaluate(SWITCH) is True and page.evaluate(SAVE_DISABLED) is True
     assert not errors
     page.close()
+
+
+def test_settings_moved_task_offers_recreate(browser):
+    """Phase 6: the registered task starts another app folder -> warning + «Aufgabe neu anlegen»;
+    the click calls create_task and the normal «registered» box comes back."""
+    page, errors = _page(browser, "?mock=1&nosim")
+    page.wait_for_function("document.body.classList.contains('ready')", timeout=10000)
+    page.evaluate("HC.mock.demo.taskMoved(); HC.views.settings.reset(); 0")
+    _schedule_tab(page)
+    host = "[data-custom=task]"
+    page.wait_for_selector(f"{host} .statebox.warn", timeout=10000)
+    text = page.inner_text(host)
+    assert page.evaluate("HC.t('set.task.moved')") in text
+    assert "E:\\HCLoader\\python\\pythonw.exe" in text
+    button = page.inner_text(f"{host} [data-task=create]")
+    assert page.evaluate("HC.t('set.task.recreate')") in button
+    page.click(f"{host} [data-task=create]")
+    page.wait_for_selector(f"{host} .statebox.ok", timeout=10000)
+    assert page.evaluate(SWITCH) is True
+    assert not errors
+    page.close()

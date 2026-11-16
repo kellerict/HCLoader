@@ -42,3 +42,10 @@ Thumbs.db
 config.yaml.tmp
 config.yaml.bak-*
 docs/screenshots/reduced/
+
+# Portable-Version (scripts/build_portable.ps1): Build-Ausgabe, Marker und Daten im App-Ordner.
+# Ein portable.txt im Entwicklungs-Checkout würde die Daten nach .\data umleiten.
+/dist/
+/portable.txt
+/data/
+/python/

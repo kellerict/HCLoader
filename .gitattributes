@@ -1,0 +1,5 @@
+# Windows starter files of the portable build: always CRLF (cmd.exe/WSH); build_portable.ps1
+# normalises them again when copying.
+scripts/portable/*.cmd text eol=crlf
+scripts/portable/*.vbs text eol=crlf
+scripts/portable/*.txt text eol=crlf

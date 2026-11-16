@@ -1,0 +1,130 @@
+name: Portable
+# Builds the portable ZIP (scripts/build_portable.ps1) on Windows, smoke-tests it (also after
+# moving it to another drive) and uploads it as a workflow artifact. No release upload.
+on:
+  push:
+    tags: ["v*"]
+    branches: ["claude/compassionate-thompson-zgetlu"]  # working branch: test the build
+  workflow_dispatch:
+concurrency:
+  # like ci.yml: a running build finishes; of the waiting runs only the newest is kept
+  group: portable-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  portable:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        # Windows PowerShell 5.1 = the shell the user runs the build script with
+        shell: powershell
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build (dist\HCLoader + ZIP)
+        id: build
+        timeout-minutes: 30
+        run: .\scripts\build_portable.ps1 -Zip
+
+      - name: "Smoke (a): imports, portable mode, no links left"
+        timeout-minutes: 5
+        run: |
+          # native tools may write to stderr: only exit codes decide (PS 5.1, runner sets 'stop')
+          $ErrorActionPreference = 'Continue'
+          $root = Join-Path $env:GITHUB_WORKSPACE 'dist\HCLoader'
+          $py = Join-Path $root 'python\python.exe'
+          Set-Location $env:RUNNER_TEMP  # cwd must not matter (._pth: cwd is not on sys.path)
+          & $py -c "import app, app.main, webview, yt_dlp, mutagen, pydantic; print('imports ok', app.__file__)"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          & $py -c "from app.core import config, maintenance; assert config.is_portable(); assert maintenance.is_portable_python(); print('data', config.app_home())"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          & $py -c "import clr; clr.AddReference('System.Windows.Forms'); import webview.platforms.winforms as w; print('pythonnet ok, renderer', w.renderer)"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          $links = @(Get-ChildItem -Path $root -Recurse -Force -Attributes ReparsePoint -ErrorAction SilentlyContinue)
+          if ($links.Count -gt 0) { $links | Select-Object -First 10 | ForEach-Object { Write-Host $_.FullName }; throw "Links im Build: $($links.Count)" }
+
+      - name: "Smoke (b): app.main --help"
+        timeout-minutes: 2
+        run: |
+          # native tools may write to stderr: only exit codes decide (PS 5.1, runner sets 'stop')
+          $ErrorActionPreference = 'Continue'
+          $py = Join-Path $env:GITHUB_WORKSPACE 'dist\HCLoader\python\python.exe'
+          Set-Location $env:RUNNER_TEMP
+          & $py -m app.main --help
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: "Smoke (c): pytest in the embedded Python (dev deps only here, not in the ZIP)"
+        timeout-minutes: 15
+        run: |
+          # native tools may write to stderr: only exit codes decide (PS 5.1, runner sets 'stop')
+          $ErrorActionPreference = 'Continue'
+          $py = Join-Path $env:GITHUB_WORKSPACE 'dist\HCLoader\python\python.exe'
+          & $py -m pip install --no-warn-script-location --disable-pip-version-check pytest pytest-timeout
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Set-Location $env:GITHUB_WORKSPACE
+          & $py -m pytest -q -p no:cacheprovider --timeout=120 --timeout-method=thread -o faulthandler_timeout=110
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: "Smoke (d): unpack the ZIP on another drive, remove the build folder"
+        timeout-minutes: 15
+        run: |
+          # native tools may write to stderr: only exit codes decide (PS 5.1, runner sets 'stop')
+          $ErrorActionPreference = 'Continue'
+          $ws = $env:GITHUB_WORKSPACE
+          # another drive than the workspace if there is one (windows-latest: workspace on D:)
+          $drive = 'D:\'
+          if ($ws.StartsWith('D:', [StringComparison]::OrdinalIgnoreCase) -or -not (Test-Path 'D:\')) { $drive = 'C:\' }
+          $moved = Join-Path $drive 'moved'
+          if (Test-Path $moved) { Remove-Item -Path $moved -Recurse -Force -ErrorAction Stop }
+          New-Item -ItemType Directory -Path $moved -ErrorAction Stop | Out-Null
+          Expand-Archive -Path '${{ steps.build.outputs.zip }}' -DestinationPath $moved -ErrorAction Stop
+          # the old location must be gone: absolute paths/links to it would otherwise still work
+          Remove-Item -Path (Join-Path $ws 'dist\HCLoader') -Recurse -Force -ErrorAction Stop
+          $root = Join-Path $moved 'HCLoader'
+          "HCL_MOVED=$root" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          if (Test-Path (Join-Path $root 'data')) { throw 'data\ darf nicht im ZIP liegen' }
+          foreach ($f in @('HCLoader.vbs', 'HCLoader-Konsole.cmd', 'Verknuepfung-erstellen.cmd', 'portable.txt', 'THIRD_PARTY_LICENSES.txt', 'licenses\ffmpeg\BUILDINFO.txt', 'licenses\python\LICENSE.txt', 'licenses\deno\LICENSE.md', 'scripts\run_watchlist.pyw', 'bin\deno.exe', 'bin\ffmpeg.exe', 'bin\ffprobe.exe')) {
+            if (-not (Test-Path (Join-Path $root $f))) { throw "fehlt im ZIP: $f" }
+          }
+          $py = Join-Path $root 'python\python.exe'
+          Set-Location $env:RUNNER_TEMP
+          & $py -c "import app, app.main, webview, yt_dlp, mutagen, pydantic; print('imports ok', app.__file__)"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          & $py -m app.main --help
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          & $py -c "import os, sys; from app.core import config, maintenance; r = os.path.normcase(sys.argv[1]); assert os.path.normcase(str(config.app_root())) == r, config.app_root(); assert maintenance.is_portable_python(); print('data', config.app_home())" $root
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          & $py -c "import pytest" 2>$null
+          $leak = $LASTEXITCODE
+          if ($leak -eq 0) { throw 'pytest steckt im ZIP (Dev-Abhaengigkeiten duerfen nicht hinein)' }
+          exit 0
+
+      - name: "Smoke (e): deno + bgutil provider after moving (fresh Deno cache)"
+        timeout-minutes: 10
+        run: |
+          # native tools may write to stderr: only exit codes decide (PS 5.1, runner sets 'stop')
+          $ErrorActionPreference = 'Continue'
+          $root = $env:HCL_MOVED
+          $env:DENO_DIR = Join-Path $env:RUNNER_TEMP 'deno-fresh'   # like another PC: empty cache
+          $env:DENO_NO_UPDATE_CHECK = '1'
+          $deno = Join-Path $root 'bin\deno.exe'
+          $server = Join-Path $root 'bin\bgutil-pot-provider\server'
+          $nm = Join-Path $server 'node_modules'
+          $cache = Join-Path $env:RUNNER_TEMP 'bgutil-cache'
+          New-Item -ItemType Directory -Path $cache -Force | Out-Null
+          Set-Location $env:RUNNER_TEMP
+          # same check as app/core/potoken.py (and the plugin itself): generate_once.ts --version
+          & $deno run --allow-env --allow-net "--allow-ffi=$nm" "--allow-write=$cache" "--allow-read=$cache,$nm" (Join-Path $server 'src\generate_once.ts') --version
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          $py = Join-Path $root 'python\python.exe'
+          & $py -c "import sys; from app.core import binaries, potoken; s = binaries.status(); print(s); r = potoken.probe('script', 4416); print(r); sys.exit(0 if (r['ok'] and s['deno_ok'] and s['ffmpeg_ok'] and s['provider_dir_ok']) else 1)"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HCLoader-portable-${{ steps.build.outputs.version }}-win64
+          path: ${{ steps.build.outputs.zip }}
+          if-no-files-found: error
+          compression-level: 0  # already a ZIP
+          retention-days: 30

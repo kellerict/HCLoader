@@ -5,6 +5,19 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
 
 ## [Unreleased]
 
+### Added
+- Phase 6 Portable-Version: `scripts/build_portable.ps1` baut `dist\HCLoader\` (Windows-embeddable-Python
+  3.12 amd64 mit pip, Abhängigkeiten, App, `bin\` mit Deno/ffmpeg/bgutil-Provider, Lizenzen) und mit
+  `-Zip` `HCLoader-portable-<version>-win64.zip`. Starter `HCLoader.vbs` (ohne Konsole),
+  `HCLoader-Konsole.cmd` (Fehlersuche), `Verknuepfung-erstellen.cmd`. Portable-Modus über
+  `portable.txt`: Daten in `<App>\data\` (Reihenfolge `HCLOADER_HOME` > Portable > `%APPDATA%`),
+  relativer Zielordner relativ zum App-Ordner. Update-Knopf aktualisiert das eingebettete Python.
+  Aufgabenplanung erkennt einen verschobenen App-Ordner (`path_mismatch`, Hinweis + «Aufgabe neu
+  anlegen», Toast beim Start). Download-Markierung (Mark of the Web) der .NET-DLLs wird beim Start
+  entfernt. `get_versions` liefert `app_dir`/`portable`. Workflow `.github/workflows/portable.yml`
+  (Tags `v*`, manuell, Arbeitsbranch) mit Rauchtests vor und nach dem Verschieben, ZIP als Artefakt.
+  `fetch_binaries.ps1` mit `-BinDir`/`-Python`/`-LicenseDir`.
+
 ### Fixed
 - Review Phase 5: **M1** Neu-Taggen behält fremde ID3-Frames (BPM, Key, Rating, ReplayGain, Lyrics …);
   **m1** zu langer Pfad beim Neu-Taggen als saubere Fehlermeldung; **m2** nicht erreichbarer Zielordner

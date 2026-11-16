@@ -502,3 +502,93 @@ Kurze Notizen zu Architekturentscheiden (Datum, Entscheid, Grund).
   wachsendem Abstand: 1 h, 2 h, 4 h, 8 h, 16 h, dann höchstens 24 h (`watchlist.retry_delay`, Zähler
   `state.watchlist_retry_count`). Eine erfolgreiche Prüfung setzt Zähler und Retry zurück. So kostet ein
   dauerhafter Fehler (gelöschte Playlist, unerkannte Sperre) wenige Abfragen pro Tag statt 24.
+
+## 2026-11-16 – Portable-Version (Phase 6, Variante 2: eingebettetes Python)
+
+- **Datenordner-Reihenfolge:** `HCLOADER_HOME` > Portable (`portable.txt` im App-Ordner →
+  `<App>\data\`) > `%APPDATA%\HCLoader`. `HCLOADER_HOME` bleibt vorne, weil Tests und Sonderfälle
+  (Daten bewusst woanders) es brauchen. `portable.txt` muss eine Datei sein (Ordner zählt nicht).
+  Der App-Ordner ist `config.app_root()` (= Elternordner von `app\`). Im Entwicklungs-Checkout ist
+  `/portable.txt` per `.gitignore` gesperrt.
+- **Relative Pfade:** `config.expand_path` löst einen nach `%VAR%`/`~` noch relativen Pfad nur im
+  Portable-Modus gegen den App-Ordner auf (`.\Music` → `<App>\Music`, `\Music` → Laufwerk des
+  App-Ordners). Ohne Portable bleibt er wie bisher relativ zum Arbeitsverzeichnis. Default-Zielordner
+  bleibt `%USERPROFILE%\Music\HCLoader`. `%APPDATA%` ohne Umgebungsvariable zeigt jetzt immer auf den
+  echten Roaming-Ordner (früher `app_home().parent`, im Portable-Modus wäre das der App-Ordner).
+- **Update im eingebetteten Python:** `in_venv()` greift dort nicht (`sys.prefix == sys.base_prefix`).
+  `maintenance.is_portable_python()` = `portable.txt` im App-Ordner **und** `sys.executable` liegt direkt
+  in `<App>\python\`. Nur dann (oder im venv) läuft `pip install -U`, mit zusätzlich
+  `--no-warn-script-location --prefer-binary --no-build-isolation`. Ein globales Python bleibt gesperrt.
+- **Aufgabenplanung nach dem Verschieben:** Die Aufgabe enthält absolute Pfade. `get_task_status`
+  vergleicht `<Command>`/`<Arguments>` aus `schtasks /Query /XML` mit dem aktuellen Ort →
+  `path_mismatch`. Die UI bietet «Aufgabe neu anlegen» (= `create_task`, `/F`). Beim GUI-Start einmal
+  derselbe Vergleich im Wartungs-Worker, bei Abweichung Toast + Log. Kein automatisches Neuanlegen:
+  Liegen zwei Kopien (z.B. USB-Stick und Festplatte) vor, entscheidet der User, welche geplant läuft.
+- **Build:** `scripts/build_portable.ps1` (PS 5.1, ASCII). Python-Version `3.12` = neueste 3.12.x mit
+  `python-3.12.N-embed-amd64.zip` auf python.org. Seit 3.12 im Security-Modus ist, haben neue
+  Patch-Releases **keine Windows-Binaries** mehr. Das Skript probiert absteigend per HEAD und nimmt die
+  erste vorhandene (Stand Recherche: 3.12.10). python.org veröffentlicht keine `.sha256`-Datei; die
+  Prüfsumme wird ausgegeben, `-PythonSha256` erzwingt sie. Aus dem Container ist python.org nicht
+  erreichbar, die Auflösung wurde nicht live getestet (CI prüft sie).
+- **`._pth`:** `python312.zip`, `.`, `Lib\site-packages`, `..`, `import site`. Laut CPython
+  `Modules/getpath.py` (3.12) bewirkt eine `._pth`-Datei `isolated=1`, `use_environment=0`,
+  `safe_path=1`. Folgen: `PYTHON*`-Variablen wirken nicht (Konsole-Starter nutzt `-X utf8` statt
+  `PYTHONUTF8`), kein User-site, Skript-/Arbeitsordner nicht auf `sys.path`. Darum steht `..`
+  (App-Ordner) in der `._pth`, damit `python -m app.main` geht; `run_watchlist.pyw` setzt den Pfad wie
+  bisher selbst.
+- **pip-Build-Isolation:** pip baut sdists standardmässig mit «virtual»-Isolation. Dabei übergibt es die
+  Build-Werkzeuge per `PYTHONPATH` + `sitecustomize` (pip 26.3, `build_env/virtual.py`), und genau das
+  ignoriert der `._pth`-Modus. `proxy_tools` (Abhängigkeit von pywebview) gibt es nur als sdist (PyPI,
+  0.1.0) → der Build würde scheitern. Lösung: `setuptools`/`wheel` ins eingebettete Python, dann
+  `pip install --prefer-binary --no-build-isolation -r requirements.txt`.
+- **Deno/`node_modules`:** `deno install` verlinkt npm-Pakete (`node_modules\<pkg>` →
+  `.deno\<pkg>@<v>\...`). Unter Windows sind das Symlinks/Junctions mit **absoluten** Zielen, die nach
+  dem Verschieben ins Leere zeigen würden (und in ZIPs nicht vorkommen). `scripts/materialize_links.py`
+  ersetzt jeden Link durch eine Kopie des Ziels. Das kostet Platz (Pakete mehrfach), dafür ist der
+  Ordner verschiebbar. bgutil 2.0.2 hat nur npm-Abhängigkeiten (`package.json`, `deno.json` nur
+  `allowScripts`), also braucht `deno run` keinen globalen `DENO_DIR`-Cache. CI prüft das nach dem
+  Verschieben mit leerem `DENO_DIR`.
+- **Recherche pywebview + embeddable Python** (PyPI-Metadaten, pywebview-Doku
+  `docs/guide/installation.md`, Quelltext pywebview 6.2.1 / pythonnet 3.2.1 / clr_loader 0.3.1):
+  - pywebview braucht unter Windows nur `pythonnet` (→ `clr_loader` → `cffi`), dazu `proxy_tools`,
+    `bottle` und `typing_extensions`. Kein `tkinter`, kein `venv`. Ausser `proxy_tools` gibt es für
+    alles Wheels für cp312/win_amd64 bzw. py3-none-any.
+  - pythonnet lädt per clr_loader standardmässig die .NET Framework 4.x Runtime (`netfx`). Scheitert
+    das, schaltet pywebview (`platforms/winforms.py`) auf `PYTHONNET_RUNTIME=coreclr` (.NET 6+
+    Desktop Runtime). `Python.Runtime.dll` wird im laufenden Prozess initialisiert und nutzt die schon
+    geladene `python312.dll`. Nichts davon setzt ein venv oder eine Registry-Installation voraus.
+  - WebView2: pywebview wählt Edge Chromium, wenn die WebView2-Runtime in der Registry steht, sonst
+    MSHTML (IE) mit Warnung. Die HCLoader-UI läuft unter MSHTML nicht. Auf Windows 10/11 ist
+    WebView2 meist vorinstalliert, sonst muss der User den Evergreen-Installer von Microsoft
+    ausführen (README).
+  - WebView2-Benutzerdaten: `private_mode` ist Standard (HCLoader setzt nichts), also ein
+    Temp-Ordner. Auf dem Host bleibt nichts unter `%APPDATA%\pywebview`.
+  - **Mark of the Web:** Entpackt man das ZIP mit dem Explorer, bekommt jede Datei den Stream
+    `Zone.Identifier`. Das .NET Framework lädt so markierte Assemblies per `LoadFrom` nicht. Davon
+    wären `Python.Runtime.dll`, `ClrLoader.dll` und die WebView2-DLLs betroffen. Den Effekt habe ich
+    hier nicht reproduziert (kein Windows), er ist aber bekanntes .NET-Verhalten.
+    Gegenmassnahme: `app/core/portable.py` entfernt vor `import webview` den Stream dieser DLLs, nur
+    im Portable-Modus unter Windows. Zusätzlich steht im README: vor dem Entpacken ZIP →
+    Eigenschaften → «Zulassen».
+  - Hinweis aus der Python-Doku («Using pip … is not supported with this distribution, though with
+    some care it may be possible»): pip im embeddable Python ist offiziell nicht unterstützt. Der
+    Update-Knopf ist darum ein bewusst eingegangenes Risiko, abgesichert durch den CI-Rauchtest
+    (pytest im eingebetteten Python).
+- **Lizenzen:** `THIRD_PARTY_LICENSES.txt` (Kopf `scripts/portable/THIRD_PARTY_LICENSES.header.txt` +
+  generierte Paketliste aus den Metadaten) und `licenses\` mit Python-LICENSE, ffmpeg-LICENSE +
+  `BUILDINFO.txt` (Konfigurationszeile), Deno-`LICENSE.md` (Tag der gebauten Version), bgutil-LICENSE,
+  OFL der Schriften und den Lizenzdateien aller pip-Pakete. ffmpeg von gyan.dev «release essentials»
+  ist mit `--enable-gpl --enable-version3` gebaut, also GPL-3.0-or-later, nicht LGPL.
+  `BUILDINFO.txt` belegt das pro Build. Geprüfte Angaben (PyPI/Repos, 2026-11-16): yt-dlp Unlicense,
+  yt-dlp-ejs «Unlicense AND MIT AND ISC», bgutil-ytdlp-pot-provider GPLv3 (Server-`package.json`:
+  GPL-3.0-only), mutagen GPL-2.0-or-later, pywebview BSD-3-Clause, pythonnet MIT, clr_loader MIT,
+  cffi MIT-0, pydantic MIT, ruamel.yaml MIT, certifi MPL-2.0, requests Apache-2.0, Deno MIT.
+  Keine Rechtsberatung, nur das Beilegen der Texte.
+- **CI:** eigener Workflow `.github/workflows/portable.yml` (Tags `v*`, `workflow_dispatch`, Push auf den
+  Arbeitsbranch), `windows-latest`, `shell: powershell` (5.1), `timeout-minutes` für Job und Schritte,
+  pytest mit `--timeout=120 --timeout-method=thread`. Rauchtests: Importe + Portable-Erkennung +
+  pythonnet/WinForms-Import (zeigt den Renderer), `--help`, pytest im eingebetteten Python (Dev-Pakete
+  erst **nach** dem ZIP), dann ZIP auf ein anderes Laufwerk entpacken (Workspace auf `D:` → `C:\moved`)
+  und Build-Ordner löschen, (a)+(b) dort wiederholen, prüfen dass `pytest` nicht im ZIP steckt, Deno +
+  `generate_once.ts --version` mit leerem `DENO_DIR` sowie `potoken.probe('script')`. Erst dann wird
+  das Artefakt hochgeladen. Es gibt keinen Release-Upload.

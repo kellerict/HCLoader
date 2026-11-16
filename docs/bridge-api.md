@@ -70,15 +70,15 @@ Aufgaben-Felder unverändert (sie spiegeln den Zustand der Windows-Aufgabe).
 | Methode | Parameter | Rückgabe | Phase |
 |---|---|---|---|
 | `get_status()` | – | `Status` (siehe unten) | 2 |
-| `get_versions()` | – | `{app, ytdlp, plugin, deno, ffmpeg, python, data_dir, db_path, db_entries, db_size_mb, last_backup, last_update_check, backups:[{name, path, size_mb, created}], restart_required}` (backups neueste zuerst, max. 10) | 2 |
+| `get_versions()` | – | `{app, ytdlp, plugin, deno, ffmpeg, python, data_dir, app_dir, portable, db_path, db_entries, db_size_mb, last_backup, last_update_check, backups:[{name, path, size_mb, created}], restart_required}` (backups neueste zuerst, max. 10; `portable`: `portable.txt` im App-Ordner `app_dir`, dann ist `data_dir` = `<app_dir>\data`, seit Phase 6) | 2 |
 | `update_ytdlp()` | – | `{ok, ytdlp, plugin, changed, output, restart_required?}` \| `{ok:false, error, output}` | 3 |
 | `backup_db()` | – | `{ok:true, path}` \| `{ok:false, error}` | 2 |
 | `open_path(kind)` | `"data"` \| `"target"` \| `"logs"` | `{ok}` | 2 |
 | `pick_folder(current?)` | Startordner (`%VAR%` erlaubt) | `{path}` \| `null` (abgebrochen) | 2 |
 | `test_po_token()` | – | `{ok, state, detail, ms}` (abgelehnt/Zeitüberschreitung: `{ok:false, state:"error", detail, error, ms:0}`) | 3 |
 | `clear_backoff()` | – | `{ok:true}` | 2 |
-| `get_task_status()` | – | `{registered, name, next_run, time, error}` – `registered`: `true`/`false`/`null` (= unbekannt, schtasks-Fehler; `error` sagt warum, Config bleibt unverändert) | 3 |
-| `create_task(time)` | `"HH:MM"` | `{ok:true, registered, name, next_run, time}` \| `{ok:false, error}` | 2 |
+| `get_task_status()` | – | `{registered, name, next_run, time, error, path_mismatch, task_command}` – `registered`: `true`/`false`/`null` (= unbekannt, schtasks-Fehler; `error` sagt warum, Config bleibt unverändert); `path_mismatch` (Phase 6): die Aufgabe startet einen anderen App-Ordner, `task_command` = eingetragene Befehlszeile oder `null` | 3/6 |
+| `create_task(time)` | `"HH:MM"` | `{ok:true, registered, name, next_run, time, path_mismatch, task_command}` \| `{ok:false, error}` | 2 |
 | `remove_task()` | – | `{ok:true, registered:false}` \| `{ok:false, error}` | 2 |
 | `get_blacklist()` | – | `[{channel_id, channel_name, added}]` | 2 |
 | `unblock_channel(channel_id)` | Kanal-ID | `{ok:true}` | 2 |
@@ -107,6 +107,18 @@ Aufgaben-Felder unverändert (sie spiegeln den Zustand der Windows-Aufgabe).
   `/Query /TN HCLoader-Watchlist /FO CSV /V` (Spalten lokalisiert → nach Position gelesen);
   `/Delete … /F`. Wurde die Aufgabe ausserhalb gelöscht, gleicht `get_task_status` die Einstellung an
   (nur bei sicherem `registered: false`, nie bei `null`).
+- **App verschoben (Phase 6):** `get_task_status` liest `<Command>`/`<Arguments>` aus
+  `schtasks /Query /XML` und vergleicht sie (Gross/Klein, `/` vs. `\`, Anführungszeichen egal) mit dem,
+  was `create_task` jetzt eintragen würde (`<app>\python\pythonw.exe` bzw. `<venv>\Scripts\pythonw.exe`
+  und `<app>\scripts\run_watchlist.pyw`). Abweichung → `path_mismatch: true`; die Einstellungen zeigen
+  «App wurde verschoben – Aufgabe neu anlegen» mit Knopf (= `create_task`, `/F` ersetzt die alte
+  Aufgabe). Ist das XML nicht lesbar oder fehlt `<Command>`, gilt `path_mismatch: false`. Einmal pro
+  GUI-Start (nach `loaded`, nur wenn `schedule.task_scheduler_enabled`) prüft der Wartungs-Worker
+  (Job `task_check`) dasselbe und sendet bei Abweichung einen `toast` (warn) + Log-Warnung.
+- `update_ytdlp` in der Portable-Version: kein venv, aber `portable.txt` im App-Ordner und
+  `sys.executable` direkt in `<app>\python\` → Update erlaubt, Befehl
+  `<app>\python\python.exe -m pip install -U --no-warn-script-location --prefer-binary --no-build-isolation …`.
+  Sonst (weder venv noch Portable-Python) `{ok:false, error:"HCLoader läuft weder in einer virtuellen Umgebung (venv) noch im Python der Portable-Version – Update abgebrochen"}`.
 - `create_task`/`remove_task`/`save_settings`: erst wird `config.yaml` geschrieben, dann die Aufgabe
   angelegt/entfernt; scheitert schtasks, wird die Config zurückgesetzt. Schreibfehler (`OSError`)
   kommen als `{ok:false, error:"Speichern fehlgeschlagen: …"}` (bei `save_settings` unter
@@ -336,7 +348,7 @@ Status). Ergänzungen der Python-Seite:
 |---|---|---|---|
 | `status` | `Status` | nach `save/reset_settings`, `update_ytdlp`, `test_po_token`, `clear_backoff`, `create/remove_task`, `set_video_status`, `search`, jeder Queue-Änderung, Start/Stopp des PO-Token-Servers, sonst alle 30 s | 2/3 |
 | `log` | `LogLine` | jede Logzeile (ausser Logger `pywebview*`, `app.worker.events`, `urllib3*`) | 2/3 |
-| `toast` | `{msg, kind?}` (`ok`/`info`/`warn`/`err`) | Update verfügbar, „yt-dlp aktualisiert – bitte HCLoader neu starten“ (warn), Platzhalter „Folgt in Phase N“ | 2/3 |
+| `toast` | `{msg, kind?}` (`ok`/`info`/`warn`/`err`) | Update verfügbar, „yt-dlp aktualisiert – bitte HCLoader neu starten“ (warn), „HCLoader wurde verschoben – …“ (warn, Phase 6), Platzhalter „Folgt in Phase N“ | 2/3 |
 | `video` | `{id, status, genre}` | `set_video_status`, `set_genre`, `enqueue`, Start/Ende/Abbruch eines Downloads, Download vom Throttle abgelehnt oder lokal gesperrt (zurück auf `queued`) | 2/3 |
 | `progress` | `{id, phase, pct, speed, eta}` (+ `sleep_total` bei `sleep`) | Download-Queue: `sleep` einmal zu Beginn der Pause, `download` höchstens ca. 2×/s (Phasenwechsel und 100 % immer), `convert`, `tag` | 3 |
 | `done` | `{id, title}` | Download fertig getaggt und verschoben | 3 |

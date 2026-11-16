@@ -28,7 +28,7 @@ Schlüssel = Englisch, snake_case. UI-Labels kommen aus `ui/js/i18n.js`. Änderu
 | | `write_cover_jpg` | bool | false | |
 | | `write_cue` | bool | true | |
 | | `write_id3_chapters` | bool | true | |
-| `storage` (Ablage & Tags) | `target_dir` | str | `%USERPROFILE%\Music\HCLoader` | |
+| `storage` (Ablage & Tags) | `target_dir` | str | `%USERPROFILE%\Music\HCLoader` | relativ (z.B. `.\Music`) = relativ zum App-Ordner, nur Portable-Version (Phase 6) |
 | | `path_template` | str | `{genre}/{artist}/{year}/{date} - {title} [{id}]` | Platzhalter: genre, artist, channel, year, date, title, id |
 | | `max_title_length` | int | 120 | 20–200 |
 | | `max_path_length` | int | 240 | 100–259 |

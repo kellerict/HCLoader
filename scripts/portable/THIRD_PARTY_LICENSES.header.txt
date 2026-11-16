@@ -1,0 +1,36 @@
+HCLoader Portable - Lizenzen von Drittkomponenten
+=================================================
+
+Diese Datei listet die mitgelieferten Fremdkomponenten und wo ihre Lizenztexte liegen.
+Sie ist eine Zusammenstellung, keine Rechtsberatung. Massgeblich sind die Lizenztexte
+im Ordner licenses\ bzw. in den Komponenten selbst. HCLoader ist fuer den privaten
+Eigengebrauch gedacht; die Portable-ZIP wird nicht oeffentlich verteilt.
+
+Komponente                      Lizenz                         Lizenztext
+------------------------------  -----------------------------  ----------------------------------------
+Python (embeddable, amd64)      PSF-2.0 (Python Software       licenses\python\LICENSE.txt
+                                Foundation License; enthaelt
+                                Teile unter weiteren Lizenzen,
+                                z.B. OpenSSL, SQLite, libffi,
+                                bzip2, zlib - siehe Datei)
+FFmpeg / FFprobe (gyan.dev,     GPL-3.0-or-later (Build mit    licenses\ffmpeg\LICENSE*, Build-
+"release essentials")           --enable-gpl --enable-version3 Konfiguration in licenses\ffmpeg\
+                                -> GPL, nicht LGPL)            BUILDINFO.txt. Quelltext:
+                                                               https://ffmpeg.org/download.html und
+                                                               https://www.gyan.dev/ffmpeg/builds/
+Deno (deno.exe)                 MIT                            licenses\deno\LICENSE.md
+bgutil-ytdlp-pot-provider       GPL-3.0 (Server: GPL-3.0-only  licenses\bgutil-ytdlp-pot-provider\
+(Server in bin\bgutil-pot-      laut package.json; Plugin:     LICENSE; Quelltext liegt vollstaendig
+provider, Plugin in Python)     GPLv3)                         in bin\bgutil-pot-provider\
+npm-Pakete des Providers        je Paket (MIT, ISC, BSD, ...)  bin\bgutil-pot-provider\server\
+(bin\...\server\node_modules)                                  node_modules\<paket>\LICENSE*
+yt-dlp                          Unlicense                      licenses\python-packages\yt_dlp-*
+mutagen                         GPL-2.0-or-later               licenses\python-packages\mutagen-*
+pywebview                       BSD-3-Clause                   licenses\python-packages\pywebview-*
+pythonnet / clr_loader          MIT                            licenses\python-packages\...
+Schriften Inter, Bebas Neue,    SIL Open Font License 1.1      ui\fonts\OFL-*.txt (auch in
+JetBrains Mono                                                 licenses\fonts\)
+
+Nicht enthalten, aber benoetigt (Teil von Windows bzw. separat von Microsoft installiert):
+Microsoft Edge WebView2 Runtime, .NET Framework 4.x bzw. .NET Desktop Runtime,
+Visual C++ Runtime (ucrtbase.dll; vcruntime140*.dll liegt dem Python-Paket bei).

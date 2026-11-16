@@ -5,10 +5,15 @@
   Idempotent: Vorhandenes wird uebersprungen. Mit -Force wird alles neu geholt.
   Der Provider wird in genau der Version geklont, die als pip-Plugin im venv installiert ist.
   Voraussetzung: venv existiert (scripts\setup.ps1 legt es an) und Internetzugang.
+  Portable-Build (scripts\build_portable.ps1): -BinDir, -Python (eingebettetes Python statt venv)
+  und -LicenseDir (Lizenztexte von ffmpeg) zeigen in den Build-Ordner.
 #>
 [CmdletBinding()]
 param(
-    [switch]$Force
+    [switch]$Force,
+    [string]$BinDir = '',
+    [string]$Python = '',
+    [string]$LicenseDir = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -16,8 +21,9 @@ $ProgressPreference = 'SilentlyContinue'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
-$BinDir = Join-Path $RepoRoot 'bin'
-$VenvPython = Join-Path $RepoRoot '.venv\Scripts\python.exe'
+if (-not $BinDir) { $BinDir = Join-Path $RepoRoot 'bin' }
+$VenvPython = $Python
+if (-not $VenvPython) { $VenvPython = Join-Path $RepoRoot '.venv\Scripts\python.exe' }
 
 $DenoUrl = 'https://github.com/denoland/deno/releases/latest/download/deno-x86_64-pc-windows-msvc.zip'
 $DenoShaUrl = "$DenoUrl.sha256sum"
@@ -26,6 +32,20 @@ $FfmpegShaUrl = "$FfmpegUrl.sha256"
 $ProviderRepo = 'https://github.com/Brainicism/bgutil-ytdlp-pot-provider'
 
 function Write-Step([string]$Text) { Write-Host "==> $Text" -ForegroundColor Cyan }
+
+function Invoke-Native([string]$Exe, [string[]]$Arguments, [string]$What) {
+    # git/deno write progress to stderr. Under PS 5.1 with ErrorActionPreference=Stop this can
+    # become a terminating error (redirected hosts, CI), so only the exit code decides.
+    $old = $ErrorActionPreference
+    $code = 1
+    try {
+        $ErrorActionPreference = 'Continue'
+        & $Exe @Arguments | Out-Host
+        $code = $LASTEXITCODE
+    }
+    finally { $ErrorActionPreference = $old }
+    if ($code -ne 0) { throw "$What fehlgeschlagen (Exitcode $code)" }
+}
 
 function New-TempDir {
     $path = Join-Path ([IO.Path]::GetTempPath()) ('hcloader_' + [Guid]::NewGuid().ToString('N'))
@@ -97,16 +117,23 @@ else {
         if (-not $ff -or -not $fp) { throw 'ffmpeg.exe/ffprobe.exe nicht im Archiv gefunden' }
         Copy-Item -Path $ff.FullName -Destination $FfmpegExe -Force
         Copy-Item -Path $fp.FullName -Destination $FfprobeExe -Force
+        if ($LicenseDir) {
+            # gyan.dev: <archiv>\ffmpeg-<ver>-essentials_build\{LICENSE, README.txt, bin\...}
+            New-Item -ItemType Directory -Path $LicenseDir -Force | Out-Null
+            $buildRoot = Split-Path -Parent (Split-Path -Parent $ff.FullName)
+            Get-ChildItem -Path $buildRoot -File | Where-Object { $_.Name -match '^(LICENSE|COPYING|README)' } |
+                ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path $LicenseDir $_.Name) -Force }
+        }
     }
     finally { Remove-Item -Path $tmp -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
 # --- bgutil PO-Token-Provider ----------------------------------------------
 if (-not (Test-Path $VenvPython)) {
-    throw "venv fehlt ($VenvPython). Zuerst scripts\setup.ps1 ausfuehren."
+    throw "Python fehlt ($VenvPython). Zuerst scripts\setup.ps1 (venv) bzw. build_portable.ps1 ausfuehren."
 }
 $pipOut = & $VenvPython -m pip show bgutil-ytdlp-pot-provider
-if ($LASTEXITCODE -ne 0) { throw 'Plugin bgutil-ytdlp-pot-provider ist im venv nicht installiert' }
+if ($LASTEXITCODE -ne 0) { throw "Plugin bgutil-ytdlp-pot-provider ist nicht installiert ($VenvPython)" }
 $Version = ($pipOut | Where-Object { $_ -match '^Version:' } | Select-Object -First 1) -replace '^Version:\s*', ''
 $Version = $Version.Trim()
 if (-not $Version) { throw 'Plugin-Version konnte nicht ermittelt werden' }
@@ -126,8 +153,7 @@ else {
     if (Test-Path $ProviderDir) { Remove-Item -Path $ProviderDir -Recurse -Force }
     $git = Get-Command git -ErrorAction SilentlyContinue
     if ($git) {
-        & git clone --depth 1 --single-branch --branch $Version "$ProviderRepo.git" $ProviderDir
-        if ($LASTEXITCODE -ne 0) { throw 'git clone fehlgeschlagen' }
+        Invoke-Native 'git' @('-c', 'advice.detachedHead=false', 'clone', '--quiet', '--depth', '1', '--single-branch', '--branch', $Version, "$ProviderRepo.git", $ProviderDir) 'git clone'
     }
     else {
         Write-Host 'git nicht gefunden - lade Tag als ZIP' -ForegroundColor Yellow
@@ -143,8 +169,7 @@ else {
     Write-Step 'deno install (Provider-Abhaengigkeiten) ...'
     Push-Location $ServerDir
     try {
-        & $DenoExe install --allow-scripts=npm:canvas --frozen
-        if ($LASTEXITCODE -ne 0) { throw 'deno install fehlgeschlagen' }
+        Invoke-Native $DenoExe @('install', '--allow-scripts=npm:canvas', '--frozen') 'deno install'
     }
     finally { Pop-Location }
     Set-Content -Path $VersionFile -Value $Version -Encoding ASCII
