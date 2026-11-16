@@ -18,7 +18,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .core import binaries, config, maintenance, potoken, scheduler
+from .core import binaries, config, locks, maintenance, potoken, scheduler
 from .core import status as status_mod
 from .core.config import Settings
 from .core.db import Database
@@ -91,8 +91,6 @@ class Api:
         run_lock: Callable[[], Any] | None = None,
         configure_logging: bool = True,
     ) -> None:
-        from .core import locks
-
         self._config_file = config_file or config.config_path()
         settings, warnings = config.load_with_warnings(self._config_file)
         for w in warnings:
@@ -484,8 +482,11 @@ class Api:
     def set_video_status(self, video_id: str, status: str) -> dict[str, Any]:
         if status not in ("ignored", "new"):
             return {"ok": False, "error": f"Ungültiger Status: {status}"}
-        if not self._db.get_video(video_id):
+        row = self._db.get_video(video_id)
+        if not row:
             return {"ok": False, "error": "Video unbekannt"}
+        if row["status"] in ("queued", "downloading", "done"):
+            return {"ok": False, "error": "Status in der Warteschlange/Bibliothek nicht änderbar"}
         self._db.set_status(video_id, status)
         self._bus.emit("video", {"id": video_id, "status": status})
         self._push()
