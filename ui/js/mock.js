@@ -359,6 +359,7 @@
     l.file_path = libPath(l.genre, folder, l.upload_date, l.title, l.id);
   });
   let libraryBackup = null;
+  let targetDown = false; // demo.targetDown(): Zielordner nicht erreichbar
 
   /* ---------- Protokoll ---------- */
   const LOG = [];
@@ -908,7 +909,8 @@
 
     /* Bibliothek */
     /* filters (optional, Backend): die UI ruft ohne Argument auf und filtert selbst. */
-    get_library: () => later(40, () => clone(LIBRARY)),
+    get_library: () => later(40, () => clone(LIBRARY).map((l) => (targetDown ? Object.assign(l, { missing: false, unknown: true, size_mb: 0, has_cue: false }) : l))),
+    get_library_status: () => later(20, () => ({ target_ok: !targetDown, target: TARGET })),
     open_folder(id) {
       return later(30, () => {
         const l = LIBRARY.find((x) => x.id === id);
@@ -934,6 +936,7 @@
       return later(160, () => {
         const l = LIBRARY.find((x) => x.id === id);
         if (!l) return { ok: false, error: 'Eintrag nicht gefunden' };
+        if (targetDown) return { ok: false, error: `Zielordner nicht erreichbar: ${TARGET}`, unreachable: true };
         const file = deleteFile !== false && !l.missing;
         LIBRARY = LIBRARY.filter((x) => x.id !== id);
         pushLog('warn', file ? `Gelöscht: ${l.file_path}` : `Eintrag entfernt (Datei bleibt bzw. fehlte): ${l.title}`);
@@ -962,6 +965,8 @@
         pushLog('error', `HTTP 429 von YouTube – Backoff ${h} h aktiviert`);
         pushStatus();
       },
+      /** Zielordner nicht erreichbar (Banner, «Eintrag entfernen» gesperrt); on = false hebt auf. */
+      targetDown(on) { targetDown = on !== false; },
       taskUnknown(on) { state.task.unknown = on !== false; },
       /** Leere Bibliothek zeigen (on = false stellt sie wieder her). */
       libraryEmpty(on) {

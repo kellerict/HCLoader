@@ -1,10 +1,12 @@
 """Phase 5 acceptance (Wartung): the update button really upgrades yt-dlp inside a venv.
 
 Creates a throw-away venv, installs an old yt-dlp from PyPI and runs `maintenance.run_update`
-with that venv's interpreter. Needs PyPI (marker `network`; skipped when it is unreachable).
+with that venv's interpreter. Needs PyPI (marker `network`; skipped when it is unreachable, but a
+failure with `HCLOADER_REQUIRE_NETWORK=1`, which CI sets).
 No YouTube traffic. Run only these: `pytest -m network`; skip them: `pytest -m "not network"`.
 """
 
+import os
 import subprocess
 import sys
 import urllib.request
@@ -23,6 +25,8 @@ def pypi_reachable():
     try:
         urllib.request.urlopen("https://pypi.org/pypi/yt-dlp/json", timeout=8).close()
     except Exception as exc:
+        if os.environ.get("HCLOADER_REQUIRE_NETWORK") == "1":  # CI: no silent green
+            pytest.fail(f"PyPI nicht erreichbar (HCLOADER_REQUIRE_NETWORK=1): {exc}")
         pytest.skip(f"PyPI nicht erreichbar: {exc}")
 
 

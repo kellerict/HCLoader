@@ -300,8 +300,12 @@ def write_tags(
     chapters: Iterable[Chapter] = (),
     id3_chapters: bool = True,
     total_duration: float | None = None,
+    keep_existing: bool = False,
 ) -> bool:
     """Write tags for `path` according to its extension. Returns False if the format is skipped.
+
+    `keep_existing` (re-tagging): MP3 keeps every ID3 frame the app does not write itself (BPM,
+    key, rating, ReplayGain, lyrics ...); a first download starts from an empty tag.
 
     meta keys: title, artist, albumartist (default artist), album (default title), genre,
     date (upload date), url, id, source (default 'YouTube').
@@ -309,7 +313,14 @@ def write_tags(
     ext = Path(path).suffix.lower()
     chapters = list(chapters)
     if ext == ".mp3":
-        _write_id3(Path(path), meta, cover_jpeg, chapters if id3_chapters else [], total_duration)
+        _write_id3(
+            Path(path),
+            meta,
+            cover_jpeg,
+            chapters if id3_chapters else [],
+            total_duration,
+            keep_existing=keep_existing,
+        )
         return True
     if ext in (".m4a", ".mp4"):
         _write_mp4(Path(path), meta, cover_jpeg)
@@ -321,16 +332,45 @@ def write_tags(
     return False
 
 
+# frames the app writes itself; everything else in an existing tag is left alone on re-tag
+_OWN_FRAMES = (
+    "TIT2",
+    "TPE1",
+    "TPE2",
+    "TALB",
+    "TRCK",
+    "TCON",
+    "TDRC",
+    "COMM::eng",
+    "TXXX:YOUTUBE_ID",
+    "TXXX:SOURCE",
+)
+
+
 def _write_id3(
     path: Path,
     meta: Mapping[str, Any],
     cover: bytes | None,
     chapters: list[Chapter],
     total: float | None,
+    *,
+    keep_existing: bool = False,
 ) -> None:
     title = _tag_text(meta, "title")
     artist = _tag_text(meta, "artist")
     tags = ID3()
+    if keep_existing:
+        try:
+            tags = ID3(path)
+        except ID3NoHeaderError:
+            pass
+        for key in _OWN_FRAMES:
+            tags.delall(key)
+        if cover:
+            tags.delall("APIC")
+        if not chapters:  # chapters switched off: the old ones must not linger
+            tags.delall("CHAP")
+            tags.delall("CTOC")
     tags.add(TIT2(encoding=3, text=[title]))
     tags.add(TPE1(encoding=3, text=[artist]))
     tags.add(TPE2(encoding=3, text=[_tag_text(meta, "albumartist") or artist]))

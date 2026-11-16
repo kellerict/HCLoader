@@ -14,6 +14,7 @@ import os
 import platform
 import re
 import sqlite3
+import stat
 import subprocess
 import sys
 import threading
@@ -285,20 +286,39 @@ def backups_dir() -> Path:
     return config.app_home() / "backups"
 
 
+_BACKUP_RE = re.compile(r"^hcloader-\d{8}-\d{6}(-\d+)?\.db$")
+
+
+def _backup_files(dest_dir: Path) -> list[tuple[Path, os.stat_result]]:
+    """Backups made by `backup_database` (strict name pattern; other files are never touched),
+    with their stat; files that vanish meanwhile are skipped."""
+    try:
+        candidates = [p for p in dest_dir.glob("hcloader-*.db") if _BACKUP_RE.match(p.name)]
+    except OSError:
+        return []
+    out = []
+    for p in candidates:
+        try:
+            st = p.stat()
+        except OSError:
+            continue
+        if stat.S_ISREG(st.st_mode):
+            out.append((p, st))
+    return out
+
+
 def prune_backups(dest_dir: Path, keep: int, *, protect: Path | None = None) -> list[Path]:
     """Delete all but the newest `keep` `hcloader-*.db` files (by modification time, then name).
     `protect` (the backup just made) is always kept. `keep <= 0` disables pruning."""
     if keep <= 0:
         return []
-    try:
-        files = [p for p in dest_dir.glob("hcloader-*.db") if p.is_file()]
-    except OSError:
-        return []
-    others = sorted(
-        (p for p in files if protect is None or p != protect),
-        key=lambda p: (p.stat().st_mtime_ns, p.name),
-        reverse=True,
-    )
+    others = [
+        p
+        for p, _st in sorted(
+            _backup_files(dest_dir), key=lambda x: (x[1].st_mtime_ns, x[0].name), reverse=True
+        )
+        if protect is None or p != protect
+    ]
     room = keep - (1 if protect is not None else 0)
     removed: list[Path] = []
     for old in others[max(room, 0) :]:
@@ -345,26 +365,18 @@ def backup_database(
 
 def last_backup(dest_dir: Path | None = None) -> str | None:
     dest_dir = dest_dir or backups_dir()
-    try:
-        files = [p for p in dest_dir.glob("hcloader-*.db") if p.is_file()]
-    except OSError:
-        return None
+    files = _backup_files(dest_dir)
     if not files:
         return None
-    newest = max(files, key=lambda p: p.stat().st_mtime)
-    return datetime.fromtimestamp(newest.stat().st_mtime).astimezone().isoformat(timespec="seconds")
+    mtime = max(st.st_mtime for _p, st in files)
+    return datetime.fromtimestamp(mtime).astimezone().isoformat(timespec="seconds")
 
 
 def list_backups(dest_dir: Path | None = None) -> list[dict[str, Any]]:
     """Backups for the maintenance tab, newest first: {name, path, size_mb, created (ISO)}."""
     dest_dir = dest_dir or backups_dir()
-    try:
-        files = [p for p in dest_dir.glob("hcloader-*.db") if p.is_file()]
-    except OSError:
-        return []
     out = []
-    for p in sorted(files, key=lambda f: f.stat().st_mtime, reverse=True):
-        st = p.stat()
+    for p, st in sorted(_backup_files(dest_dir), key=lambda x: x[1].st_mtime, reverse=True):
         out.append(
             {
                 "name": p.name,

@@ -18,4 +18,6 @@ jobs:
       - run: ruff format --check .
       - run: pytest -q
       - name: pytest (network tests – PyPI only, never YouTube)
+        env:
+          HCLOADER_REQUIRE_NETWORK: "1"
         run: pytest -q -m network

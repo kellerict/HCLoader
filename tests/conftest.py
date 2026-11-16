@@ -37,7 +37,9 @@ def _refuse(target) -> None:
 def _block_network(request, monkeypatch):
     """Blocks every non-loopback connection from Python (socket.connect/connect_ex,
     create_connection, getaddrinfo of a non-local host), except for tests marked `network`.
-    Unix sockets and loopback addresses (local test servers, PO-token ping) stay allowed."""
+    Only the Python process is covered: subprocesses started by tests (ffmpeg, pip, Chromium)
+    are not blocked. Unix sockets and loopback addresses (local test servers, PO-token ping)
+    stay allowed."""
     if request.node.get_closest_marker("network"):
         yield
         return

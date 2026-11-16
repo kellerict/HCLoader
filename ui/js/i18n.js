@@ -193,11 +193,14 @@
       missing: 'Datei fehlt', missing_title: 'Die Datei wurde am gespeicherten Ort nicht gefunden (verschoben oder gelöscht?)',
       missing_chip: '{n} fehlen', missing_chip_one: '1 fehlt', missing_chip_title: 'Nur Einträge zeigen, deren Datei fehlt',
       stat_count: 'Mixes', stat_duration: 'Gesamtdauer', stat_size: 'Grösse', stat_genres: 'Nach Genre',
-      unit_h: 'Std.', unit_min: 'Min.', unit_gb: 'GB', unit_mb: 'MB',
+      unit_h: 'Std.', unit_min: 'Min.', unit_gb: 'GB', unit_mb: 'MB', unit_kb: 'KB',
       group_meta: '{n} Mixes · {dur}', group_meta_one: '1 Mix · {dur}',
       more: 'Weitere {n} anzeigen',
       empty_title: 'Noch nichts geladen', empty_text: 'Hier landet jeder Mix, sobald er fertig geladen und getaggt ist – mit Cover, Genre und Ablageort.',
       empty_discover: 'Mixes entdecken', empty_watchlist: 'Watchlist einrichten',
+      target_down: 'Zielordner nicht erreichbar: {path}',
+      target_down_hint: 'Laufwerk oder Netzfreigabe prüfen. Solange er fehlt, ist der Zustand der Dateien unbekannt: «Neu taggen» und «Eintrag entfernen» sind gesperrt.',
+      unknown_title: 'Zielordner nicht erreichbar – Zustand der Datei unbekannt',
       none_title: 'Keine Treffer', none_text: 'Kein Eintrag passt zu Suche und Filtern.',
     },
     log: {
@@ -401,6 +404,10 @@
         title: 'Mix löschen', text: '«{title}» wird aus der Bibliothek entfernt und die Datei von der Festplatte gelöscht:', ok: 'Datei löschen',
         warn: '<b>Lässt sich nicht rückgängig machen.</b> Die Audiodatei und eine zugehörige .cue-Datei werden gelöscht. Der Mix wird als «ignoriert» markiert und <b>nicht erneut geladen</b>.',
         meta: '{dur} · {size}',
+      },
+      outside_mix: {
+        title: 'Nur Eintrag entfernen', text: 'Die Datei zu «{title}» liegt ausserhalb des aktuellen Zielordners und wird deshalb nicht gelöscht:', ok: 'Nur Eintrag entfernen',
+        warn: 'Die Datei bleibt unberührt an ihrem Ort liegen. Der Eintrag verschwindet aus der Bibliothek, der Mix wird als «ignoriert» markiert und <b>nicht erneut geladen</b>.',
       },
       remove_mix: {
         title: 'Eintrag entfernen', text: 'Die Datei zu «{title}» wurde am gespeicherten Ort nicht gefunden:', ok: 'Eintrag entfernen',

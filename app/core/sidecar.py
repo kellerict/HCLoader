@@ -10,6 +10,7 @@ without damage (re-tagging then falls back to the DB row).
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -33,9 +34,21 @@ def meta_dir() -> Path:
     return config.app_home() / "meta"
 
 
-def sidecar_path(video_id: str) -> Path:
+def _check(video_id: str) -> None:
     if not _ID_RE.match(video_id or ""):
         raise ValueError(f"Ungültige Video-ID: {video_id!r}")
+
+
+def sidecar_path(video_id: str) -> Path:
+    """`<id>.<hash>.json`: the short hash of the exact ID keeps IDs that differ only in case apart
+    on case-insensitive file systems (Windows)."""
+    _check(video_id)
+    digest = hashlib.sha1(video_id.encode("utf-8")).hexdigest()[:8]
+    return meta_dir() / f"{video_id}.{digest}.json"
+
+
+def _legacy_path(video_id: str) -> Path:
+    _check(video_id)
     return meta_dir() / f"{video_id}.json"
 
 
@@ -74,23 +87,42 @@ def write(video_id: str, data: Mapping[str, Any]) -> Path | None:
         tmp = path.with_suffix(".json.tmp")
         tmp.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
         os.replace(tmp, path)
+        legacy = _legacy_path(video_id)  # migrate the old name `<id>.json`
+        if (old := _load(legacy)) is not None and old.get("id") in (None, video_id):
+            legacy.unlink(missing_ok=True)
         return path
     except (OSError, ValueError, TypeError) as exc:
         log.warning("Metadaten-Sidecar nicht geschrieben (%s): %s", video_id, exc)
         return None
 
 
-def read(video_id: str) -> dict[str, Any] | None:
+def _load(path: Path) -> dict[str, Any] | None:
     try:
-        data = json.loads(sidecar_path(video_id).read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
     return data if isinstance(data, dict) else None
 
 
+def read(video_id: str) -> dict[str, Any] | None:
+    try:
+        data = _load(sidecar_path(video_id))
+        if data is None:  # older name `<id>.json`: only if it really belongs to this exact ID
+            legacy = _load(_legacy_path(video_id))
+            if legacy is not None and legacy.get("id") in (None, video_id):
+                data = legacy
+    except ValueError:
+        return None
+    return data
+
+
 def delete(video_id: str) -> None:
     try:
         sidecar_path(video_id).unlink(missing_ok=True)
+        legacy = _legacy_path(video_id)
+        old = _load(legacy)
+        if old is None or old.get("id") in (None, video_id):
+            legacy.unlink(missing_ok=True)
     except (OSError, ValueError):
         log.debug("Sidecar nicht löschbar: %s", video_id)
 

@@ -133,6 +133,7 @@ class Api:
         self._logs = LogForwarder(self._bus)
         self._db.add_run_listener(self._on_run_finished)
         self._open = opener or maintenance.open_in_shell
+        self._lib_status: dict[str, Any] | None = None
         self._reveal = revealer or (lambda p: library.reveal(p, opener=self._open))
         self._browser = browser or webbrowser.open
         self._probe = probe or potoken.probe
@@ -402,7 +403,7 @@ class Api:
         """Run a maintenance job; refuse at once if another one is running (m3)."""
         other = self._worker.other_job(key)
         if other is not None:
-            label = _JOB_LABELS.get(other, other)
+            label = "Neu taggen" if other.startswith("retag:") else _JOB_LABELS.get(other, other)
             return {"ok": False, "error": f"Wartung läuft gerade ({label}) – bitte später erneut"}
         try:
             return self._worker.run(key, fn, timeout=timeout)
@@ -947,8 +948,25 @@ class Api:
     # ================================================================== library
 
     def get_library(self, filters: dict[str, Any] | None = None) -> list[dict[str, Any]]:
-        """filters (optional): search, genre, channel (id or name), year, missing."""
-        return library.list_library(self._db, filters if isinstance(filters, dict) else None)
+        """filters (optional): search, genre, channel (id or name), year, missing.
+
+        The target folder is checked once per call (with a timeout). If it is unreachable, files
+        below it get `unknown: true` instead of `missing: true`; see `get_library_status`."""
+        root = self._cfg.target_dir_path()
+        ok = library.target_reachable(root)
+        self._lib_status = {"target_ok": ok, "target": str(root)}
+        return library.list_library(
+            self._db, filters if isinstance(filters, dict) else None, root=root, root_ok=ok
+        )
+
+    def get_library_status(self) -> dict[str, Any]:
+        """{target_ok, target}: result of the last `get_library` check (fresh check if none yet)."""
+        st = self._lib_status
+        if st is None or st["target"] != str(self._cfg.target_dir_path()):
+            root = self._cfg.target_dir_path()
+            st = {"target_ok": library.target_reachable(root), "target": str(root)}
+            self._lib_status = st
+        return dict(st)
 
     def open_folder(self, video_id: str) -> dict[str, Any]:
         row = self._db.get_video(str(video_id))

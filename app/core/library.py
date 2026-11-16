@@ -14,6 +14,7 @@ import re
 import shutil
 import subprocess
 import sys
+import threading
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
@@ -30,6 +31,12 @@ from .genre import detect_genre
 log = logging.getLogger(__name__)
 
 COVER_NAME = "cover.jpg"
+# files that do not count as content when deciding whether a folder is empty (n5)
+_JUNK_NAMES = {COVER_NAME, "desktop.ini", "thumbs.db"}
+ROOT_CHECK_TIMEOUT_S = 3.0
+# n1: one lock for everything that creates/moves/removes files in the library (downloader's final
+# move, re-tag, delete, pruning of empty folders). Re-entrant: retag -> prune_empty_dirs.
+FS_LOCK = threading.RLock()
 _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 
@@ -51,28 +58,80 @@ def within(path: Path | str, root: Path | str) -> bool:
 
 
 def _same_file(a: Path, b: Path) -> bool:
+    """Same file on disk (symlinks/junctions, case-insensitive file systems); lexical fallback
+    when one of them does not exist."""
+    try:
+        if a.exists() and b.exists():
+            return os.path.samefile(a, b)
+    except OSError:
+        pass
     return os.path.normcase(os.path.abspath(a)) == os.path.normcase(os.path.abspath(b))
 
 
+def _under(path: Path | str, root: Path | str) -> bool:
+    """Lexical `path` below `root` (no resolve: must not touch a dead network share)."""
+    p = Path(os.path.normcase(os.path.abspath(path)))
+    r = Path(os.path.normcase(os.path.abspath(root)))
+    return p != r and r in p.parents
+
+
+def target_reachable(root: Path | str, timeout: float = ROOT_CHECK_TIMEOUT_S) -> bool:
+    """Is the target folder there? The check runs in a thread with a timeout, because a dead SMB
+    share can block a `stat` for a minute; a timeout counts as unreachable."""
+    result: list[bool] = []
+
+    def probe() -> None:
+        try:
+            result.append(Path(root).is_dir())
+        except OSError:
+            result.append(False)
+
+    t = threading.Thread(target=probe, name="target-check", daemon=True)
+    t.start()
+    t.join(timeout)
+    return bool(result and result[0])
+
+
+def _move(src: Path, dst: Path) -> None:
+    """Move a file. A pure case change (same file, different spelling; Windows) goes through a
+    temporary name. If a cross-volume move fails half-way, the copy at the target is removed."""
+    if _same_file(src, dst):
+        tmp = dst.with_name(f"{dst.name}.hcl-rename")
+        os.replace(src, tmp)
+        os.replace(tmp, dst)
+        return
+    try:
+        shutil.move(str(src), str(dst))
+    except OSError:
+        if src.exists() and dst.exists():
+            try:
+                dst.unlink()
+            except OSError:
+                log.warning("Kopie am Ziel nicht entfernt: %s", dst)
+        raise
+
+
 def prune_empty_dirs(start: Path, root: Path) -> list[Path]:
-    """Remove `start` and its parents while they are empty (a lone `cover.jpg` counts as empty),
+    """Remove `start` and its parents while they are empty (only `cover.jpg`, `desktop.ini` and
+    `Thumbs.db` count as empty),
     never `root` itself and never anything outside of it. Returns the removed folders."""
     removed: list[Path] = []
     cur = Path(start)
-    while within(cur, root):
-        try:
-            entries = list(cur.iterdir())
-            if entries and all(e.name == COVER_NAME and e.is_file() for e in entries):
-                for e in entries:
-                    e.unlink()
-                entries = []
-            if entries:
+    with FS_LOCK:
+        while within(cur, root):
+            try:
+                entries = list(cur.iterdir())
+                if entries and all(e.name.lower() in _JUNK_NAMES and e.is_file() for e in entries):
+                    for e in entries:
+                        e.unlink()
+                    entries = []
+                if entries:
+                    break
+                cur.rmdir()
+            except OSError:
                 break
-            cur.rmdir()
-        except OSError:
-            break
-        removed.append(cur)
-        cur = cur.parent
+            removed.append(cur)
+            cur = cur.parent
     return removed
 
 
@@ -97,14 +156,22 @@ def _duration(row: dict[str, Any], path: Path | None, present: bool) -> int | No
     return None
 
 
-def library_item(row: dict[str, Any]) -> dict[str, Any]:
+def library_item(
+    row: dict[str, Any], *, root: Path | None = None, root_ok: bool = True
+) -> dict[str, Any]:
+    """`root_ok=False` (target folder unreachable): for files below `root` nothing is probed, the
+    state is unknown (`unknown: true`, `missing: false`) instead of «missing»."""
     fp = row.get("file_path") or ""
     path = Path(fp) if fp else None
-    try:
-        present = bool(path and path.is_file())
-        size = round(path.stat().st_size / (1024 * 1024), 1) if present and path else 0.0
-    except OSError:
+    unknown = bool(path and root is not None and not root_ok and _under(path, root))
+    if unknown:
         present, size = False, 0.0
+    else:
+        try:
+            present = bool(path and path.is_file())
+            size = round(path.stat().st_size / (1024 * 1024), 1) if present and path else 0.0
+        except OSError:
+            present, size = False, 0.0
     return {
         "id": row["id"],
         "title": row.get("title") or "",
@@ -117,17 +184,25 @@ def library_item(row: dict[str, Any]) -> dict[str, Any]:
         "downloaded_at": row.get("downloaded_at"),
         "file_path": fp,
         "size_mb": size,
-        "missing": not present,
+        "missing": not present and not unknown,
+        "unknown": unknown,
         "has_cue": bool(path and present and path.with_suffix(".cue").is_file()),
     }
 
 
-def list_library(db: Database, filters: Mapping[str, Any] | None = None) -> list[dict[str, Any]]:
+def list_library(
+    db: Database,
+    filters: Mapping[str, Any] | None = None,
+    *,
+    root: Path | None = None,
+    root_ok: bool = True,
+) -> list[dict[str, Any]]:
     """Items with status `done`, newest download first.
 
     filters (all optional): `search` (title/channel/genre, case and umlaut insensitive),
     `genre` (name), `channel` (channel id or channel name), `year` (int or "YYYY"),
-    `missing` (true = only items whose file is gone).
+    `missing` (true = only items whose file is gone). With `root_ok=False` (target folder not
+    reachable, see `target_reachable`) files below `root` are neither present nor missing.
     """
     f = filters or {}
     genre = str(f.get("genre") or "").strip()
@@ -150,7 +225,7 @@ def list_library(db: Database, filters: Mapping[str, Any] | None = None) -> list
             )
             if search not in hay:
                 continue
-        item = library_item(row)
+        item = library_item(row, root=root, root_ok=root_ok)
         if want_missing is not None and bool(want_missing) != item["missing"]:
             continue
         out.append(item)
@@ -238,11 +313,18 @@ def _rewrite_cue_file_line(cue: Path, audio_name: str) -> None:
 
 
 def retag(db: Database, settings: Settings, video_id: str) -> dict[str, Any]:
+    """Re-tag one item (see `_retag`), serialised with the downloader's final move and deletes."""
+    with FS_LOCK:
+        return _retag(db, settings, video_id)
+
+
+def _retag(db: Database, settings: Settings, video_id: str) -> dict[str, Any]:
     """Rewrite tags, cover, CUE and CHAP from the sidecar and the *current* settings, and move
     the file to the path the current template gives. No network.
 
     Returns {ok, path, moved, genre, cue, sidecar} or {ok: False, error}.
-    A file outside the target folder is tagged in place but never moved.
+    A file outside the target folder is tagged in place but never moved. MP3: ID3 frames the app
+    does not write itself (BPM, key, rating, ReplayGain, lyrics ...) are kept.
     """
     row = db.get_video(video_id)
     if not row or row.get("status") != "done" or not row.get("file_path"):
@@ -296,23 +378,35 @@ def retag(db: Database, settings: Settings, video_id: str) -> dict[str, Any]:
     root = settings.target_dir_path()
     new_path = path
     if within(path, root):
-        new_path = paths.build_target_path(
-            root,
-            st.path_template,
-            {
-                "id": video_id,
-                "title": title,
-                "artist": artist,
-                "channel": channel,
-                "genre": genre,
-                "upload_date": upload,
-            },
-            ext=path.suffix,
-            max_title_length=st.max_title_length,
-            max_path_length=st.max_path_length,
-        )
-    moving = not _same_file(new_path, path)
-    if moving and new_path.exists():
+        try:
+            new_path = paths.build_target_path(
+                root,
+                st.path_template,
+                {
+                    "id": video_id,
+                    "title": title,
+                    "artist": artist,
+                    "channel": channel,
+                    "genre": genre,
+                    "upload_date": upload,
+                },
+                ext=path.suffix,
+                max_title_length=st.max_title_length,
+                max_path_length=st.max_path_length,
+            )
+        except paths.PathTooLongError as exc:
+            log.warning("Neu taggen: neuer Pfad zu lang (%s): %s", video_id, exc)
+            return {
+                "ok": False,
+                "error": f"Neuer Ablagepfad ist zu lang – Datei nicht verändert. {exc}",
+            }
+        except (ValueError, OSError) as exc:
+            log.warning("Neu taggen: Pfad nicht bildbar (%s): %s", video_id, exc)
+            return {"ok": False, "error": f"Neuer Ablagepfad nicht möglich: {exc}"}
+    same = _same_file(new_path, path)
+    # a pure case change counts as a rename (same file, other spelling)
+    moving = str(new_path) != str(path) and (not same or new_path.name != path.name)
+    if moving and not same and new_path.exists():
         return {"ok": False, "error": f"Zieldatei existiert bereits: {new_path}"}
 
     try:
@@ -323,6 +417,7 @@ def retag(db: Database, settings: Settings, video_id: str) -> dict[str, Any]:
             chapters=chapters,
             id3_chapters=dl.write_id3_chapters,
             total_duration=total,
+            keep_existing=True,
         )
     except Exception as exc:
         log.error("Neu taggen fehlgeschlagen (%s): %s", video_id, exc)
@@ -333,7 +428,7 @@ def retag(db: Database, settings: Settings, video_id: str) -> dict[str, Any]:
     if moving:
         try:
             new_path.parent.mkdir(parents=True, exist_ok=True)
-            shutil.move(str(path), str(new_path))
+            _move(path, new_path)
         except OSError as exc:
             log.error("Verschieben fehlgeschlagen (%s): %s", video_id, exc)
             return {"ok": False, "error": f"Datei konnte nicht verschoben werden: {exc}"}
@@ -348,8 +443,8 @@ def retag(db: Database, settings: Settings, video_id: str) -> dict[str, Any]:
             cue_written = True
             if had_cue and not _same_file(old_cue, new_cue):
                 old_cue.unlink(missing_ok=True)
-        elif had_cue and not _same_file(old_cue, new_cue):
-            shutil.move(str(old_cue), str(new_cue))
+        elif had_cue and str(old_cue) != str(new_cue):
+            _move(old_cue, new_cue)
             _rewrite_cue_file_line(new_cue, new_path.name)
             cue_written = True
         elif had_cue:
@@ -384,6 +479,13 @@ def retag(db: Database, settings: Settings, video_id: str) -> dict[str, Any]:
 def delete_item(
     db: Database, settings: Settings, video_id: str, *, delete_file: bool = True
 ) -> dict[str, Any]:
+    with FS_LOCK:
+        return _delete_item(db, settings, video_id, delete_file=delete_file)
+
+
+def _delete_item(
+    db: Database, settings: Settings, video_id: str, *, delete_file: bool = True
+) -> dict[str, Any]:
     """Remove a library item.
 
     `delete_file=True`: the file and its `.cue` are deleted (only inside the target folder; a
@@ -391,23 +493,31 @@ def delete_item(
     empty, then empty folders are removed up to (excluding) the target folder.
     In both cases the DB row becomes `ignored` with no file path; the `archive.txt` line stays,
     so the video is never fetched again by search/watchlist. The sidecar is removed.
+    A file outside the target folder is refused (`outside: true`); the UI then offers
+    `delete_file=False`. If the target folder is unreachable nothing happens (`unreachable: true`).
     """
     row = db.get_video(video_id)
     if not row or row.get("status") != "done":
         return {"ok": False, "error": "Eintrag ist nicht in der Bibliothek"}
     removed: list[str] = []
-    if delete_file and row.get("file_path"):
-        path = Path(row["file_path"])
-        root = settings.target_dir_path()
+    root = settings.target_dir_path()
+    fp = row.get("file_path")
+    if fp and _under(fp, root) and not target_reachable(root):
+        # the file's state is unknown: never drop the entry (m2)
+        return {"ok": False, "error": f"Zielordner nicht erreichbar: {root}", "unreachable": True}
+    if delete_file and fp:
+        path = Path(fp)
         if not within(path, root):
             return {
                 "ok": False,
                 "error": f"Datei liegt ausserhalb des Zielordners ({root}) – nicht gelöscht",
+                "outside": True,
             }
         if path.is_dir():
             return {"ok": False, "error": f"Kein Dateipfad: {path}"}
         try:
-            for victim in (path, path.with_suffix(".cue")):
+            # .cue first: if the audio file cannot be deleted (in use), the DB stays consistent
+            for victim in (path.with_suffix(".cue"), path):
                 if victim.is_file() and within(victim, root):
                     victim.unlink()
                     removed.append(victim.name)

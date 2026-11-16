@@ -857,6 +857,7 @@ def test_library_from_db(env, tmp_path):
         "channel_id",
         "year",
         "missing",
+        "unknown",
         "has_cue",
     }
     assert lib[0]["missing"] is False and lib[0]["has_cue"] is False

@@ -27,6 +27,7 @@ from .config import UNSORTED, Settings
 from .db import Database
 from .filters import normalize
 from .genre import detect_genre, genre_search_terms
+from .library import FS_LOCK
 from .redact import redact
 from .throttle import (
     MetadataBusy,
@@ -877,8 +878,9 @@ class YtClient:
             max_title_length=st.max_title_length,
             max_path_length=st.max_path_length,
         )
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.move(str(audio), str(target))
+        with FS_LOCK:  # n1: library clean-up must not remove the folder between mkdir and move
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(audio), str(target))
 
         # The file is in place: from here on nothing is fatal (a re-download would be wasteful).
         cue_path = None

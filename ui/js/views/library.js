@@ -22,6 +22,7 @@
   let loaded = false;
   let limit = PAGE;
   let onlyMissing = false;
+  let targetDown = null; // Pfad des nicht erreichbaren Zielordners, sonst null
   let moreObserver = null;
   const busy = new Set(); // IDs, die gerade neu getaggt werden
   const prefs = { view: 'list', sort: 'newest', group: false };
@@ -51,7 +52,7 @@
     const tail = parts.slice(-3);
     return `${parts.length > tail.length ? '…' + sep : ''}${tail.join(sep)}${sep}`;
   }
-  const fmtSize = (mb) => (mb ? (mb >= 1024 ? `${(mb / 1024).toFixed(2)} ${t('library.unit_gb')}` : `${Math.round(mb)} ${t('library.unit_mb')}`) : '–');
+  const fmtSize = (mb) => (!mb ? '–' : mb >= 1024 ? `${(mb / 1024).toFixed(2)} ${t('library.unit_gb')}` : mb < 1 ? `${Math.max(1, Math.round(mb * 1024))} ${t('library.unit_kb')}` : `${Math.round(mb)} ${t('library.unit_mb')}`);
   const fmtTotal = (sec) => { const h = sec / 3600; return h >= 1 ? `${h.toFixed(1)} ${t('library.unit_h')}` : `${Math.round(sec / 60)} ${t('library.unit_min')}`; };
   const genreOrder = () => {
     const known = HC.genres.names();
@@ -79,8 +80,8 @@
   function actions(l) {
     const working = busy.has(l.id);
     return `<button class="iconbtn" data-act="folder" title="${esc(t('library.open_folder'))}">${I.folder}</button>
-      <button class="iconbtn" data-act="retag" title="${esc(t(working ? 'library.retagging' : 'library.retag'))}" ${l.missing || working ? 'disabled' : ''}>${working ? '<span class="spinner"></span>' : I.tag}</button>
-      <button class="iconbtn danger" data-act="del" title="${esc(t(l.missing ? 'library.remove' : 'library.delete'))}" ${working ? 'disabled' : ''}>${l.missing ? I.file_x : I.trash}</button>`;
+      <button class="iconbtn" data-act="retag" title="${esc(t(working ? 'library.retagging' : 'library.retag'))}" ${l.missing || l.unknown || working ? 'disabled' : ''}>${working ? '<span class="spinner"></span>' : I.tag}</button>
+      <button class="iconbtn danger" data-act="del" title="${esc(t(l.unknown ? 'library.unknown_title' : l.missing ? 'library.remove' : 'library.delete'))}" ${working || l.unknown ? 'disabled' : ''}>${l.missing ? I.file_x : I.trash}</button>`;
   }
   const cueTag = () => `<span class="cue-tag" title="${esc(t('library.cue_title'))}">CUE</span>`;
   const missTag = () => `<span class="miss-tag" title="${esc(t('library.missing_title'))}">${I.warn}${t('library.missing')}</span>`;
@@ -178,18 +179,18 @@
     const n = items.length;
     const sec = items.reduce((a, b) => a + (b.duration || 0), 0);
     const mb = items.reduce((a, b) => a + (b.missing ? 0 : b.size_mb || 0), 0);
-    const inGb = mb >= 1024;
+    const inGb = mb >= 1024, inKb = mb > 0 && mb < 1;
     const counters = [
       ['#ls-count', n, (v) => util.fmtNum(v)],
       ['#ls-dur', sec / 3600, (v) => v.toFixed(1)],
-      ['#ls-size', inGb ? mb / 1024 : mb, (v) => (inGb ? v.toFixed(1) : String(Math.round(v)))],
+      ['#ls-size', inGb ? mb / 1024 : inKb ? mb * 1024 : mb, (v) => (inGb ? v.toFixed(1) : String(Math.round(v)))],
     ];
     counters.forEach(([sel, to, fmt]) => {
       const node = $(sel, el);
       if (restart) node._n = 0;
       fx.count(node, to, { dur: 700, fmt });
     });
-    $('#ls-size-unit', el).textContent = t(inGb ? 'library.unit_gb' : 'library.unit_mb');
+    $('#ls-size-unit', el).textContent = t(inGb ? 'library.unit_gb' : inKb ? 'library.unit_kb' : 'library.unit_mb');
 
     const active = $('#lib-genre', el).value;
     const per = genreOrder().map((g) => ({ g, n: items.filter((l) => l.genre === g).length })).filter((x) => x.n);
@@ -245,9 +246,18 @@
     refilter(true);
   }
 
+  /** Banner «Zielordner nicht erreichbar» (Einträge darunter haben unknown statt missing). */
+  function paintBanner() {
+    const box = $('#lib-banner', el);
+    box.hidden = !targetDown;
+    box.innerHTML = targetDown ? ui.notice('warn', `<b>${esc(t('library.target_down', { path: targetDown }))}</b><br>${esc(t('library.target_down_hint'))}`) : '';
+  }
   async function refresh(animate, flashId) {
     const list = await HC.bridge.safe('get_library');
     if (list) { items = list; loaded = true; }
+    const st = list && items.some((l) => l.unknown) ? await HC.bridge.safe('get_library_status') : null;
+    targetDown = st && st.target_ok === false ? st.target : null;
+    paintBanner();
     fillSelects();
     renderStats(!!animate);
     render(animate);
@@ -262,7 +272,7 @@
     else fail(r);
   }
   async function retag(l) {
-    if (busy.has(l.id) || l.missing) return;
+    if (busy.has(l.id) || l.missing || l.unknown) return;
     busy.add(l.id);
     repaint(l);
     const r = await HC.bridge.safe('retag', l.id);
@@ -283,7 +293,18 @@
       if (r) refresh(); // z.B. Datei inzwischen verschwunden -> Zustand «Datei fehlt» nachladen
     }
   }
+  /** Eintrag aus der Liste nehmen (nach erfolgreichem Backend-Aufruf). */
+  function dropItem(l, toastKey) {
+    ui.toast(t(toastKey, { title: l.title }), 'warn');
+    fx.leave(nodeOf(l.id), () => {
+      items = items.filter((x) => x.id !== l.id);
+      fillSelects();
+      renderStats(false);
+      render();
+    });
+  }
   async function remove(l) {
+    if (l.unknown) return; // Zielordner nicht erreichbar: nichts entfernen
     const key = l.missing ? 'remove_mix' : 'del_mix';
     if (l.missing || HC.settings.values.general.confirm_delete) {
       const meta = l.missing ? '' : `<div class="pathmeta">${esc(t('dlg.del_mix.meta', { dur: util.fmtDur(l.duration), size: fmtSize(l.size_mb) }))}</div>`;
@@ -295,14 +316,21 @@
     }
     /* Fehlt die Datei, wird nur der Eintrag entfernt (delete_file = false): es gibt nichts zu löschen. */
     const r = await HC.bridge.safe('delete_library_item', l.id, !l.missing);
+    if (r && !r.ok && r.outside) return removeEntryOnly(l, r);
+    if (r && !r.ok && r.unreachable) { fail(r); refresh(); return; }
     if (!r || !r.ok) return fail(r);
-    ui.toast(t(l.missing ? 'toast.removed' : 'toast.deleted', { title: l.title }), 'warn');
-    fx.leave(nodeOf(l.id), () => {
-      items = items.filter((x) => x.id !== l.id);
-      fillSelects();
-      renderStats(false);
-      render();
+    dropItem(l, l.missing ? 'toast.removed' : 'toast.deleted');
+  }
+  /** Datei liegt ausserhalb des (geänderten) Zielordners: Löschen verweigert, Eintrag lässt sich trotzdem entfernen. */
+  async function removeEntryOnly(l, refused) {
+    const yes = await ui.modal({
+      title: t('dlg.outside_mix.title'), okLabel: t('dlg.outside_mix.ok'), danger: true, kind: 'del',
+      body: `<p>${esc(t('dlg.outside_mix.text', { title: l.title }))}</p><div class="pathbox">${esc(l.file_path)}</div>${ui.notice('warn', t('dlg.outside_mix.warn'))}<div class="pathmeta">${esc(refused.error || '')}</div>`,
     });
+    if (!yes) return;
+    const r = await HC.bridge.safe('delete_library_item', l.id, false);
+    if (!r || !r.ok) return fail(r);
+    dropItem(l, 'toast.removed');
   }
 
   function init(root) {
@@ -318,6 +346,7 @@
             <button type="button" data-v="grid" title="${esc(t('library.view_grid'))}" aria-label="${esc(t('library.view_grid'))}">${I.grid}</button>
           </div>
         </div></div>
+      <div id="lib-banner" hidden></div>
       <div class="lib-top" id="lib-top" hidden>
         <div class="lib-stats">
           <div class="stat"><div class="k">${t('library.stat_count')}</div><div class="v"><span id="ls-count">0</span></div></div>
@@ -387,6 +416,6 @@
   HC.views.library = {
     init,
     show: (arg, changed) => refresh(changed),
-    reset() { items = []; loaded = false; limit = PAGE; onlyMissing = false; busy.clear(); },
+    reset() { items = []; loaded = false; targetDown = null; limit = PAGE; onlyMissing = false; busy.clear(); },
   };
 })();

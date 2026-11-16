@@ -97,6 +97,8 @@
 
    Bibliothek
      get_library(filters?)              -> [LibraryItem]   neueste Downloads zuerst
+                                           Item: missing = Datei fehlt; unknown = Zielordner nicht erreichbar (Zustand unbekannt, missing false).
+     get_library_status()               -> {target_ok, target}   Ergebnis der Zielordner-Prüfung des letzten get_library (Timeout 3 s)
                                            filters = {search?, genre?, channel?, year?, missing?} (UND-verknüpft).
                                            Die UI ruft OHNE Filter auf und sucht/filtert/sortiert/gruppiert selbst
                                            (sofortige Reaktion; Auswahllisten und Kennzahlen brauchen ohnehin alles).

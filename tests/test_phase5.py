@@ -43,7 +43,7 @@ def test_sidecar_roundtrip_has_no_secrets(tmp_path):
     )
     assert len(data["description"]) == sidecar.DESCRIPTION_MAX
     p = sidecar.write(VID, data)
-    assert p == sidecar.meta_dir() / f"{VID}.json" and p.is_file()
+    assert p == sidecar.sidecar_path(VID) and p.is_file()
     assert "SECRET" not in p.read_text(encoding="utf-8")
     back = sidecar.read(VID)
     assert back["genre"] == "Hardcore" and sidecar.chapters_of(back)[0].end == 60
@@ -166,12 +166,13 @@ def test_backup_keeps_only_newest_n(tmp_path):
 
 def test_prune_backups_edge_cases(tmp_path):
     for i in range(3):
-        (tmp_path / f"hcloader-{i}.db").write_bytes(b"x")
-        os.utime(tmp_path / f"hcloader-{i}.db", (1000 + i, 1000 + i))
+        name = f"hcloader-20260101-00000{i}.db"
+        (tmp_path / name).write_bytes(b"x")
+        os.utime(tmp_path / name, (1000 + i, 1000 + i))
     assert maintenance.prune_backups(tmp_path, 0) == []  # 0 = unlimited
     assert maintenance.prune_backups(tmp_path / "missing", 2) == []
     assert len(maintenance.prune_backups(tmp_path, 1)) == 2
-    assert [p.name for p in tmp_path.glob("hcloader-*.db")] == ["hcloader-2.db"]
+    assert [p.name for p in tmp_path.glob("hcloader-*.db")] == ["hcloader-20260101-000002.db"]
 
 
 # ------------------------------------------------------------------ run_update with another python
