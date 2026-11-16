@@ -103,7 +103,7 @@
          <button class="btn sm ghost danger" data-act="cancel">${t('downloads.cancel')}</button>`;
     return `${ui.thumb(v)}<span class="dur">${util.fmtDur(v.duration)}</span></div>
       <div style="min-width:0"><div class="qtitle" title="${esc(v.title)}">${esc(v.title)}</div>
-        <div class="progress"><div class="bar ${failed ? 'fail' : active ? 'kick' : sleeping ? 'sleep' : 'idle'}" style="width:${failed || active ? q.pct : 0}%"></div></div>
+        <div class="progress"><div class="bar ${failed ? 'fail' : active ? 'kick' : sleeping ? 'sleep' : 'idle'}" style="--p:${failed || active ? q.pct : 0}"></div></div>
         <div class="qinfo">${info}<span class="path" title="${esc(q.target || '')}">${ui.genreDot(v.genre)} · ${esc(v.channel_name)}</span></div></div>
       <div class="qactions">${actions}</div>`;
   }
@@ -111,8 +111,9 @@
     const set = (f, val) => { const e = node.querySelector(`[data-f=${f}]`); if (e) e.textContent = val; };
     const bar = node.querySelector('.bar');
     const sleeping = q.state !== 'active' && q.phase === 'sleep';
-    if (q.state === 'active' && bar) bar.style.width = `${q.pct}%`;
-    else if (sleeping && bar) bar.style.width = `${sleep && sleep.id === q.id ? Math.min(100, (sleepLeft() / sleep.total) * 100) : 0}%`;
+    /* Der Balken ist immer 100 % breit und wird nur verschoben (--p -> transform, kein Layout). */
+    if (q.state === 'active' && bar) bar.style.setProperty('--p', q.pct);
+    else if (sleeping && bar) bar.style.setProperty('--p', sleep && sleep.id === q.id ? Math.min(100, (sleepLeft() / sleep.total) * 100) : 0);
     set('pct', `${Math.floor(q.pct)}%`);
     set('speed', (q.speed || 0).toFixed(1));
     set('eta', sleeping ? util.fmtDur(q.eta || 0) : util.fmtSpan(q.eta || 0));
@@ -121,9 +122,32 @@
   }
 
   function renderList(host, items, emptyHtml) {
-    const have = new Map(Array.from(host.children).filter((c) => c.dataset.id).map((c) => [c.dataset.id, c]));
-    const keep = new Set();
+    const kids = Array.from(host.children).filter((c) => c.dataset.id);
+    const have = new Map(kids.map((c) => [c.dataset.id, c]));
+    const keep = new Set(items.map((q) => q.id));
+    const animate = !first && !fx.reduced() && host.offsetParent !== null;
+    const before = animate ? new Map(kids.map((c) => [c, c.offsetTop])) : null;
     host.querySelectorAll('.empty').forEach((e) => e.remove());
+    /* Einträge, die verschwinden, zuerst aus dem Fluss nehmen: Sie blenden an ihrem Platz aus, während die
+       übrigen sofort nachrücken (FLIP unten). So steht nie eine halb ausgeblendete Zeile neben der nächsten. */
+    have.forEach((node, id) => {
+      if (keep.has(id)) return;
+      delete node.dataset.id;
+      if (!animate) { node.remove(); return; }
+      const v = HC.store.get(id);
+      node.style.cssText = `position:absolute;left:${node.offsetLeft}px;top:${node.offsetTop}px;width:${node.offsetWidth}px;margin:0`;
+      if (v && v.status === 'done') {
+        /* fertig geladen: als «Geladen» verabschieden, nicht in der letzten Zwischenphase */
+        node.classList.add('done');
+        const ph = node.querySelector('.phase'), bar = node.querySelector('.bar');
+        if (ph) ph.textContent = t('status.done');
+        if (bar) bar.style.setProperty('--p', 100);
+      }
+      host.appendChild(node);
+      void node.offsetWidth;
+      node.classList.add('leave');
+      setTimeout(() => node.remove(), 240);
+    });
     items.forEach((q, i) => {
       let node = have.get(q.id);
       const s = sig(q, i, items);
@@ -136,14 +160,14 @@
       if (node._sig !== s) { node.innerHTML = inner(q, i, items); node._sig = s; }
       patch(node, q);
       if (host.children[i] !== node) host.insertBefore(node, host.children[i] || null);
-      keep.add(q.id);
     });
-    have.forEach((node, id) => {
-      if (keep.has(id) || node.classList.contains('leave')) return;
-      node.classList.add('leave');
-      delete node.dataset.id;
-      setTimeout(() => node.remove(), fx.reduced() ? 0 : 210);
-    });
+    if (before) {
+      before.forEach((top, node) => {
+        if (!node.dataset.id) return;
+        const dy = top - node.offsetTop;
+        if (dy && node.animate) node.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 260, easing: 'cubic-bezier(.2,.8,.2,1)' });
+      });
+    }
     if (!items.length && emptyHtml && !host.querySelector('.empty')) host.insertAdjacentHTML('beforeend', emptyHtml);
   }
 

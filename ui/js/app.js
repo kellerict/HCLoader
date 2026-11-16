@@ -102,7 +102,7 @@
   function moveIndicator() {
     const ind = $('#nav-ind'), item = $('.nav-item.active');
     if (!ind || !item) return;
-    ind.style.height = `${item.offsetHeight}px`;
+    if (ind._h !== item.offsetHeight) { ind._h = item.offsetHeight; ind.style.height = `${ind._h}px`; }
     ind.style.transform = `translateY(${item.offsetTop}px)`;
     ind.classList.add('on');
   }
@@ -163,7 +163,7 @@
 
     const po = s.po_token || {};
     $('#sb-pot').textContent = po.state === 'active' ? t('statusbar.po_active', { mode: t(`po_mode.${po.mode}`) }) : t(`statusbar.po_${po.state || 'inactive'}`);
-    led($('#sb-pot-led'), po.state === 'active' ? 'live' : po.state === 'error' ? 'err blink' : 'off');
+    led($('#sb-pot-led'), po.state === 'active' ? '' : po.state === 'error' ? 'err blink' : 'off');
     $('#sb-pot-it').title = po.detail || '';
 
     const bo = s.backoff || {};

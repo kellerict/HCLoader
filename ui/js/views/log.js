@@ -121,10 +121,17 @@
         box.firstElementChild.remove();
         if (box.firstElementChild && box.firstElementChild.classList.contains('log-day') && box.children[1] && box.children[1].classList.contains('log-day')) box.firstElementChild.remove();
       }
-      if (follow) toEnd();
-      else { unseen++; paintFollow(); }
+      if (follow) { toEnd(); ping(); } else { unseen++; paintFollow(); }
     }
     paintCount();
+  }
+  /** Kleines Lebenszeichen an der «Live»-Anzeige, höchstens alle 700 ms. */
+  let lastPing = 0;
+  function ping() {
+    const now = Date.now();
+    if (now - lastPing < 700 || HC.app.current() !== 'log') return;
+    lastPing = now;
+    fx.pop($('#log-follow', el), 'ping');
   }
   function plainText() {
     return lines.filter(visible).map((l) => `${dayKey(l.ts)} ${clock(l.ts)} [${(TAG[l.level] || TAG.info).trim()}] ${l.msg}`).join('\n');
@@ -163,12 +170,14 @@
         ${r.note ? `<div class="run-note">${esc(r.note)}</div>` : ''}</div>`;
     }).join('');
   }
+  /** «16.11. 03:00» – das Jahr steht im Tooltip. */
+  const shortStamp = (iso) => { const d = util.parseDate(iso); return d ? `${pad(d.getDate())}.${pad(d.getMonth() + 1)}. ${pad(d.getHours())}:${pad(d.getMinutes())}` : '–'; };
   function tableHtml(list) {
     return `<table class="runs-table"><thead><tr><th>${t('log.col_kind')}</th><th>${t('log.col_start')}</th><th class="num">${t('log.col_duration')}</th>
       <th class="num">${t('log.col_found')}</th><th class="num">${t('log.col_downloaded')}</th><th class="num">${t('log.col_errors')}</th><th class="c-note">${t('log.col_note')}</th></tr></thead>
       <tbody>${list.map((r) => `<tr class="${runCls(r)}" data-id="${esc(r.id)}">
         <td><span class="rk"><span class="node"></span>${kindLabel(r)}</span></td>
-        <td class="mono">${esc(util.fmtFull(r.started))}</td><td class="mono num">${durHtml(r)}</td>
+        <td class="mono" title="${esc(util.fmtFull(r.started))}">${esc(shortStamp(r.started))}</td><td class="mono num">${durHtml(r)}</td>
         <td class="mono num">${num(r.found)}</td><td class="mono num">${num(r.downloaded)}</td><td class="mono num">${num(r.errors, true)}</td>
         <td class="note" title="${esc(r.note || '')}">${boTag(r)}${esc(r.note || '')}</td></tr>`).join('')}</tbody></table>`;
   }
@@ -183,6 +192,7 @@
     $('#runs-sum', el).textContent = list.length ? t(list.length === 1 ? 'log.runs_sum_one' : 'log.runs_sum', {
       n: list.length, dl: util.fmtNum(list.reduce((a, r) => a + (r.downloaded || 0), 0)), err: util.fmtNum(list.reduce((a, r) => a + (r.errors || 0), 0)),
     }) : '';
+    $('#runs-sum', el).title = $('#runs-sum', el).textContent;
     $$('#runs-view button', el).forEach((b) => { const sel = b.dataset.v === runsView; b.classList.toggle('on', sel); b.setAttribute('aria-pressed', sel); });
     $$('#runs-kind button', el).forEach((b) => { const sel = b.dataset.kind === kind; b.classList.toggle('on', sel); b.setAttribute('aria-pressed', sel); });
     if (animate) fx.stagger(wide ? $('tbody', host) : host);
@@ -220,12 +230,12 @@
       <div class="logwrap" id="logwrap">
         <div class="logcol" id="log-col">
           <div class="colhead"><h3>${t('log.live')}</h3><span class="mono muted colmeta" id="log-count"></span>
+            <button type="button" class="btn sm ghost" id="log-copy" title="${esc(t('log.copy_title'))}">${I.copy}${t('log.copy')}</button>
             <button type="button" class="follow on" id="log-follow" title="${esc(t('log.follow_title'))}" aria-pressed="true"><span class="led"></span><span></span></button>
           </div>
           <div class="logtools">
             <div class="seg" id="log-levels">${LEVELS.map((l) => `<button type="button" class="${on.has(l) ? 'on' : ''}" data-lvl="${l}" aria-pressed="${on.has(l)}" title="${esc(t('log.lvl_title', { lvl: t('log.lvl_' + l) }))}">${t('log.lvl_' + l)}<i>0</i></button>`).join('')}</div>
             <div class="search-wrap log-search">${I.search}<input class="input" id="log-q" placeholder="${esc(t('log.search'))}" spellcheck="false" autocomplete="off"></div>
-            <button type="button" class="btn sm ghost" id="log-copy" title="${esc(t('log.copy_title'))}">${I.copy}${t('log.copy')}</button>
           </div>
           <div class="logframe">
             <div class="log" id="logbox" tabindex="0" role="log" aria-label="${esc(t('log.live'))}"></div>

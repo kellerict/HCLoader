@@ -8,7 +8,7 @@ The script fails (exit code 1) on JavaScript errors, ``console.error`` output
 or any request that leaves the local file system – the UI must work offline.
 
 Usage:
-    python scripts/ui_screenshots.py [--reduced] [--out DIR] [--only NAME ...]
+    python scripts/ui_screenshots.py [--reduced] [--out DIR] [--only NAME ...] [--viewport 1100x700]
 
 Chromium: set ``HCLOADER_CHROMIUM`` to an executable, otherwise a bundled
 Playwright Chromium (``playwright install chromium``) or Microsoft Edge is used.
@@ -86,7 +86,7 @@ class Shooter:
         if self.only and name not in self.only:
             return
         path = self.out / f"{name}.png"
-        self.page.mouse.move(1180, 4)  # keep hover effects out of the picture
+        self.page.mouse.move(self.page.viewport_size["width"] - 260, 4)  # keep hover effects out of the picture
         self.page.screenshot(path=str(path), animations="disabled")
         self.written.append(path)
         print(f"  {path.relative_to(ROOT) if path.is_relative_to(ROOT) else path}")
@@ -181,6 +181,114 @@ class Shooter:
         page.wait_for_selector("[data-task=create]")
         self.settle()
 
+    def library_scenes(self) -> None:
+        """Phase 5: Liste/Kacheln, Gruppierung, fehlende Dateien, Löschdialog, neu taggen, leer."""
+        page = self.page
+        self.go("library")
+        self.shot("library")
+        self.shot("library-list")
+        page.click('#lib-view [data-v="grid"]')
+        self.settle()
+        self.shot("library-grid")
+        page.check("#lib-group")
+        self.settle()
+        self.shot("library-grid-grouped")
+        page.click('#lib-view [data-v="list"]')
+        self.settle()
+        self.shot("library-list-grouped")
+        page.uncheck("#lib-group")
+        page.click("#lib-missing")
+        self.settle()
+        self.shot("library-missing")
+        page.click('#lib-body tr.missing [data-act="del"]')
+        page.wait_for_selector(".modal")
+        self.settle()
+        self.shot("library-remove-dialog")
+        page.keyboard.press("Escape")
+        page.click("#lib-missing")
+        page.fill("#lib-q", "gabber")
+        self.settle()
+        self.shot("library-search")
+        page.fill("#lib-q", "")
+        page.dispatch_event("#lib-q", "input")
+        self.settle()
+        page.click('#lib-body tr[data-id="gGabbClassM"] [data-act="del"]')
+        page.wait_for_selector(".modal")
+        self.settle()
+        self.shot("library-delete-dialog")
+        page.keyboard.press("Escape")
+        # neu taggen: das Ablage-Muster verschiebt die Datei -> Hinweis mit dem neuen Ort
+        page.click('#lib-body tr[data-id="cIndVol016"] [data-act="retag"]')
+        page.wait_for_selector("#lib-body tr.working")
+        self.shot("library-retag-running")
+        page.wait_for_selector("#toasts .toast.info")
+        self.settle()
+        self.shot("library-retag-moved")
+        # leere Bibliothek
+        page.evaluate("HC.mock.demo.libraryEmpty()")
+        self.go("discover")
+        self.go("library")
+        self.shot("library-empty")
+        page.evaluate("HC.mock.demo.libraryEmpty(false)")
+        self.go("discover")
+
+    def log_scenes(self) -> None:
+        """Phase 5: Live-Log (Filter, Suche, Pause beim Hochscrollen), Lauf-Historie als Tabelle."""
+        page = self.page
+        self.go("log")
+        self.shot("log")
+        page.click('#log-levels [data-lvl="debug"]')
+        page.fill("#log-q", "throttle")
+        self.settle()
+        self.shot("log-search")
+        page.fill("#log-q", "")
+        page.dispatch_event("#log-q", "input")
+        self.settle()
+        # hochscrollen pausiert das Mitlaufen; neue Zeilen werden gezählt
+        page.evaluate("document.querySelector('#logbox').scrollTop = 0")
+        page.wait_for_selector("#log-jump:not([hidden])")
+        page.evaluate(
+            "HC.mock.demo.log('info', 'Suche «uptempo mix» · 30 Treffer (flach)');"
+            " HC.mock.demo.log('warn', 'Throttle: 19/20 Suchen diese Stunde');"
+            " HC.mock.demo.log('ok', 'PO-Token erneuert')"
+        )
+        self.settle()
+        self.shot("log-paused")
+        page.click("#log-jump")
+        page.click('#log-levels [data-lvl="debug"]')
+        # ein Lauf endet -> Event «run» trägt ihn live nach
+        page.evaluate(
+            "HC.mock.demo.run({kind: 'headless', found: 4, downloaded: 2,"
+            " note: 'Limit pro Lauf erreicht (2/2) – Rest bleibt in der Warteschlange'})"
+        )
+        page.click('#runs-view [data-v="table"]')
+        self.settle()
+        self.shot("log-runs")
+        page.click('#runs-kind [data-kind="headless"]')
+        self.settle()
+        self.shot("log-runs-headless")
+        page.click('#runs-kind [data-kind=""]')
+        page.click('#runs-view [data-v="timeline"]')
+        self.settle()
+
+    def maintenance_scenes(self) -> None:
+        """Phase 5: Update mit Live-Ausgabe, «Neustart nötig», Backup-Liste."""
+        page = self.page
+        self.go("settings")
+        self.tab("maintenance")
+        page.click("[data-update]")
+        page.wait_for_selector(".console-wrap.live .cl")
+        page.wait_for_timeout(700)
+        self.shot("settings-maintenance-updating")
+        page.wait_for_selector(".console-wrap.done", timeout=15000)
+        page.click('[data-db="backup"]')
+        page.wait_for_selector(".bk.fresh")
+        self.clear_toasts()
+        page.evaluate("document.querySelector('#spane-scroll').scrollTop = 0")
+        self.settle()
+        self.shot("settings-maintenance-updated")
+        self.shot_scrolled("settings-maintenance-updated", "#spane-scroll")
+
     # -- scenes ------------------------------------------------------------
     def run(self) -> None:
         page = self.page
@@ -242,11 +350,8 @@ class Shooter:
         self.settle(500)
         self.shot("downloads")
 
-        self.go("library")
-        self.shot("library")
-
-        self.go("log")
-        self.shot("log")
+        self.library_scenes()
+        self.log_scenes()
 
         # Einstellungen: jeder Tab, lange Tabs zusätzlich gescrollt
         self.go("settings")
@@ -354,6 +459,8 @@ class Shooter:
         self.shot("settings-schedule-unknown")
         page.evaluate("HC.mock.demo.taskUnknown(false)")
 
+        self.maintenance_scenes()
+
         # m9: in pywebview gestartet, Backend antwortet nicht -> Fehlerzustand statt Mock
         page.clock.install(time=FIXED_NOW)
         page.goto(INDEX.as_uri() + "?host=pywebview")
@@ -373,8 +480,23 @@ def main() -> int:
     )
     parser.add_argument("--out", type=Path, default=None, help="Zielordner")
     parser.add_argument("--only", nargs="*", default=[], help="nur diese Namen speichern")
+    parser.add_argument(
+        "--viewport",
+        default="",
+        metavar="BxH",
+        help="Fenstergrösse, z.B. 1100x700 (Mindestfenster); Standard 1440x900",
+    )
     args = parser.parse_args()
 
+    viewport = dict(VIEWPORT)
+    if args.viewport:
+        try:
+            width, height = (int(x) for x in args.viewport.lower().split("x"))
+        except ValueError:
+            parser.error("--viewport erwartet BxH, z.B. 1100x700")
+        viewport = {"width": width, "height": height}
+        if not args.out:
+            parser.error("--viewport nur zusammen mit --out (docs/screenshots bleibt 1440x900)")
     out = args.out or (DEFAULT_OUT / "reduced" if args.reduced else DEFAULT_OUT)
     out.mkdir(parents=True, exist_ok=True)
     problems: list[str] = []
@@ -382,7 +504,7 @@ def main() -> int:
     with sync_playwright() as pw:
         browser = launch(pw)
         context = browser.new_context(
-            viewport=VIEWPORT,
+            viewport=viewport,
             device_scale_factor=1,
             locale="de-CH",
             timezone_id="Europe/Zurich",

@@ -25,8 +25,15 @@
      get_status()                       -> Status (siehe unten)
      get_versions()                     -> {app, ytdlp, plugin, deno, ffmpeg, python, data_dir, db_path,
                                             db_entries, db_size_mb, last_backup, last_update_check}
+                                           Optional (Wunsch der UI, Phase 5 – fehlen die Felder, zeigt die UI nur
+                                           «Letztes Backup» und die in dieser Sitzung erstellten Backups):
+                                             backups: [{name, path?, size_mb, created (ISO)}]  neueste zuerst
+                                             restart_required: bool  (yt-dlp aktualisiert, App noch nicht neu gestartet)
      update_ytdlp()                     -> {ok, ytdlp, plugin, changed, output, restart_required?} | {ok:false, error, output}
-     backup_db()                        -> {ok:true, path} | {ok:false, error}
+                                           Während des Aufrufs kommt jede pip-Zeile als "log"-Event: die UI zeigt
+                                           sie live in der Konsole (Wartung); output dient nur als Ersatz, wenn
+                                           keine Zeile ankam. restart_required -> Hinweis «Neustart nötig».
+     backup_db()                        -> {ok:true, path} | {ok:false, error}      (es bleiben die 10 neuesten Backups)
      open_path(kind)                    -> {ok}       kind: "data" | "target" | "logs"
      pick_folder(current?)              -> {path} | null                 (nativer Ordnerdialog)
      test_po_token()                    -> {ok, state, detail, ms}       state: "active" | "inactive" | "error"
@@ -90,13 +97,27 @@
      queue_retry(id)                    -> {ok}
 
    Bibliothek
-     get_library()                      -> [LibraryItem]
-     open_folder(id)                    -> {ok}
-     retag(id)                          -> {ok}
-     delete_library_item(id)            -> {ok}       löscht Eintrag + Datei
+     get_library(filters?)              -> [LibraryItem]   neueste Downloads zuerst
+                                           filters = {search?, genre?, channel?, year?, missing?} (UND-verknüpft).
+                                           Die UI ruft OHNE Filter auf und sucht/filtert/sortiert/gruppiert selbst
+                                           (sofortige Reaktion; Auswahllisten und Kennzahlen brauchen ohnehin alles).
+     open_folder(id)                    -> {ok} | {ok:false, error}      Explorer mit markierter Datei bzw. Ordner
+     retag(id)                          -> {ok:true, path, moved, genre, cue, sidecar} | {ok:false, error}
+                                           offline; schreibt Tags/Cover/CUE nach den aktuellen Einstellungen neu und
+                                           verschiebt die Datei, wenn das Ablage-Muster einen anderen Pfad ergibt
+                                           (moved:true, path = neuer Pfad -> Toast mit dem neuen Ort). Die UI
+                                           übernimmt path, genre und cue in den Eintrag. Datei fehlt -> error.
+     delete_library_item(id, delete_file?) -> {ok:true, deleted:[Dateinamen]} | {ok:false, error}
+                                           delete_file fehlt/true: Datei + .cue löschen; der Eintrag wird "ignored"
+                                           und nie wieder geladen (steht im Bestätigungsdialog, der den Pfad zeigt).
+                                           Die UI schickt false bei Einträgen mit missing:true («Eintrag entfernen»).
+                                           Datei ausserhalb des Zielordners / in Benutzung -> error (Fehler-Toast).
 
    Protokoll
-     get_log()                          -> {lines:[LogLine], runs:[Run]}
+     get_log(filters?)                  -> {lines:[LogLine], runs:[Run]}
+                                           filters = {level?, levels?, search?, limit?, kind?, runs_limit?}.
+                                           Die UI ruft OHNE Filter auf (Backlog 500 Zeilen, 50 Läufe) und filtert
+                                           Stufen, Suche und Lauf-Art selbst. Läufe mit finished:null laufen noch.
 
    ---------------------------------------------------------------------
    DATENFORMEN
@@ -121,10 +142,17 @@
                   pct (0–100), speed (MB/s), eta (s), error|null, target (relativer Ordner)}
                   phase "sleep" = Throttle-Pause vor diesem Eintrag (state bleibt "waiting"),
                   eta = Restsekunden der Pause; optional sleep_total (s) für den Balken.
-     LibraryItem {id, title, artist, genre, duration (s), upload_date, downloaded_at (ISO), file_path, size_mb}
+     LibraryItem {id, title, artist, channel_id, genre, duration (s|null), upload_date, year, downloaded_at (ISO),
+                  file_path, size_mb, missing, has_cue}
+                  artist = Kanalname (Spalte/Filter «Kanal»); file_path absolut; missing:true = Datei nicht mehr
+                  am Ort (size_mb 0) -> «Datei fehlt», nur «Eintrag entfernen» und «Ordner öffnen» möglich.
+                  has_cue -> kleines «CUE»-Kennzeichen. Cover: generiert aus id + Genre-Farbe (kein Bildfeld).
      LogLine     {ts (ISO), level: "debug"|"info"|"ok"|"warn"|"error", msg}
+                  "ok" zählt im Filter zur Stufe Info; "debug" ist in der UI standardmässig ausgeblendet.
      Run         {id, kind: "watchlist"|"headless"|"manual", started (ISO), finished (ISO|null),
-                  found, downloaded, errors, note}
+                  duration (s|null), found, downloaded, errors, note}
+                  duration fehlt -> die UI rechnet finished - started. note mit «Backoff»/«429» -> Kennzeichen
+                  BACKOFF. Farbe: Fehler ohne Ergebnis rot, Fehler oder Notiz gelb, sonst grün, laufend blau.
      Status      {app_version, ytdlp_version, plugin_version, deno_ok, deno_version, ffmpeg_ok, ffmpeg_version,
                   po_token: {state: "active"|"inactive"|"error", mode: "off"|"script"|"http", detail},
                   backoff: {active, until (ISO|null), level, remaining_s},
@@ -150,6 +178,9 @@
      video           {id, status, genre}               Status/Genre eines Videos geändert (auch "downloading")
      status          Status                            Statusleiste (Backoff, Zähler, PO-Token, nächste Prüfung …)
      log             LogLine                           neue Protokollzeile (Live-Log)
+     run             Run                               ein Lauf ist zu Ende (GUI-Watchlist-Prüfung, Download-Lauf der
+                     Warteschlange). Die UI fügt ihn in die Lauf-Historie ein bzw. ersetzt den laufenden Eintrag
+                     gleicher id. Headless-Läufe (anderer Prozess) erscheinen beim nächsten get_log().
      source          {id, checking, last_checked?, new_count?, error?}   Watchlist-Quelle wird/wurde geprüft
                      Start: {id, checking:true}. Ende: {id, checking:false, last_checked, new_count} oder bei
                      Fehler {id, checking:false, error:"Meldung"} – die UI zeigt die Meldung an der Quelle, bis

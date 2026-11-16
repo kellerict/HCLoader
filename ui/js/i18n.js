@@ -376,6 +376,7 @@
         backup: 'DB-Backup erstellen', backing_up: 'Sichert …', open: 'Datenordner', open_logs: 'Log-Ordner',
         open_title: 'Ordner mit Datenbank, Konfiguration und Backups öffnen', open_logs_title: 'Ordner mit den Log-Dateien öffnen',
         info: '{n} Einträge · {mb} MB', last: 'Letztes Backup', never: 'noch keines',
+        keep: 'Es bleiben die 10 neuesten Backups erhalten, ältere werden beim nächsten Backup gelöscht.',
         backups: 'Backups', backups_more: '+ {n} ältere im Ordner «backups»', fresh: 'neu',
       },
       reset_all: { label: 'Alle Einstellungen', help: 'Setzt sämtliche Tabs auf die Standardwerte. Datenbank und Musikdateien bleiben unberührt.', button: 'Alles auf Standard' },

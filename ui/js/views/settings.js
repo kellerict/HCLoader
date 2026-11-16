@@ -138,7 +138,7 @@
   let cur = 'general';
   let genreKeys = []; // stabile Schlüssel für die Genre-Zeilen (FLIP)
   let gk = 0;
-  const cache = { task: null, versions: null, blacklist: null, updateOut: '', poTest: null };
+  const cache = { task: null, versions: null, blacklist: null, poTest: null, update: null, before: null, restart: false, backups: [], freshBackup: '' };
 
   const isDirtyKey = (k) => !eq(get(work, k), get(saved, k));
   const dirtyKeys = () => TABS.flatMap(tabKeys).filter(isDirtyKey);
@@ -277,6 +277,58 @@
   const row = (key, mainHtml, cls) => `<div class="field plain ${cls || ''}"><div class="fl"><b>${t(`${key}.label`)}</b><span class="help">${t(`${key}.help`)}</span></div><div class="fc"><div class="fc-main">${mainHtml}</div></div></div>`;
   const box = (cls, title, detail, actions, extra, ledCls) => `<div class="statebox ${cls}"><div><div class="st-title"><span class="led ${ledCls || ''}"></span>${title}</div><div class="st-detail">${detail}</div></div><div class="st-actions">${actions || ''}</div>${extra || ''}</div>`;
 
+  /* ---------- Wartung: Versionen laden, Update mit Live-Ausgabe ---------- */
+  const repaintCustoms = () => $$('[data-custom]', el).forEach((h) => h._paint && h._paint());
+  async function loadVersions() {
+    const v = await HC.bridge.safe('get_versions');
+    if (!v) return;
+    cache.versions = v;
+    if (v.restart_required) cache.restart = true;
+    repaintCustoms();
+  }
+  const consoleLine = (l) => `<div class="cl ${esc(l.level || 'info')}">${esc(l.msg)}</div>`;
+  /** Während des Updates schickt das Backend jede pip-Zeile als «log»-Event: live in die Konsole. */
+  function onUpdateLog(l) {
+    const u = cache.update;
+    if (!u || u.state !== 'live' || !l || l.level === 'debug') return;
+    u.lines.push({ level: l.level, msg: l.msg });
+    if (u.lines.length > 400) u.lines.shift();
+    const box = $('[data-custom=update] [data-console]', el);
+    if (!box) return;
+    if (u.lines.length === 1) box.innerHTML = '';
+    box.insertAdjacentHTML('beforeend', consoleLine(l));
+    box.scrollTop = box.scrollHeight;
+  }
+  async function runUpdate() {
+    if (cache.update && cache.update.state === 'live') return;
+    const before = cache.versions ? { ytdlp: cache.versions.ytdlp, plugin: cache.versions.plugin } : null;
+    cache.update = { state: 'live', start: Date.now(), end: 0, lines: [] };
+    repaintCustoms();
+    const timer = setInterval(() => { const h = $('[data-custom=update]', el); if (h && h._tick) h._tick(); }, 1000);
+    const r = await HC.bridge.safe('update_ytdlp');
+    clearInterval(timer);
+    const u = cache.update;
+    u.end = Date.now();
+    u.state = r && r.ok ? 'done' : 'failed';
+    if (r) {
+      /* Kamen keine Live-Zeilen an (z.B. sofort abgelehnt), die gesammelte Ausgabe zeigen. */
+      if (!u.lines.length) String(r.output || '').split('\n').filter((x) => x.trim()).forEach((msg) => u.lines.push({ level: 'info', msg }));
+      if (r.ok) {
+        Object.assign(cache.versions || (cache.versions = {}), { ytdlp: r.ytdlp, plugin: r.plugin, last_update_check: new Date().toISOString() });
+        if (r.changed && before) cache.before = before;
+        cache.restart = cache.restart || !!r.restart_required;
+        if (r.restart_required) ui.toast(t('toast.restart_required'), 'warn', 8000);
+        else ui.toast(t(r.changed ? 'toast.updated' : 'toast.up_to_date', { v: r.ytdlp }));
+      } else {
+        const msg = r.error || t('toast.update_failed');
+        if (!u.lines.some((x) => x.msg === msg)) u.lines.push({ level: 'error', msg });
+        ui.toast(msg, 'err');
+      }
+    }
+    repaintCustoms();
+    if (r && r.ok && r.changed) fx.flash($('[data-custom=versions] .kv', el), 'flash');
+  }
+
   const CUSTOM = {
     /* Kanal-Blacklist (liegt in der DB, nicht in config.yaml) */
     blacklist(host) {
@@ -366,7 +418,7 @@
         const note = res ? ui.notice(res.ok ? 'ok' : 'error', `<b>${t(res.ok ? 'set.po.test_ok' : 'set.po.test_fail')}</b> ${esc(res.detail || res.error || '')}${res.ms ? ` (${res.ms} ms)` : ''}`)
           : isDirtyKey('network.po_token_mode') || isDirtyKey('network.po_token_port') ? ui.notice('info', t('set.po.unsaved')) : '';
         host.innerHTML = box(cls, t(`set.po.${po.state}`), `${t('set.po.mode')}: <b>${t('po_mode_long.' + po.mode)}</b>${po.detail ? ` · ${esc(po.detail)}` : ''}`,
-          `<button class="btn sm" data-test>${I.bolt}${t('set.po.test')}</button>`, note, po.state === 'active' ? 'live' : po.state === 'error' ? 'err blink' : 'off');
+          `<button class="btn sm" data-test>${I.bolt}${t('set.po.test')}</button>`, note, po.state === 'active' ? '' : po.state === 'error' ? 'err blink' : 'off');
       };
       host.addEventListener('click', async (e) => {
         const b = e.target.closest('[data-test]');
@@ -477,7 +529,7 @@
 
     /* Vorschau Kick-Puls */
     pulsePreview(host) {
-      host.innerHTML = row('set.pulse_preview', `<div style="width:100%;max-width:360px"><div class="progress"><div class="bar kick" style="width:64%"></div></div></div><span class="unit" data-bpm></span>`);
+      host.innerHTML = row('set.pulse_preview', `<div style="width:100%;max-width:360px"><div class="progress"><div class="bar kick" style="--p:64"></div></div></div><span class="unit" data-bpm></span>`);
       host._update = () => { $('[data-bpm]', host).textContent = work.appearance.reduce_effects ? t('set.pulse_preview.off') : `${work.appearance.pulse_bpm || '–'} ${t('unit.bpm')}`; };
       host._update();
     },
@@ -485,60 +537,85 @@
     /* Wartung */
     versions(host) {
       const paint = () => {
-        const v = cache.versions, s = HC.status || {};
-        const cell = (k, val, ok) => `<div><div class="k"><span class="led ${ok === false ? 'err' : ok === true ? '' : 'off'}"></span>${k}</div><div class="v" title="${esc(val || '')}">${esc(val || '–')}</div></div>`;
-        host.innerHTML = `<div class="kv">${cell('HCLoader', v && v.app)}${cell('yt-dlp', v && v.ytdlp, v ? !!v.ytdlp : undefined)}${cell(t('set.versions.plugin'), v && v.plugin, v ? !!v.plugin : undefined)}
+        const v = cache.versions, s = HC.status || {}, was = cache.before || {};
+        const cell = (k, val, ok, old) => {
+          const changed = !!old && !!val && old !== val;
+          return `<div class="${changed ? 'changed' : ''}"><div class="k"><span class="led ${ok === false ? 'err' : ok === true ? '' : 'off'}"></span>${k}</div>
+            <div class="v" title="${esc(val || '')}">${esc(val || '–')}${changed ? `<small>${esc(t('set.versions.was', { v: old }))}</small>` : ''}</div></div>`;
+        };
+        host.innerHTML = `${cache.restart ? `<div class="statebox warn restart" role="alert"><div><div class="st-title"><span class="led warn"></span>${t('set.update.restart_title')}</div>
+            <div class="st-detail">${t('set.update.restart_text')}</div></div></div>` : ''}
+          <div class="kv">${cell('HCLoader', v && v.app)}${cell('yt-dlp', v && v.ytdlp, v ? !!v.ytdlp : undefined, was.ytdlp)}${cell(t('set.versions.plugin'), v && v.plugin, v ? !!v.plugin : undefined, was.plugin)}
           ${cell('Deno', v && v.deno, v ? s.deno_ok !== false : undefined)}${cell('ffmpeg', v && v.ffmpeg, v ? s.ffmpeg_ok !== false : undefined)}${cell('Python', v && v.python)}</div>`;
       };
       host._paint = paint;
       paint();
-      HC.bridge.safe('get_versions').then((v) => { if (v) { cache.versions = v; $$('[data-custom]', el).forEach((h) => h._paint && h._paint()); } });
+      loadVersions();
     },
     update(host) {
+      const head = () => {
+        const u = cache.update;
+        if (!u) return '';
+        const span = util.fmtDur(Math.round(((u.end || Date.now()) - u.start) / 1000));
+        const text = u.state === 'live' ? t('set.update.out_live', { t: span }) : u.state === 'failed' ? t('set.update.out_failed') : t('set.update.out_done', { t: span });
+        return `${u.state === 'live' ? '<span class="spinner"></span>' : `<span class="led ${u.state === 'failed' ? 'err' : ''}"></span>`}<span>${esc(text)}</span>`;
+      };
       const paint = () => {
-        const v = cache.versions;
+        const v = cache.versions, u = cache.update, live = !!u && u.state === 'live';
         host.innerHTML = `<div class="field plain"><div class="fl"><b>${t('set.update.label')}</b><span class="help">${t('set.update.help')}</span>
           <em>${t('set.update.last_check')}: ${v ? esc(util.fmtWhen(v.last_update_check)) : '–'}</em></div>
-          <div class="fc"><div class="fc-main"><button class="btn primary" data-update>${I.refresh}${t('set.update.button')}</button>
-          ${cache.restart ? ui.notice('warn', t('set.update.restart')) : ''}
-          ${cache.updateOut ? `<div class="console">${esc(cache.updateOut)}</div>` : ''}</div></div></div>`;
+          <div class="fc"><div class="fc-main"><button class="btn primary${live ? ' busy' : ''}" data-update ${live ? 'disabled' : ''}>${live ? '<span class="spinner"></span>' : I.refresh}${t(live ? 'set.update.running' : 'set.update.button')}</button>
+          ${u ? `<div class="console-wrap ${u.state}"><div class="console-head" data-console-head>${head()}</div>
+            <div class="console" data-console>${u.lines.length ? u.lines.map(consoleLine).join('') : `<span class="wait">${t('set.update.waiting')}</span>`}</div></div>` : ''}</div></div></div>`;
+        const box = $('[data-console]', host);
+        if (box) box.scrollTop = box.scrollHeight;
       };
       host._paint = paint;
-      host.addEventListener('click', async (e) => {
-        const b = e.target.closest('[data-update]');
-        if (!b) return;
-        ui.busy(b, true, t('set.update.running'));
-        const r = await HC.bridge.safe('update_ytdlp');
-        if (r) {
-          cache.updateOut = r.output || r.error || '';
-          if (r.ok) {
-            Object.assign(cache.versions || (cache.versions = {}), { ytdlp: r.ytdlp, plugin: r.plugin, last_update_check: new Date().toISOString() });
-            cache.restart = cache.restart || !!r.restart_required;
-            if (r.restart_required) ui.toast(t('toast.restart_required'), 'warn', 8000);
-            else ui.toast(t(r.changed ? 'toast.updated' : 'toast.up_to_date', { v: r.ytdlp }));
-          } else ui.toast(r.error || t('toast.update_failed'), 'err');
-        }
-        $$('[data-custom]', el).forEach((h) => h._paint && h._paint());
-      });
+      host._tick = () => { const h = $('[data-console-head]', host); if (h) h.innerHTML = head(); };
+      host.addEventListener('click', (e) => { if (e.target.closest('[data-update]')) runUpdate(); });
       paint();
     },
     database(host) {
       const paint = () => {
         const v = cache.versions;
+        const list = (v && Array.isArray(v.backups) ? v.backups : cache.backups).slice().sort((x, y) => String(y.created || '').localeCompare(String(x.created || '')));
+        const last = (v && v.last_backup) || (list[0] && list[0].created) || null;
+        const shown = list.slice(0, 5);
         host.innerHTML = `<div class="field plain"><div class="fl"><b>${t('set.db.label')}</b><span class="help">${t('set.db.help')}</span>
           <em>${v ? esc(v.db_path) : '–'}</em></div>
-          <div class="fc"><div class="fc-main"><button class="btn" data-db="backup">${I.db}${t('set.db.backup')}</button><button class="btn ghost" data-db="open">${I.folder}${t('set.db.open')}</button>
-          <span class="unit" style="width:100%">${v ? t('set.db.info', { n: util.fmtNum(v.db_entries), mb: v.db_size_mb, last: util.fmtWhen(v.last_backup) }) : ''}</span></div></div></div>`;
+          <div class="fc"><div class="fc-main"><button class="btn" data-db="backup">${I.db}${t('set.db.backup')}</button>
+            <button class="btn ghost" data-db="data" title="${esc(t('set.db.open_title'))}">${I.folder}${t('set.db.open')}</button>
+            <button class="btn ghost" data-db="logs" title="${esc(t('set.db.open_logs_title'))}">${I.folder}${t('set.db.open_logs')}</button>
+            <div class="dbinfo" title="${esc(t('set.db.keep'))}"><span>${v ? t('set.db.info', { n: util.fmtNum(v.db_entries), mb: v.db_size_mb }) : '–'}</span>
+              <span>${t('set.db.last')}: <b title="${esc(util.fmtFull(last))}">${last ? esc(util.fmtRel(last)) : t('set.db.never')}</b></span></div>
+            ${shown.length ? `<div class="backups"><div class="lbl">${t('set.db.backups')}</div>
+              ${shown.map((b) => `<div class="bk${b.name === cache.freshBackup ? ' fresh' : ''}" title="${esc(b.path || b.name || '')}">${I.db}<span class="name">${esc(b.name || '')}${b.name === cache.freshBackup ? `<span class="rtag ok">${t('set.db.fresh')}</span>` : ''}</span>
+                <span class="sz">${b.size_mb != null ? `${esc(b.size_mb)} MB` : ''}</span><span class="when">${esc(util.fmtFull(b.created))}</span></div>`).join('')}
+              ${list.length > shown.length ? `<div class="bk-more">${t('set.db.backups_more', { n: list.length - shown.length })}</div>` : ''}</div>` : ''}
+            <div class="fhint dbkeep">${t('set.db.keep')}</div>
+          </div></div></div>`;
       };
       host._paint = paint;
       host.addEventListener('click', async (e) => {
         const b = e.target.closest('[data-db]');
         if (!b) return;
-        if (b.dataset.db === 'open') { HC.bridge.safe('open_path', 'data'); return; }
+        if (b.dataset.db !== 'backup') {
+          const r = await HC.bridge.safe('open_path', b.dataset.db);
+          if (r && r.ok) ui.toast(t('toast.folder_opening'), 'info', 1600);
+          else if (r) ui.toast(r.error || t('err.generic'), 'err');
+          return;
+        }
         ui.busy(b, true, t('set.db.backing_up'));
         const r = await HC.bridge.safe('backup_db');
-        if (r && r.ok) { if (cache.versions) cache.versions.last_backup = new Date().toISOString(); ui.toast(t('toast.backup_done', { path: r.path }), 'ok', 5000); }
-        else if (r) ui.toast(r.error || t('err.generic'), 'err');
+        if (r && r.ok) {
+          const name = String(r.path || '').split(/[\\/]/).pop();
+          const now = new Date().toISOString();
+          if (cache.versions) cache.versions.last_backup = now;
+          cache.backups.unshift({ name, path: r.path, created: now });
+          cache.freshBackup = name;
+          ui.toast(t('toast.backup_done', { path: r.path }), 'ok', 5000);
+          await loadVersions(); // Liste und Grössen vom Backend, falls es sie liefert
+        } else if (r) ui.toast(r.error || t('err.generic'), 'err');
         paint();
       });
       paint();
@@ -756,6 +833,7 @@
     document.addEventListener('keydown', (e) => {
       if (HC.app.current() === 'settings' && e.ctrlKey && e.key.toLowerCase() === 's') { e.preventDefault(); if (!$('#btn-save', el).disabled) save(); }
     });
+    HC.bridge.on('log', onUpdateLog);
     HC.bridge.on('status_rendered', () => { if (HC.app.current() === 'settings') $$('[data-custom]', el).forEach((h) => h._update && h._update()); });
   }
 
@@ -765,5 +843,5 @@
     render();
   }
 
-  HC.views.settings = { init, show, reset() { saved = null; Object.assign(cache, { task: null, versions: null, blacklist: null, updateOut: '', poTest: null }); } };
+  HC.views.settings = { init, show, reset() { saved = null; Object.assign(cache, { task: null, versions: null, blacklist: null, poTest: null, update: null, before: null, restart: false, backups: [], freshBackup: '' }); } };
 })();
