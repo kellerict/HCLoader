@@ -247,3 +247,142 @@ Danach kann freigegeben werden.
 | 3 Sicherheit/Hygiene | ok – keine Secrets, Cookies, Binaries oder Userpfade. CSP mit begründetem `'unsafe-eval'`, kein XSS gefunden. Proxy-Credentials in Fehlertexten maskieren (n4). |
 | 4 Korrektheit | **M1** (Genre beim Download). Dazu m1 (Phase-2-m5 offen), m2, m5–m7. Migration 2 atomar und getestet. Abbruch/Resume konsistent bis auf den Shutdown während der Konvertierung (m5). |
 | 5 Konfigurierbarkeit | ok – alle 52 Schlüssel in der GUI, neue Phase-3-Felder inkl. Validierung. TTL-Rundungshinweis vorhanden. |
+
+---
+
+## Runde 2
+
+- Umfang: `git diff e48b7e4..00f165c` („fix: address phase 3 review …“). Massgeblich ist der Stand von
+  Commit 00f165c. Die parallel laufenden Phase-4-Änderungen im Arbeitsbaum habe ich nicht bewertet.
+- Geprüft gegen: Runde 1 oben, `docs/decisions.md` (Einträge vom 2026-11-16) und yt-dlp 2026.10.26 im
+  venv (`YoutubeDL.py` `extract_info`/`__extract_info`/`_handle_extraction_exceptions`/`process_ie_result`/
+  `_check_formats`, `extractor/youtube/_video.py` PO-Token- und Format-Pfad).
+- Werkzeuge: Separater Worktree auf 00f165c. `ruff check .` sauber, `ruff format --check .` sauber,
+  `pytest`: 455 passed. Eine lokale Simulation des Throttle (ohne Netz) zu R2-m1. Kein Netzwerkzugriff.
+
+### Ergebnis Runde 2: ÄNDERUNGEN NÖTIG (klein)
+
+Alle Funde aus Runde 1 sind behoben oder begründet zurückgestellt, ausser n5 und n7 (offen, nicht
+dokumentiert). Der Metadaten-Lock bringt aber eine neue Lücke in der Garantie zum Request-Abstand
+(R2-m1). Sie ist klein, betrifft aber direkt die YouTube-Schonung, und die Korrektur ist ein Zweizeiler.
+Danach kann ohne weitere Runde freigegeben werden.
+
+### Status je Fund
+
+| ID | Status | Bemerkung |
+|---|---|---|
+| M1 | behoben | `_finish` greift auf das gespeicherte, nicht manuelle Genre zurück, aber nur wenn es in den Einstellungen existiert. `store_results` lässt das Genre bei `queued`/`downloading`/`done` unverändert, die Quelle hat Vorrang. `upsert_video` ohne `genre`-Key lässt das Feld unverändert. Abgedeckt durch den Integrationstest Chip → Datei/TCON/DB und den Folgesuch-Test. |
+| m1 | behoben | `adoptTask` übernimmt `true`/`false` in `work`/`saved`/`HC.settings.values`. Eine ungespeicherte Eingabe des Users bleibt erhalten, `null` ändert nichts. Kein Render-Loop, weil die Funktion bei Gleichstand früh zurückkehrt. |
+| m2 | behoben | `pot`/`target` sind Sperren. Der Eintrag bleibt `queued`, es entsteht kein `runs`-Eintrag und keine Pause. `reached_network` wird erst unmittelbar vor dem ersten Request gesetzt. Beim Start wartet die Queue bis 20 s auf den Watchdog. Die Probe-Datei (`paths.check_writable_dir`) ist korrekt: `mkdir`, schreiben, löschen, `OSError` → Text. Geschrieben wird sie nur, wenn Einträge warten. |
+| m3 | behoben | Der Client wird vor `run_session` erzeugt. `error` blockiert ohne Lauf-Eintrag, ein neuer Versuch kommt nur nach einer Nutzeraktion. |
+| m4 | behoben, siehe R2-m1 | Die Trennung `extract_info(process=False)`/`process_ie_result(download=True)` entspricht der yt-dlp-Semantik (Details unten). Keine Deadlock-Pfade. |
+| m5 | behoben | Die DB bleibt offen, solange der Queue-Thread lebt. `requeue_downloading` läuft danach. `on_commit` verhindert, dass nach einem Abbruch noch verschoben wird. Siehe R2-n4. |
+| m6 | behoben | `_emit_video` bei `ThrottleError` und `LocalError`. |
+| m7 | behoben | `Database.transaction` arbeitet mit RLock und Autocommit-Verbindung (`isolation_level=None`). `BEGIN`/`COMMIT`/`ROLLBACK` sind korrekt. |
+| n1 | behoben | `is_live` steht im Vertrag, die UI wertet `filter_reason` nicht mehr aus. |
+| n2 | behoben | `YtdlpGate`: Prüfen und Registrieren laufen unter einem Lock. Eine Suche, die beim Update-Start in der Such-Warteschlange steht, wird bei ihrem Start abgelehnt. |
+| n3 | behoben | `committed` wird atomar unter dem Queue-Lock gesetzt. `"late"` für aktive und für `done`-Einträge. |
+| n4 | behoben, siehe R2-n3 | `redact` ist in `_clean_error`, im Suchfehler, im Live-Log und in allen Handlern (Datei, Konsole, Live) eingebaut. |
+| n5 | **offen** | `script-src 'self' file:` ist unverändert und weder im CHANGELOG noch in decisions.md erwähnt. Bitte zurückstellen und das dokumentieren (z.B. „Phase 6, WebView2-Test“). |
+| n6 | behoben | `cleanup_stale_partials` arbeitet einmal pro Start im Queue-Thread vor dem ersten Download. Grenze 7 Tage, `queued`/`downloading`/`failed` bleiben. Die ID-Ableitung `name.split(".", 1)[0]` passt zu `outtmpl` `%(id)s.%(ext)s`, auch für `.part-Frag*`. Ein unerreichbarer Ordner führt zu `0` statt zu einem Fehler. Laufende Downloads anderer Prozesse sind sicher, weil sie `downloading` und eine frische mtime haben. |
+| n7 | **offen** | Die Locale-Abhängigkeit in `scheduler.py` ist unverändert und nicht dokumentiert. Betrifft nur die Anzeige; bitte als zurückgestellt notieren. |
+
+### Prüfung der Extraktions-Trennung gegen yt-dlp 2026.10.26
+
+- **Gleichwertigkeit:** `extract_info(url, download=False, process=False)` durchläuft dieselben Schritte wie
+  zuvor bis zu `__extract_info`: Archiv-Vorprüfung, `_apply_header_cookies`, `ie.extract`,
+  `add_default_extra_info`. Bei `process=False` gibt die Funktion `ie_result` zurück, ohne `process_ie_result`
+  aufzurufen. Der bisherige Pfad rief genau `process_ie_result(ie_result, download, extra_info={})` auf
+  (`YoutubeDL.py` ab Z. 1859). `_wait_for_video` fällt dabei weg, ist ohne `wait_for_video` aber ohnehin
+  ein No-op.
+- **Keine zusätzlichen YouTube-Requests:**
+  - Webseite, Player-API, Player-PO-Token, die GVS-PO-Tokens je Client (`gvs_pots`, `_video.py`
+    Z. ~3500–3750), der Subs-PO-Token (Z. 4278) und die Bulk-Lösung der n/sig-Challenges laufen alle in
+    `_real_extract`, also unter dem Lock.
+  - `process_ie_result` übernimmt nur die Formatwahl auf schon signierten URLs mit PO-Token, die
+    Medienübertragung (googlevideo), das Thumbnail (ytimg) und das Postprocessing.
+  - `_check_formats` testet `__needs_testing`-Formate, nämlich HLS bei Uploads der letzten 2 Tage. Diese
+    Medien-Requests gab es vorher genauso.
+  - Die Format-Auswahl und die PO-Token-Bindung bleiben damit korrekt.
+- **Geändertes Fehlerverhalten (unkritisch):**
+  - `_handle_extraction_exceptions` umschliesst nur noch die Extraktion. Ein `ExtractorError` aus der
+    Format-Wahl („Requested format is not available“) kommt jetzt roh statt als `DownloadError` an.
+    `_download_with_retry` und `_clean_error` behandeln das gleich, die Meldung ist dieselbe.
+  - Ein `ReExtractInfo` aus dem Download (nur `dash.py:34`, Live) löst keine stille Neu-Extraktion mehr
+    aus. Für die Schonung ist das eher eine Verbesserung.
+- **Lock-Reihenfolge:**
+  - Die Suche nimmt den Metadaten-Lock und danach `_lock`. Ein Logger-Callback unter dem Metadaten-Lock
+    (`trigger_backoff`) nimmt ebenfalls `_lock`.
+  - Der Download nimmt `_dl_lock` → `_lock`, gibt beide frei und nimmt erst dann den Metadaten-Lock.
+    `YtClient._lock` (`_prepare`) wird vorher freigegeben, der Queue-Lock (`on_commit`) erst nach der
+    Freigabe genommen.
+  - Kein Pfad nimmt den Metadaten-Lock, während er `_lock` oder `_dl_lock` hält. Es gibt also keinen
+    Zyklus und keinen Deadlock.
+  - Das Warten auf den Lock ist abbrechbar (`cancel_event`, Shutdown). Bei der Suche ist es nach 60 s
+    begrenzt, die Suche wird dann nicht gezählt.
+
+---
+
+### Neue Funde
+
+#### R2-m1 (Minor) – Download reserviert den Request-Slot vor dem Warten auf den Metadaten-Lock: Abstand zur Suche kann unterschritten werden
+- **Ort:** `app/core/ytclient.py:458-462` (erst `before_request`, dann `metadata_lock`),
+  `app/core/throttle.py:270` ff. (`_request_slot` setzt `_last_request` beim Reservieren)
+- **Problem:**
+  - Ablauf: Die Suche hält den Metadaten-Lock und steht vor ihrem `before_request`. Der Download bekommt
+    zuerst `_lock`, setzt `_last_request = T1` und wartet dann auf den Metadaten-Lock.
+  - Die Suche hält den Abstand korrekt ein: Sie startet bei T1 + `sleep_requests`.
+  - Der Download startet seinen ersten Request aber, sobald die Suche den Lock freigibt, also nur „Dauer
+    der Suche“ später, ohne erneute Abstandsprüfung.
+  - Lokal nachgestellt mit `sleep_requests=3` und einer Suchdauer von 0,5 s: Der Abstand zwischen
+    Such-Request und Download-Request betrug **0,5 s statt 3 s**.
+  - Das ist keine echte Parallelität mehr, aber die Abstandsgarantie aus SPEC §5 / CLAUDE.md gilt in
+    diesem Fall nicht. Die Lücke entsteht neu durch den m4-Fix.
+- **Vorschlag:**
+  - Nach dem Erwerb des Metadaten-Locks den Abstand erneut erzwingen, ohne nochmals zu zählen und ohne die
+    Pause zwischen Downloads, z.B. `self.throttle.before_request("download", cancel_event=…, retry=True)`
+    (bzw. ein `request_spacing()`) als erste Zeile im `with metadata_lock`.
+  - Die Pause zwischen Downloads und das Zählen bleiben vor dem Lock, damit die lange Pause weiterhin
+    keine Suche blockiert.
+  - Test: Simulation wie oben, Abstand ≥ `sleep_requests`.
+  - Ein Nebenaspekt, der gleich mit erledigt wäre: Wird das Warten auf den Lock abgebrochen, ist der
+    Versuch schon gezählt, obwohl kein Request lief. Das ist konservativ und unschädlich.
+
+### Nits (neu)
+
+- **R2-n1** `app/core/ytclient.py:468`: Nur `_type == "playlist"` wird abgelehnt. `YoutubeIE` kann für
+  YPC-Videos `url_result(trailer_id)` liefern (`_video.py:3945`, `_type: "url"`). Dann startet
+  `process_ie_result` eine **zweite Extraktion ausserhalb des Metadaten-Locks** und lädt unter der
+  angefragten ID einen anderen Clip (den Trailer). Das ist selten, war vorher genauso möglich, liegt aber
+  jetzt am Lock vorbei. Vorschlag: nur `ie_result.get("_type", "video") == "video"` zulassen, sonst
+  `YtClientError("Kein einzelnes Video …")`.
+- **R2-n2** Phase 4: `metadata_lock` ist prozesslokal. Ein Watchlist- oder Headless-Lauf in einem
+  zweiten Prozess (Aufgabenplanung), der neben einer GUI-Suche läuft, ist dadurch nicht ausgeschlossen.
+  Bitte beim Phase-4-Entwurf berücksichtigen, z.B. GUI-Suche sperren, solange der prozessweite
+  Lauf-Lock fremd gehalten wird, oder den Fall als Ausnahme dokumentieren.
+- **R2-n3** `app/core/redact.py:14`:
+  - Ein unkodiertes `@` im Passwort (`http://user:p@ss@proxy`) wird nur bis zum ersten `@` maskiert.
+    Ergebnis: `http://***@ss@proxy`, der Rest des Passworts bleibt sichtbar.
+  - Ein Proxy ohne Schema (`user:pass@host:3128`; `network.proxy` erzwingt kein Schema) wird gar nicht
+    maskiert.
+  - Vorschlag: Userinfo gierig bis zum letzten `@` vor `/` bzw. Leerraum maskieren. Zusätzlich den
+    konfigurierten Proxy-String bzw. sein Passwort literal ersetzen oder beim Speichern ein Schema
+    verlangen.
+- **R2-n4** `app/main.py:142-143`:
+  - `activation.stop()` läuft vor `api.shutdown()`. Das kann bis 60 s dauern (Konvertierung). In dieser
+    Zeit läuft der Prozess ohne Fenster und ohne Single-Instance-Schutz weiter.
+  - Ein zweiter Start ist dann möglich. Er ist durch den Lauf-Lock harmlos (die neue Queue ist `busy`,
+    kein „Unterbrochen“), für den User aber unklar.
+  - Vorschlag: `activation.stop()` nach `shutdown()` aufrufen und für die Wartezeit einen Log- bzw.
+    Statushinweis ausgeben. Die Bindung von ffmpeg an das Job Object bleibt optional offen
+    (decisions.md).
+
+### Checkliste reviewer.md (Runde 2)
+
+| Punkt | Ergebnis |
+|---|---|
+| 1 YouTube-Schonung | ok bis auf **R2-m1** (Request-Abstand Suche → Download im Wettlauf). Keine zusätzlichen Requests durch die Extraktions-Trennung, keine Parallelität bei Metadaten, kein Retry ohne Netzkontakt, lokale Fehler zählen nicht und lösen keine Pause aus. |
+| 2 Modulgrenzen | ok – `yt_dlp` nur in `ytclient.py`. `preflight.py`/`redact.py` in `core/` ohne UI-Bezug. `api.py` delegiert (Gate/Preflight in `worker.py`). |
+| 3 Sicherheit/Hygiene | ok – Credentials werden in Logs und Fehlertexten maskiert (Randfälle R2-n3). Keine Secrets oder Binaries im Diff. |
+| 4 Korrektheit | ok – Shutdown hält die DB offen, solange der Thread lebt. Transaktionen sind korrekt. Die Probe-Datei und das Aufräumen der Teildateien sind robust gegen nicht erreichbare Ordner. |
+| 5 Konfigurierbarkeit | unverändert ok, keine neuen Settings-Schlüssel. Die neuen Sperren `pot`/`target`/`error` verlinken in der UI auf den passenden Einstellungs-Tab. |
