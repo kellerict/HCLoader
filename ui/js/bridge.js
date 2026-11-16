@@ -7,7 +7,9 @@
 
    Mock erzwingen:  index.html?mock=1
    app/main.py lädt index.html?host=pywebview: dann wird auf die echte API gewartet
-   (pywebview injiziert sie erst nach dem Laden), der Mock springt erst nach LIVE_WAIT_MS ein.
+   (pywebview injiziert sie erst nach dem Laden). Kommt sie innert LIVE_WAIT_MS nicht, gibt es
+   KEINEN Mock, sondern den Zustand "error" (app.js zeigt «Verbindung zum Backend fehlgeschlagen»
+   mit Neu-laden-Knopf); es wird weiter gewartet und bei später API sauber live gestartet.
    Methoden/Events mit Phase-Status: docs/bridge-api.md
 
    ---------------------------------------------------------------------
@@ -38,7 +40,14 @@
 
    Entdecken / Eingang
      get_last_search()                  -> {query, results:[Video]} | null   (ohne Netzwerk, aus DB)
-     search(query)                      -> {ok:true, results:[Video]} | {ok:false, error}
+                                           optional: effective_query, genre, year (wie bei search) – dann
+                                           zeigt die UI den Suchbegriff und den «Suche veraltet»-Hinweis korrekt
+     search(query, opts)                -> {ok:true, results:[Video], effective_query?} | {ok:false, error}
+                                           opts = {genre: <Genre-Name>|null, year: <int>|null}
+                                           genre: genau ein aktiver Genre-Chip (sonst null); year: nur beim
+                                           Upload-Zeitraum «Jahr». Das Backend hängt die Begriffe an
+                                           (Genre-Suchbegriffe, Jahr bei search.append_year) und meldet den
+                                           tatsächlich gesuchten Text als effective_query zurück.
      get_inbox()                        -> [Video]
      enqueue(ids)                       -> {ok, ids}
      set_video_status(id, status)       -> {ok}       status: "ignored" | "new"
@@ -54,7 +63,11 @@
      check_sources(ids?)                -> {ok, started}   Fortschritt über Events "source" / "watchlist_done"
 
    Downloads
-     get_queue()                        -> {paused, items:[QueueItem]}
+     get_queue()                        -> {paused, items:[QueueItem], blocked_reason?}
+                                           blocked_reason (Wunsch der UI, optional):
+                                           "backoff" | "day_limit" | "run_limit" | null – warum wartende
+                                           Einträge gerade nicht laufen. Fehlt das Feld, leitet die UI es aus
+                                           Status.backoff / Status.counters und den Throttle-Limits ab.
      set_queue_paused(paused)           -> {ok, paused}
      queue_move(id, delta)              -> {ok}       delta: -1 nach oben, +1 nach unten
      queue_cancel(id)                   -> {ok}
@@ -73,13 +86,16 @@
    DATENFORMEN
    ---------------------------------------------------------------------
      Video       {id, title, channel_id, channel_name, duration (s), upload_date "YYYY-MM-DD"|"YYYYMMDD"|null,
-                  view_count, thumbnail (URL|null), genre, genre_manual,
+                  date_approx (bool, optional: Datum aus der flachen Suche, nur ungefähr),
+                  view_count, thumbnail (URL|null – geladen wird nur https://*.ytimg.com), genre, genre_manual,
                   status: "new"|"inbox"|"queued"|"downloading"|"done"|"ignored"|"failed"}
      Source      {id, type: "channel"|"playlist"|"search", name, url_or_query, default_genre|null,
                   enabled, auto_download, max_entries, last_checked (ISO|null), new_count}
      QueueItem   {id, video: Video, state: "waiting"|"active"|"failed",
                   phase: "waiting"|"sleep"|"download"|"convert"|"tag",
                   pct (0–100), speed (MB/s), eta (s), error|null, target (relativer Ordner)}
+                  phase "sleep" = Throttle-Pause vor diesem Eintrag (state bleibt "waiting"),
+                  eta = Restsekunden der Pause; optional sleep_total (s) für den Balken.
      LibraryItem {id, title, artist, genre, duration (s), upload_date, downloaded_at (ISO), file_path, size_mb}
      LogLine     {ts (ISO), level: "debug"|"info"|"ok"|"warn"|"error", msg}
      Run         {id, kind: "watchlist"|"headless"|"manual", started (ISO), finished (ISO|null),
@@ -94,6 +110,9 @@
    EVENTS  Python -> UI         window.mv.emit('typ', daten)   (worker.py via evaluate_js)
    ---------------------------------------------------------------------
      progress        {id, phase, pct, speed, eta}      laufender Download (ca. 2×/s)
+                     phase: "sleep"|"download"|"convert"|"tag". Bei "sleep" ist id der nächste Eintrag und
+                     eta die Restzeit der Pause in Sekunden; ein Event zu Beginn genügt (die UI zählt selbst
+                     herunter), weitere Events korrigieren die Anzeige. Optional: sleep_total (s).
      done            {id, title}                       Download fertig getaggt und verschoben
      failed          {id, title, error}                Download fehlgeschlagen
      queue           {}                                Warteschlange hat sich geändert -> UI ruft get_queue()
@@ -112,6 +131,7 @@
   const handlers = {};
   const WAIT_MS = 1200; // Browser ohne pywebview: so lange warten, bevor der Mock einspringt
   const LIVE_WAIT_MS = 30000; // in pywebview (?host=pywebview): Geduld beim langsamen Start
+  const LATE_POLL_MS = 500; // nach dem Timeout weiter prüfen, ob die API doch noch kommt
 
   /* "Live" erst, wenn die API-Funktionen wirklich da sind (pywebview legt api:{} früher an). */
   const hasApi = () => !!(window.pywebview && window.pywebview.api && typeof window.pywebview.api.get_settings === 'function');
@@ -120,17 +140,30 @@
 
   const bridge = (HC.bridge = {
     live: false,
+    /** true: in pywebview gestartet, aber die API kam nicht – kein Mock, alle Aufrufe schlagen fehl. */
+    failed: false,
+    hosted,
     pending: 0,
 
-    /** Wartet auf pywebview bzw. entscheidet sich für den Mock. -> "live" | "mock" */
+    /** Wartet auf pywebview bzw. entscheidet sich für den Mock. -> "live" | "mock" | "error" */
     ready() {
       if (bridge._ready) return bridge._ready;
       bridge._ready = new Promise((resolve) => {
-        const go = (live) => { bridge.live = live; bridge._resolved = true; resolve(live ? 'live' : 'mock'); };
-        if (forceMock) return go(false);
-        if (hasApi()) return go(true);
+        const go = (mode) => { bridge.live = mode === 'live'; bridge.failed = mode === 'error'; bridge._resolved = true; resolve(mode); };
+        if (forceMock) return go('mock');
+        if (hasApi()) return go('live');
         let done = false;
-        const finish = (live) => { if (done) return; done = true; clearTimeout(timer); clearInterval(poll); go(live); };
+        const finish = (live) => {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          clearInterval(poll);
+          if (live) return go('live');
+          if (!hosted) return go('mock');
+          /* Echte App ohne Backend: nie still in den Mock fallen (Einstellungen gingen verloren). */
+          go('error');
+          const late = setInterval(() => { if (bridge.live) clearInterval(late); else if (hasApi()) { clearInterval(late); goLive(); } }, LATE_POLL_MS);
+        };
         const timer = setTimeout(() => finish(hasApi()), hosted ? LIVE_WAIT_MS : WAIT_MS);
         const poll = setInterval(() => { if (hasApi()) finish(true); }, 100);
         window.addEventListener('pywebviewready', () => finish(true), { once: true });
@@ -142,6 +175,7 @@
     async call(name, ...args) {
       bridge.pending++;
       try {
+        if (bridge.failed) throw new Error(HC.t ? HC.t('err.no_backend') : 'no backend');
         if (bridge.live) {
           const fn = window.pywebview.api[name];
           if (typeof fn !== 'function') throw new Error(`api.${name} fehlt`);
@@ -177,12 +211,13 @@
   /* Python -> UI. Der Name "mv" ist Teil des Vertrags mit worker.py. */
   window.mv = { emit: (type, data) => bridge.emit(type, data) };
 
-  /* Kommt pywebview erst nach dem Mock-Fallback, wird sauber neu gestartet. */
-  window.addEventListener('pywebviewready', () => {
-    if (bridge._resolved && !bridge.live && !forceMock) {
-      bridge.live = true;
-      if (HC.mock) HC.mock.sim.stop();
-      if (HC.app) HC.app.reload();
-    }
-  });
+  /* Kommt pywebview erst nach dem Mock-Fallback bzw. nach dem Fehlerzustand, wird sauber neu gestartet. */
+  function goLive() {
+    if (!bridge._resolved || bridge.live || forceMock) return;
+    bridge.live = true;
+    bridge.failed = false;
+    if (HC.mock) HC.mock.sim.stop();
+    if (HC.app) HC.app.reload();
+  }
+  window.addEventListener('pywebviewready', goLive);
 })();

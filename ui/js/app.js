@@ -195,10 +195,31 @@
     go(m && VIEWS.includes(m[1]) ? m[1] : s.values.general.start_view, m ? m[2] : undefined);
     document.body.classList.add('ready');
   }
+  /* ---------- Fehlerzustand: in pywebview gestartet, Backend antwortet nicht (kein Mock!) ---------- */
+  function showBackendError(on) {
+    document.body.classList.toggle('no-backend', !!on);
+    let box = $('#fatal');
+    if (!on) { if (box) box.remove(); return; }
+    if (box) return;
+    box = document.createElement('div');
+    box.id = 'fatal';
+    box.className = 'fatal';
+    box.setAttribute('role', 'alertdialog');
+    box.innerHTML = `<div class="fatal-box">${HC.icons.warn}
+      <h2>${t('fatal.title')}</h2>
+      <p>${t('fatal.text')}</p>
+      <p class="fatal-wait"><span class="led warn blink"></span>${t('fatal.waiting')}</p>
+      <button class="btn primary" id="fatal-reload">${HC.icons.refresh}${t('fatal.reload')}</button></div>`;
+    document.body.appendChild(box);
+    $('#fatal-reload').onclick = () => location.reload();
+    $('#fatal-reload').focus();
+  }
+
   async function boot() {
     applyI18n();
     wireNav();
     const mode = await HC.bridge.ready();
+    if (mode === 'error') { showBackendError(true); return; }
     document.body.classList.toggle('is-mock', mode === 'mock');
     $('#mock-flag').hidden = mode !== 'mock';
     if (mode === 'mock' && !/[?&]nosim/.test(location.search)) HC.mock.sim.start();
@@ -221,6 +242,7 @@
     async reload() {
       document.body.classList.remove('is-mock');
       $('#mock-flag').hidden = true;
+      showBackendError(false);
       VIEWS.forEach((name) => { const v = HC.views[name]; if (v && v.reset) v.reset(); });
       await load();
     },
