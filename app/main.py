@@ -106,7 +106,7 @@ def _run_gui() -> int:
     from .instance import ActivationServer
 
     settings, _ = config.load_with_warnings()
-    setup_logging(settings.general.log_level)
+    setup_logging(settings.general.log_level, history=500)
     st = binaries.status()
     log.info(
         "HCLoader gestartet · yt-dlp %s · Deno %s · ffmpeg %s · Plugin %s",

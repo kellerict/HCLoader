@@ -26,7 +26,9 @@ from .core import (
     binaries,
     config,
     discover,
+    library,
     locks,
+    logview,
     maintenance,
     paths,
     potoken,
@@ -74,7 +76,6 @@ _JOB_LABELS = {
 }
 _UPDATE_BUSY = "Wartung läuft gerade (Update) – bitte später erneut"
 _VIDEO_ID_RE = re.compile(r"^[0-9A-Za-z_-]{11}$")
-_RUN_KINDS = ("watchlist", "headless", "manual")
 
 
 def _internal(fn: Callable) -> Callable:
@@ -84,17 +85,7 @@ def _internal(fn: Callable) -> Callable:
 
 
 def _run(row: dict[str, Any]) -> dict[str, Any]:
-    kind = row.get("kind")
-    return {
-        "id": row["id"],
-        "kind": kind if kind in _RUN_KINDS else "manual",
-        "started": row.get("started"),
-        "finished": row.get("finished"),
-        "found": row.get("found") or 0,
-        "downloaded": row.get("downloaded") or 0,
-        "errors": row.get("errors") or 0,
-        "note": row.get("note") or "",
-    }
+    return logview.run_info(row)
 
 
 class Api:
@@ -108,6 +99,7 @@ class Api:
         task_scheduler: scheduler.TaskScheduler | None = None,
         watchdog: PotWatchdog | None = None,
         opener: Callable[[Path], None] | None = None,
+        revealer: Callable[[Path], None] | None = None,
         browser: Callable[[str], Any] | None = None,
         probe: Callable[..., dict[str, Any]] | None = None,
         update_runner: Callable[..., dict[str, Any]] | None = None,
@@ -138,7 +130,9 @@ class Api:
         )
         self._ytdlp_gate = YtdlpGate()
         self._logs = LogForwarder(self._bus)
+        self._db.add_run_listener(self._on_run_finished)
         self._open = opener or maintenance.open_in_shell
+        self._reveal = revealer or (lambda p: library.reveal(p, opener=self._open))
         self._browser = browser or webbrowser.open
         self._probe = probe or potoken.probe
         self._update_runner = update_runner or maintenance.run_update
@@ -236,6 +230,10 @@ class Api:
         if not self._loaded_once:
             self._loaded_once = True
             self._startup_update_check()
+
+    def _on_run_finished(self, row: dict[str, Any]) -> None:
+        """A run (watchlist, headless, manual queue) ended: event `run` for the log view."""
+        self._bus.emit("run", _run(row))
 
     def _on_pot_change(self) -> None:
         """Watchdog started/stopped the PO-token server: status bar + queue re-check (m2)."""
@@ -638,11 +636,14 @@ class Api:
 
     # ================================================================== log
 
-    def get_log(self) -> dict[str, Any]:
-        return {
-            "lines": self._logs.backlog(),
-            "runs": [_run(r) for r in self._db.list_runs(50)],
-        }
+    def get_log(self, filters: dict[str, Any] | None = None) -> dict[str, Any]:
+        """filters (optional): level (minimum), levels, search, limit, kind (runs),
+        runs_limit. Lines = live backlog incl. history of the log file."""
+        f = filters if isinstance(filters, dict) else {}
+        runs = [logview.run_info(r) for r in self._db.list_runs(logview.runs_limit(f))]
+        if f.get("kind") in logview.RUN_KINDS:
+            runs = [r for r in runs if r["kind"] == f["kind"]]
+        return {"lines": logview.filter_lines(self._logs.backlog(), f), "runs": runs}
 
     # ================================================================== discover / inbox
 
@@ -935,47 +936,45 @@ class Api:
 
     # ================================================================== library
 
-    def get_library(self) -> list[dict[str, Any]]:
-        out = []
-        for v in self._db.list_videos(status="done", order_by="downloaded_at"):
-            path = Path(v["file_path"]) if v.get("file_path") else None
-            try:
-                size = round(path.stat().st_size / (1024 * 1024), 1) if path else 0.0
-            except OSError:
-                size = 0.0
-            out.append(
-                {
-                    "id": v["id"],
-                    "title": v.get("title") or "",
-                    "artist": v.get("channel_name") or "",
-                    "genre": v.get("genre") or config.UNSORTED,
-                    "duration": v.get("duration"),
-                    "upload_date": v.get("upload_date"),
-                    "downloaded_at": v.get("downloaded_at"),
-                    "file_path": v.get("file_path") or "",
-                    "size_mb": size,
-                }
-            )
-        return out
+    def get_library(self, filters: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """filters (optional): search, genre, channel (id or name), year, missing."""
+        return library.list_library(self._db, filters if isinstance(filters, dict) else None)
 
     def open_folder(self, video_id: str) -> dict[str, Any]:
         row = self._db.get_video(str(video_id))
         if not row or not row.get("file_path"):
             return {"ok": False, "error": "Keine Datei zu diesem Eintrag"}
-        folder = Path(row["file_path"]).parent
-        if not folder.is_dir():
-            return {"ok": False, "error": f"Ordner fehlt: {folder}"}
+        path = Path(row["file_path"])
+        if not path.parent.is_dir():
+            return {"ok": False, "error": f"Ordner fehlt: {path.parent}"}
         try:
-            self._open(folder)
+            self._reveal(path)
         except OSError as exc:
             return {"ok": False, "error": f"Ordner kann nicht geöffnet werden: {exc}"}
         return {"ok": True}
 
     def retag(self, video_id: str) -> dict[str, Any]:
-        return self._later(PHASE5)
+        """Tags, cover, CUE/CHAP from sidecar + current settings, file moved to the current
+        path template; no network. Runs in the maintenance worker (never in the GUI thread)."""
+        vid = str(video_id)
+        res = self._job(f"retag:{vid}", lambda: self._do_retag(vid), JOB_TIMEOUT_S)
+        return res
 
-    def delete_library_item(self, video_id: str) -> dict[str, Any]:
-        return self._later(PHASE5)
+    def _do_retag(self, vid: str) -> dict[str, Any]:
+        if self._queue.is_active(vid):
+            return {"ok": False, "error": "Eintrag wird gerade geladen"}
+        res = library.retag(self._db, self._cfg, vid)
+        if res.get("ok"):
+            self._bus.emit("video", {"id": vid, "status": "done", "genre": res.get("genre")})
+        return res
+
+    def delete_library_item(self, video_id: str, delete_file: bool = True) -> dict[str, Any]:
+        """Datei + CUE (+ leere Ordner) löschen, Eintrag auf `ignored`. Bestätigung: UI."""
+        res = library.delete_item(self._db, self._cfg, str(video_id), delete_file=bool(delete_file))
+        if res.get("ok"):
+            self._bus.emit("video", {"id": str(video_id), "status": "ignored", "genre": None})
+            self._push()
+        return res
 
 
 def _now_iso() -> str:

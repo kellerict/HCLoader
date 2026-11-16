@@ -35,6 +35,7 @@ PYPI_URL = "https://pypi.org/pypi/{name}/json"
 UPDATE_TIMEOUT_S = 600
 K_LAST_UPDATE_CHECK = "last_update_check"
 K_LAST_BACKUP = "last_backup"
+BACKUP_KEEP = 10  # newest backups that are kept (constant, no setting: no schema change)
 _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 
@@ -90,12 +91,46 @@ def in_venv() -> bool:
     return sys.prefix != sys.base_prefix
 
 
+_PROBE = (
+    "import importlib.metadata as m, json, sys\n"
+    "def v(n):\n"
+    "    try: return m.version(n)\n"
+    "    except m.PackageNotFoundError: return None\n"
+    "print(json.dumps({'venv': sys.prefix != sys.base_prefix,"
+    " 'ytdlp': v('yt-dlp'), 'plugin': v('bgutil-ytdlp-pot-provider')}))\n"
+)
+
+
+def probe_python(executable: str | Path) -> dict[str, Any] | None:
+    """Ask another interpreter: {venv: bool, ytdlp, plugin} (versions of ITS site-packages).
+    None if it cannot be run."""
+    try:
+        proc = subprocess.run(
+            [str(executable), "-I", "-c", _PROBE],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            creationflags=_NO_WINDOW,
+            check=False,
+        )
+        data = json.loads(proc.stdout.strip().splitlines()[-1])
+    except (OSError, subprocess.SubprocessError, ValueError, IndexError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def versions_for(executable: str | Path) -> dict[str, str | None]:
+    """Like `installed_versions`, but for another venv's interpreter."""
+    data = probe_python(executable) or {}
+    return {"ytdlp": data.get("ytdlp"), "plugin": data.get("plugin")}
+
+
 def run_update(
     on_line: Callable[[str], None] | None = None,
     *,
     popen: Callable[[list[str]], Any] = _default_popen,
     executable: str | None = None,
-    versions: Callable[[], dict[str, str | None]] = installed_versions,
+    versions: Callable[[], dict[str, str | None]] | None = None,
     timeout_s: float = UPDATE_TIMEOUT_S,
     venv_check: Callable[[], bool] | None = None,
 ) -> dict[str, Any]:
@@ -103,10 +138,23 @@ def run_update(
 
     Returns {ok, ytdlp, plugin, changed, output} or {ok: False, error, output}. The running
     process keeps the old yt-dlp module until restart (noted in the output).
+    `executable`: Python of another venv to update (default: the running one). Then versions and
+    the venv check refer to that interpreter (acceptance test with a throw-away venv).
     Refuses to run outside a venv (pip would modify the global Python). A timer kills a hanging
     pip after `timeout_s` (the reader loop blocks on the pipe, so a plain `wait(timeout)` after
     it would never trigger).
     """
+    if venv_check is None and executable is not None:
+
+        def venv_check() -> bool:
+            return bool((probe_python(venv_python(executable)) or {}).get("venv"))
+
+    if versions is None:
+        versions = (
+            (lambda: versions_for(venv_python(executable)))
+            if executable is not None
+            else installed_versions
+        )
     if not (venv_check or in_venv)():
         msg = "HCLoader läuft nicht in einer virtuellen Umgebung (venv) – Update abgebrochen"
         log.error(msg)
@@ -237,10 +285,40 @@ def backups_dir() -> Path:
     return config.app_home() / "backups"
 
 
+def prune_backups(dest_dir: Path, keep: int, *, protect: Path | None = None) -> list[Path]:
+    """Delete all but the newest `keep` `hcloader-*.db` files (by modification time, then name).
+    `protect` (the backup just made) is always kept. `keep <= 0` disables pruning."""
+    if keep <= 0:
+        return []
+    try:
+        files = [p for p in dest_dir.glob("hcloader-*.db") if p.is_file()]
+    except OSError:
+        return []
+    others = sorted(
+        (p for p in files if protect is None or p != protect),
+        key=lambda p: (p.stat().st_mtime_ns, p.name),
+        reverse=True,
+    )
+    room = keep - (1 if protect is not None else 0)
+    removed: list[Path] = []
+    for old in others[max(room, 0) :]:
+        try:
+            old.unlink()
+            removed.append(old)
+        except OSError:
+            log.warning("Altes Backup nicht löschbar: %s", old)
+    return removed
+
+
 def backup_database(
-    db_path: Path, dest_dir: Path | None = None, *, now: datetime | None = None
+    db_path: Path,
+    dest_dir: Path | None = None,
+    *,
+    now: datetime | None = None,
+    keep: int = BACKUP_KEEP,
 ) -> Path:
-    """Consistent copy via the sqlite3 backup API -> `<dest>/hcloader-<YYYYmmdd-HHMMSS>.db`."""
+    """Consistent copy via the sqlite3 backup API -> `<dest>/hcloader-<YYYYmmdd-HHMMSS>.db`.
+    Afterwards only the newest `keep` backups stay (default `BACKUP_KEEP`)."""
     dest_dir = dest_dir or backups_dir()
     dest_dir.mkdir(parents=True, exist_ok=True)
     stamp = (now or datetime.now()).strftime("%Y%m%d-%H%M%S")
@@ -260,6 +338,8 @@ def backup_database(
     finally:
         src.close()
     tmp.replace(target)
+    for old in prune_backups(dest_dir, keep, protect=target):
+        log.info("Altes Backup gelöscht: %s", old.name)
     return target
 
 

@@ -46,6 +46,7 @@ _DATE_FORMATS = (
     "%m/%d/%Y %H:%M:%S",
 )
 _US_FIRST = ("%m/%d/%Y %I:%M:%S %p", "%m/%d/%Y %H:%M:%S")
+_BOUNDARY_RE = re.compile(r"<StartBoundary>\s*\d{4}-\d{2}-\d{2}T(\d{2}:\d{2})", re.I)
 _NOT_FOUND_RE = re.compile(
     r"cannot find|can't find|does not exist|nicht finden|nicht vorhanden|existiert nicht|"
     r"introuvable|0x80070002|n'existe pas|no se puede encontrar",
@@ -285,6 +286,15 @@ class TaskScheduler:
             raise SchedulerError(f"Aufgabe konnte nicht entfernt werden: {msg}")
         log.info("Aufgabenplanung: %s entfernt", self.name)
 
+    def _trigger_time(self) -> str | None:
+        """`HH:MM` of the daily trigger from `schtasks /Query /XML`; None if not readable."""
+        try:
+            code, out = self._call("/Query", "/TN", self.name, "/XML")
+        except SchedulerError:
+            return None
+        m = _BOUNDARY_RE.search(out) if code == 0 else None
+        return m.group(1) if m else None
+
     def query(self, expected_time: str | None = None) -> TaskStatus:
         """Status via `/Query /FO CSV /V`. Columns are localized, so they are read by position
         (1 TaskName, 2 Next Run Time); the time falls back to `expected_time`."""
@@ -302,7 +312,14 @@ class TaskScheduler:
         rows = [r for r in csv.reader(io.StringIO(out)) if r]
         data = rows[1] if len(rows) > 1 else []
         name = data[1].strip() if len(data) > 1 and data[1].strip() else self.name
-        next_dt = _parse_local(data[2]) if len(data) > 2 else None
+        # n7: the CSV date is printed in the Windows locale; the task definition (`/XML`) is
+        # locale independent. HCLoader's task is a plain daily trigger, so the next run is the
+        # next occurrence of its trigger time. The CSV date is only the fallback.
+        xml_time = self._trigger_time()
+        if xml_time:
+            next_dt = next_daily(xml_time)
+        else:
+            next_dt = _parse_local(data[2]) if len(data) > 2 else None
         time_str = expected_time
         if next_dt is not None:
             time_str = time_str or f"{next_dt:%H:%M}"
