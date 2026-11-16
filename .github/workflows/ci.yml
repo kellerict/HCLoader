@@ -2,9 +2,14 @@ name: CI
 on:
   push:
   pull_request:
+concurrency:
+  # Only the newest push per branch is tested; older runs are cancelled.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   test:
     runs-on: windows-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -16,8 +21,12 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: ruff check .
       - run: ruff format --check .
-      - run: pytest -q
+      - name: pytest
+        timeout-minutes: 15
+        # Per-test timeout with a stack dump of all threads, so a hanging test is visible.
+        run: pytest -q -p no:cacheprovider --timeout=120 --timeout-method=thread -o faulthandler_timeout=110
       - name: pytest (network tests – PyPI only, never YouTube)
+        timeout-minutes: 5
         env:
           HCLOADER_REQUIRE_NETWORK: "1"
-        run: pytest -q -m network
+        run: pytest -q -m network --timeout=240 --timeout-method=thread
