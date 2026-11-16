@@ -185,8 +185,8 @@
     HC.settings.defaults = s.defaults;
     applyAppearance();
     if (!inited) {
+      wireEvents(); // vor den Ansichten: der Store ist aktuell, wenn sie auf Events reagieren
       VIEWS.forEach((name) => { const v = HC.views[name]; if (v && v.init) v.init($(`#v-${name}`)); });
-      wireEvents();
       inited = true;
     }
     setStatus(await HC.bridge.safe('get_status'));
