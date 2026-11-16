@@ -24,7 +24,7 @@ jobs:
       - name: pytest
         timeout-minutes: 15
         # Per-test timeout with a stack dump of all threads, so a hanging test is visible.
-        run: pytest -q -p no:cacheprovider --timeout=120 --timeout-method=thread -o faulthandler_timeout=110
+        run: pytest -v -rfE --tb=short -p no:cacheprovider --timeout=120 --timeout-method=thread -o faulthandler_timeout=110
       - name: pytest (network tests – PyPI only, never YouTube)
         timeout-minutes: 5
         env:
