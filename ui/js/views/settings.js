@@ -362,7 +362,7 @@
         const po = (HC.status && HC.status.po_token) || { state: 'inactive', mode: 'off' };
         const cls = po.state === 'active' ? 'ok' : po.state === 'error' ? 'error' : 'off';
         const res = cache.poTest;
-        const note = res ? ui.notice(res.ok ? 'ok' : 'error', `<b>${t(res.ok ? 'set.po.test_ok' : 'set.po.test_fail')}</b> ${esc(res.detail || '')}${res.ms ? ` (${res.ms} ms)` : ''}`)
+        const note = res ? ui.notice(res.ok ? 'ok' : 'error', `<b>${t(res.ok ? 'set.po.test_ok' : 'set.po.test_fail')}</b> ${esc(res.detail || res.error || '')}${res.ms ? ` (${res.ms} ms)` : ''}`)
           : isDirtyKey('network.po_token_mode') || isDirtyKey('network.po_token_port') ? ui.notice('info', t('set.po.unsaved')) : '';
         host.innerHTML = box(cls, t(`set.po.${po.state}`), `${t('set.po.mode')}: <b>${t('po_mode_long.' + po.mode)}</b>${po.detail ? ` · ${esc(po.detail)}` : ''}`,
           `<button class="btn sm" data-test>${I.bolt}${t('set.po.test')}</button>`, note, po.state === 'active' ? 'live' : po.state === 'error' ? 'err blink' : 'off');
@@ -391,6 +391,12 @@
       const paint = () => {
         const s = cache.task;
         if (!s) { host.innerHTML = box('off', t('set.task.loading'), '&nbsp;', '', '', 'off'); return; }
+        /* registered === null: schtasks gab keine Auskunft -> nichts behaupten, Schalter nicht anfassen. */
+        if (s.registered == null) {
+          host.innerHTML = box('warn', t('set.task.unknown'), esc(s.error || t('set.task.unknown_detail')),
+            `<button class="btn sm" data-task="refresh">${I.refresh}${t('set.task.recheck')}</button>`, '', 'warn');
+          return;
+        }
         host.innerHTML = s.registered
           ? box('ok', t('set.task.registered'), t('set.task.registered_detail', { name: `<b>${esc(s.name)}</b>`, time: `<b>${esc(s.time)}</b>`, next: `<b>${esc(util.fmtWhen(s.next_run))}</b>` }),
             `<button class="btn sm danger" data-task="remove">${I.trash}${t('set.task.remove')}</button>`)
@@ -401,11 +407,17 @@
       host.addEventListener('click', async (e) => {
         const b = e.target.closest('[data-task]');
         if (!b) return;
-        const create = b.dataset.task === 'create';
         ui.busy(b, true);
+        if (b.dataset.task === 'refresh') {
+          const st = await HC.bridge.safe('get_task_status');
+          if (st) cache.task = st;
+          paint();
+          return;
+        }
+        const create = b.dataset.task === 'create';
         const r = create ? await HC.bridge.safe('create_task', work.schedule.task_time) : await HC.bridge.safe('remove_task');
-        if (r && r.ok) {
-          cache.task = Object.assign({}, cache.task, r);
+        if (r && r.ok && typeof r.registered === 'boolean') {
+          cache.task = Object.assign({}, cache.task, r, { error: null });
           /* Das Backend hat diese beiden Werte bereits gespeichert. */
           [['schedule.task_scheduler_enabled', create]].concat(create ? [['schedule.task_time', work.schedule.task_time]] : []).forEach(([k, v]) => { set(work, k, v); set(saved, k, v); set(HC.settings.values, k, v); });
           ui.toast(t(create ? 'toast.task_created' : 'toast.task_removed'), create ? 'ok' : 'info');
@@ -445,6 +457,7 @@
         host.innerHTML = `<div class="field plain"><div class="fl"><b>${t('set.update.label')}</b><span class="help">${t('set.update.help')}</span>
           <em>${t('set.update.last_check')}: ${v ? esc(util.fmtWhen(v.last_update_check)) : '–'}</em></div>
           <div class="fc"><div class="fc-main"><button class="btn primary" data-update>${I.refresh}${t('set.update.button')}</button>
+          ${cache.restart ? ui.notice('warn', t('set.update.restart')) : ''}
           ${cache.updateOut ? `<div class="console">${esc(cache.updateOut)}</div>` : ''}</div></div></div>`;
       };
       host._paint = paint;
@@ -455,8 +468,12 @@
         const r = await HC.bridge.safe('update_ytdlp');
         if (r) {
           cache.updateOut = r.output || r.error || '';
-          if (r.ok) { Object.assign(cache.versions || (cache.versions = {}), { ytdlp: r.ytdlp, plugin: r.plugin, last_update_check: new Date().toISOString() }); ui.toast(t(r.changed ? 'toast.updated' : 'toast.up_to_date', { v: r.ytdlp })); }
-          else ui.toast(t('toast.update_failed'), 'err');
+          if (r.ok) {
+            Object.assign(cache.versions || (cache.versions = {}), { ytdlp: r.ytdlp, plugin: r.plugin, last_update_check: new Date().toISOString() });
+            cache.restart = cache.restart || !!r.restart_required;
+            if (r.restart_required) ui.toast(t('toast.restart_required'), 'warn', 8000);
+            else ui.toast(t(r.changed ? 'toast.updated' : 'toast.up_to_date', { v: r.ytdlp }));
+          } else ui.toast(r.error || t('toast.update_failed'), 'err');
         }
         $$('[data-custom]', el).forEach((h) => h._paint && h._paint());
       });

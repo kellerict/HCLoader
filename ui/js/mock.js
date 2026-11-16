@@ -529,7 +529,7 @@
     pick_folder: () => later(300, { path: 'D:\\Musik\\HCLoader' }),
     test_po_token() {
       return later(1300, () => {
-        if (settings.network.po_token_mode === 'off') return { ok: false, state: 'inactive', detail: 'Provider ist ausgeschaltet.', ms: 0 };
+        if (settings.network.po_token_mode === 'off') return { ok: false, state: 'inactive', detail: 'Provider ist ausgeschaltet.', error: 'Provider ist ausgeschaltet.', ms: 0 };
         state.po = { state: 'active', detail: 'Token erzeugt vor wenigen Sekunden', created: Date.now() };
         pushLog('ok', 'PO-Token-Test erfolgreich (840 ms)');
         pushStatus();
@@ -544,9 +544,9 @@
         return { ok: true };
       });
     },
-    get_task_status: () => later(60, () => ({
+    get_task_status: () => later(60, () => (state.task.unknown ? { registered: null, name: '\\HCLoader\\Watchlist', time: settings.schedule.task_time, next_run: null, error: 'schtasks antwortet nicht (Zeitüberschreitung nach 20 s)' } : {
       registered: state.task.registered, name: '\\HCLoader\\Watchlist', time: settings.schedule.task_time,
-      next_run: state.task.registered ? nextCheck() : null,
+      next_run: state.task.registered ? nextCheck() : null, error: null,
     })),
     create_task(time) {
       return later(600, () => {
@@ -610,7 +610,7 @@
         if (done.length) pushLog('info', `${done.length} Mix(es) zur Warteschlange hinzugefügt`);
         emit('queue', {});
         pushStatus();
-        return { ok: true, ids: done };
+        return Object.assign({ ok: true, ids: done }, done.length < ids.length ? { skipped: ids.length - done.length } : {});
       });
     },
     set_video_status(id, st) {
@@ -766,6 +766,7 @@
         pushLog('error', `HTTP 429 von YouTube – Backoff ${h} h aktiviert`);
         pushStatus();
       },
+      taskUnknown(on) { state.task.unknown = on !== false; },
       poError() {
         state.po = { state: 'error', detail: 'Deno-Script lieferte keinen Token (Timeout nach 15 s)', created: 0 };
         pushStatus();

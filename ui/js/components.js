@@ -270,13 +270,14 @@
       const r = await HC.bridge.safe('enqueue', ids);
       if (!r || !r.ok) return fail(r);
       const done = r.ids || [];
+      const skipped = typeof r.skipped === 'number' ? r.skipped : ids.length - done.length;
       /* Sofort sichtbar machen, auch wenn das Backend kein «video»-Event pro Eintrag sendet. */
       done.forEach((id) => {
         const v = HC.store.get(id);
         if (v && CAN_LOAD.includes(v.status)) HC.bridge.emit('video', { id, status: 'queued' });
       });
       if (!done.length) ui.toast(t('toast.enqueued_none'), 'info');
-      else ui.toast(t(done.length === 1 ? 'toast.enqueued_one' : 'toast.enqueued', { n: done.length }) + (done.length < ids.length ? ` · ${t('toast.enqueued_skipped', { n: ids.length - done.length })}` : ''));
+      else ui.toast(t(done.length === 1 ? 'toast.enqueued_one' : 'toast.enqueued', { n: done.length }) + (skipped > 0 ? ` · ${t('toast.enqueued_skipped', { n: skipped })}` : ''));
     },
     async ignore(v, on) {
       const r = await HC.bridge.safe('set_video_status', v.id, on ? 'ignored' : 'new');

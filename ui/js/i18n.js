@@ -274,6 +274,7 @@
         registered: 'Aufgabe registriert', registered_detail: '{name} · täglich {time} · nächster Lauf {next}',
         none: 'Keine Aufgabe registriert', none_detail: 'Legt in Windows eine tägliche Aufgabe um {time} an (schtasks).',
         create: 'Aufgabe anlegen', remove: 'Aufgabe entfernen',
+        unknown: 'Status der Aufgabe unbekannt', unknown_detail: 'Die Windows-Aufgabenplanung hat nicht geantwortet. Die Einstellung bleibt unverändert.', recheck: 'Erneut prüfen',
       },
       appearance: {
         reduce_effects: { label: 'Effekte reduzieren', help: 'Schaltet Scanlines, Glitch und alle Animationen ab.' },
@@ -285,6 +286,7 @@
       update: {
         label: 'yt-dlp & Plugin', help: 'YouTube ändert sich laufend. Bei Fehlern zuerst aktualisieren (pip im venv).',
         button: 'yt-dlp & Plugin aktualisieren', running: 'Aktualisiert …', last_check: 'Letzte Prüfung',
+        restart: '<b>Neustart nötig.</b> yt-dlp wurde aktualisiert. Bis zum Neustart von HCLoader sind Suche und Downloads gesperrt, die Warteschlange bleibt erhalten.',
       },
       maintenance: {
         check_updates_on_start: { label: 'Beim Start nach Updates suchen', help: 'yt-dlp und PO-Token-Plugin, höchstens einmal pro Tag.' },
@@ -336,6 +338,7 @@
       backoff_cleared: 'Backoff manuell aufgehoben',
       task_created: 'Aufgabe in der Windows-Aufgabenplanung angelegt', task_removed: 'Aufgabe entfernt',
       updated: 'Aktualisiert auf yt-dlp {v}', up_to_date: 'Bereits aktuell (yt-dlp {v})', update_failed: 'Aktualisierung fehlgeschlagen',
+      restart_required: 'Aktualisiert – bitte HCLoader neu starten, damit Suche und Downloads wieder laufen',
       backup_done: 'Backup erstellt: {path}', reset_all: 'Alle Einstellungen zurückgesetzt',
     },
 

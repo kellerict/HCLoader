@@ -25,13 +25,15 @@
      get_status()                       -> Status (siehe unten)
      get_versions()                     -> {app, ytdlp, plugin, deno, ffmpeg, python, data_dir, db_path,
                                             db_entries, db_size_mb, last_backup, last_update_check}
-     update_ytdlp()                     -> {ok, ytdlp, plugin, changed, output} | {ok:false, error, output}
+     update_ytdlp()                     -> {ok, ytdlp, plugin, changed, output, restart_required?} | {ok:false, error, output}
      backup_db()                        -> {ok:true, path} | {ok:false, error}
      open_path(kind)                    -> {ok}       kind: "data" | "target" | "logs"
      pick_folder(current?)              -> {path} | null                 (nativer Ordnerdialog)
      test_po_token()                    -> {ok, state, detail, ms}       state: "active" | "inactive" | "error"
+                                           Fehler: {ok:false, state:"error", detail, error, ms:0}
      clear_backoff()                    -> {ok}
-     get_task_status()                  -> {registered, name, next_run, time}
+     get_task_status()                  -> {registered, name, next_run, time, error}
+                                           registered: true | false | null (= unbekannt, error sagt warum)
      create_task(time)                  -> {ok, registered, name, next_run, time} | {ok:false, error}
                                            setzt schedule.task_scheduler_enabled = true und schedule.task_time
      remove_task()                      -> {ok, registered:false}        setzt schedule.task_scheduler_enabled = false
@@ -50,11 +52,11 @@
                                            (Genre-Suchbegriffe, Jahr bei search.append_year) und meldet den
                                            tatsächlich gesuchten Text als effective_query zurück.
      get_inbox()                        -> [Video]
-     enqueue(ids)                       -> {ok, ids}
+     enqueue(ids)                       -> {ok:true, ids:[übernommen], skipped?: n}
      set_video_status(id, status)       -> {ok}       status: "ignored" | "new"
      set_genre(id, genre)               -> {ok}
      open_video(id)                     -> {ok}       öffnet YouTube im Standardbrowser
-     add_channel_source(channel_id, channel_name) -> {ok, source}
+     add_channel_source(channel_id, channel_name) -> {ok, source} | {ok:false, error, source?}
      block_channel(channel_id, channel_name)      -> {ok}
 
    Watchlist
@@ -115,13 +117,14 @@
    EVENTS  Python -> UI         window.mv.emit('typ', daten)   (worker.py via evaluate_js)
    ---------------------------------------------------------------------
      progress        {id, phase, pct, speed, eta}      laufender Download (ca. 2×/s)
-                     phase: "sleep"|"download"|"convert"|"tag". Bei "sleep" ist id der nächste Eintrag und
-                     eta die Restzeit der Pause in Sekunden; ein Event zu Beginn genügt (die UI zählt selbst
-                     herunter), weitere Events korrigieren die Anzeige. Optional: sleep_total (s).
+                     phase: "sleep"|"download"|"convert"|"tag". "sleep" kommt einmal zu Beginn der Pause
+                     ({pct:0, speed:0, eta:<s>, sleep_total:<s>}, id = nächster Eintrag); die UI zählt selbst
+                     herunter. Bei "convert"/"tag": pct 100, eta 0.
+     Wartungs-Aufrufe können sofort {ok:false, error:"Wartung läuft gerade …"} liefern -> Fehler-Toast.
      done            {id, title}                       Download fertig getaggt und verschoben
      failed          {id, title, error}                Download fehlgeschlagen
      queue           {}                                Warteschlange hat sich geändert -> UI ruft get_queue()
-     video           {id, status, genre?}              Status/Genre eines Videos geändert
+     video           {id, status, genre}               Status/Genre eines Videos geändert (auch "downloading")
      status          Status                            Statusleiste (Backoff, Zähler, PO-Token, nächste Prüfung …)
      log             LogLine                           neue Protokollzeile (Live-Log)
      source          {id, checking, last_checked?, new_count?, error?}   Watchlist-Quelle wird/wurde geprüft
