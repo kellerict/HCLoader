@@ -197,6 +197,21 @@ class SchemaTooNewError(RuntimeError):
             "bitte HCLoader aktualisieren"
         )
 
+    def user_message(self, backups: Path | str | None = None) -> str:
+        """Clear German text for the start dialog (instead of a traceback)."""
+        text = (
+            f"Die Datenbank stammt von einer neueren HCLoader-Version (Schema v{self.found}); "
+            f"diese Version kennt nur v{self.supported}.\n\n"
+            "Bitte HCLoader auf die neueste Version aktualisieren (Portable-ZIP neu "
+            "herunterladen bzw. «git pull» und setup.ps1). Die Daten bleiben unverändert."
+        )
+        if backups:
+            text += (
+                "\n\nWer bewusst zur älteren Version zurück will: HCLoader schliessen und eine "
+                f"Sicherung aus {backups} (hcloader-premigrate-…) als hcloader.db zurückkopieren."
+            )
+        return text
+
 
 class MigrationBackupError(RuntimeError):
     """The automatic backup before a migration failed: the migration is not started."""

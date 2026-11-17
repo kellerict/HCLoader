@@ -290,7 +290,7 @@
         pauses: 'Pausen & Bandbreite', limits: 'Limits', backoff: 'Backoff bei Sperre',
         po: 'PO-Token-Provider', fallback: 'Notlösungen',
         in_app: 'In der App', task: 'Windows-Aufgabenplanung',
-        updates: 'Updates', database: 'Datenbank', reset: 'Zurücksetzen',
+        updates: 'Updates', app_update: 'App-Update', database: 'Datenbank', reset: 'Zurücksetzen',
       },
 
       general: {
@@ -435,6 +435,9 @@
       },
       maintenance: {
         check_updates_on_start: { label: 'Beim Start nach Updates suchen', help: 'yt-dlp und PO-Token-Plugin, höchstens einmal pro Tag.' },
+        check_app_updates_on_start: { label: 'Beim Start nach HCLoader-Updates suchen', help: 'Fragt einmal pro Start bei GitHub nach einer neuen Version. Geladen wird erst nach deinem Klick.' },
+        apply_update_on_exit: { label: 'Update beim Beenden einspielen', help: 'Ein heruntergeladenes Update wird beim Schliessen von HCLoader eingespielt («Später»). Aus: es wird beim nächsten Start wieder angeboten.' },
+        update_repo: { label: 'Update-Quelle (GitHub)', help: 'Repo im Format «besitzer/repo». Nur für Forks ändern.' },
       },
       db: {
         label: 'Datenbank', help: 'Status aller Videos, Quellen und Läufe. Ein Backup kopiert die Datei in den Ordner «backups».',
@@ -509,6 +512,25 @@
       updated: 'Aktualisiert auf yt-dlp {v}', up_to_date: 'Bereits aktuell (yt-dlp {v})', update_failed: 'Aktualisierung fehlgeschlagen',
       restart_required: 'Aktualisiert – bitte HCLoader neu starten, damit Suche und Downloads wieder laufen',
       backup_done: 'Backup erstellt: {path}', reset_all: 'Alle Einstellungen zurückgesetzt',
+    },
+
+    upd: {
+      available: 'Version {v} verfügbar', available_sub: 'Installiert: {cur}',
+      download: 'Herunterladen', notes: 'Änderungen', later: 'Später', close: 'Schliessen', cancel: 'Abbrechen', retry: 'Erneut versuchen',
+      downloading: 'Update {v} wird geladen', phase_download: 'Download', phase_verify: 'Prüfen', phase_prepare: 'Vorbereiten',
+      ready: 'Update {v} bereit', ready_sub: 'Zum Einspielen wird HCLoader kurz geschlossen und neu gestartet.',
+      restart_now: 'Jetzt neu starten', on_exit: 'Beim Beenden',
+      applying: 'Update wird eingespielt …', applying_sub: 'HCLoader schliesst sich und startet gleich neu.',
+      error: 'App-Update fehlgeschlagen', blocked: 'Automatisches Update nicht möglich',
+      notes_title: 'Änderungen in Version {v}', notes_empty: 'Keine Änderungsnotizen vorhanden.', notes_link: 'Release auf GitHub',
+      confirm_title: 'Jetzt neu starten?', confirm_ok: 'Neu starten',
+      confirm_text: 'HCLoader wird geschlossen, das Update eingespielt und die App neu gestartet. Ein laufender Download wird abgebrochen und bleibt in der Warteschlange. Musik, Einstellungen und Datenbank bleiben unverändert.',
+      on_exit_toast: 'Das Update wird beim Beenden von HCLoader eingespielt.', later_toast: 'Das Update bleibt bereit und wird beim nächsten Start wieder angeboten.',
+      section_label: 'HCLoader-Version', section_help: 'Neue Versionen kommen von GitHub. Daten, Einstellungen und die Musik bleiben beim Update unberührt; vor einer Datenbank-Migration wird automatisch eine Sicherung angelegt.',
+      current: 'Installiert', latest: 'Neueste', checked: 'Letzte Prüfung', check_now: 'Jetzt prüfen', checking: 'Prüft …',
+      st_idle: 'Aktuell', st_available: 'Neue Version verfügbar', st_checking: 'Prüfung läuft …', st_downloading: 'Wird geladen …',
+      st_ready: 'Bereit zum Einspielen', st_applying: 'Wird eingespielt …', st_error: 'Fehler', st_unknown: 'Noch nicht geprüft',
+      up_to_date: 'HCLoader ist aktuell (v{v})', portable: 'Portable-Version', git: 'Git-Checkout',
     },
 
     err: {

@@ -51,6 +51,16 @@
      get_blacklist()                    -> [{channel_id, channel_name, added}]
      unblock_channel(channel_id)        -> {ok}
 
+   App-Update (Selbst-Update von HCLoader über GitHub-Releases, docs/bridge-api.md)
+     get_update_status()                -> UpdateStatus
+     check_update()                     -> {ok, ...UpdateStatus} | {ok:false, error, ...UpdateStatus}
+                                           manuell (Wartung); die automatische Prüfung beim Start läuft im Backend
+     download_update()                  -> {ok, ...UpdateStatus} | {ok:false, error}   startet Download + Vorbereitung
+                                           im Hintergrund (Events update / update_progress); erst nach Klick
+     cancel_update()                    -> {ok, ...UpdateStatus}   Download abbrechen bzw. bereitgelegtes Update verwerfen
+     apply_update_now()                 -> {ok} | {ok:false, error}   schliesst die App; der Updater spielt ein und
+                                           startet neu (Downloads werden wie beim Beenden abgebrochen, bleiben in der Queue)
+
    Entdecken / Eingang
      get_last_search()                  -> {query, results:[Video]} | null   (ohne Netzwerk, aus DB)
                                            zusätzlich effective_query, genre, year, hidden_count (wie search);
@@ -196,6 +206,12 @@
                   genre_manual -> Punkt am Genre-Badge («manuell gesetzt»). Klick auf das Badge: set_genre(id, genre),
                   danach retag(id) (verschiebt die Datei in den Ordner des Genres); bei missing/unknown nur set_genre.
                   ▶: player.mode "internal" -> get_media(id) + Mini-Player (js/player.js), "external" -> play_external(id).
+     UpdateStatus {current, latest, available, state, notes, url, progress, error, checked, portable, git_checkout,
+                  blocked, apply_on_exit}
+                  state: "idle"|"checking"|"downloading"|"ready"|"applying"|"error"; available = latest > current;
+                  notes = Änderungen (Markdown als Text, escapen!); progress = {phase, pct, bytes, total} | null;
+                  blocked = Text, warum sich diese Installation nicht selbst aktualisiert (Git-Checkout, kein Windows) | null;
+                  apply_on_exit = Setting maintenance.apply_update_on_exit
      LogLine     {ts (ISO), level: "debug"|"info"|"ok"|"warn"|"error", msg}
                   "ok" zählt im Filter zur Stufe Info; "debug" ist in der UI standardmässig ausgeblendet.
      Run         {id, kind: "watchlist"|"headless"|"manual", started (ISO), finished (ISO|null),
@@ -243,6 +259,9 @@
                      checked = geprüfte Quellen, found = neue Treffer insgesamt (Eingang + automatisch geladen).
                      Gilt für jeden Lauf (von Hand, In-App-Intervall); die UI gibt danach «Prüfen» wieder frei,
                      lädt Quellen und Eingang neu und zeigt eine Zusammenfassung als Toast.
+     update          UpdateStatus                      Zustand des App-Updates hat sich geändert (Prüfung, Download, bereit …)
+     update_progress {phase, pct, bytes, total}        Download/Vorbereitung (ca. 4×/s); phase: "download"|"verify"|"prepare";
+                     pct null = Grösse unbekannt (GitHub liefert Quell-ZIPs ohne Länge)
      toast           {msg, kind?}                      kind: "ok"|"info"|"warn"|"err"
 
    UI-seitig abonnieren:  HC.bridge.on('progress', fn)

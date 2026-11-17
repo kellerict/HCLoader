@@ -70,7 +70,7 @@
     player: { mode: 'internal' },
     schedule: { watchlist_interval_hours: 24, in_app_check: true, task_scheduler_enabled: false, task_time: '03:00', entries_per_source: 30 },
     appearance: { reduce_effects: false, scanlines: true, pulse_bpm: 200 },
-    maintenance: { check_updates_on_start: true },
+    maintenance: { check_updates_on_start: true, check_app_updates_on_start: true, apply_update_on_exit: true, update_repo: 'kellerict/HCLoader' },
   };
   let settings = clone(DEFAULTS);
 
@@ -133,6 +133,9 @@
     'appearance.scanlines': { bool: 1 },
     'appearance.pulse_bpm': { int: 1, min: 60, max: 300 },
     'maintenance.check_updates_on_start': { bool: 1 },
+    'maintenance.check_app_updates_on_start': { bool: 1 },
+    'maintenance.apply_update_on_exit': { bool: 1 },
+    'maintenance.update_repo': { str: 1, required: 1 },
     'soundcloud.enabled': { bool: 1 },
     'player.mode': { oneOf: ['internal', 'external'] },
   };
@@ -732,6 +735,39 @@
   }
 
   /* ---------- API ---------- */
+  /* ---------- App-Update (Selbst-Update, wie core/selfupdate.py) ---------- */
+  const UPD_NOTES = '### Added\n- Selbst-Update: Prüfung beim Start, Download im Hintergrund, Einspielen beim Neustart\n- Sicherung vor jeder Datenbank-Migration\n\n### Fixed\n- Kleinere Korrekturen im Mini-Player';
+  const upd = { current: '0.2.0', latest: null, state: 'idle', notes: '', url: null, progress: null, error: null, checked: null, startChecked: false, timer: null };
+  const updStatus = () => ({
+    current: upd.current, latest: upd.latest, available: !!upd.latest && upd.latest !== upd.current, state: upd.state,
+    notes: upd.notes, url: upd.url, progress: upd.progress ? clone(upd.progress) : null, error: upd.error, checked: upd.checked,
+    portable: false, git_checkout: false, blocked: null, apply_on_exit: !!settings.maintenance.apply_update_on_exit,
+  });
+  const updSet = (fields) => { Object.assign(upd, fields); emit('update', updStatus()); return updStatus(); };
+  const updCheck = () => {
+    updSet({ state: 'checking' });
+    return later(700, () => {
+      pushLog('info', 'HCLoader 0.3.0 ist verfügbar (installiert: 0.2.0)');
+      return Object.assign({ ok: true }, updSet({ state: upd.state === 'checking' ? 'idle' : upd.state, latest: '0.3.0', notes: UPD_NOTES, url: 'https://github.com/kellerict/HCLoader/releases/tag/v0.3.0', checked: new Date().toISOString(), error: null }));
+    });
+  };
+  const updDownload = () => {
+    const total = 2457600;
+    let done = 0;
+    updSet({ state: 'downloading', error: null, progress: { phase: 'download', pct: 0, bytes: 0, total } });
+    clearInterval(upd.timer);
+    upd.timer = setInterval(() => {
+      done = Math.min(total, done + 98304);
+      upd.progress = { phase: 'download', pct: Math.round((1000 * done) / total) / 10, bytes: done, total };
+      emit('update_progress', clone(upd.progress));
+      if (done < total) return;
+      clearInterval(upd.timer);
+      upd.progress = { phase: 'prepare', pct: null, bytes: 0, total: 0 };
+      emit('update_progress', clone(upd.progress));
+      upd.timer = setTimeout(() => { pushLog('ok', 'HCLoader 0.3.0 ist bereit'); updSet({ state: 'ready', progress: null }); }, 900 * speed.factor);
+    }, 120 * speed.factor);
+  };
+
   const api = {
     /* Einstellungen */
     get_settings: () => later(30, () => ({ values: clone(settings), defaults: clone(DEFAULTS) })),
@@ -789,6 +825,38 @@
         pushLog('ok', `Aktualisierung fertig: yt-dlp ${state.versions.ytdlp}, Plugin ${state.versions.plugin}${fresh ? ' (neu)' : ' (bereits aktuell)'}`);
         pushStatus();
         return Object.assign({ ok: true, ytdlp: state.versions.ytdlp, plugin: state.versions.plugin, changed: fresh, output: out.join('\n') }, fresh ? { restart_required: true } : {});
+      });
+    },
+    /* App-Update (Mock: simuliert Prüfung, Download mit Fortschritt, Neustart) */
+    get_update_status() {
+      if (!upd.startChecked && !/[?&]nosim/.test(location.search) && settings.maintenance.check_app_updates_on_start) {
+        upd.startChecked = true;
+        setTimeout(updCheck, 1500 * speed.factor);
+      }
+      return later(15, updStatus);
+    },
+    check_update: () => (['checking', 'downloading', 'applying'].includes(upd.state) ? later(10, () => Object.assign({ ok: false, error: 'Update läuft bereits' }, updStatus())) : updCheck()),
+    download_update() {
+      return later(40, () => {
+        if (!upd.latest || upd.latest === upd.current) return Object.assign({ ok: false, error: 'Kein neueres Update bekannt – bitte zuerst prüfen' }, updStatus());
+        if (upd.state !== 'idle' && upd.state !== 'error') return Object.assign({ ok: false, error: upd.state === 'ready' ? 'Das Update ist schon bereit' : 'Das Update wird bereits heruntergeladen' }, updStatus());
+        updDownload();
+        return Object.assign({ ok: true }, updStatus());
+      });
+    },
+    cancel_update() {
+      return later(40, () => { clearInterval(upd.timer); clearTimeout(upd.timer); return Object.assign({ ok: true }, updSet({ state: 'idle', progress: null, error: null })); });
+    },
+    apply_update_now() {
+      return later(60, () => {
+        if (upd.state !== 'ready') return { ok: false, error: 'Kein Update bereit' };
+        updSet({ state: 'applying' });
+        /* Mock: kein echter Neustart – nach einer Pause «neu gestartet» melden */
+        setTimeout(() => {
+          updSet({ state: 'idle', current: upd.latest, progress: null });
+          emit('toast', { msg: `HCLoader aktualisiert auf v${upd.current}`, kind: 'ok' });
+        }, 2500 * speed.factor);
+        return { ok: true };
       });
     },
     backup_db() {
@@ -1159,6 +1227,14 @@
     validate,
     /** Nur für Demo/Screenshots: Zustände erzwingen. */
     demo: {
+      /** App-Update-Zustand erzwingen (Screenshots): state "idle"|"downloading"|"ready"|"error", optional pct. */
+      update(state, pct) {
+        clearInterval(upd.timer);
+        const base = { latest: '0.3.0', notes: UPD_NOTES, url: 'https://github.com/kellerict/HCLoader/releases/tag/v0.3.0', checked: new Date().toISOString(), error: null, progress: null };
+        if (state === 'downloading') base.progress = { phase: 'download', pct: pct == null ? 42 : pct, bytes: 1032192, total: 2457600 };
+        if (state === 'error') base.error = 'Prüfsumme stimmt nicht (HCLoader-0.3.0.zip)';
+        updSet(Object.assign(base, { state: state || 'idle' }));
+      },
       /** Backoff einer Plattform auslösen (platform: "youtube" (Standard) | "soundcloud"). */
       backoff(hours, platform) {
         const h = hours || 6, sc = platform === 'soundcloud';

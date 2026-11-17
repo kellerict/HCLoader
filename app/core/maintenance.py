@@ -416,9 +416,7 @@ def backup_before_migration(
     target = _copy_db(db_path, dest_dir, f"hcloader-premigrate-v{old}-to-v{new}", now)
     for gone in prune_backups(dest_dir, keep, protect=target, pattern=_PREMIGRATE_RE):
         log.info("Altes Migrations-Backup gelöscht: %s", gone.name)
-    log.warning(
-        "Datenbank wird von Schema v%d auf v%d migriert – Sicherung: %s", old, new, target
-    )
+    log.warning("Datenbank wird von Schema v%d auf v%d migriert – Sicherung: %s", old, new, target)
     return target
 
 

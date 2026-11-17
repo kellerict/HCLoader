@@ -9,8 +9,8 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from .core import binaries, config, locks
-from .core.db import Database
+from .core import binaries, config, locks, selfupdate
+from .core.db import Database, MigrationBackupError, SchemaTooNewError
 from .core.logging_setup import setup_logging
 from .core.throttle import Throttle, ThrottleError
 from .exitcodes import EXIT_BLOCKED, EXIT_BUSY, EXIT_FAILED, EXIT_OK, EXIT_USAGE
@@ -125,10 +125,31 @@ def show_fatal(message: str) -> None:
             log.debug("MessageBox fehlgeschlagen", exc_info=True)
 
 
+def db_error_message(exc: Exception) -> str:
+    """Start dialog text for DB errors that need the user (self-update, docs/decisions.md)."""
+    if isinstance(exc, SchemaTooNewError):
+        return exc.user_message(config.app_home() / "backups")
+    return f"HCLoader konnte nicht gestartet werden:\n\n{exc}"
+
+
+UPDATE_RUNNING = (
+    "HCLoader wird gerade aktualisiert – bitte einen Moment warten. Die App startet danach "
+    "von selbst neu."
+)
+
+
+def update_dir() -> Path:
+    return config.app_home() / "update"
+
+
 def run_gui() -> int:
     """GUI start with visible error reporting (log + MessageBox under pythonw)."""
     try:
         return _run_gui()
+    except (SchemaTooNewError, MigrationBackupError) as exc:
+        log.error("Datenbank: %s", exc)
+        show_fatal(db_error_message(exc))
+        return EXIT_FAILED
     except Exception as exc:
         log.exception("GUI-Start fehlgeschlagen")
         show_fatal(
@@ -188,6 +209,12 @@ def _run_gui() -> int:
             api.shutdown()
         finally:
             activation.stop()
+        # self-update: "Jetzt neu starten" or "beim Beenden einspielen" - the updater waits
+        # for this process to end (after the queue has stopped and the DB is closed)
+        try:
+            api.finish_update()
+        except Exception:
+            log.exception("App-Update konnte nicht gestartet werden")
     return EXIT_OK
 
 
@@ -269,6 +296,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.smoke:
         return run_smoke(args.smoke)
+    if (args.run_watchlist or not args.headless) and selfupdate.update_in_progress(update_dir()):
+        # apply_update.ps1 swaps the program files right now (lock file, docs/decisions.md)
+        if args.run_watchlist:
+            print(UPDATE_RUNNING, file=sys.stderr)
+        else:
+            show_fatal(UPDATE_RUNNING)
+        return EXIT_BUSY
     if args.run_watchlist:
         from .headless import run_watchlist
 
@@ -290,6 +324,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             try:
                 with Database(config.db_path()) as db:
                     _reset_interrupted(db)
+            except (SchemaTooNewError, MigrationBackupError) as exc:
+                show_fatal(db_error_message(exc))
+                return EXIT_FAILED
             finally:
                 run_lock.release()
         return run_gui()

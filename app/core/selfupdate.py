@@ -216,7 +216,7 @@ def _release_from_api(data: dict[str, Any], repo: str) -> Release | None:
     version = parse_version(tag)
     if version is None:
         return None
-    ver = "%d.%d.%d" % version
+    ver = ".".join(map(str, version))
     assets = {
         str(a.get("name")): str(a.get("browser_download_url") or "")
         for a in data.get("assets") or []
@@ -251,7 +251,7 @@ def _latest_from_tags(repo: str, opener: Opener, timeout: float) -> Release | No
             best = (v, name)
     if best is None:
         return None
-    ver = "%d.%d.%d" % best[0]
+    ver = ".".join(map(str, best[0]))
     tag = best[1]
     notes = ""
     try:
@@ -535,7 +535,7 @@ def prepare_staging(
         )
     need_py = min_python(_read(staging / "pyproject.toml") or "")
     if need_py and tuple(python_version) < need_py:
-        want = "%d.%d" % need_py
+        want = ".".join(map(str, need_py))
         if runtime.mode == "portable":
             raise UpdateError(
                 f"Version {expected} braucht Python {want}. Bitte das Portable-ZIP neu "
@@ -684,6 +684,15 @@ class SelfUpdater:
         self._cancel = threading.Event()
         self._s = _State()
         self._last_progress = 0.0
+
+    def bind(
+        self,
+        on_change: Callable[[dict[str, Any]], None] | None,
+        on_progress: Callable[[dict[str, Any]], None] | None,
+    ) -> None:
+        """Event sinks (Api: events `update` / `update_progress`)."""
+        self._on_change = on_change
+        self._on_progress = on_progress
 
     # -- status
 

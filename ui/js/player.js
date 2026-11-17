@@ -152,7 +152,10 @@
   function paintMeta() {
     $('#pl-title', el).textContent = media.title || '';
     $('#pl-title', el).title = media.title || '';
-    $('#pl-artist', el).textContent = media.artist || '';
+    /* Mit Kapiteln gehört die zweite Zeile dem aktuellen Track; der Kanal steht dann gedimmt hinter dem Titel. */
+    $('#pl-artist', el).textContent = chapters.length ? media.artist || '' : '';
+    $('#pl-artist2', el).textContent = chapters.length ? '' : media.artist || '';
+    $('#pl-artist', el).title = media.artist || '';
     /* Cover: echtes Bild (file:-URL vom Backend), sonst der generierte Platzhalter aus id + Genre-Farbe. */
     const cover = typeof media.cover === 'string' && /^file:\/\//i.test(media.cover) ? media.cover : null;
     $('#pl-cover', el).innerHTML = `${ui.thumb({ id: media.id, genre: media.genre, thumbnail: null }, 'pl-art')}${cover ? `<img src="${esc(cover)}" alt="" decoding="async">` : ''}</div>${ui.eq('on-cover')}`;
@@ -347,8 +350,8 @@
       <div class="pl-now">
         <div class="pl-cover" id="pl-cover"></div>
         <div class="pl-meta">
-          <div class="pl-title" id="pl-title"></div>
-          <div class="pl-sub"><span id="pl-pbadge"></span><span class="pl-artist" id="pl-artist"></span><button type="button" class="pl-track" id="pl-track" aria-expanded="false" hidden>${I.play}<span></span></button></div>
+          <div class="pl-head"><span class="pl-title" id="pl-title"></span><span class="pl-artist" id="pl-artist"></span></div>
+          <div class="pl-sub"><span id="pl-pbadge"></span><span class="pl-artist2" id="pl-artist2"></span><button type="button" class="pl-track" id="pl-track" aria-expanded="false" hidden>${I.play}<span></span></button></div>
         </div>
       </div>
       <div class="pl-mid">

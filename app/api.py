@@ -34,6 +34,7 @@ from .core import (
     player,
     potoken,
     scheduler,
+    selfupdate,
     watchlist,
 )
 from .core import status as status_mod
@@ -84,6 +85,9 @@ _TASK_MOVED = (
 )
 _SC_OFF = "SoundCloud ist ausgeschaltet (Einstellungen › SoundCloud)"
 _UPDATE_BUSY = "Wartung läuft gerade (Update) – bitte später erneut"
+# self-update (docs/decisions.md "Selbst-Update"): a manual check waits at most this long
+APP_UPDATE_CHECK_WAIT_S = 30.0
+APP_UPDATE_CLOSE_DELAY_S = 0.3  # let apply_update_now() answer before the window closes
 _VIDEO_ID_RE = re.compile(r"^[0-9A-Za-z_-]{11}$")
 
 
@@ -120,6 +124,7 @@ class Api:
         queue_options: dict[str, Any] | None = None,
         schedule_options: dict[str, Any] | None = None,
         configure_logging: bool = True,
+        self_updater: selfupdate.SelfUpdater | None = None,
     ) -> None:
         self._config_file = config_file or config.config_path()
         settings, warnings = config.load_with_warnings(self._config_file)
@@ -179,6 +184,22 @@ class Api:
             self._trigger_scheduled_check,
             **(schedule_options or {}),
         )
+        # Self-update of HCLoader (GitHub releases): own worker, never blocks maintenance jobs
+        self._updater = self_updater or selfupdate.SelfUpdater(
+            current=maintenance.app_version(),
+            repo=lambda: self._settings.maintenance.update_repo,
+            update_dir=config.app_home() / "update",
+            root=config.app_root(),
+            data_dir=config.app_home(),
+            logs_dir=config.logs_dir(),
+        )
+        self._updater.bind(
+            lambda st: self._bus.emit("update", st),
+            lambda data: self._bus.emit("update_progress", data),
+        )
+        self._update_worker = Worker("hcloader-selfupdate")
+        self._update_result: dict[str, Any] | None = None
+        self._apply_requested = False
         self._configure_logging = configure_logging
         self._window: Any = None
         self._po_test: tuple[str, int, dict[str, Any]] | None = None
@@ -207,6 +228,12 @@ class Api:
         self._wl_sched.start()
         self._ticker = Ticker(STATUS_INTERVAL_S, self._push)
         self._ticker.start()
+        self._update_worker.start()
+        try:
+            self._update_result = self._updater.take_result()  # outcome of apply_update.ps1
+            self._updater.restore()  # an update staged in an earlier session is ready again
+        except Exception:
+            log.exception("App-Update-Zustand nicht lesbar")
 
     @_internal
     def shutdown(self, queue_timeout: float = QUEUE_STOP_TIMEOUT_S) -> bool:
@@ -223,6 +250,8 @@ class Api:
         self._wl_worker.stop(WATCHLIST_STOP_TIMEOUT_S)
         if self._wl_worker.alive():  # stuck in a request: close its run entry now
             watchlist.close_interrupted(self._db, "Abgebrochen (App beendet)")
+        self._updater.stop()  # a running app-update download is aborted and discarded
+        self._update_worker.stop()
         ended = self._queue.stop(queue_timeout)
         self._search_worker.stop()
         self._watchdog.stop()
@@ -248,6 +277,7 @@ class Api:
             self._loaded_once = True
             self._startup_update_check()
             self._startup_task_check()
+            self._startup_app_update()
 
     def _on_run_finished(self, row: dict[str, Any]) -> None:
         """A run (watchlist, headless, manual queue) ended: event `run` for the log view."""
@@ -539,6 +569,99 @@ class Api:
         else:
             log.info("yt-dlp und Plugin sind aktuell")
         return res
+
+    # ================================================================== app self-update
+
+    def _startup_app_update(self) -> None:
+        """Toast for the result of the last update; then one check per start (if enabled).
+        GitHub only, no YouTube, no throttle; errors stay in the log."""
+        res, self._update_result = self._update_result, None
+        if res:
+            if res.get("ok"):
+                msg = f"HCLoader aktualisiert auf v{res.get('to_version')}"
+                log_ok(log, "%s", msg)
+                self._bus.toast(msg, "ok")
+            else:
+                msg = f"App-Update fehlgeschlagen: {res.get('error') or 'unbekannter Fehler'}"
+                msg += (
+                    " – die bisherige Version wurde wiederhergestellt"
+                    if res.get("rolled_back")
+                    else f" – Details: {res.get('log') or 'logs/update.log'}"
+                )
+                log.error("%s", msg)
+                self._bus.toast(msg, "err")
+        if self._cfg.maintenance.check_app_updates_on_start:
+            self._update_worker.submit("app_update_check", self._updater.check)
+
+    def get_update_status(self) -> dict[str, Any]:
+        st = self._updater.status()
+        st["apply_on_exit"] = bool(self._cfg.maintenance.apply_update_on_exit)
+        return st
+
+    def check_update(self) -> dict[str, Any]:
+        """Manual check (maintenance tab). Errors come back as {ok:false, error}."""
+        try:
+            res = self._update_worker.run(
+                "app_update_check_manual",
+                lambda: self._updater.check(manual=True),
+                timeout=APP_UPDATE_CHECK_WAIT_S,
+            )
+        except FutureTimeout:
+            return {"ok": False, "error": "Zeitüberschreitung bei der Update-Prüfung"}
+        except RuntimeError as exc:  # worker stopped (app is closing)
+            return {"ok": False, "error": str(exc)}
+        res["apply_on_exit"] = bool(self._cfg.maintenance.apply_update_on_exit)
+        return res
+
+    def download_update(self) -> dict[str, Any]:
+        """Start download + preparation in the background; progress via `update_progress`,
+        state via `update`. Returns at once."""
+        refusal = self._updater.begin_download()
+        if refusal:
+            return {"ok": False, "error": refusal, **self.get_update_status()}
+        self._update_worker.submit("app_update_download", self._updater.download)
+        return {"ok": True, **self.get_update_status()}
+
+    def cancel_update(self) -> dict[str, Any]:
+        """Abort the download, or drop a prepared update (then nothing is applied on exit)."""
+        self._apply_requested = False
+        self._updater.cancel()
+        return {"ok": True, **self.get_update_status()}
+
+    def apply_update_now(self) -> dict[str, Any]:
+        """Close the app; after `shutdown` (queue stopped like a normal exit) `main.py` calls
+        `finish_update`, which starts the updater with restart."""
+        st = self._updater.status()
+        if st["blocked"]:
+            return {"ok": False, "error": st["blocked"]}
+        if st["state"] != "ready":
+            return {"ok": False, "error": "Kein Update bereit"}
+        self._apply_requested = True
+        log.warning("App wird für das Update auf v%s beendet …", st["latest"])
+        if self._window is not None:
+            timer = threading.Timer(APP_UPDATE_CLOSE_DELAY_S, self._close_window)
+            timer.daemon = True
+            timer.start()
+        return {"ok": True}
+
+    def _close_window(self) -> None:
+        try:
+            self._window.destroy()
+        except Exception:
+            log.exception("Fenster konnte nicht geschlossen werden")
+
+    @_internal
+    def finish_update(self) -> dict[str, Any] | None:
+        """Called by main.py after `shutdown`: start apply_update.ps1 if the user chose
+        «Jetzt neu starten» (restart) or an update is ready and `apply_update_on_exit` is on."""
+        if self._updater.state != "ready":
+            return None
+        if self._apply_requested:
+            return self._updater.launch(restart=True)
+        if self._cfg.maintenance.apply_update_on_exit:
+            return self._updater.launch(restart=False)
+        log.info("App-Update bleibt bereit (wird beim nächsten Start wieder angeboten)")
+        return None
 
     def backup_db(self) -> dict[str, Any]:
         return self._job("backup", self._do_backup, JOB_TIMEOUT_S)

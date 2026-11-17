@@ -145,6 +145,11 @@
     ] },
     { id: 'maintenance', fields: [
       { custom: 'versions' },
+      { h: 'set.h.app_update' },
+      { custom: 'appUpdate' },
+      { k: 'maintenance.check_app_updates_on_start', type: 'bool' },
+      { k: 'maintenance.apply_update_on_exit', type: 'bool' },
+      { k: 'maintenance.update_repo', type: 'text', mono: true },
       { h: 'set.h.updates' },
       { custom: 'update' },
       { k: 'maintenance.check_updates_on_start', type: 'bool' },
@@ -601,6 +606,8 @@
       paint();
       loadVersions();
     },
+    /* App-Update (Selbst-Update): Inhalt und Logik in js/updater.js */
+    appUpdate(host) { if (HC.updater) HC.updater.section(host); },
     update(host) {
       const head = () => {
         const u = cache.update;

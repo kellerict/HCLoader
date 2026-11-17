@@ -162,7 +162,7 @@
     led($('#sb-ffmpeg-led'), s.ffmpeg_ok ? '' : 'err');
 
     const po = s.po_token || {};
-    $('#sb-pot').textContent = po.state === 'active' ? t('statusbar.po_active', { mode: t(`po_mode.${po.mode}`) }) : t(`statusbar.po_${po.state || 'inactive'}`);
+    $('#sb-pot').innerHTML = po.state === 'active' ? util.esc(t('statusbar.po_active', { mode: t(`po_mode.${po.mode}`) })).replace(/ \(/, '<span class="sb-x"> (') + '</span>' : util.esc(t(`statusbar.po_${po.state || 'inactive'}`));
     led($('#sb-pot-led'), po.state === 'active' ? '' : po.state === 'error' ? 'err blink' : 'off');
     $('#sb-pot-it').title = po.detail || '';
 
@@ -178,7 +178,7 @@
     $('#sb-sc-it').hidden = !scOn;
     if (scOn) {
       const sc = HC.platform.state('soundcloud'), sbo = sc.backoff && sc.backoff.active ? sc.backoff : null;
-      $('#sb-sc').textContent = sbo ? t('statusbar.sc_backoff', { t: util.fmtWhen(sbo.until) }) : t('statusbar.sc_today', { n: sc.counters.downloads_day || 0, max: sc.limits.downloads_day });
+      $('#sb-sc').textContent = sbo ? t('statusbar.sc_backoff', { t: util.parseDate(sbo.until) && util.parseDate(sbo.until).toDateString() === new Date().toDateString() ? util.fmtTime(sbo.until) : util.fmtWhen(sbo.until) }) : t('statusbar.sc_today', { n: sc.counters.downloads_day || 0, max: sc.limits.downloads_day });
       led($('#sb-sc-led'), sbo ? 'warn blink' : 'sc');
       $('#sb-sc-it').classList.toggle('alert', !!sbo);
       $('#sb-sc-it').title = tip('soundcloud', 'statusbar.sc_tip') + (sbo ? ` · ${t('statusbar.backoff_tip', { p: HC.platform.label('soundcloud'), t: util.fmtWhen(sbo.until), rest: util.fmtSpan(sbo.remaining_s) })}` : '');

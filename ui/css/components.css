@@ -862,12 +862,16 @@ tr.now .cell-title b{color:#fff}
 .pl-cover .eqb i{width:2px;background:#fff}
 .player.playing .pl-cover .eqb{opacity:1}
 .pl-meta{min-width:0;flex:1}
-.pl-title{font-weight:600;font-size:13.5px;line-height:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl-head{display:flex;align-items:baseline;gap:8px;min-width:0}
+.pl-title{font-weight:600;font-size:13.5px;line-height:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:0}
+.pl-artist{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 4 auto;min-width:0}
+.pl-artist:empty,.pl-artist2:empty{display:none}
+.pl-artist:not(:empty)::before{content:"· "}
 .pl-sub{display:flex;align-items:center;gap:8px;margin-top:3px;min-width:0;font-size:12px;line-height:16px;color:var(--muted)}
 #pl-pbadge{display:inline-flex;flex:none}
 #pl-pbadge:empty{display:none}
-.pl-artist{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:0}
-.pl-track{display:inline-flex;align-items:center;gap:6px;min-width:0;flex:1 1 60px;background:none;border:0;padding:0 0 0 8px;border-left:1px solid var(--line-2);
+.pl-artist2{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:0}
+.pl-track{display:inline-flex;align-items:center;gap:6px;min-width:0;flex:1 1 60px;background:none;border:0;padding:0;
   font:11.5px/16px var(--f-mono);color:var(--text);text-align:left;border-radius:0}
 .pl-track svg{width:8px;height:8px;fill:var(--accent);stroke:none;flex:none}
 .pl-track span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -937,4 +941,8 @@ tr.now .cell-title b{color:#fff}
 
 body.has-player .toasts{bottom:calc(46px + var(--player-h))}
 body.has-player[data-view=settings] .toasts{bottom:calc(106px + var(--player-h))}
+.bulkbar .count{min-width:0;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+.bulkbar .btn{flex:none}
+/* Mindestfenster: mit dem SoundCloud-Punkt wird die Statusleiste eng -> «Heute» (steht auch links unten) und den PO-Modus weglassen */
+@media (max-width:1240px){footer{gap:12px;padding:0 12px} footer:has(#sb-sc-it:not([hidden])) #sb-day-it,footer .sb-x{display:none}}
 @media (max-width:1240px){.player{gap:16px;grid-template-columns:minmax(190px,1fr) minmax(280px,1.4fr) auto} .range.pl-vol{width:60px} .pl-list-head .keys{display:none}}

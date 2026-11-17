@@ -19,7 +19,7 @@ from typing import Any
 
 from .core import config, locks, watchlist
 from .core.config import Settings
-from .core.db import Database
+from .core.db import Database, MigrationBackupError, SchemaTooNewError
 from .core.discover import format_until
 from .core.logging_setup import setup_logging
 from .core.throttle import Throttle
@@ -139,7 +139,17 @@ def run_watchlist(
     if watchdog is None and settings.network.po_token_mode == "http":
         watchdog = _shared_pot(settings.network.po_token_port, gui_probe, pot_ping)
     own_db = db is None
-    db = db or Database(config.db_path())
+    try:
+        db = db or Database(config.db_path())
+    except (SchemaTooNewError, MigrationBackupError) as exc:
+        wl.release()
+        run.release()
+        _say(
+            exc.user_message(config.app_home() / "backups")
+            if isinstance(exc, SchemaTooNewError)
+            else str(exc)
+        )
+        return EXIT_FAILED
     try:
         return _run(
             settings,
