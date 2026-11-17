@@ -87,6 +87,8 @@
     "note_budget": "本次运行的请求预算已用完 – 下次运行继续",
     "note_error": "错误：{error}",
     "note_interrupted": "已中断 – 将自动继续",
+    "note_needs_app": "对计划运行来说太大（{need} 次请求，预算每小时 {budget} 次）– 将在应用中继续",
+    "note_needs_app_raise": "对计划运行来说太大（{need} 次请求，预算每小时 {budget} 次）– 将在应用中继续，或把“每小时请求数”设为至少 {need}",
     "resumed": "全部读取：{name} – 从第 {n} 个条目之后继续",
     "search_refused": "搜索来源无法完整读取 – 搜索最多返回 100 个结果",
     "started": "全部读取：{name} – 逐页读取最多 {cap} 个条目",
@@ -181,6 +183,7 @@
   },
   "headless": {
     "backfill": "全部读取：继续了 {n} 个来源 · 收件箱新增 {added} 个 · 完成 {done} 个",
+    "backfill_deferred": "全部读取：{n} 个来源对计划运行来说太大 – 将在应用中继续",
     "backoff": "退避中，至 {until} – 未检查任何内容",
     "backoff_until": "退避至 {until}",
     "finished": "无界面运行结束：{n} 个新发现，{downloaded} 个已下载，{errors} 个错误{extra}",

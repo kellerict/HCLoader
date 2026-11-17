@@ -379,6 +379,7 @@
       e.known_total != null ? t('backfill.dlg_known', { n: util.fmtNum(e.known_total) }) : esc(t('backfill.dlg_unknown', { cap: util.fmtNum(e.cap) })),
       e.known_total != null && e.known_total > e.cap ? esc(t('backfill.dlg_capped', { cap: util.fmtNum(e.cap) })) : '',
       e.resume ? esc(t('backfill.dlg_resume', { n: util.fmtNum(e.position) })) : '',
+      e.headless_ok === false ? esc(t('backfill.dlg_headless', { n: util.fmtNum(e.per_hour) })) : '',
     ].filter(Boolean);
     const body = `<p>${t('backfill.dlg_text')}</p>
       <div class="bf-est">

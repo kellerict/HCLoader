@@ -88,6 +88,8 @@
     "note_budget": "Anfragen-Budget dieses Laufs aufgebraucht – geht im nächsten Lauf weiter",
     "note_error": "Fehler: {error}",
     "note_interrupted": "Unterbrochen – geht automatisch weiter",
+    "note_needs_app": "Zu gross für einen geplanten Lauf ({need} Anfragen, Budget {budget} pro Stunde) – geht in der App weiter",
+    "note_needs_app_raise": "Zu gross für einen geplanten Lauf ({need} Anfragen, Budget {budget} pro Stunde) – geht in der App weiter, oder «Anfragen pro Stunde» auf mindestens {need} setzen",
     "resumed": "Alles einlesen: {name} – macht nach {n} Einträgen weiter",
     "search_refused": "Suchquellen lassen sich nicht komplett einlesen – eine Suche liefert höchstens 100 Treffer",
     "started": "Alles einlesen: {name} – liest bis zu {cap} Einträge seitenweise",
@@ -182,6 +184,7 @@
   },
   "headless": {
     "backfill": "Alles einlesen: {n} Quelle(n) fortgesetzt · {added} neu im Eingang · {done} fertig",
+    "backfill_deferred": "Alles einlesen: {n} Quelle(n) zu gross für einen geplanten Lauf – geht in der App weiter",
     "backoff": "Backoff aktiv bis {until} – nichts geprüft",
     "backoff_until": "Backoff bis {until}",
     "finished": "Headless-Lauf beendet: {n} neu, {downloaded} geladen, {errors} Fehler{extra}",

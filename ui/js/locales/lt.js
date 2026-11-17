@@ -1580,6 +1580,7 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "dlg_unknown": "Dydis nežinomas – atsargiai įvertinta maksimaliam {cap} įrašų skaičiui.",
     "dlg_capped": "Nuskaitomi tik pirmieji {cap} įrašų (Nustatymai › Tvarkaraštis).",
     "dlg_resume": "Tęsia po {n} jau nuskaitytų įrašų; jų puslapiai pirmiausia užklausiami iš naujo.",
+    "dlg_headless": "Per didelis suplanuotam paleidimui ({n} užklausų per valandą): jei programa uždaroma anksčiau, tęsiama tik programoje.",
     "dlg_pace": "Daugiausia {n} užklausų per valandą, tolygiai paskirstytų. Backoff (HTTP 429 / botų patikra), programos uždarymas ar klaida tik pertraukia – vėliau tęsiama automatiškai. Pristabdyti ar atšaukti galite bet kada.",
     "dlg_ok": "Pradėti nuskaitymą",
     "dlg_ok_resume": "Toliau skaityti",

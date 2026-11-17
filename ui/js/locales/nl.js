@@ -1512,6 +1512,7 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
   "dlg_unknown": "De grootte is onbekend – voorzichtig geschat voor het maximum van {cap} items.",
   "dlg_capped": "Alleen de eerste {cap} items worden ingelezen (Instellingen › Planning).",
   "dlg_resume": "Gaat verder na {n} al gelezen items; hun pagina’s worden eerst opnieuw opgevraagd.",
+  "dlg_headless": "Te groot voor een geplande run ({n} verzoeken per uur): als de app eerder wordt gesloten, gaat het alleen in de app verder.",
   "dlg_pace": "Maximaal {n} verzoeken per uur, gelijkmatig verdeeld. Een backoff (HTTP 429 / botcontrole), het sluiten van de app of een fout onderbreken alleen – het gaat later automatisch verder. Pauzeren of annuleren kan altijd.",
   "dlg_ok": "Inlezen starten",
   "dlg_ok_resume": "Verder inlezen",

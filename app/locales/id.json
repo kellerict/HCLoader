@@ -87,6 +87,8 @@
     "note_budget": "Anggaran permintaan jalankan ini habis – berlanjut di jalankan berikutnya",
     "note_error": "Galat: {error}",
     "note_interrupted": "Terputus – berlanjut otomatis",
+    "note_needs_app": "Terlalu besar untuk proses terjadwal ({need} permintaan, anggaran {budget} per jam) – dilanjutkan di aplikasi",
+    "note_needs_app_raise": "Terlalu besar untuk proses terjadwal ({need} permintaan, anggaran {budget} per jam) – dilanjutkan di aplikasi, atau atur “Permintaan per jam” minimal {need}",
     "resumed": "Baca semua: {name} – melanjutkan setelah {n} entri",
     "search_refused": "Sumber pencarian tidak bisa dibaca lengkap – pencarian memberi paling banyak 100 hasil",
     "started": "Baca semua: {name} – membaca hingga {cap} entri halaman demi halaman",
@@ -181,6 +183,7 @@
   },
   "headless": {
     "backfill": "Baca semua: {n} sumber dilanjutkan · {added} baru di kotak masuk · {done} selesai",
+    "backfill_deferred": "Baca semua: {n} sumber terlalu besar untuk proses terjadwal – dilanjutkan di aplikasi",
     "backoff": "Backoff aktif hingga {until} – tidak ada yang diperiksa",
     "backoff_until": "Backoff hingga {until}",
     "finished": "Sesi headless selesai: {n} baru, {downloaded} terunduh, {errors} galat{extra}",

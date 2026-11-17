@@ -1372,7 +1372,7 @@
         const perHour = settings.watchlist.backfill_requests_per_hour;
         const interval = Math.max(3600 / perHour, (sc ? settings.soundcloud : settings.throttle).sleep_requests);
         const position = b && ['pending', 'running', 'paused'].includes(b.state) ? b.position : 0;
-        return { ok: true, source_id: id, known_total: known, entries, cap, requests, seconds: Math.round(requests * interval), per_hour: perHour, page_size: page, conservative: known == null, position, resume: position > 0 };
+        return { ok: true, source_id: id, known_total: known, entries, cap, requests, seconds: Math.round(requests * interval), per_hour: perHour, page_size: page, conservative: known == null, position, resume: position > 0, reread: Math.ceil(position / page), headless_ok: requests <= perHour };
       });
     },
     start_backfill(id) {

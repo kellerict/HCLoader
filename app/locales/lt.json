@@ -90,6 +90,8 @@
     "note_budget": "Šio paleidimo užklausų biudžetas išnaudotas – tęsis kitame paleidime",
     "note_error": "Klaida: {error}",
     "note_interrupted": "Pertraukta – tęsis automatiškai",
+    "note_needs_app": "Per didelis suplanuotam paleidimui ({need} užklausų, biudžetas {budget} per valandą) – tęsiama programoje",
+    "note_needs_app_raise": "Per didelis suplanuotam paleidimui ({need} užklausų, biudžetas {budget} per valandą) – tęsiama programoje arba nustatykite „Užklausų per valandą“ bent {need}",
     "resumed": "Nuskaityti viską: {name} – tęsiama po {n} įrašų",
     "search_refused": "Paieškos šaltinių negalima nuskaityti visų – paieška grąžina daugiausia 100 rezultatų",
     "started": "Nuskaityti viską: {name} – nuskaitoma iki {cap} įrašų puslapis po puslapio",
@@ -184,6 +186,7 @@
   },
   "headless": {
     "backfill": "Nuskaityti viską: tęsta šaltinių: {n} · naujų gautuosiuose: {added} · baigta: {done}",
+    "backfill_deferred": "Nuskaityti viską: {n} šaltinis (-iai) per dideli suplanuotam paleidimui – tęsiama programoje",
     "backoff": "Pauzė aktyvi iki {until} – nieko netikrinta",
     "backoff_until": "Pauzė iki {until}",
     "finished": "Headless paleidimas baigtas: {n} nauji, {downloaded} atsisiųsta, {errors} klaidų{extra}",

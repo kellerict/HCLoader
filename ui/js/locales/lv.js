@@ -1546,6 +1546,7 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "dlg_unknown": "Izmērs nav zināms – piesardzīgs novērtējums maksimumam {cap} ierakstu.",
     "dlg_capped": "Tiek ielasīti tikai pirmie {cap} ieraksti (Iestatījumi › Grafiks).",
     "dlg_resume": "Turpina pēc {n} jau ielasītiem ierakstiem; to lapas vispirms tiek pieprasītas vēlreiz.",
+    "dlg_headless": "Pārāk liels plānotai palaišanai ({n} pieprasījumi stundā): ja lietotne tiek aizvērta agrāk, tas turpinās tikai lietotnē.",
     "dlg_pace": "Ne vairāk kā {n} pieprasījumi stundā, vienmērīgi sadalīti. Backoff (HTTP 429 / botu pārbaude), lietotnes aizvēršana vai kļūda tikai pārtrauc – vēlāk tiek turpināts automātiski. Apturēt vai atcelt varat jebkurā laikā.",
     "dlg_ok": "Sākt ielasīšanu",
     "dlg_ok_resume": "Turpināt ielasīt",

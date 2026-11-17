@@ -229,7 +229,7 @@ kein Throttle.
 | `delete_source(id)` | | `{ok}` | 4 |
 | `check_sources(ids?)` | `[id]` \| `null` = alle aktiven | `{ok:true, started:n}` (n = Anzahl Quellen; 0 = nichts zu tun) \| `{ok:false, error, started:0}` + Events `source`, `watchlist_done` | 4 |
 | `get_inbox()` | – | `[Video]` (Status `inbox`, neueste zuerst) | 4 |
-| `estimate_backfill(id)` | Quellen-`id` | `{ok:true, source_id, known_total, entries, cap, requests, seconds, per_hour, page_size, conservative, position, resume}` \| `{ok:false, error}` – ohne Netzwerk | 0.4.0 |
+| `estimate_backfill(id)` | Quellen-`id` | `{ok:true, source_id, known_total, entries, cap, requests, seconds, per_hour, page_size, conservative, position, resume, reread, headless_ok}` \| `{ok:false, error}` – ohne Netzwerk | 0.4.0 |
 | `start_backfill(id)` | Quellen-`id` | `{ok:true, backfill:Backfill}` \| `{ok:false, error}` + Events `backfill` | 0.4.0 |
 | `pause_backfill(id)` | Quellen-`id` | `{ok:true, backfill}` \| `{ok:false, error}` | 0.4.0 |
 | `cancel_backfill(id)` | Quellen-`id` | `{ok:true, backfill}` \| `{ok:false, error}` | 0.4.0 |
@@ -297,18 +297,30 @@ docs/decisions.md «Alles einlesen»). Treffer gehen immer in den Eingang, nie i
   `min(known_total, cap)`, ohne bekannte Grösse `cap` und `conservative:true`. `requests` = Anlaufanfragen
   (YouTube 1, SoundCloud 3) + `ceil(entries / page_size)` (YouTube-Kanal 30, Playlist 100, SoundCloud
   200 bzw. Set 50) – beim Fortsetzen inklusive der erneut abgefragten Seiten. `seconds` = `requests ×
-  max(3600 / per_hour, sleep_requests)`. `resume`/`position`: es gibt einen Cursor.
+  max(3600 / per_hour, sleep_requests)`. `resume`/`position`: es gibt einen Cursor; `reread` = davon
+  erneut abgefragte Seiten (die Plattformen kennen nur «nächste Seite»). `page_size` ist der aus
+  früheren Läufen gelernte Wert, sonst der Standard. `headless_ok` = `requests <= per_hour`: ein
+  geplanter Lauf kann den Backfill zu Ende lesen; sonst setzt er nur in der App fort (Review v0.4.0
+  M2, `docs/decisions.md`).
 - `start_backfill`: abgelehnt (`{ok:false, error}`) bei Suchquelle, SoundCloud aus, Backoff der Plattform,
   laufendem yt-dlp-Update, «Neustart nötig». Pausiert/unterbrochen → setzt am Cursor fort; fertig/
   abgebrochen/neu → von vorne. Läuft im Thread `hcloader-backfill` (eins nach dem anderen, prozess-
   übergreifender Lock `backfill`); hält ein Headless-Lauf den Lock, kommt ein `toast` (warn) und der
-  Backfill bleibt `pending`.
+  Backfill bleibt `pending`. Eine Zeile `running`, die nicht dieser Prozess liest, wird nur
+  übernommen, wenn der Lock frei ist (sonst `{ok:false, error}`).
 - `pause_backfill`: `pending`/`running` → `paused`; der laufende hält vor der nächsten Anfrage an
-  (gelesene Seiten sind gespeichert). `cancel_backfill`: → `cancelled`, Cursor 0; Treffer bleiben.
+  (gelesene Seiten sind gespeichert; eine noch nicht gespeicherte Seite wird verworfen und beim
+  Fortsetzen neu gelesen). Wirkt auch auf einen Headless-Lauf in einem anderen Prozess: er bemerkt
+  die geänderte Zeile vor der nächsten Seite und hört auf. `delete_source` stoppt den Backfill der
+  Quelle ebenso. `cancel_backfill`: → `cancelled`, Cursor 0; Treffer bleiben.
   Ohne Backfill-Zeile `{ok:false, error}`.
 - **Automatisches Fortsetzen** (`pending`, aktive Quellen): 90 s nach dem App-Start, nach jeder
   Watchlist-Prüfung ohne Backoff und im Headless-Lauf nach den Downloads (dort höchstens
-  `watchlist.backfill_requests_per_hour` Anfragen pro Lauf, Notiz im `runs`-Eintrag). Quellen einer
+  `watchlist.backfill_requests_per_hour` Anfragen pro Lauf, Notiz im `runs`-Eintrag). Der Headless-Lauf
+  gibt vorher Run- und Watchlist-Lock frei (GUI-Queue, In-App-Prüfung und yt-dlp-Update bleiben
+  möglich; ein Update beendet den Headless-Backfill vor seiner nächsten Anfrage) und übernimmt nur
+  Backfills, die er im Budget fertig lesen kann; die anderen bekommen ohne Anfrage die `note` «Zu
+  gross für einen geplanten Lauf …» und laufen in der App weiter. Quellen einer
   Plattform im Backoff werden ohne Anfrage übersprungen (`note` = Backoff-Ende).
 - Beim Beenden der App hält der laufende Backfill vor der nächsten Anfrage an und bleibt `pending`.
 

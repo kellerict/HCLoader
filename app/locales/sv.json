@@ -88,6 +88,8 @@
     "note_budget": "Förfrågningsbudgeten för den här körningen är slut – fortsätter i nästa körning",
     "note_error": "Fel: {error}",
     "note_interrupted": "Avbrutet – fortsätter automatiskt",
+    "note_needs_app": "För stort för en schemalagd körning ({need} förfrågningar, budget {budget} per timme) – fortsätter i appen",
+    "note_needs_app_raise": "För stort för en schemalagd körning ({need} förfrågningar, budget {budget} per timme) – fortsätter i appen, eller sätt ”Förfrågningar per timme” till minst {need}",
     "resumed": "Läs in allt: {name} – fortsätter efter {n} poster",
     "search_refused": "Sökkällor kan inte läsas in helt – en sökning ger högst 100 träffar",
     "started": "Läs in allt: {name} – läser upp till {cap} poster sida för sida",
@@ -182,6 +184,7 @@
   },
   "headless": {
     "backfill": "Läs in allt: {n} källa/källor fortsatta · {added} nya i inkorgen · {done} klara",
+    "backfill_deferred": "Läs allt: {n} källa/källor för stora för en schemalagd körning – fortsätter i appen",
     "backoff": "Backoff aktiv till {until} – inget kontrollerat",
     "backoff_until": "Backoff till {until}",
     "finished": "Headless-körning klar: {n} nya, {downloaded} nedladdade, {errors} fel{extra}",

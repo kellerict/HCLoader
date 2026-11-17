@@ -89,6 +89,8 @@
     "note_budget": "Šīs palaišanas pieprasījumu budžets izlietots – turpināsies nākamajā palaišanā",
     "note_error": "Kļūda: {error}",
     "note_interrupted": "Pārtraukts – turpināsies automātiski",
+    "note_needs_app": "Pārāk liels plānotai palaišanai ({need} pieprasījumi, budžets {budget} stundā) – turpinās lietotnē",
+    "note_needs_app_raise": "Pārāk liels plānotai palaišanai ({need} pieprasījumi, budžets {budget} stundā) – turpinās lietotnē, vai iestatiet “Pieprasījumi stundā” vismaz {need}",
     "resumed": "Ielasīt visu: {name} – turpina pēc {n} ierakstiem",
     "search_refused": "Meklēšanas avotus nevar ielasīt pilnībā – meklēšana atgriež ne vairāk kā 100 rezultātus",
     "started": "Ielasīt visu: {name} – ielasa līdz {cap} ierakstiem lapu pa lapai",
@@ -183,6 +185,7 @@
   },
   "headless": {
     "backfill": "Ielasīt visu: turpināti avoti: {n} · jauni iesūtnē: {added} · pabeigti: {done}",
+    "backfill_deferred": "Ielasīt visu: {n} avots(-i) pārāk liels(-i) plānotai palaišanai – turpinās lietotnē",
     "backoff": "Pauze ir aktīva līdz {until} – nekas netika pārbaudīts",
     "backoff_until": "Pauze līdz {until}",
     "finished": "Headless palaišana pabeigta: {n} jauni, {downloaded} lejupielādēti, {errors} kļūdas{extra}",

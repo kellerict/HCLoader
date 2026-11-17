@@ -88,6 +88,8 @@
     "note_budget": "Forespørselsbudsjettet for denne kjøringen er brukt opp – fortsetter i neste kjøring",
     "note_error": "Feil: {error}",
     "note_interrupted": "Avbrutt – fortsetter automatisk",
+    "note_needs_app": "For stort for en planlagt kjøring ({need} forespørsler, budsjett {budget} per time) – fortsetter i appen",
+    "note_needs_app_raise": "For stort for en planlagt kjøring ({need} forespørsler, budsjett {budget} per time) – fortsetter i appen, eller sett «Forespørsler per time» til minst {need}",
     "resumed": "Les inn alt: {name} – fortsetter etter {n} oppføringer",
     "search_refused": "Søkekilder kan ikke leses inn helt – et søk gir maks. 100 treff",
     "started": "Les inn alt: {name} – leser opptil {cap} oppføringer side for side",
@@ -182,6 +184,7 @@
   },
   "headless": {
     "backfill": "Les inn alt: {n} kilde(r) fortsatt · {added} nye i innboksen · {done} ferdig",
+    "backfill_deferred": "Les alt: {n} kilde(r) for store for en planlagt kjøring – fortsetter i appen",
     "backoff": "Backoff aktiv til {until} – ingenting sjekket",
     "backoff_until": "Backoff til {until}",
     "finished": "Headless-kjøring ferdig: {n} nye, {downloaded} lastet ned, {errors} feil{extra}",

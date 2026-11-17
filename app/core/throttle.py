@@ -42,6 +42,9 @@ K_LAST_DL_END = "last_download_end"
 K_LAST_REQUEST = "last_request"
 # v0.4.0 «Read everything (once)»: time of the last backfill page request (pacing per hour)
 K_BACKFILL_LAST = "backfill_last_request"
+# Review v0.4.0 M3: global (not per platform) stamp of the last yt-dlp update start. A backfill
+# of another process (headless) stops before its next request when it changes.
+K_YTDLP_UPDATE = "ytdlp_update_started"
 
 _RATE_LIMIT_PATTERNS = [
     re.compile(r"http error 429", re.I),
@@ -444,31 +447,43 @@ class Throttle:
             if count_attempt:
                 self.register_download()
 
-    def backfill_slot(self, per_hour: int, cancel_event: threading.Event | None = None) -> None:
-        """v0.4.0: before every page request of a «Read everything (once)» backfill.
+    def backfill_pace(self, per_hour: int, cancel_event: threading.Event | None = None) -> None:
+        """v0.4.0: pacing wait before a «Read everything (once)» page request.
 
-        Paces backfill requests evenly at most `per_hour` per hour (3600 / per_hour seconds
-        apart, persisted in `state`, so a restart never bursts), then takes a normal request
-        slot (backoff check, `sleep_requests` spacing to *any* other request). The pacing wait
-        runs outside the throttle lock: searches and downloads are not held up by it. Raises
-        BackoffActive; `cancel_event` aborts the wait (WaitCancelled)."""
+        Waits until `3600 / per_hour` seconds have passed since the last backfill request
+        (persisted in `state`, so a restart never bursts). Review v0.4.0 M1: the caller holds
+        *no* lock while waiting here - neither the throttle lock nor the metadata lock - so
+        searches, watchlist checks and download extraction are never held up by the pacing.
+        Raises BackoffActive; `cancel_event` aborts the wait (WaitCancelled)."""
         interval = 3600.0 / max(1, int(per_hour))
         with self._xlock(cancel_event):
             self.check_backoff()
             raw = self._get(K_BACKFILL_LAST)
-            wait = 0.0
-            if raw:
-                try:
-                    since = (self._now() - datetime.fromisoformat(raw)).total_seconds()
-                    # a clock set back must not produce an endless wait
-                    wait = min(interval - since, interval)
-                except ValueError:
-                    wait = 0.0
+        wait = 0.0
+        if raw:
+            try:
+                since = (self._now() - datetime.fromisoformat(raw)).total_seconds()
+                # a clock set back must not produce an endless wait
+                wait = min(interval - since, interval)
+            except ValueError:
+                wait = 0.0
         if wait > 0:
             self._wait(wait, cancel_event)
+        elif cancel_event is not None and cancel_event.is_set():
+            raise WaitCancelled
+
+    def backfill_request(self, cancel_event: threading.Event | None = None) -> None:
+        """v0.4.0: the request slot of a backfill page request, called under the metadata lock
+        right before the request (after `backfill_pace`): backoff check, `sleep_requests`
+        spacing to *any* other request, then the backfill pacing stamp."""
         self._request_slot("list", cancel_event, False, limits=False)
         with self._xlock(cancel_event):
             self._set(K_BACKFILL_LAST, self._now().isoformat())
+
+    def backfill_slot(self, per_hour: int, cancel_event: threading.Event | None = None) -> None:
+        """`backfill_pace` + `backfill_request` in one call (no metadata lock involved)."""
+        self.backfill_pace(per_hour, cancel_event)
+        self.backfill_request(cancel_event)
 
     def request_spacing(self, cancel_event: threading.Event | None = None) -> None:
         """Re-enforce `sleep_requests` after waiting for the metadata lock (R2-m1), without

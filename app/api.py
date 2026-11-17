@@ -529,6 +529,9 @@ class Api:
             }
         ulog = logging.getLogger("hcloader.update")
         try:
+            backfill.stop_for_update(
+                self._db
+            )  # M3: a headless backfill stops before its next request
             log.info(tr("api.updating_ytdlp"))
             result = self._update_runner(on_line=lambda line: ulog.info("%s", line))
         finally:
@@ -1089,6 +1092,9 @@ class Api:
         return {"ok": True, "source": self._source_dict(self._db.get_source(sid))}
 
     def delete_source(self, source_id: int) -> dict[str, Any]:
+        ev = self._bf_events.get(int(source_id))
+        if ev is not None:
+            ev.set()  # Review v0.4.0 m2: its backfill stops before the next page
         self._db.delete_source(int(source_id))
         self._push()
         return {"ok": True}
@@ -1217,6 +1223,12 @@ class Api:
         if row and row["state"] == "running" and self._bf_current == sid:
             # already being read (double click / second window): nothing to change
             return {"ok": True, "backfill": backfill.view(row, self._cfg)}
+        if row and row["state"] == "running" and self._bf_current is None:
+            # Review v0.4.0 m1: `running` and not ours - another process (headless) may read it
+            probe = self._backfill_lock()
+            if probe is None:
+                return {"ok": False, "error": tr("api.backfill_busy")}
+            probe.release()  # stale row of a crashed process: start/resume it here
         backfill.request(self._db, sid)
         self._emit_backfill(sid)
         self._submit_backfill([sid])

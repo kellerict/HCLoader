@@ -1512,6 +1512,7 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "dlg_unknown": "Die Grösse ist unbekannt – vorsichtig geschätzt für das Maximum von {cap} Einträgen.",
     "dlg_capped": "Eingelesen werden nur die ersten {cap} Einträge (Einstellungen › Zeitplan).",
     "dlg_resume": "Macht nach {n} bereits gelesenen Einträgen weiter; deren Seiten werden zuerst nochmals abgefragt.",
+    "dlg_headless": "Zu gross für einen geplanten Lauf ({n} Anfragen pro Stunde): Wird die App vorher geschlossen, geht es nur in der App weiter.",
     "dlg_pace": "Höchstens {n} Anfragen pro Stunde, gleichmässig verteilt. Ein Backoff (HTTP 429 / Bot-Prüfung), das Schliessen der App oder ein Fehler unterbrechen nur – es geht später automatisch weiter. Anhalten oder abbrechen kannst du jederzeit.",
     "dlg_ok": "Einlesen starten",
     "dlg_ok_resume": "Weiter einlesen",

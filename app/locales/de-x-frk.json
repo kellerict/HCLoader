@@ -90,6 +90,8 @@
     "note_budget": "Anfrogn-Budget vo dem Lauf is aufbraucht – gehd im nächsdn Lauf weider",
     "note_error": "Fehler: {error}",
     "note_interrupted": "Underbrochn – gehd vo selber weider",
+    "note_needs_app": "Zu groß für an gplanden Lauf ({need} Anfrochn, Budget {budget} pro Stund) – gehd in der App weider",
+    "note_needs_app_raise": "Zu groß für an gplanden Lauf ({need} Anfrochn, Budget {budget} pro Stund) – gehd in der App weider, oder «Anfrochn pro Stund» auf mindesdns {need} setzn",
     "resumed": "Alles eilesn: {name} – machd nach {n} Eiträch weider",
     "search_refused": "Suchquelln lassn si ned ganz eilesn – a Suche liefert höchsdns 100 Treffer",
     "started": "Alles eilesn: {name} – liesd bis zu {cap} Eiträch Seitn fier Seitn",
@@ -184,6 +186,7 @@
   },
   "headless": {
     "backfill": "Alles eilesn: {n} Quelln weidergmachd · {added} nei im Eingang · {done} ferdich",
+    "backfill_deferred": "Alles eilesn: {n} Quelln zu groß für an gplanden Lauf – gehd in der App weider",
     "backoff": "Backoff aktiv bis {until} – nix gprüft",
     "backoff_until": "Backoff bis {until}",
     "finished": "Headless-Lauf beended: {n} neu, {downloaded} gladn, {errors} Fehler{extra}",

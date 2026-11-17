@@ -41,6 +41,7 @@ from .library import FS_LOCK
 from .platforms import SOUNDCLOUD, YOUTUBE
 from .redact import redact
 from .throttle import (
+    K_YTDLP_UPDATE,
     MetadataBusy,
     RequestBudgetSpent,
     Throttle,
@@ -815,13 +816,17 @@ class YtClient:
         Every HTTP request yt-dlp makes for the listing (webpage, API pages, SoundCloud
         client-id discovery …) passes `_PagedGate`: entries received so far are handed to
         `on_entries(batch, position)` (position = entries of the listing walked, the resume
-        cursor), then the request waits for `Throttle.backfill_slot` (backoff check,
-        `requests_per_hour` pacing, `sleep_requests` spacing) under the metadata lock - held
-        per request only, so searches and downloads interleave. `max_requests` (headless budget)
-        raises RequestBudgetSpent before a further request. A resume (`start` > 0) has to walk
-        the first `start` entries again (YouTube/SoundCloud only know "next page" tokens); they
-        are skipped without processing. `cancel_event` stops before the next entry/request
-        (WaitCancelled). 429/bot check: backoff + YtClientError(rate_limited)."""
+        cursor), then the request waits for its pacing slot (`Throttle.backfill_pace`,
+        `requests_per_hour`) *without any lock* and only then takes the metadata lock for the
+        request itself (`Throttle.backfill_request`: backoff check, `sleep_requests` spacing) -
+        so searches, checks and downloads are never held up by the pacing (Review v0.4.0 M1).
+        `max_requests` (headless budget) raises RequestBudgetSpent before a further request. A
+        resume (`start` > 0) has to walk the first `start` entries again (YouTube/SoundCloud
+        only know "next page" tokens); they are skipped without processing
+        (`PagedListing.walked` counts them). `cancel_event` or a yt-dlp update started by
+        another process stop before the next entry/request (WaitCancelled; entries not yet
+        handed over are dropped, the cursor stays). 429/bot check: backoff +
+        YtClientError(rate_limited)."""
         settings = self.settings
         platform = platforms.url_platform(url) or YOUTUBE
         if platform == SOUNDCLOUD and not settings.soundcloud.enabled:
@@ -834,6 +839,13 @@ class YtClient:
         th.check_backoff()
         self._prepare(settings, platform)
         listing = PagedListing(position=start)
+        db = self.db
+        update_mark = db.get_state(K_YTDLP_UPDATE) if db is not None else None
+
+        def updated() -> bool:
+            """M3: a yt-dlp update (GUI) started since this listing began -> stop."""
+            return db is not None and db.get_state(K_YTDLP_UPDATE) != update_mark
+
         gate = _PagedGate(
             th,
             listing,
@@ -842,6 +854,7 @@ class YtClient:
             max_requests=max_requests,
             on_request=on_request,
             cancel_event=cancel_event,
+            stopped=updated,
         )
         logger = opts.get("logger")
         try:
@@ -852,8 +865,13 @@ class YtClient:
                 ie = ydl.extract_info(normalize_source_url(url), download=False, process=False)
                 if ie is None:
                     raise YtClientError(tr("yt.no_data"))
+                if ie.get("_type") in ("url", "url_transparent") and ie.get("url"):
+                    # m4: redirected URL - resolve the target lazily as well (cursor per page)
+                    target = ydl.extract_info(ie["url"], download=False, process=False)
+                    if target is not None:
+                        ie = target
                 if ie.get("_type") not in ("playlist", "multi_video"):
-                    # redirected URL: let yt-dlp resolve it (flat, at most `limit` entries)
+                    # still no listing: let yt-dlp resolve it (flat, at most `limit` entries)
                     ydl.params["playlistend"] = limit
                     ie = ydl.process_ie_result(ie, download=False)
                     if ie is None:
@@ -866,21 +884,24 @@ class YtClient:
                 walked = 0
                 entries = iter(ie.get("entries") or ())
                 while walked < limit:
-                    if cancel_event is not None and cancel_event.is_set():
-                        raise WaitCancelled
+                    gate.check_stop(external=False)
                     try:
                         entry = next(entries)
                     except StopIteration:
                         listing.complete = True
                         break
                     walked += 1
+                    listing.walked = walked
                     if walked <= start:
                         continue
                     gate.add(entry, walked, platform)
+                gate.check_stop(external=False)
                 gate.flush()
                 listing.capped = not listing.complete
                 return listing
-        except (DownloadCancelled, MetadataBusy, WaitCancelled, RequestBudgetSpent):
+        except WaitCancelled:
+            raise  # m3: pause/cancel/delete/update - entries not yet handed over are dropped
+        except (DownloadCancelled, MetadataBusy, RequestBudgetSpent):
             gate.flush_quietly()
             raise
         except Exception as exc:
@@ -1327,11 +1348,14 @@ class PagedListing:
     total: int | None = None  # size reported on the first page (`playlist_count`), else None
     source_name: str = ""
     requests: int = 0  # page requests made (through the throttle)
+    walked: int = 0  # entries walked in this call, including re-read ones before `start`
     complete: bool = False  # end of the listing reached
     capped: bool = False  # stopped at `limit`
 
 
 _LOOPBACK = {"127.0.0.1", "localhost", "::1"}
+# Review v0.4.0 m7: script assets of the SoundCloud client-id discovery (no listing page)
+_UNPACED_SUFFIXES = ("sndcdn.com",)
 
 
 class _PagedGate:
@@ -1349,8 +1373,10 @@ class _PagedGate:
         max_requests: int | None,
         on_request: Callable[[], None] | None,
         cancel_event: threading.Event | None,
+        stopped: Callable[[], bool] | None = None,
     ) -> None:
         self.th = throttle
+        self.stopped = stopped
         self.listing = listing
         self.on_entries = on_entries
         self.per_hour = per_hour
@@ -1371,13 +1397,18 @@ class _PagedGate:
                 host = ""
             if host in _LOOPBACK:
                 return orig(req, *args, **kwargs)
+            self.check_stop()  # m3: a pause/cancel/delete drops the batch (cursor unchanged)
             self.flush()
-            if self.cancel is not None and self.cancel.is_set():
-                raise WaitCancelled
             if self.max_requests is not None and self.listing.requests >= self.max_requests:
                 raise RequestBudgetSpent
+            # Review v0.4.0 M1: the pacing wait holds no lock; the metadata lock is taken only
+            # for the request itself (searches, checks and downloads interleave freely).
+            # m7: SoundCloud script assets (client-id discovery) are spaced, not paced.
+            if not host.endswith(_UNPACED_SUFFIXES):
+                self.th.backfill_pace(self.per_hour, self.cancel)
+            self.check_stop()
             with self.th.metadata_lock(cancel_event=self.cancel):
-                self.th.backfill_slot(self.per_hour, self.cancel)
+                self.th.backfill_request(self.cancel)
                 self.listing.requests += 1
                 if self.on_request is not None:
                     self.on_request()
@@ -1387,6 +1418,14 @@ class _PagedGate:
                     self.th.mark_request()
 
         ydl.urlopen = urlopen
+
+    def check_stop(self, *, external: bool = True) -> None:
+        """Cancel event of this process; `external`: also `stopped()` (a yt-dlp update started
+        by another process, Review v0.4.0 M3 - one DB read, so only before requests)."""
+        if self.cancel is not None and self.cancel.is_set():
+            raise WaitCancelled
+        if external and self.stopped is not None and self.stopped():
+            raise WaitCancelled
 
     def add(self, entry: Any, walked: int, platform: str) -> None:
         self.walked = walked

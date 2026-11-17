@@ -1478,6 +1478,7 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
   "dlg_unknown": "Ukuran tidak diketahui – perkiraan hati-hati untuk maksimum {cap} entri.",
   "dlg_capped": "Hanya {cap} entri pertama yang dibaca (Pengaturan › Jadwal).",
   "dlg_resume": "Melanjutkan setelah {n} entri yang sudah dibaca; halamannya diminta ulang terlebih dahulu.",
+  "dlg_headless": "Terlalu besar untuk proses terjadwal ({n} permintaan per jam): jika aplikasi ditutup sebelum selesai, hanya dilanjutkan di aplikasi.",
   "dlg_pace": "Paling banyak {n} permintaan per jam, tersebar merata. Backoff (HTTP 429 / pemeriksaan bot), menutup aplikasi, atau galat hanya menyela – nanti berlanjut otomatis. Anda bisa menjeda atau membatalkan kapan saja.",
   "dlg_ok": "Mulai membaca",
   "dlg_ok_resume": "Lanjut membaca",

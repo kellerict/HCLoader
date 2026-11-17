@@ -88,6 +88,8 @@
     "note_budget": "Request budget of this run used up – continues in the next run",
     "note_error": "Error: {error}",
     "note_interrupted": "Interrupted – continues automatically",
+    "note_needs_app": "Too large for a scheduled run ({need} requests, budget {budget} per hour) – continues in the app",
+    "note_needs_app_raise": "Too large for a scheduled run ({need} requests, budget {budget} per hour) – continues in the app, or set “Requests per hour” to at least {need}",
     "resumed": "Read everything: {name} – continuing after {n} entries",
     "search_refused": "Search sources cannot be read completely – a search returns at most 100 results",
     "started": "Read everything: {name} – reading up to {cap} entries page by page",
@@ -182,6 +184,7 @@
   },
   "headless": {
     "backfill": "Read everything: {n} source(s) continued · {added} new in the inbox · {done} finished",
+    "backfill_deferred": "Read everything: {n} source(s) too large for a scheduled run – continue in the app",
     "backoff": "Backoff active until {until} – nothing checked",
     "backoff_until": "Backoff until {until}",
     "finished": "Headless run finished: {n} new, {downloaded} downloaded, {errors} errors{extra}",

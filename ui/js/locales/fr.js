@@ -1512,6 +1512,7 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
     "dlg_unknown": "Taille inconnue – estimation prudente pour le maximum de {cap} entrées.",
     "dlg_capped": "Seules les {cap} premières entrées sont lues (Paramètres › Planification).",
     "dlg_resume": "Reprend après {n} entrées déjà lues ; leurs pages sont d’abord redemandées.",
+    "dlg_headless": "Trop volumineux pour une exécution planifiée ({n} requêtes par heure) : si l’app est fermée avant la fin, la lecture ne reprend que dans l’app.",
     "dlg_pace": "Au plus {n} requêtes par heure, réparties régulièrement. Un backoff (HTTP 429 / contrôle anti-bot), la fermeture de l’app ou une erreur ne font qu’interrompre – la lecture reprend automatiquement plus tard. Vous pouvez la mettre en pause ou l’annuler à tout moment.",
     "dlg_ok": "Lancer la lecture",
     "dlg_ok_resume": "Continuer la lecture",

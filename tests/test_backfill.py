@@ -82,7 +82,11 @@ def throttle(db, settings, clock):
 
 
 def add(db, stype="channel", url=CHANNEL, **kw):
-    return db.get_source(db.add_source(stype, kw.pop("name", "DJ X"), url, **kw))
+    count = kw.pop("item_count", None)
+    sid = db.add_source(stype, kw.pop("name", "DJ X"), url, **kw)
+    if count is not None:
+        db.update_source(sid, item_count=count)
+    return db.get_source(sid)
 
 
 # =========================================================================== YtClient
@@ -167,13 +171,13 @@ def collect():
 def test_paged_listing_flushes_each_page_before_the_next_request(client, paged, throttle, db):
     got, on_entries = collect()
     slots = []
-    real = throttle.backfill_slot
+    real = throttle.backfill_pace
 
     def slot(per_hour, cancel_event=None):
         slots.append((per_hour, len(got)))  # pages handed over before this request
         real(per_hour, cancel_event)
 
-    throttle.backfill_slot = slot
+    throttle.backfill_pace = slot
     listing = client.list_source_paged(CHANNEL, limit=100, on_entries=on_entries)
     assert [pos for _, pos in got] == [3, 6, 9, 12]
     assert [len(ids) for ids, _ in got] == [3, 3, 3, 3]
@@ -472,19 +476,20 @@ def test_errors_in_a_row_pause_the_backfill(db, settings):
 
 
 def test_continue_open_budget_and_eligibility(db, settings, throttle):
-    a = add(db, name="A")
-    b = add(db, url="https://www.youtube.com/@b", name="B")
-    off = add(db, url="https://www.youtube.com/@c", name="C", enabled=False)
+    a = add(db, name="A", item_count=9)
+    b = add(db, url="https://www.youtube.com/@b", name="B", item_count=9)
+    off = add(db, url="https://www.youtube.com/@c", name="C", enabled=False, item_count=9)
     for s in (a, b, off):
         backfill.request(db, s["id"])
     client = FakeClient([entry(i) for i in range(1, 10)])
     out = backfill.continue_open(
         client=client, db=db, throttle=throttle, settings=settings, max_requests=4
     )
-    # A: 3 requests (done), B: 1 request left in the budget, C (disabled) is skipped
-    assert [c["max_requests"] for c in client.calls] == [4, 1]
-    assert out[0].state == "done" and out[1].budget_spent and out[1].state == "pending"
-    assert db.get_backfill(b["id"])["position"] == 3
+    # A: estimated 2 requests, fits -> 3 requests (done). B: estimated 2, only 1 left in the
+    # budget -> not started at all (next run, no wasted request). C (disabled) is skipped.
+    assert [c["max_requests"] for c in client.calls] == [4]
+    assert out[0].state == "done" and out[1].skipped and not out[1].deferred
+    assert db.get_backfill(b["id"])["position"] == 0 and db.get_backfill(b["id"])["note"] is None
     assert db.get_backfill(off["id"])["state"] == "pending"
     # explicit start (ids): also a disabled source
     backfill.continue_open(
@@ -552,39 +557,318 @@ class _Lock:
         pass
 
 
+class _Held:
+    def __init__(self, log, name):
+        self.log, self.name = log, name
+
+    def release(self):
+        self.log.append(f"release:{self.name}")
+
+
+def _headless(db, settings, client, **kw):
+    return headless.run_watchlist(
+        settings=settings,
+        db=db,
+        client_factory=lambda: client,
+        run_lock=kw.pop("run_lock", _Lock),
+        watchlist_lock=kw.pop("watchlist_lock", _Lock),
+        backfill_lock=_Lock,
+        configure_logging=False,
+        watchdog=types.SimpleNamespace(check=lambda: None, stop=lambda: None, running=lambda: True),
+        **kw,
+    )
+
+
 def test_headless_run_continues_open_backfill_within_budget(tmp_path, settings):
     settings.storage.target_dir = str(tmp_path / "music")
     settings.watchlist.backfill_requests_per_hour = 2
     db = Database(tmp_path / "h.db")
     try:
-        src = add(db)
+        src = add(db, item_count=9)  # estimate: 1 + 1 page -> fits the budget of 2
         db.mark_source_checked(src["id"])
         backfill.request(db, src["id"])
         paused = add(db, url="https://www.youtube.com/@p", name="P")
         backfill.request(db, paused["id"])
         backfill.pause(db, paused["id"])
         client = HeadlessClient([entry(i) for i in range(1, 10)])
-        code = headless.run_watchlist(
-            settings=settings,
-            db=db,
-            client_factory=lambda: client,
-            run_lock=_Lock,
-            watchlist_lock=_Lock,
-            backfill_lock=_Lock,
-            configure_logging=False,
-            watchdog=types.SimpleNamespace(
-                check=lambda: None, stop=lambda: None, running=lambda: True
-            ),
-        )
-        assert code == EXIT_OK
+        assert _headless(db, settings, client) == EXIT_OK
         assert [c["start"] for c in client.calls] == [0]  # the paused one is left alone
         row = db.get_backfill(src["id"])
-        assert row["state"] == "pending" and row["position"] == 6  # 2 requests = 2 pages
+        # the pages were smaller than estimated: the budget backstop stops after 2 pages
+        assert row["state"] == "pending" and row["position"] == 6
         assert db.count_videos(status="inbox") == 6
         run = db.list_runs()[0]
         assert run["found"] == 6 and "Read everything" in run["note"]
+        # M2: the learned page size shows that the next run cannot finish (1 + 1 re-read + 1
+        # new > 2): it defers without any request instead of re-reading the same pages
+        assert _headless(db, settings, client) == EXIT_OK
+        assert len(client.calls) == 1
+        row = db.get_backfill(src["id"])
+        assert row["state"] == "pending" and "Too large for a scheduled run" in row["note"]
+        assert "too large" in db.list_runs()[0]["note"]
     finally:
         db.close()
+
+
+def test_headless_releases_run_and_watchlist_locks_before_the_backfill(tmp_path, settings):
+    """Review v0.4.0 M3: the GUI queue, in-app checks and a yt-dlp update are not blocked
+    while a scheduled run reads a source page by page."""
+    settings.storage.target_dir = str(tmp_path / "music")
+    db = Database(tmp_path / "h.db")
+    log: list[str] = []
+    try:
+        src = add(db, item_count=9)
+        db.mark_source_checked(src["id"])
+        backfill.request(db, src["id"])
+
+        class Client(HeadlessClient):
+            def list_source_paged(self, *a, **kw):
+                log.append("backfill")
+                return super().list_source_paged(*a, **kw)
+
+        code = _headless(
+            db,
+            settings,
+            Client([entry(i) for i in range(1, 4)]),
+            run_lock=lambda: _Held(log, "run"),
+            watchlist_lock=lambda: _Held(log, "watchlist"),
+        )
+        assert code == EXIT_OK
+        assert log == ["release:watchlist", "release:run", "backfill"]  # once, before reading
+        assert db.get_backfill(src["id"])["state"] == "done"
+    finally:
+        db.close()
+
+
+def test_headless_without_open_backfill_keeps_locks_to_the_end(tmp_path, settings):
+    settings.storage.target_dir = str(tmp_path / "music")
+    db = Database(tmp_path / "h.db")
+    log: list[str] = []
+    try:
+        code = _headless(
+            db,
+            settings,
+            HeadlessClient([]),
+            run_lock=lambda: _Held(log, "run"),
+            watchlist_lock=lambda: _Held(log, "watchlist"),
+        )
+        assert code == EXIT_OK and log == ["release:watchlist", "release:run"]
+    finally:
+        db.close()
+
+
+# =========================================================================== M2 economics
+
+
+def _budget_runs(db, settings, client, runs):
+    """`runs` scheduled runs (budget = requests per hour); returns requests per run."""
+    per_run = []
+    for _ in range(runs):
+        before = sum(1 for _ in client.calls)
+        out = backfill.continue_open(
+            client=client,
+            db=db,
+            throttle=None,
+            settings=settings,
+            max_requests=int(settings.watchlist.backfill_requests_per_hour),
+        )
+        per_run.append(sum(r.requests for r in out))
+        assert len(client.calls) - before <= 1
+    return per_run
+
+
+def test_cap_5000_at_120_per_hour_is_deferred_to_the_app_with_a_clear_note(db, settings):
+    """Review v0.4.0 M2: a YouTube channel with cap 5000 needs ~168 requests; a scheduled run
+    (120/h) can never finish it. Instead of re-reading the same pages every day it makes no
+    request at all and says why; the app (no budget) reads it in one go."""
+    settings.watchlist.backfill_max_entries = 5000
+    settings.watchlist.backfill_requests_per_hour = 120
+    src = add(db)
+    backfill.request(db, src["id"])
+    client = FakeClient([entry(i) for i in range(1, 6001)], page=30)
+    assert _budget_runs(db, settings, client, 5) == [0] * 5
+    assert client.calls == []
+    row = db.get_backfill(src["id"])
+    assert row["state"] == "pending" and row["position"] == 0
+    assert "Too large for a scheduled run (168 requests, budget 120 per hour)" in row["note"]
+    assert "at least 168" in row["note"]  # 168 <= 600: raising the value would help
+    est = backfill.estimate(src, db, settings)
+    assert est["requests"] == 168 and est["headless_ok"] is False
+    # the app continues it without a budget: a single paged generator, every page once
+    out = backfill.continue_open(client=client, db=db, throttle=None, settings=settings)
+    assert out[0].state == "done" and out[0].requests == 167
+    assert db.get_backfill(src["id"])["position"] == 5000
+
+
+def test_cap_5000_resume_after_app_close_is_left_to_the_app(db, settings):
+    settings.watchlist.backfill_max_entries = 5000
+    settings.watchlist.backfill_requests_per_hour = 120
+    src = add(db)
+    backfill.request(db, src["id"])
+    db.update_backfill(src["id"], position=3570)  # the app was closed after 119 pages
+    client = FakeClient([entry(i) for i in range(1, 6001)], page=30)
+    assert _budget_runs(db, settings, client, 3) == [0, 0, 0]
+    assert backfill.estimate(src, db, settings)["reread"] == 119
+    out = backfill.continue_open(client=client, db=db, throttle=None, settings=settings)
+    assert client.calls == [{"start": 3570, "limit": 5000, "max_requests": None}]
+    assert out[0].state == "done"
+
+
+def test_cap_2000_at_120_per_hour_finishes_in_one_scheduled_run(db, settings):
+    src = add(db)  # defaults: cap 2000, 120/h -> 1 + 67 requests
+    backfill.request(db, src["id"])
+    client = FakeClient([entry(i) for i in range(1, 2501)], page=30)
+    assert _budget_runs(db, settings, client, 2) == [67, 0]
+    assert db.get_backfill(src["id"])["state"] == "done"
+
+
+def test_smaller_pages_than_estimated_end_after_a_bounded_number_of_runs(db, settings):
+    """Backstop: pages of 10 instead of 30. The first run spends its budget; the learned page
+    size makes every later run defer (no request) - never a daily re-read loop."""
+    src = add(db)
+    backfill.request(db, src["id"])
+    client = FakeClient([entry(i) for i in range(1, 2501)], page=10)
+    assert _budget_runs(db, settings, client, 4) == [120, 0, 0, 0]
+    row = db.get_backfill(src["id"])
+    assert row["position"] == 1200 and "Too large for a scheduled run" in row["note"]
+    size = float(db.get_state(f"backfill_page_size:{src['id']}"))
+    assert size == pytest.approx(1200 / 119, abs=1e-3)
+
+
+def test_resume_that_only_re_reads_is_never_repeated(db, settings):
+    """A resume whose re-read alone used up the budget (no progress) stores an upper bound
+    of the page size, so the next scheduled run defers instead of doing the same again."""
+    src = add(db, item_count=1600)
+    backfill.request(db, src["id"])
+    db.update_backfill(src["id"], position=1500)
+    client = FakeClient([entry(i) for i in range(1, 1601)], page=10)
+    # estimated with pages of 30: 1 + 50 + 4 = 55 requests -> started; actually 150 re-reads
+    assert _budget_runs(db, settings, client, 3) == [120, 0, 0]
+    assert db.get_backfill(src["id"])["position"] == 1500
+
+
+# =========================================================================== review v0.4.0
+
+
+def test_pacing_wait_holds_no_metadata_lock(client, paged, db, settings, throttle):
+    """Review v0.4.0 M1: while the backfill waits for its pacing slot, a search / watchlist
+    check / download extraction gets the metadata lock at once."""
+    pacing = threading.Event()
+    release = threading.Event()
+
+    def sleep(seconds):
+        pacing.set()
+        assert release.wait(5)
+
+    throttle._sleep = sleep
+    throttle._default_sleep = False
+    db.set_state(K_BACKFILL_LAST, datetime.now(UTC).isoformat())  # first request must wait
+    throttle._now = lambda: datetime.now(UTC)
+    errors = []
+
+    def read():
+        try:
+            client.list_source_paged(
+                CHANNEL, limit=100, on_entries=lambda b, p: None, requests_per_hour=60
+            )
+        except Exception as exc:  # pragma: no cover - reported below
+            errors.append(exc)
+
+    t = threading.Thread(target=read)
+    t.start()
+    try:
+        assert pacing.wait(5)
+        with throttle.platform("youtube").metadata_lock(timeout=1.0):
+            pass  # MetadataBusy here = the pacing wait holds the lock
+    finally:
+        release.set()
+        t.join(10)
+    assert not t.is_alive() and errors == []
+
+
+def test_paged_listing_stops_when_a_ytdlp_update_starts(client, paged, db):
+    """M3: the headless backfill no longer holds the run lock; a yt-dlp update of the GUI
+    stops it before its next request (it continues later with the new yt-dlp)."""
+    got = []
+
+    def on_entries(batch, position):
+        got.append(position)
+        backfill.stop_for_update(db)
+
+    with pytest.raises(WaitCancelled):
+        client.list_source_paged(CHANNEL, limit=100, on_entries=on_entries)
+    assert got == [3] and len(paged.instances[0].requested) == 2  # ping + first page
+
+
+def test_paged_listing_resolves_a_redirect_lazily(client, paged, monkeypatch):
+    """m4: a redirecting URL is resolved with process=False again (cursor per page)."""
+    real = paged.extract_info
+
+    def extract_info(self, url, download=True, process=True):
+        if "redirect" in url:
+            self.urlopen("https://www.youtube.com/redirect")
+            return {"_type": "url", "url": CHANNEL + "/videos"}
+        return real(self, url, download=download, process=process)
+
+    monkeypatch.setattr(paged, "extract_info", extract_info)
+    got, on_entries = collect()
+    listing = client.list_source_paged(
+        "https://www.youtube.com/redirect", limit=100, on_entries=on_entries
+    )
+    assert [pos for _, pos in got] == [3, 6, 9, 12] and listing.complete
+
+
+def test_soundcloud_assets_are_spaced_not_paced(throttle):
+    calls = []
+    throttle.backfill_pace = lambda *a, **kw: calls.append("pace")
+    gate = ytclient._PagedGate(
+        throttle,
+        ytclient.PagedListing(),
+        lambda b, p: None,
+        per_hour=120,
+        max_requests=None,
+        on_request=None,
+        cancel_event=None,
+    )
+    ydl = types.SimpleNamespace(urlopen=lambda req: "ok")
+    gate.install(ydl)
+    assert ydl.urlopen("https://a-v2.sndcdn.com/assets/0-abc.js") == "ok"
+    assert calls == [] and gate.listing.requests == 1
+    ydl.urlopen("https://api-v2.soundcloud.com/users/1/tracks")
+    assert calls == ["pace"]
+
+
+def test_pause_by_another_process_stops_before_storing_the_next_page(db, settings):
+    """m1/m3: a pause/cancel only visible in the DB (another process) stops the run before the
+    next batch is stored; counters match the inbox."""
+    src = add(db)
+    backfill.request(db, src["id"])
+
+    def on_progress(view):
+        if view["state"] == "running" and view["position"] == 3:
+            db.update_backfill(src["id"], state="paused")  # the GUI, other process
+
+    res = run(
+        src, FakeClient([entry(i) for i in range(1, 10)]), db, settings, on_progress=on_progress
+    )
+    row = db.get_backfill(src["id"])
+    assert res.cancelled and row["state"] == "paused"
+    assert row["position"] == 3 and row["added"] == 3 and db.count_videos(status="inbox") == 3
+
+
+def test_deleted_source_stops_its_backfill(db, settings):
+    src = add(db)
+    backfill.request(db, src["id"])
+
+    def on_progress(view):
+        if view["state"] == "running" and view["position"] == 3:
+            db.delete_source(src["id"])
+
+    res = run(
+        src, FakeClient([entry(i) for i in range(1, 10)]), db, settings, on_progress=on_progress
+    )
+    assert res.cancelled and res.error is None
+    assert db.count_videos(status="inbox") == 3
 
 
 # =========================================================================== API
@@ -709,6 +993,26 @@ def test_api_pause_stops_the_running_backfill(api_env):
     row = _wait(a, sid, "paused")
     assert row["position"] == 1
     assert a._resume_backfills() is None and a._db.get_backfill(sid)["state"] == "paused"
+
+
+def test_api_delete_source_stops_its_backfill(api_env):
+    a = api_env(HeadlessClient([]))
+    sid = a._db.add_source("channel", "DJ", CHANNEL)
+    ev = threading.Event()
+    a._bf_events[sid] = ev
+    assert a.delete_source(sid)["ok"] and ev.is_set()
+
+
+def test_api_start_refuses_a_backfill_running_in_another_process(api_env):
+    a = api_env(HeadlessClient([entry(1)]))
+    sid = a._db.add_source("channel", "DJ", CHANNEL)
+    backfill.request(a._db, sid)
+    a._db.update_backfill(sid, state="running", position=30)
+    a._backfill_lock = lambda: None  # held by the headless process
+    r = a.start_backfill(sid)
+    assert r["ok"] is False and a._db.get_backfill(sid)["position"] == 30
+    a._backfill_lock = lambda: _Lock()  # stale row of a crashed process: taken over
+    assert a.start_backfill(sid)["ok"]
 
 
 # =========================================================================== architecture

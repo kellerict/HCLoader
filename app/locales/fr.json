@@ -87,6 +87,8 @@
     "note_budget": "Budget de requêtes de cette exécution épuisé – reprend à la prochaine",
     "note_error": "Erreur : {error}",
     "note_interrupted": "Interrompu – reprend automatiquement",
+    "note_needs_app": "Trop volumineux pour une exécution planifiée ({need} requêtes, budget {budget} par heure) – reprend dans l’app",
+    "note_needs_app_raise": "Trop volumineux pour une exécution planifiée ({need} requêtes, budget {budget} par heure) – reprend dans l’app, ou réglez « Requêtes par heure » sur au moins {need}",
     "resumed": "Tout lire : {name} – reprise après {n} entrées",
     "search_refused": "Les sources de recherche ne peuvent pas être lues entièrement – une recherche renvoie au plus 100 résultats",
     "started": "Tout lire : {name} – lecture de jusqu’à {cap} entrées page par page",
@@ -181,6 +183,7 @@
   },
   "headless": {
     "backfill": "Tout lire : {n} source(s) poursuivie(s) · {added} nouvelles dans la boîte · {done} terminée(s)",
+    "backfill_deferred": "Tout lire : {n} source(s) trop volumineuse(s) pour une exécution planifiée – reprend dans l’app",
     "backoff": "Blocage temporaire actif jusqu’à {until} – rien vérifié",
     "backoff_until": "Blocage temporaire jusqu’à {until}",
     "finished": "Exécution headless terminée : {n} nouveaux, {downloaded} téléchargés, {errors} erreurs{extra}",

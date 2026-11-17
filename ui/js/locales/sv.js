@@ -1512,6 +1512,7 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "dlg_unknown": "Storleken är okänd – försiktigt uppskattat för maximum {cap} poster.",
     "dlg_capped": "Bara de första {cap} posterna läses in (Inställningar › Schema).",
     "dlg_resume": "Fortsätter efter {n} redan lästa poster; deras sidor hämtas först igen.",
+    "dlg_headless": "För stort för en schemalagd körning ({n} förfrågningar per timme): stängs appen innan det är klart fortsätter det bara i appen.",
     "dlg_pace": "Högst {n} förfrågningar per timme, jämnt fördelade. En backoff (HTTP 429 / botkontroll), att appen stängs eller ett fel avbryter bara – det fortsätter automatiskt senare. Du kan pausa eller avbryta när som helst.",
     "dlg_ok": "Starta inläsning",
     "dlg_ok_resume": "Fortsätt läsa",

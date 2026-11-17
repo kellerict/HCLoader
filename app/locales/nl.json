@@ -88,6 +88,8 @@
     "note_budget": "Verzoekbudget van deze run op – gaat verder in de volgende run",
     "note_error": "Fout: {error}",
     "note_interrupted": "Onderbroken – gaat automatisch verder",
+    "note_needs_app": "Te groot voor een geplande run ({need} verzoeken, budget {budget} per uur) – gaat verder in de app",
+    "note_needs_app_raise": "Te groot voor een geplande run ({need} verzoeken, budget {budget} per uur) – gaat verder in de app, of zet ‘Verzoeken per uur’ op minstens {need}",
     "resumed": "Alles inlezen: {name} – gaat verder na {n} items",
     "search_refused": "Zoekbronnen kunnen niet volledig worden ingelezen – een zoekopdracht levert maximaal 100 resultaten",
     "started": "Alles inlezen: {name} – leest tot {cap} items pagina voor pagina",
@@ -182,6 +184,7 @@
   },
   "headless": {
     "backfill": "Alles inlezen: {n} bron(nen) voortgezet · {added} nieuw in de inbox · {done} klaar",
+    "backfill_deferred": "Alles inlezen: {n} bron(nen) te groot voor een geplande run – gaat verder in de app",
     "backoff": "Backoff actief tot {until} – niets gecontroleerd",
     "backoff_until": "Backoff tot {until}",
     "finished": "Headless run voltooid: {n} nieuw, {downloaded} gedownload, {errors} fouten{extra}",

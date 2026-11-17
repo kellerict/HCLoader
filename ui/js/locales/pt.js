@@ -1512,6 +1512,7 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "dlg_unknown": "Tamanho desconhecido – estimativa cautelosa para o máximo de {cap} itens.",
     "dlg_capped": "Só os primeiros {cap} itens são lidos (Configurações › Agendamento).",
     "dlg_resume": "Continua após {n} itens já lidos; as páginas deles são pedidas de novo primeiro.",
+    "dlg_headless": "Grande demais para uma execução agendada ({n} pedidos por hora): se a app for fechada antes do fim, só continua na app.",
     "dlg_pace": "No máximo {n} requisições por hora, distribuídas por igual. Um backoff (HTTP 429 / verificação anti-bot), fechar o app ou um erro só interrompem – continua automaticamente depois. Você pode pausar ou cancelar a qualquer momento.",
     "dlg_ok": "Começar a ler",
     "dlg_ok_resume": "Continuar lendo",

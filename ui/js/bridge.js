@@ -119,7 +119,9 @@
                                            schon eine Prüfung -> Fehler-Toast. Fortschritt über die Events
                                            "source" / "watchlist_done"; die UI sperrt «Prüfen» bis "watchlist_done".
      estimate_backfill(id)              -> {ok, source_id, known_total|null, entries, cap, requests, seconds, per_hour,
-                                           page_size, conservative, position, resume} | {ok:false, error}
+                                           page_size, conservative, position, resume, reread, headless_ok}
+                                           | {ok:false, error}; headless_ok:false = zu gross für einen
+                                           geplanten Lauf (geht nur in der App weiter)
                                            v0.4.0 «Alles einlesen (einmalig)», ohne Netzwerk: geschätzte Anfragen
                                            und Dauer für den Bestätigungsdialog. known_total = bekannte Grösse
                                            (letzte Prüfung/früherer Versuch), sonst conservative:true und entries = cap.

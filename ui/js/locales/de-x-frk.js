@@ -1512,6 +1512,7 @@ HC.i18n.register({"code": "de-x-frk", "name": "Fränggisch", "dir": "ltr", "intl
     "dlg_unknown": "Wie grouß des is, wass ma ned – vorsichdich gschätzd fier des Maximum vo {cap} Eiträch.",
     "dlg_capped": "Eiglesn wern bloß die erschdn {cap} Eiträch (Einstellungen › Zeitplan).",
     "dlg_resume": "Machd nach {n} scho glesne Eiträch weider; deren Seitn wern erschd nochamol abgfrochd.",
+    "dlg_headless": "Zu groß für an gplanden Lauf ({n} Anfrochn pro Stund): Wenn die App vorher zugmachd wird, gehd's nur in der App weider.",
     "dlg_pace": "Höchsdns {n} Anfrogn pro Stund, schee verdeild. A Backoff (HTTP 429 / Bot-Brüfung), Zumachn vo der App oder a Fehler underbrechn bloß – nachert gehd's vo selber weider. Ohaldn oder abbrechn kannsd allaweil.",
     "dlg_ok": "Eilesn ofanga",
     "dlg_ok_resume": "Weider eilesn",

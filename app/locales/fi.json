@@ -88,6 +88,8 @@
     "note_budget": "Tämän ajon pyyntöbudjetti käytetty – jatkuu seuraavassa ajossa",
     "note_error": "Virhe: {error}",
     "note_interrupted": "Keskeytetty – jatkuu automaattisesti",
+    "note_needs_app": "Liian suuri ajastetulle ajolle ({need} pyyntöä, budjetti {budget} tunnissa) – jatkuu sovelluksessa",
+    "note_needs_app_raise": "Liian suuri ajastetulle ajolle ({need} pyyntöä, budjetti {budget} tunnissa) – jatkuu sovelluksessa, tai aseta ”Pyyntöjä tunnissa” vähintään arvoon {need}",
     "resumed": "Lue kaikki: {name} – jatketaan {n} kohteen jälkeen",
     "search_refused": "Hakulähteitä ei voi lukea kokonaan – haku palauttaa enintään 100 tulosta",
     "started": "Lue kaikki: {name} – luetaan enintään {cap} kohdetta sivu kerrallaan",
@@ -182,6 +184,7 @@
   },
   "headless": {
     "backfill": "Lue kaikki: {n} lähdettä jatkettu · {added} uutta saapuneissa · {done} valmiina",
+    "backfill_deferred": "Lue kaikki: {n} lähdettä liian suuria ajastetulle ajolle – jatkuu sovelluksessa",
     "backoff": "Backoff aktiivinen asti {until} – mitään ei tarkistettu",
     "backoff_until": "Backoff asti {until}",
     "finished": "Headless-ajo valmis: {n} uutta, {downloaded} ladattu, {errors} virhettä{extra}",

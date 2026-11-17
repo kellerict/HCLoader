@@ -1512,6 +1512,7 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "dlg_unknown": "Størrelsen er ukjent – forsiktig anslått for maksimum {cap} oppføringer.",
     "dlg_capped": "Bare de første {cap} oppføringene leses inn (Innstillinger › Tidsplan).",
     "dlg_resume": "Fortsetter etter {n} allerede leste oppføringer; sidene deres hentes først på nytt.",
+    "dlg_headless": "For stort for en planlagt kjøring ({n} forespørsler per time): lukkes appen før det er ferdig, fortsetter det bare i appen.",
     "dlg_pace": "Maks. {n} forespørsler per time, jevnt fordelt. En backoff (HTTP 429 / botsjekk), at appen lukkes eller en feil avbryter bare – det fortsetter automatisk senere. Du kan sette på pause eller avbryte når som helst.",
     "dlg_ok": "Start innlesing",
     "dlg_ok_resume": "Fortsett å lese",

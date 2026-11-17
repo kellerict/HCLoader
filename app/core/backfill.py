@@ -12,9 +12,18 @@ listing of a channel / playlist / SoundCloud user / set once, page by page (flat
   sources. Filters, dedup (`source_videos`, video status) and festival detection work as for a
   normal check (`watchlist.Ingest`), so nothing is ever stored or loaded twice.
 - Progress is persisted after every page (`backfills.position`, the resume cursor). Interrupted
-  backfills (backoff, app closed, request budget of a headless run, network error) stay
-  `pending` and continue automatically: at the next app start, after the next watchlist check
-  (in-app interval or manual) and in headless runs (budget: one hour's worth of requests).
+  backfills (backoff, app closed, network error) stay `pending` and continue automatically: at
+  the next app start, after the next watchlist check (in-app interval or manual) and in
+  headless runs.
+- Economics of a resume (Review v0.4.0 M2, docs/decisions.md): the platforms only know "next
+  page" tokens, so a resume re-reads every page before the cursor (paced like new pages).
+  Within one run there is a single paged generator - no page is read twice in a run. The GUI
+  has no request budget and always gets through. A headless run has a budget of
+  `backfill_requests_per_hour` requests and only takes on a backfill it can *finish* within
+  the budget left (`cost()`: overhead + re-read pages + remaining pages, page size learned
+  from earlier runs). Otherwise it makes no request for it and leaves a note (continues in
+  the app, or the per-hour value that would let a scheduled run finish it) - a partial
+  headless run would only be read a second time by the next resume.
   A pause by the user (`paused`) waits for «Resume»; «Cancel» drops the cursor (hits already
   in the inbox stay).
 
@@ -37,7 +46,7 @@ from .db import Database, now_iso
 from .discover import format_until
 from .i18n import tr
 from .redact import redact
-from .throttle import BackoffActive, RequestBudgetSpent, WaitCancelled
+from .throttle import K_YTDLP_UPDATE, BackoffActive, RequestBudgetSpent, WaitCancelled
 from .watchlist import Ingest, SourceCheck
 
 log = logging.getLogger(__name__)
@@ -73,6 +82,7 @@ class BackfillResult:
     budget_spent: bool = False
     cancelled: bool = False  # stopped by pause/cancel/app exit
     skipped: bool = False  # nothing done (not open, platform blocked, not eligible)
+    deferred: bool = False  # headless: cannot finish within a run's budget (M2), no request
     error: str | None = None
 
 
@@ -93,6 +103,72 @@ def refusal(source: Mapping[str, Any] | None, settings: Settings) -> str | None:
 
 def cap_of(settings: Settings) -> int:
     return int(settings.watchlist.backfill_max_entries)
+
+
+def _page_key(source_id: int) -> str:
+    return f"backfill_page_size:{int(source_id)}"
+
+
+def page_size(source: Mapping[str, Any], db: Database) -> float:
+    """Entries per page request: learned from earlier runs of this source (M2), else the
+    yt-dlp default of the platform/type (`PAGE_SIZE`)."""
+    platform = source.get("platform") or platforms.YOUTUBE
+    default = float(PAGE_SIZE.get((platform, str(source.get("type"))), 30))
+    raw = db.get_state(_page_key(int(source["id"])))
+    try:
+        learned = float(raw) if raw else 0.0
+    except ValueError:
+        learned = 0.0
+    return learned if learned >= 1.0 else default
+
+
+def _learn_page_size(
+    db: Database, source: Mapping[str, Any], start: int, res: BackfillResult
+) -> None:
+    """Remember entries per page request of this run (conservative: the overhead and a
+    partial last page make it smaller, never larger). A run that spent its budget without
+    reaching new pages (re-read only) stores an upper bound, so the next headless run sees
+    that it cannot finish and defers instead of re-reading the same pages again."""
+    platform = source.get("platform") or platforms.YOUTUBE
+    pages = res.requests - OVERHEAD.get(platform, 1)
+    if pages < 1:
+        return
+    if res.position > start:
+        size = res.position / pages
+    elif res.budget_spent and start > 0:
+        size = start / pages  # every page of this run lay before the cursor
+    else:
+        return
+    try:
+        db.set_state(_page_key(int(source["id"])), f"{max(1.0, size):.3f}")
+    except Exception:
+        log.debug("Backfill page size not stored", exc_info=True)
+
+
+def cost(
+    source: Mapping[str, Any], db: Database, settings: Settings, row: Mapping[str, Any] | None
+) -> dict[str, int]:
+    """Requests a run of this backfill needs to finish (no network): `overhead` (before the
+    first entries), `reread` (pages before the cursor, walked again), `remaining` (pages from
+    the cursor to the target) and `total`. Target: known size (`backfills.total` /
+    `sources.item_count`), capped; unknown -> the full cap (conservative)."""
+    platform = source.get("platform") or platforms.YOUTUBE
+    cap = cap_of(settings)
+    known = row.get("total") if row else None
+    if not isinstance(known, int):
+        known = source.get("item_count")
+    target = min(known, cap) if isinstance(known, int) and known >= 0 else cap
+    position = int(row["position"] or 0) if row and row.get("state") in RESUMABLE else 0
+    page = page_size(source, db)
+    reread = math.ceil(min(position, target) / page)
+    remaining = max(1, math.ceil(max(0, target - position) / page))
+    overhead = OVERHEAD.get(platform, 1)
+    return {
+        "overhead": overhead,
+        "reread": reread,
+        "remaining": remaining,
+        "total": overhead + reread + remaining,
+    }
 
 
 def view(row: Mapping[str, Any] | None, settings: Settings) -> dict[str, Any] | None:
@@ -121,7 +197,8 @@ def view(row: Mapping[str, Any] | None, settings: Settings) -> dict[str, Any] | 
 def estimate(source: Mapping[str, Any], db: Database, settings: Settings) -> dict[str, Any]:
     """Requests and time of a backfill, without network. Known size: `backfills.total` of an
     earlier attempt or `sources.item_count` from the last check; otherwise a conservative
-    estimate for the full cap. A resume walks the already read pages again (counted)."""
+    estimate for the full cap. A resume walks the already read pages again (counted:
+    `reread`). `headless_ok`: a scheduled run (budget = requests per hour) can finish it."""
     sid = int(source["id"])
     platform = source.get("platform") or platforms.YOUTUBE
     cap = cap_of(settings)
@@ -131,8 +208,9 @@ def estimate(source: Mapping[str, Any], db: Database, settings: Settings) -> dic
         known = source.get("item_count")
     known = known if isinstance(known, int) and known >= 0 else None
     entries = min(known, cap) if known is not None else cap
-    page = PAGE_SIZE.get((platform, str(source.get("type"))), 30)
-    requests = OVERHEAD.get(platform, 1) + max(1, math.ceil(entries / page))
+    page = int(round(page_size(source, db)))
+    need = cost(source, db, settings, row)
+    requests = need["total"]
     per_hour = int(settings.watchlist.backfill_requests_per_hour)
     interval = max(3600.0 / per_hour, float(settings.throttle_for(platform).sleep_requests))
     position = int(row["position"]) if row and row["state"] in RESUMABLE else 0
@@ -149,6 +227,8 @@ def estimate(source: Mapping[str, Any], db: Database, settings: Settings) -> dic
         "conservative": known is None,
         "position": position,
         "resume": position > 0,
+        "reread": need["reread"],
+        "headless_ok": requests <= per_hour,
     }
 
 
@@ -187,6 +267,13 @@ def release_running(db: Database, note: str | None = None) -> None:
             )
     except Exception:
         log.debug("Backfill state not released", exc_info=True)
+
+
+def stop_for_update(db: Database) -> None:
+    """Review v0.4.0 M3: a yt-dlp update starts. A backfill of another process (headless,
+    which no longer holds the run lock while it reads) stops before its next request and
+    continues in a later run with the new yt-dlp."""
+    db.set_state(K_YTDLP_UPDATE, now_iso())
 
 
 def open_ids(db: Database) -> list[int]:
@@ -243,7 +330,18 @@ def run(
             db.update_backfill(sid, only_states=("running",), total=total)
             db.update_source(sid, item_count=total)
 
+    def stop_if_taken_away() -> None:
+        """Review v0.4.0 m1/m3: a pause/cancel (also by another process), a restart or the
+        deletion of the source stops the run *before* the batch is stored, so the counters
+        always match what is in the inbox (the batch is read again on resume)."""
+        if cancel is not None and cancel.is_set():
+            raise WaitCancelled
+        current = db.get_backfill(sid)
+        if current is None or current["state"] != "running":
+            raise WaitCancelled
+
     def on_entries(batch: list[dict[str, Any]], position: int) -> None:
+        stop_if_taken_away()
         check = SourceCheck(sid)
         ing = Ingest(source, db=db, settings=settings, res=check, auto=False)  # inbox only
         ing.walk(batch)
@@ -251,7 +349,7 @@ def run(
         res.added += check.inbox
         res.found += check.new
         res.position = position
-        db.update_backfill(
+        stored = db.update_backfill(
             sid,
             only_states=("running",),
             position=position,
@@ -260,6 +358,8 @@ def run(
             requests=counts["requests"] + res.requests,
             failures=0,
         )
+        if not stored:  # taken away between the check and the update
+            raise WaitCancelled
         emit()
 
     log.info(
@@ -321,6 +421,7 @@ def run(
         if total is not None:
             fields["total"] = total
     res.state = final
+    _learn_page_size(db, source, start, res)
     db.update_backfill(
         sid,
         only_states=("running",),
@@ -347,6 +448,16 @@ def run(
     return res
 
 
+def needs_app_note(need: int, settings: Settings) -> str:
+    """M2: why a scheduled run leaves this backfill alone, and what would help."""
+    per_hour = int(settings.watchlist.backfill_requests_per_hour)
+    limit = type(settings.watchlist).model_fields["backfill_requests_per_hour"].metadata
+    top = next((int(m.le) for m in limit if getattr(m, "le", None) is not None), 600)
+    if need <= top:
+        return tr("backfill.note_needs_app_raise", need=need, budget=per_hour)
+    return tr("backfill.note_needs_app", need=need, budget=per_hour)
+
+
 def continue_open(
     *,
     client: Any,
@@ -364,7 +475,10 @@ def continue_open(
     `ids=None` (automatic continuation: app start, after a check, headless): every open one
     of an enabled source; sources of a platform in backoff are skipped without a request.
     `ids`: exactly these (a user's start, also for disabled sources). `max_requests`: budget
-    over all of them (headless). `stop`: ends after the current source (app exit)."""
+    over all of them (headless): a backfill is only taken on if it can finish within the
+    budget left (`cost`, Review v0.4.0 M2); one that cannot even finish within the whole
+    budget is `deferred` with a note and no request. `stop`: ends after the current source
+    (app exit)."""
     rows = db.list_backfills(OPEN)
     if ids is not None:
         wanted = [int(i) for i in ids]
@@ -402,6 +516,19 @@ def continue_open(
         budget = None if max_requests is None else max(0, max_requests - spent)
         if budget == 0:
             break
+        if max_requests is not None and budget is not None:
+            need = cost(source, db, settings, db.get_backfill(sid))["total"]
+            if need > max_requests:
+                note = needs_app_note(need, settings)
+                db.update_backfill(sid, only_states=OPEN, state="pending", note=note)
+                if on_progress is not None:
+                    on_progress(view(db.get_backfill(sid), settings) or {})
+                log.info(tr("backfill.stopped", name=source.get("name"), note=note))
+                out.append(BackfillResult(sid, skipped=True, deferred=True))
+                continue
+            if need > budget:  # fits a run of its own: the next scheduled run
+                out.append(BackfillResult(sid, skipped=True))
+                continue
         res = run(
             source,
             client=client,

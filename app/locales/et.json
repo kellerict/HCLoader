@@ -88,6 +88,8 @@
     "note_budget": "Selle käivituse päringueelarve on otsas – jätkub järgmisel käivitusel",
     "note_error": "Viga: {error}",
     "note_interrupted": "Katkestatud – jätkub automaatselt",
+    "note_needs_app": "Ajastatud käivituse jaoks liiga suur ({need} päringut, eelarve {budget} tunnis) – jätkub rakenduses",
+    "note_needs_app_raise": "Ajastatud käivituse jaoks liiga suur ({need} päringut, eelarve {budget} tunnis) – jätkub rakenduses või sea „Päringuid tunnis“ vähemalt {need}",
     "resumed": "Loe kõik sisse: {name} – jätkab pärast {n} kirjet",
     "search_refused": "Otsinguallikaid ei saa täielikult sisse lugeda – otsing annab kuni 100 tulemust",
     "started": "Loe kõik sisse: {name} – loeb kuni {cap} kirjet lehekülghaaval",
@@ -182,6 +184,7 @@
   },
   "headless": {
     "backfill": "Loe kõik sisse: jätkati {n} allikat · {added} uut postkastis · {done} valmis",
+    "backfill_deferred": "Loe kõik: {n} allikat ajastatud käivituse jaoks liiga suured – jätkub rakenduses",
     "backoff": "Paus on aktiivne kuni {until} – midagi ei kontrollitud",
     "backoff_until": "Paus kuni {until}",
     "finished": "Headless-käivitus lõppes: {n} uut, {downloaded} allalaaditud, {errors} viga{extra}",

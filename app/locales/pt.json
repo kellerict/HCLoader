@@ -87,6 +87,8 @@
     "note_budget": "Orçamento de requisições desta execução esgotado – continua na próxima",
     "note_error": "Erro: {error}",
     "note_interrupted": "Interrompido – continua automaticamente",
+    "note_needs_app": "Grande demais para uma execução agendada ({need} pedidos, orçamento {budget} por hora) – continua na app",
+    "note_needs_app_raise": "Grande demais para uma execução agendada ({need} pedidos, orçamento {budget} por hora) – continua na app, ou defina «Pedidos por hora» para pelo menos {need}",
     "resumed": "Ler tudo: {name} – continuando após {n} itens",
     "search_refused": "Fontes de busca não podem ser lidas por completo – uma busca retorna no máximo 100 resultados",
     "started": "Ler tudo: {name} – lendo até {cap} itens página por página",
@@ -181,6 +183,7 @@
   },
   "headless": {
     "backfill": "Ler tudo: {n} fonte(s) continuada(s) · {added} novos na caixa de entrada · {done} concluída(s)",
+    "backfill_deferred": "Ler tudo: {n} fonte(s) grande(s) demais para uma execução agendada – continua na app",
     "backoff": "Bloqueio temporário ativo até {until} – nada verificado",
     "backoff_until": "Bloqueio temporário até {until}",
     "finished": "Execução headless concluída: {n} novos, {downloaded} baixados, {errors} erros{extra}",

@@ -7,7 +7,10 @@ that one is used without owning it, Review Phase 4 m1), check all enabled source
 then load the queued videos (auto-download entries and anything else already queued)
 sequentially through the normal `DownloadQueue` - `throttle.max_downloads_per_run` applies, the
 rest stays queued. One `runs` entry of kind `headless` (found, downloaded, errors, note).
-Exit codes: `app/exitcodes.py`.
+Then (v0.4.0) open «Read everything (once)» backfills continue - after the run and watchlist
+locks are released (Review v0.4.0 M3: the long, paced backfill must not block the GUI queue, an
+in-app check or a yt-dlp update; its own `BACKFILL_LOCK` and the per-request metadata lock keep
+it exclusive). Exit codes: `app/exitcodes.py`.
 """
 
 from __future__ import annotations
@@ -139,12 +142,18 @@ def run_watchlist(
         return EXIT_BUSY
     if watchdog is None and settings.network.po_token_mode == "http":
         watchdog = _shared_pot(settings.network.po_token_port, gui_probe, pot_ping)
+    held = [run, wl]
+
+    def release_locks() -> None:
+        """M3: idempotent - before the backfill phase and at the end."""
+        while held:
+            held.pop().release()
+
     own_db = db is None
     try:
         db = db or Database(config.db_path())
     except (SchemaTooNewError, MigrationBackupError) as exc:
-        wl.release()
-        run.release()
+        release_locks()
         _say(
             exc.user_message(config.app_home() / "backups")
             if isinstance(exc, SchemaTooNewError)
@@ -165,12 +174,12 @@ def run_watchlist(
             ),
             pot_wait,
             backfill_lock,
+            release_locks,
         )
     finally:
         if own_db:
             db.close()
-        wl.release()
-        run.release()
+        release_locks()
 
 
 def _shared_pot(
@@ -211,7 +220,8 @@ def _continue_backfills(
     backfill_lock: Callable[[], Any],
 ) -> tuple[int, str | None]:
     """Open backfills (interrupted, not paused) continue for at most
-    `watchlist.backfill_requests_per_hour` requests in this run. Returns (new videos, note)."""
+    `watchlist.backfill_requests_per_hour` requests in this run - only those that can finish
+    within it (M2; the others are left to the app with a note). Returns (new videos, note)."""
     if not backfill.open_ids(db):
         return 0, None
     lock = backfill_lock()
@@ -232,12 +242,20 @@ def _continue_backfills(
     finally:
         lock.release()
     ran = [r for r in results if not r.skipped]
-    if not ran:
-        return 0, None
-    added = sum(r.added for r in ran)
-    return sum(r.found for r in ran), tr(
-        "headless.backfill", n=len(ran), added=added, done=sum(1 for r in ran if r.state == "done")
-    )
+    deferred = sum(1 for r in results if r.deferred)
+    notes = []
+    if ran:
+        notes.append(
+            tr(
+                "headless.backfill",
+                n=len(ran),
+                added=sum(r.added for r in ran),
+                done=sum(1 for r in ran if r.state == "done"),
+            )
+        )
+    if deferred:
+        notes.append(tr("headless.backfill_deferred", n=deferred))
+    return sum(r.found for r in ran), "; ".join(notes) or None
 
 
 def _run(
@@ -248,6 +266,7 @@ def _run(
     throttle: Throttle,
     pot_wait: float,
     backfill_lock: Callable[[], Any] = locks.acquire_backfill_lock,
+    release_locks: Callable[[], None] | None = None,
 ) -> int:
     # we hold the run lock: rows left in 'downloading' by a crash are not in use by anyone
     n = db.reset_interrupted_downloads()
@@ -328,8 +347,12 @@ def _run(
                     block_code, block_note = queue.blocked()
                     notes.append(block_note)
                     backoff_noted = backoff_noted or block_code == "backoff"
-        # v0.4.0: continue open «Read everything (once)» backfills within one hour's budget
-        if not res.backoff:
+        # v0.4.0: continue open «Read everything (once)» backfills within one hour's budget.
+        # M3: the queue is done - release the run/watchlist locks first, so the GUI (queue,
+        # in-app checks, yt-dlp update) is not blocked for the paced backfill (~1 h)
+        if not res.backoff and backfill.open_ids(db):
+            if release_locks is not None:
+                release_locks()
             added, note = _continue_backfills(client, db, throttle, settings, backfill_lock)
             found += added
             if note:
