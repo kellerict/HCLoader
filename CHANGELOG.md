@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning follows [SemVer](https://semver.org/).
-Entries are written in English from v0.3.0 on; older entries are in German.
+Entries are written in English from v0.2.1 on; older entries are in German.
 
 Every version starts with `### Highlights`: 3 to 8 one-line bullets, no prose. The app shows exactly
 this list in the update dialog; everything below it (`### Added`, `### Changed`, `### Fixed` …) only
@@ -10,16 +10,35 @@ appears after «Show all changes» (`docs/RELEASING.md`).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-17
+
 ### Highlights
-- Release notes in the app are short and structured: highlights first, all changes on demand
+- Readable release notes in the app: highlights first, all changes on demand
+- The update dialog lists every skipped version with its own highlights, newest first
+- Links in the release notes open in your system browser
+- Release notes of every version are readable offline under Settings › Maintenance, with ‹ Older / Newer ›
+
+### Added
+- Settings › Maintenance › «Release notes»: browse the notes of every version from the CHANGELOG.md
+  shipped with the app (offline), newest first, with ‹ Older / Newer ›, a version list and "x of n";
+  the installed version is marked and shown first. Same calm view as the update dialog: highlights,
+  «Show all changes» on demand. Bridge method `get_release_notes()`.
+- Update check: when an update is available, one extra request to the GitHub release list fills in
+  the notes and dates of all versions between the installed and the offered one (drafts and
+  pre-releases are skipped; on any error only the offered release is shown). Without GitHub
+  releases the sections of the tag's `CHANGELOG.md` are used. The list survives a restart while an
+  update is ready.
+- Bridge method `open_url(url)`: opens `https://` links on github.com (or the update repo's host) in
+  the system browser; every other target is refused. In the app all `target="_blank"` links go
+  through it.
 
 ### Changed
-- Update dialog («Changes»): shows the version and its highlights (at most 8 bullets) instead of the
-  whole text; «Show all changes» expands the full notes, «Release on GitHub» opens the release page
-  in the browser. Skipped versions are listed newest first once the backend provides them.
+- Update dialog («Changes»): shows the version, its date and its highlights (at most 8 bullets)
+  instead of the whole text; «Show all changes» expands the full notes, «Release on GitHub» opens
+  the release page in the browser. Skipped versions are listed newest first.
 - Release notes are rendered as Markdown (headings, lists, **bold**, `code`, tables, quotes, rules,
-  `https://` links that open in the browser). All text is escaped; raw HTML and other link schemes
-  are never rendered.
+  `https://` links). All text is escaped; raw HTML and other link schemes are never rendered.
+- CHANGELOG entries are written in English from this version on.
 
 ### Fixed
 - Dialogs: Enter on a link or button inside the dialog text no longer triggers the primary button.
