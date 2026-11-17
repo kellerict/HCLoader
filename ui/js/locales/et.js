@@ -1,0 +1,1306 @@
+/* HCLoader UI texts – Eesti.
+   Guide: docs/TRANSLATING.md. Both arguments must stay strict JSON
+   (double quotes, no comments, no trailing commas) – tests parse them with Python.
+*/
+HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"}, {
+  "app": {
+    "title": "HCLoader",
+    "tagline": "RASKE MUUSIKA ARHIIV",
+    "mock": "DEMOREŽIIM"
+  },
+  "nav": {
+    "discover": "Avastamine",
+    "inbox": "Saabunud",
+    "watchlist": "Jälgitavad",
+    "downloads": "Allalaadimised",
+    "library": "Kogu",
+    "log": "Logi",
+    "settings": "Seaded"
+  },
+  "navfoot": {
+    "today": "TÄNA",
+    "next": "JÄRGMINE KONTROLL"
+  },
+  "common": {
+    "ok": "OK",
+    "cancel": "Tühista",
+    "save": "Salvesta",
+    "delete": "Kustuta",
+    "edit": "Muuda",
+    "remove": "Eemalda",
+    "reset": "Lähtesta",
+    "on": "sees",
+    "off": "väljas",
+    "current": "praegune",
+    "loading": "laadimine …",
+    "add_chip": "+ lisa",
+    "empty": "„tühi“",
+    "empty_list": "„puudub“"
+  },
+  "fmt": {
+    "today": "täna",
+    "yesterday": "eile",
+    "never": "mitte kunagi",
+    "no_date": "Kuupäev teadmata",
+    "just_now": "just praegu",
+    "today_at": "täna {t}",
+    "tomorrow_at": "homme {t}",
+    "yesterday_at": "eile {t}",
+    "views": {
+      "one": "{v} vaatamine",
+      "other": "{v} vaatamist"
+    }
+  },
+  "unit": {
+    "s": "s",
+    "h": "t",
+    "minutes": "minutit",
+    "mbs": "MB/s",
+    "bpm": "BPM",
+    "chars": "märki",
+    "results": "tulemust",
+    "entries": "kirjet",
+    "clock": "kell"
+  },
+  "range": {
+    "ge_sleep": "≥ miinimum",
+    "ge_initial": "≥ algväärtus"
+  },
+  "status": {
+    "new": "Uus",
+    "inbox": "Saabunutes",
+    "queued": "Järjekorras",
+    "downloading": "Allalaadimine",
+    "done": "Allalaaditud",
+    "ignored": "Eiratud",
+    "failed": "Viga"
+  },
+  "period": {
+    "all": "Kõik",
+    "7d": "Viimased 7 päeva",
+    "30d": "Viimased 30 päeva",
+    "1y": "Viimased 12 kuud",
+    "year": "Kindel aasta",
+    "custom": "Kohandatud"
+  },
+  "source_type": {
+    "channel": "Kanal",
+    "playlist": "Esitusloend",
+    "search": "Otsing"
+  },
+  "platform": {
+    "youtube": "YouTube",
+    "soundcloud": "SoundCloud",
+    "label": "Platvorm",
+    "sc_off": "SoundCloud on välja lülitatud – lülita sisse jaotises Seaded › SoundCloud."
+  },
+  "genre": {
+    "change": "Muuda žanrit",
+    "manual": "Žanr määratud käsitsi",
+    "change_manual": "Muuda žanrit (määratud käsitsi)"
+  },
+  "run_kind": {
+    "watchlist": "Jälgitavad allikad",
+    "headless": "Tegumiplaanija",
+    "manual": "Käsitsi"
+  },
+  "phase": {
+    "waiting": "Ootel",
+    "sleep": "Paus järgmise allalaadimiseni",
+    "download": "Allalaadimine",
+    "convert": "Teisendamine",
+    "tag": "Sildistamine",
+    "failed": "Ebaõnnestus"
+  },
+  "po_mode": {
+    "off": "Väljas",
+    "script": "Skript",
+    "http": "HTTP"
+  },
+  "po_mode_long": {
+    "off": "Väljas",
+    "script": "Skript (Deno)",
+    "http": "HTTP-server (kohalik)"
+  },
+  "statusbar": {
+    "ok": "OK",
+    "missing": "puudub",
+    "po": "PO-Token",
+    "po_active": "aktiivne ({mode})",
+    "po_inactive": "mitteaktiivne",
+    "po_error": "Viga",
+    "backoff": "Paus",
+    "backoff_none": "puudub",
+    "backoff_until": "kuni {t} · jäänud {rest}",
+    "queue": "Järjekord",
+    "queue_empty": "tühi",
+    "queue_active": "aktiivne",
+    "queue_paused": "peatatud",
+    "today": "Täna",
+    "next": "Järgmine kontroll",
+    "next_off": "väljas",
+    "backoff_until_short": "kuni {t}",
+    "sc_backoff": "Paus kuni {t}",
+    "sc_today": "{n} / {max}",
+    "yt_tip": "YouTube · täna allalaaditud {day}/{day_max} · selle tunni otsinguid {s}/{s_max}",
+    "sc_tip": "SoundCloud · täna allalaaditud {day}/{day_max} · selle tunni otsinguid {s}/{s_max}",
+    "backoff_tip": "{p}: paus kuni {t} (jäänud {rest})"
+  },
+  "schedule": {
+    "due": "on aeg",
+    "kind_app": "Rakendus",
+    "kind_task": "Ülesanne",
+    "tip_app": "Järgmine jälgitavate allikate kontroll rakenduses: {t} (kuni HCLoader töötab).",
+    "tip_task": "Järgmine jälgitavate allikate kontroll Windowsi tegumiplaanija kaudu: {t}.",
+    "tip_any": "Järgmine jälgitavate allikate kontroll: {t}.",
+    "tip_off": "Automaatset kontrolli pole – ei rakenduses ega Windowsi tegumiplaanija kaudu.",
+    "tip_backoff": "Kuni paus kestab, kontrolle ei tehta."
+  },
+  "card": {
+    "source": "Leitud jälgitavast allikast „{name}“",
+    "select": "Vali",
+    "open": "Ava platvormil {p}",
+    "ignore": "Eira",
+    "unignore": "Ära eira enam",
+    "more": "Veel toiminguid",
+    "download": "Laadi alla",
+    "watch": "Lisa kanal jälgitavatesse",
+    "block": "Blokeeri kanal",
+    "set_genre": "Määra žanr",
+    "date_approx": "Ligikaudne kuupäev – YouTube'i otsing annab ainult „X aastat tagasi“",
+    "date_unknown": "Üleslaadimise kuupäev puudub",
+    "duplicate": "Tõenäoliselt juba alla laaditud ({p})",
+    "duplicate_title": "Väga sarnane pealkiri ja sama kestus nagu „{title}” ({p}) – seal juba allalaaditud või järjekorras. Saad selle siiski alla laadida.",
+    "preview": "Ainult eelvaade (Go+) – allalaadimine pole võimalik",
+    "preview_title": "SoundCloud pakub sellele loole ainult 30-sekundilist eelvaadet (Go+). Seda ei saa alla laadida."
+  },
+  "discover": {
+    "placeholder": "Otsi miksi, live-sette, DJ-sid, üritusi …",
+    "search": "Otsi",
+    "searching_btn": "Otsimine …",
+    "searching": "Otsimine – lihtne päring, YouTube'i säästev …",
+    "sort": "Sorteeri",
+    "sort_rel": "Asjakohasus",
+    "sort_date": "Uusimad enne",
+    "sort_dur": "Pikimad enne",
+    "sort_views": "Enim vaatamisi",
+    "quota": "Otsinguid selle tunni jooksul: {n} / {max}",
+    "quota_sc": "SoundCloudi otsinguid selle tunni jooksul: {n} / {max}",
+    "placeholder_sc": "Otsi SoundCloudist: miksid, setid, DJ-d, podcastid …",
+    "platform_title": "Kust otsida",
+    "searching_sc": "Otsimine – lihtne päring, SoundCloudi säästev …",
+    "ready_text_sc": "Sisesta otsingufraas ja vajuta Enter, et SoundCloudist otsida.",
+    "previews": "{n} ainult eelvaade (Go+)",
+    "previews_title": "Go+ eelvaateid ei saa kunagi alla laadida. Nähtavad, kui „Peida allalaaditud ja eiratud” on väljas.",
+    "filters": "Filtrid",
+    "toggle_filters": "Näita/peida filtripaneel",
+    "f_duration": "Kestus (minutites)",
+    "f_min": "Miinimum",
+    "f_max": "Maksimum (tühi = piirangut pole)",
+    "f_max_ph": "maks.",
+    "f_period": "Üleslaadimise periood",
+    "f_year": "Aasta",
+    "f_year_prev": "Aasta tagasi",
+    "f_year_next": "Aasta edasi",
+    "f_from": "Alates",
+    "f_to": "Kuni",
+    "f_hint_year": "YouTube'i otsing annab ainult ligikaudse kuupäeva („13 aastat tagasi”). Seetõttu arvestatakse ±1 aasta tolerantsi – samuti iga miksi, mille pealkirjas on „{year}”.",
+    "f_hint_custom": "YouTube'i otsing annab ainult ligikaudse kuupäeva. Ligikaudsete kuupäevade puhul kehtib mõlemas otsas ±1 aasta tolerants.",
+    "chip_title": "Klõps: näita/peida žanr · Topeltklõps: ainult see žanr (selle terminid lisatakse otsingule)",
+    "scope": "Otsingut laiendatud",
+    "scope_title": "Järgmisel otsingul lisatakse need terminid sinu otsinguteksti lõppu.",
+    "searched": "Otsiti fraasiga",
+    "stale": "Filtreid on muudetud alates",
+    "re_search": "Otsi uuesti",
+    "re_search_title": "Tulemused pärinevad viimasest otsingust. Otsi uuesti, et žanr ja aasta oleksid otsinguterminis sees (loetakse üheks otsinguks).",
+    "need_query": "Palun sisesta esmalt otsingufraas.",
+    "f_inc": "Kaasatavad märksõnad",
+    "f_exc": "Välistatavad märksõnad",
+    "f_show": "Kuvamine",
+    "f_hide": "Peida allalaaditud ja eiratud",
+    "f_blacklist": "Rakenda kanalite musta nimekirja",
+    "count": {
+      "one": "{n} tulemus · {hidden} filtreeritud välja",
+      "other": "{n} tulemust · {hidden} filtreeritud välja"
+    },
+    "selected": "Valitud: {n}",
+    "select_all": "Vali kõik",
+    "download_sel": "Laadi valitud alla",
+    "ready_title": "Valmis",
+    "ready_text": "Sisesta otsingufraas ja vajuta Enter.",
+    "none_title": "Midagi ei leitud",
+    "none_text": "Lõdvenda filtreid või proovi muid otsingufraase.",
+    "none_year": "{year}. aasta tulemusi pole. Otsi uuesti, et aasta oleks otsinguterminis sees, või muuda aastat."
+  },
+  "inbox": {
+    "title": "Saabunud",
+    "sub": "Jälgitavate allikate uued leiud, mis läbivad kõik filtrid",
+    "sub_n": {
+      "one": "{n} jälgitavate allikate uus leid, mis läbib kõik filtrid",
+      "other": "{n} jälgitavate allikate uut leidu, mis läbivad kõik filtrid"
+    },
+    "ignore_all": "Eira kõiki",
+    "download_all": "Laadi kõik alla",
+    "ignore_sel": "Eira valitud",
+    "download_sel": "Laadi valitud alla",
+    "select_all": "Vali kõik",
+    "select_none": "Tühista valik",
+    "src_all": "Kõik allikad",
+    "src_none": "Allikata",
+    "src_title": "Näita ainult selle allika leide",
+    "count": {
+      "one": "{n} leid",
+      "other": "{n} leidu"
+    },
+    "count_of": "{n} / {total} leidu",
+    "selected": "Valitud: {n}",
+    "empty_title": "Saabunud on tühi",
+    "empty_text": "Jälgitavad allikad pole uusi miksi leidnud.",
+    "empty_nosrc": "Jälgitavaid allikaid pole veel – lisa kanal, esitusloend või otsing ning uued miksid ilmuvad siia.",
+    "empty_next": "Järgmine kontroll: {t}.",
+    "to_watchlist": "Mine jälgitavate juurde"
+  },
+  "watchlist": {
+    "title": "Jälgitavad allikad",
+    "sub_n": {
+      "one": "{n} allikas · {active} aktiivset",
+      "other": "{n} allikat · {active} aktiivset"
+    },
+    "sub_next": "järgmine kontroll {t}",
+    "add": "Allikas",
+    "check_all": "Kontrolli kõiki kohe",
+    "check": "Kontrolli",
+    "checking": "kontrollimine …",
+    "queued": "ootel …",
+    "running": "Kontrollimine …",
+    "running_n": "Kontrollimine {i} / {n} …",
+    "col_active": "Aktiivne",
+    "col_name": "Nimi",
+    "col_type": "Tüüp",
+    "col_genre": "Žanr",
+    "col_auto": "Uued leiud",
+    "col_max": "Maks.",
+    "col_last": "Viimane kontroll",
+    "col_new": "Uued",
+    "genre_auto": "automaatne",
+    "genre_auto_long": "Automaatne (märksõnade järgi)",
+    "auto_on": "laadi alla",
+    "auto_off": "saabunud",
+    "auto_title_on": "Uued leiud laaditakse automaatselt alla",
+    "auto_title_off": "Uued leiud lähevad ainult saabunute alla",
+    "new_title": "Näita saabunutes",
+    "check_title": "Kontrolli seda allikat kohe",
+    "why_off": "Allikas pole aktiivne",
+    "why_running": "Kontroll juba käib",
+    "why_backoff": "Paus on aktiivne – kontrollimine on blokeeritud",
+    "why_backoff_p": "Paus ({p}) on aktiivne – kontrollimine on blokeeritud",
+    "why_sc_off": "SoundCloud on välja lülitatud",
+    "error_title": "Viimane kontroll ebaõnnestus",
+    "backoff": "<b>Paus on aktiivne kuni {t}</b> (jäänud {rest}). Jälgitavaid allikaid ei saa kontrollida – ka planeeritud kontrollid jäävad ootele.",
+    "backoff_p": "<b>Paus ({p}) on aktiivne kuni {t}</b> (jäänud {rest}). {p} allikad jäetakse selle ajani vahele – {other} töötab edasi.",
+    "backoff_link_sc": "Ava SoundCloud",
+    "backoff_link": "Ava aeglustamine",
+    "none_active": "Kontrollimiseks pole aktiivset allikat",
+    "empty_title": "Allikaid pole",
+    "empty_text": "Lisa kanal, esitusloend või salvestatud otsing.",
+    "add_title": "Lisa allikas",
+    "edit_title": "Muuda allikat",
+    "f_type": "Tüüp",
+    "f_name": "Nimi",
+    "f_url": "URL",
+    "f_query": "Otsingufraas",
+    "f_genre": "Vaikimisi žanr",
+    "f_max": "Maks. kirjeid",
+    "f_newest_last": "Uusimad on lõpus (loe esitusloendit tagurpidi)",
+    "hint_newest_last": "Paljudes esitusloendites lisab YouTube uued videod lõppu. Loetakse kogu esitusloend (umbes 1 päring 100 video kohta, maks. 2000 kirjet).",
+    "rev_title": "Uusimad on lõpus – esitusloendit loetakse tagant poolt",
+    "rev_short": "tagurpidi",
+    "f_enabled": "Aktiivne – arvesta valikus „Kontrolli kõiki” ja ajakava",
+    "f_hits": "Uued leiud",
+    "hits_inbox": "Saabunutesse",
+    "hits_auto": "Laadi automaatselt alla",
+    "hint_inbox": "Leiud ootavad saabunutes, kuni need alla laed või eirad.",
+    "hint_auto": "Kõik filtrid läbivad leiud lähevad otse järjekorda.",
+    "hint_channel": "YouTube'i kanal (…/@nimi või …/channel/UC…, soovi korral /videos või /streams) või SoundCloudi profiil (soundcloud.com/nimi).",
+    "hint_playlist": "YouTube'i esitusloend, milles on „list=…”, või SoundCloudi komplekt (soundcloud.com/nimi/sets/komplekt). Kontrollitakse uusimaid kirjeid.",
+    "f_platform": "Otsi platvormilt",
+    "detected": "tuvastatud: {p} · {type}",
+    "not_detected": "URL-i ei tuvastatud",
+    "suggested": "Soovitus",
+    "suggested_title": "Soovitatud URL-i põhjal. Kui jätad muutmata, asendab esimene kontroll selle tegeliku nimega – või kirjuta lihtsalt üle.",
+    "hint_name_auto": "Soovitatud URL-i põhjal – vabalt muudetav. Kui jätad muutmata, määrab esimene kontroll tegeliku nime.",
+    "hint_name_later": "Nimi määratakse esimesel kontrollil – või sisesta see ise.",
+    "name_auto_title": "Ajutine nimi – järgmine kontroll määrab tegeliku",
+    "hint_search": "Salvestatud otsing nagu jaotises „Avastamine” – iga kontroll loetakse üheks otsinguks.",
+    "hint_max": "kontrolli kohta",
+    "max_default": "(vaikimisi)",
+    "max_default_title": "Oma väärtust pole: kehtib „Kirjeid allika kohta” jaotisest Seaded › Ajakava",
+    "max_title": "Tühi = vaikimisi väärtus jaotisest Seaded › Ajakava. Maksimaalselt 200, otsinguallikatel 100.",
+    "ph_name": "nt Gabber Vault",
+    "ph_name_later": "määratakse esimesel kontrollil",
+    "ph_channel": "https://www.youtube.com/@kanal  või  https://soundcloud.com/nimi",
+    "ph_playlist": "https://www.youtube.com/playlist?list=…  või  https://soundcloud.com/nimi/sets/…",
+    "ph_search": "nt frenchcore liveset",
+    "form_error": "Allikat ei õnnestunud salvestada."
+  },
+  "downloads": {
+    "title": "Allalaadimised",
+    "sub": "Järjest, üks allalaadimine korraga",
+    "pause": "Peata",
+    "resume": "Jätka",
+    "cancel": "Tühista",
+    "retry": "Proovi uuesti",
+    "remove": "Eemalda",
+    "up": "Liiguta ülespoole",
+    "down": "Liiguta allapoole",
+    "eta": "Jäänud aeg",
+    "position": "Positsioon {n}",
+    "sleep_left": "jätkub",
+    "sleep_why": "Aeglustamine: juhuslik paus {min}–{max} s kahe allalaadimise vahel",
+    "next_up": "Järgmisena",
+    "sleeping": "Paus",
+    "sleep_range": "{min}–{max} s hulgast",
+    "blocked_wait": "Ootel – {why}",
+    "why_backoff": "Paus",
+    "why_day": "Päevalimiit",
+    "why_run": "Käivituse limiit",
+    "why_paused": "peatatud",
+    "why_restart": "Vajalik taaskäivitus",
+    "why_busy": "töötab teine käivitus",
+    "why_pot": "PO-Token-server pole valmis",
+    "why_target": "Sihtkaust pole kättesaadav",
+    "why_error": "Allalaadimismoodul puudub",
+    "summary": "Täna {day}/{day_max} · Käivitus {run}/{run_max}",
+    "summary_sc": "SoundCloud {day}/{day_max}",
+    "platform_blocked": "{reason}",
+    "platform_other": "{p} laeb edasi.",
+    "steps": "Allalaadimine · Teisendamine · Sildistamine",
+    "unlimited": "piiranguta",
+    "l_run": "See käivitus",
+    "l_day": "Täna",
+    "l_rate": "Kiiruspiirang",
+    "l_sleep": "Paus allalaadimiste vahel",
+    "sec_queue": "Järjekord",
+    "sec_failed": "Ebaõnnestunud",
+    "empty_title": "Järjekord on tühi",
+    "empty_text": "Vali miksid jaotises „Avastamine” või „Saabunud”.",
+    "paused": "<b>Järjekord on peatatud.</b> Käimasolev allalaadimine on peatatud, kuni jätkad.",
+    "backoff": "<b>Paus on aktiivne kuni {t}</b> (jäänud {rest}). Allalaadimised, otsing ja jälgitavad allikad on blokeeritud.",
+    "backoff_rest": {
+      "one": "<b>Paus on aktiivne kuni {t}</b> (jäänud {rest}). Allalaadimised, otsing ja jälgitavad allikad on blokeeritud – järjekorda jääb {n}.",
+      "other": "<b>Paus on aktiivne kuni {t}</b> (jäänud {rest}). Allalaadimised, otsing ja jälgitavad allikad on blokeeritud – järjekorda jääb {n}."
+    },
+    "limit_day": "<b>Päevalimiit täis ({n}/{max}).</b> Ülejäänud jäävad järjekorda ja jätkuvad homme.",
+    "limit_day_rest": {
+      "one": "<b>Päevalimiit täis ({n}/{max}).</b> Järjekorda jääb {rest}, need jätkuvad homme.",
+      "other": "<b>Päevalimiit täis ({n}/{max}).</b> Järjekorda jääb {rest}, need jätkuvad homme."
+    },
+    "limit_run": "<b>Limiit täis – {max}/{max} selles käivituses.</b> Ülejäänud jäävad järjekorda ja jätkuvad järgmises käivituses.",
+    "limit_run_rest": {
+      "one": "<b>Limiit täis – {max}/{max} selles käivituses.</b> Järjekorda jääb {rest}, need jätkuvad järgmises käivituses.",
+      "other": "<b>Limiit täis – {max}/{max} selles käivituses.</b> Järjekorda jääb {rest}, need jätkuvad järgmises käivituses."
+    },
+    "limits_link": "Muuda limiite",
+    "new_run": "Alusta uut käivitust",
+    "need_restart": "<b>Vajalik taaskäivitus.</b> yt-dlp uuendati – palun käivita HCLoader uuesti. Järjekord säilib.",
+    "busy": "Töötab teine allalaadimise käivitus (nt planeeritud kontroll). Järjekord ootab, kuni see lõpeb.",
+    "local_pot": {
+      "one": "<b>PO-Token-server pole valmis.</b> Järjekorda jääb {rest}; jätkub niipea, kui server töötab.",
+      "other": "<b>PO-Token-server pole valmis.</b> Järjekorda jääb {rest}; jätkub niipea, kui server töötab."
+    },
+    "local_target": {
+      "one": "<b>Sihtkaust pole kättesaadav või sinna ei saa kirjutada.</b> Järjekorda jääb {rest}; jätkub niipea, kui kaust on taas saadaval.",
+      "other": "<b>Sihtkaust pole kättesaadav või sinna ei saa kirjutada.</b> Järjekorda jääb {rest}; jätkub niipea, kui kaust on taas saadaval."
+    },
+    "local_error": {
+      "one": "<b>Allalaadimismoodulit (yt-dlp) ei õnnestunud laadida.</b> Järjekorda jääb {rest}. Uus katse pärast „Jätka”, uusi kirjeid või seadete salvestamist.",
+      "other": "<b>Allalaadimismoodulit (yt-dlp) ei õnnestunud laadida.</b> Järjekorda jääb {rest}. Uus katse pärast „Jätka”, uusi kirjeid või seadete salvestamist."
+    },
+    "local_link_pot": "Võrguseaded",
+    "local_link_target": "Muuda salvestuskohta",
+    "local_link_error": "Hooldus"
+  },
+  "library": {
+    "title": "Kogu",
+    "sub": {
+      "one": "{n} miks",
+      "other": "{n} miksi"
+    },
+    "sub_shown": "Kuvatud {n} / {total}",
+    "search": "Pealkiri, kanal või tee …",
+    "all_genres": "Kõik žanrid",
+    "all_channels": "Kõik kanalid",
+    "all_years": "Kõik aastad",
+    "f_genre": "Žanr",
+    "f_channel": "Kanal",
+    "f_year": "Aasta",
+    "f_sort": "Sorteerimine",
+    "sort_newest": "Uusimad enne",
+    "sort_title": "Pealkiri A–Ü",
+    "sort_channel": "Kanal A–Ü",
+    "sort_duration": "Pikimad enne",
+    "group": "Žanri järgi",
+    "group_title": "Rühmita kirjed žanri järgi",
+    "view_list": "Loend",
+    "view_grid": "Paanid",
+    "clear": "Lähtesta filtrid",
+    "col_title": "Pealkiri",
+    "col_channel": "Kanal",
+    "col_genre": "Žanr",
+    "col_year": "Aasta",
+    "col_duration": "Kestus",
+    "col_size": "Suurus",
+    "col_loaded": "Allalaaditud",
+    "play": "Esita",
+    "pause": "Paus",
+    "play_external": "Ava vaikimisi esitajas",
+    "play_internal": "Esita rakenduse esitajas",
+    "play_missing": "Faili pole – esitamine pole võimalik",
+    "more": "Näita veel {n}",
+    "now_playing": "Praegu mängib",
+    "retag_short": "Sildista uuesti",
+    "genre_working": "Žanri määramine …",
+    "open_folder": "Ava kaust",
+    "retag": "Sildista uuesti (sildid, kaas ja asukoht praeguste seadete järgi)",
+    "delete": "Kustuta fail",
+    "remove": "Eemalda kirje",
+    "retagging": "Uuesti sildistamine …",
+    "cue_title": "Lugude loend .cue-failina MP3 kõrval",
+    "missing": "Faili pole",
+    "missing_title": "Faili ei leitud salvestatud asukohast (teisaldatud või kustutatud?)",
+    "missing_chip": {
+      "one": "{n} puudub",
+      "other": "{n} puudub"
+    },
+    "missing_chip_title": "Näita ainult kirjeid, mille fail puudub",
+    "stat_count": "Miksid",
+    "stat_duration": "Kogukestus",
+    "stat_size": "Suurus",
+    "stat_genres": "Žanri järgi",
+    "unit_h": "t",
+    "unit_min": "min",
+    "unit_gb": "GB",
+    "unit_mb": "MB",
+    "unit_kb": "KB",
+    "group_meta": {
+      "one": "{n} miks · {dur}",
+      "other": "{n} miksi · {dur}"
+    },
+    "empty_title": "Midagi pole veel alla laaditud",
+    "empty_text": "Iga miks ilmub siia niipea, kui see on alla laaditud ja sildistatud – koos kaane, žanri ja asukohaga.",
+    "empty_discover": "Avasta miksi",
+    "empty_watchlist": "Seadista jälgitavad allikad",
+    "target_down": "Sihtkaust pole kättesaadav: {path}",
+    "target_down_hint": "Kontrolli draivi või võrgujagamist. Kuni see puudub, on failide olek teadmata: „Sildista uuesti” ja „Eemalda kirje” on keelatud.",
+    "unknown_title": "Sihtkaust pole kättesaadav – faili olek on teadmata",
+    "none_title": "Tulemusi pole",
+    "none_text": "Ükski kirje ei vasta otsingule ja filtritele."
+  },
+  "player": {
+    "label": "Minipleier",
+    "play": "Esita (tühik)",
+    "pause": "Paus (tühik)",
+    "back": "30 sekundit tagasi",
+    "fwd": "30 sekundit edasi",
+    "prev": "Eelmine lugu",
+    "next": "Järgmine lugu",
+    "seek": "Asukoht",
+    "mute": "Vaigista",
+    "unmute": "Lülita heli sisse",
+    "volume": "Helitugevus",
+    "close": "Sulge pleier",
+    "tracks": "Lugude loend",
+    "tracks_n": {
+      "one": "{n} lugu",
+      "other": "{n} lugu"
+    },
+    "tracks_toggle": "Näita/peida lugude loend",
+    "no_tracks": "Selles failis pole peatükke",
+    "total": "Kogukestus {t}",
+    "keys": "Tühik: esita/paus · ←/→: 10 s",
+    "err_load": "Esitamine ebaõnnestus",
+    "err_src": "Esitamine ebaõnnestus: vigane faili aadress",
+    "err_play": "Faili ei saa esitada: {title}",
+    "external": "Avamine vaikimisi esitajas …"
+  },
+  "log": {
+    "title": "Logi",
+    "sub": "Reaalajas logi ja käivituste ajalugu",
+    "live": "Reaalajas logi",
+    "history": "Käivituste ajalugu",
+    "lvl_debug": "Silumine",
+    "lvl_info": "Info",
+    "lvl_warn": "Hoiatus",
+    "lvl_error": "Viga",
+    "lvl_title": "Näita/peida tase „{lvl}”",
+    "search": "Otsi logist …",
+    "following": "Reaalajas",
+    "paused": "Peatatud",
+    "follow_title": "Keri automaatselt uusima reani (peatub ülespoole kerides)",
+    "jump": "Lõppu",
+    "jump_new": {
+      "one": "{n} uus rida",
+      "other": "{n} uut rida"
+    },
+    "copy": "Kopeeri",
+    "copy_title": "Kopeeri nähtavad read lõikelauale",
+    "open_logs": "Logikaust",
+    "open_logs_title": "Ava kaust täielike logifailidega",
+    "lines": {
+      "one": "{n} rida",
+      "other": "{n} rida"
+    },
+    "lines_of": "{n} / {total} rida",
+    "empty": "Nende tasemete jaoks ridu pole.",
+    "empty_search": "Ükski rida ei sisalda „{q}”.",
+    "no_runs": "Käivitusi pole veel.",
+    "no_runs_kind": "Seda tüüpi käivitusi pole.",
+    "found": "leitud",
+    "downloaded": "allalaaditud",
+    "errors": "vigu",
+    "running": "töötab …",
+    "kind_all": "Kõik",
+    "timeline": "Ajatelg",
+    "table": "Tabel",
+    "view_title": "Käivituste ajaloo vaade",
+    "col_kind": "Tüüp",
+    "col_start": "Algus",
+    "col_duration": "Kestus",
+    "col_found": "Leitud",
+    "col_downloaded": "Allalaaditud",
+    "col_errors": "Vead",
+    "col_note": "Märkus",
+    "backoff": "Paus",
+    "runs_sum": {
+      "one": "{n} käivitus · {dl} allalaaditud · {err} viga",
+      "other": "{n} käivitust · {dl} allalaaditud · {err} viga"
+    },
+    "today": "Täna",
+    "yesterday": "Eile"
+  },
+  "settings": {
+    "title": "Seaded",
+    "sub": "Siin saab seadistada kõike, mida rakendus teeb"
+  },
+  "tabs": {
+    "general": "Üldine",
+    "filters": "Filtrid ja märksõnad",
+    "genres": "Žanrid",
+    "download": "Allalaadimine ja kvaliteet",
+    "storage": "Salvestus ja sildid",
+    "throttle": "Aeglustamine",
+    "soundcloud": "SoundCloud",
+    "network": "Võrk ja PO-Token",
+    "schedule": "Ajakava",
+    "appearance": "Välimus",
+    "maintenance": "Hooldus"
+  },
+  "tabs_hint": {
+    "general": "Rakenduse põhikäitumine.",
+    "filters": "Otsingu ja jälgitavate allikate vaikimisi filtrid. Neid saab ajutiselt üle kirjutada jaotise „Avastamine” filtripaneelis.",
+    "genres": "Järjekord = prioriteet. Võidab esimene žanr, mille märksõna pealkirjas esineb. Käsitsi määratud žanrid ja allika vaikimisi žanr on eelisjärjekorras.",
+    "download": "YouTube pakub tavaliselt Opust umbes 130–160 kbps. MP3 on teisendus ega kõla allikast paremini – kuid mängib igal pool.",
+    "storage": "Kuhu failid lähevad ja kuidas neid nimetatakse. Struktuur on mõeldud meediaserveritele nagu Plex või Jellyfin.",
+    "throttle": "Piirab YouTube'i koormust. Need väärtused kehtivad otsingule, jälgitavatele allikatele ja allalaadimistele koos. SoundCloudil on oma väärtused vahekaardil „SoundCloud”.",
+    "soundcloud": "SoundCloud teise allikana otsingu, jälgitavate allikate ja allalaadimiste jaoks – oma limiitide, loendurite ja pausiga, YouTube'ist sõltumatult.",
+    "network": "PO-Token tuvastab päringud päris brauseri omadena ja vähendab robotiblokeeringu riski.",
+    "schedule": "Millal jälgitavaid allikaid automaatselt kontrollitakse – rakenduses ja Windowsi tegumiplaanija kaudu.",
+    "appearance": "Välimus ja tunnetus. Muudatused on kohe eelvaates ja jäävad püsima alles pärast salvestamist.",
+    "maintenance": "Versioonid, uuendused, andmebaas."
+  },
+  "set": {
+    "default": "Vaikimisi",
+    "range": "Vahemik",
+    "browse": "Sirvi",
+    "not_set": "määramata",
+    "saving": "Salvestamine …",
+    "discard": "Loobu",
+    "tab_reset": "Lähtesta vahekaart",
+    "tab_reset_title": "Määra kõik selle vahekaardi väljad vaikeväärtustele (jõustub alles pärast „Salvesta”)",
+    "state_clean": "Kõik salvestatud",
+    "state_dirty": {
+      "one": "{n} salvestamata muudatus",
+      "other": "{n} salvestamata muudatust"
+    },
+    "state_errors": {
+      "one": "{n} viga – palun paranda",
+      "other": "{n} viga – palun paranda"
+    },
+    "h": {
+      "search": "Otsing",
+      "duration": "Kestus ja periood",
+      "keywords": "Märksõnad",
+      "display": "Kuvamine",
+      "cover": "Kaanepilt",
+      "chapters": "Peatükid ja lugude loend",
+      "tags": "Sildid",
+      "soundcloud": "SoundCloud",
+      "playback": "Esitamine",
+      "pauses": "Pausid ja ribalaius",
+      "limits": "Limiidid",
+      "backoff": "Paus blokeerimise korral",
+      "po": "PO-Tokeni pakkuja",
+      "fallback": "Ajutised lahendused",
+      "in_app": "Rakenduses",
+      "task": "Windowsi tegumiplaanija",
+      "updates": "Uuendused",
+      "app_update": "Rakenduse uuendus",
+      "database": "Andmebaas",
+      "reset": "Lähtestamine"
+    },
+    "general": {
+      "language": {
+        "label": "Keel",
+        "help": "Liidese ja teadete keel. „Automaatne” järgib Windowsi kuvakeelt (muidu inglise keel). Vaade ehitatakse pärast salvestamist kohe uuesti üles."
+      },
+      "start_view": {
+        "label": "Algvaade",
+        "help": "Milline vaade avatakse käivitamisel."
+      },
+      "log_level": {
+        "label": "Logi tase",
+        "help": "Kui üksikasjalikud on logifail ja reaalajas logi. DEBUG ainult tõrkeotsinguks."
+      },
+      "confirm_delete": {
+        "label": "Kinnita kustutamine",
+        "help": "Küsi enne miksi kustutamist kogust (kirje + fail)."
+      }
+    },
+    "player": {
+      "mode": {
+        "label": "Esita rakendusega",
+        "help": "Mida kasutab ▶ kogus. Sisseehitatud pleier näitab peatükke hüppemärkidena ja jätkab mängimist vaadete vahetamisel. Teine valik on iga kirje menüüs."
+      }
+    },
+    "search": {
+      "results_count": {
+        "label": "Tulemusi otsingu kohta",
+        "help": "Tulemuste arv, mille otsing toob (flat). Rohkem tulemusi = suurem koormus YouTube'ile."
+      },
+      "append_year": {
+        "label": "Lisa otsingule aasta",
+        "help": "Üleslaadimisperioodi „Kindel aasta” korral lisatakse aasta otsingufraasile (nt „hardcore liveset 2013”). Nii leiab YouTube selle aasta miksi rohkem."
+      }
+    },
+    "filters": {
+      "min_duration": {
+        "label": "Minimaalne kestus",
+        "help": "Lühemaid videoid ei käsitleta kunagi miksina."
+      },
+      "max_duration": {
+        "label": "Maksimaalne kestus",
+        "help": "0 = piiranguta."
+      },
+      "upload_period": {
+        "label": "Üleslaadimise periood",
+        "help": "Millised üleslaadimised vaikimisi kuvatakse. „Kindel aasta” näitab ainult ühe aasta miksi, „Kohandatud” alates/kuni vahemikku."
+      },
+      "upload_year": {
+        "label": "Aasta",
+        "help": "Miks loetakse, kui üleslaadimisaasta ühtib või aasta on pealkirjas. YouTube'i otsing annab ainult ligikaudse kuupäeva – seal kehtib ±1 aasta tolerants."
+      },
+      "upload_from": {
+        "label": "Alates",
+        "help": "Varaseim üleslaadimiskuupäev. Tühi = piiranguta."
+      },
+      "upload_to": {
+        "label": "Kuni",
+        "help": "Hiliseim üleslaadimiskuupäev. Tühi = piiranguta. Ligikaudsete kuupäevade puhul kehtib mõlemas otsas ±1 aasta tolerants."
+      },
+      "include_keywords": {
+        "label": "Kaasatavad märksõnad",
+        "help": "Vähemalt üks peab pealkirjas olema. Tühi = luba kõik. Enter või koma lisab."
+      },
+      "exclude_keywords": {
+        "label": "Välistatavad märksõnad",
+        "help": "Kui üks neist on pealkirjas, visatakse video kõrvale."
+      },
+      "match_description": {
+        "label": "Otsi kirjeldusest",
+        "help": "Märksõnu kontrollitakse ka video kirjelduses. Flat-päringud seda sageli ei anna."
+      },
+      "hide_done_ignored": {
+        "label": "Peida allalaaditud ja eiratud",
+        "help": "Peida tulemustes juba allalaaditud ja eiratud videod."
+      },
+      "apply_channel_blacklist": {
+        "label": "Rakenda kanalite musta nimekirja",
+        "help": "Ära kunagi näita blokeeritud kanalite videoid."
+      },
+      "hide_cross_platform_duplicates": {
+        "label": "Peida platvormidevahelised duplikaadid",
+        "help": "Peida leiud, mis on tõenäoliselt juba teiselt platvormilt (YouTube või SoundCloud) alla laaditud või järjekorda pandud – sama kestus (±5 s) ja väga sarnane pealkiri. Väljas: need kuvatakse märkusega „Tõenäoliselt juba alla laaditud”."
+      }
+    },
+    "blacklist": {
+      "label": "Blokeeritud kanalid",
+      "help": "Kanaleid blokeerid kaardi menüüst. Siin saad need uuesti deblokeerida.",
+      "none": "Blokeeritud kanaleid pole",
+      "unblock": "Deblokeeri"
+    },
+    "genres": {
+      "add": "Žanr",
+      "up": "Kõrgem prioriteet",
+      "down": "Madalam prioriteet",
+      "delete": "Kustuta žanr",
+      "color": "Vali värv",
+      "name_ph": "Nimi",
+      "kw_ph": "+ märksõna",
+      "fallback": "Varuvariant – kehtib, kui ükski märksõna ei sobi. Alati olemas, alati viimane."
+    },
+    "download": {
+      "audio_format": {
+        "label": "Väljundvorming",
+        "help": "MP3 või YouTube'i originaal ilma teisendamata."
+      },
+      "mp3_quality": {
+        "label": "MP3 kvaliteet",
+        "help": "320 kbps CBR on kõige ühilduvam, V0 VBR säästab veidi ruumi."
+      },
+      "embed_cover": {
+        "label": "Põimi kaanepilt",
+        "help": "Kirjuta pisipilt, ruuduks kärbitult, faili kaanepildina."
+      },
+      "write_cover_jpg": {
+        "label": "Salvesta ka cover.jpg",
+        "help": "Meediaserveritele, mis loevad kaustade kaanepilte."
+      },
+      "write_cue": {
+        "label": "Kirjuta .cue-fail",
+        "help": "Lugude loend peatükkidest või kirjelduse ajatemplitest, helifaili kõrvale."
+      },
+      "write_id3_chapters": {
+        "label": "Kirjuta ID3 peatükid",
+        "help": "Põimi peatükimärgid (CHAP/CTOC) otse MP3-sse."
+      },
+      "keep_original_soundcloud": {
+        "label": "Säilita SoundCloudi originaal",
+        "help": "Salvesta SoundCloudi heli muutmata kujul (AAC 160 kbps .m4a-na, MP3 128 kbps .mp3-na) – ilma teise kadudega teisenduseta. Väljas: nagu „Väljundvorming”."
+      }
+    },
+    "storage": {
+      "target_dir": {
+        "label": "Sihtkaust",
+        "help": "Muusikasalvestuse juurkaust. Ajutisi faile hoitakse selle all kaustas „.tmp”. Portatiivses versioonis lahendatakse suhteline tee, nt „.\\Music”, rakenduse kausta suhtes (nt USB-pulgal)."
+      },
+      "path_template": {
+        "label": "Tee muster",
+        "help": "Sihtkausta suhtes, ilma faililaiendita. „/” eraldab kaustu. {id} peab sisalduma (SoundCloudi puhul „sc-<id>”). {platform} muutub väärtuseks „YouTube” või „SoundCloud” – nt ülemise kaustana allikate eraldamiseks."
+      },
+      "max_title_length": {
+        "label": "Pealkirja maks. pikkus",
+        "help": "Pikemad pealkirjad lühendatakse failinimes."
+      },
+      "max_path_length": {
+        "label": "Tee maks. pikkus",
+        "help": "Täielik tee koos sihtkaustaga. Ilma lisaseadistuseta lubab Windows 259 märki."
+      },
+      "artist_from_title": {
+        "label": "Loe esitaja pealkirjast",
+        "help": "Tuvasta mustrid „ESITAJA @ ÜRITUS” ja „ESITAJA - PEALKIRI”, muidu kasuta kanali nime."
+      },
+      "title_cleanup_patterns": {
+        "label": "Puhasta pealkiri",
+        "help": "Regulaaravaldised, mille vasted pealkirjast eemaldatakse. Enter lisab.",
+        "ph": "+ regex"
+      }
+    },
+    "path_preview": {
+      "label": "Eelvaade",
+      "help": "Klõpsa kohatäitjatel, et neid tee mustrisse lisada."
+    },
+    "throttle": {
+      "sleep_requests": {
+        "label": "Paus päringute vahel",
+        "help": "Ooteaeg metaandmete päringute vahel (otsing, jälgitavad allikad)."
+      },
+      "sleep_interval": {
+        "label": "Allalaadimise paus – miinimum",
+        "help": "Pärast iga allalaadimist järgneb juhuslik paus miinimumi ja maksimumi vahel."
+      },
+      "max_sleep_interval": {
+        "label": "Allalaadimise paus – maksimum",
+        "help": "Juhusliku pausi ülempiir."
+      },
+      "limit_rate_mb": {
+        "label": "Allalaadimiskiirus",
+        "help": "Maksimaalne ribalaius. 0 = piiranguta (ei soovitata)."
+      },
+      "max_downloads_per_run": {
+        "label": "Maks. allalaadimisi käivituse kohta",
+        "help": "Ülejäänud jäävad järjekorda."
+      },
+      "max_downloads_per_day": {
+        "label": "Maks. allalaadimisi päevas",
+        "help": "Loendur hõlmab käsitsi ja automaatseid allalaadimisi koos."
+      },
+      "max_searches_per_hour": {
+        "label": "Maks. otsinguid tunnis",
+        "help": "Kaitseb juhusliku lõputu otsimise eest."
+      },
+      "backoff_initial_hours": {
+        "label": "Paus – algväärtus",
+        "help": "Blokeerimise aeg pärast HTTP 429 või teadet „confirm you’re not a bot”."
+      },
+      "backoff_max_hours": {
+        "label": "Paus – maksimum",
+        "help": "Blokeerimisaeg kahekordistub iga järgmise blokeeringuga kuni selle väärtuseni."
+      }
+    },
+    "backoff": {
+      "none": "Pausi pole ({p})",
+      "none_detail": "Otsing, jälgitavad allikad ja allalaadimised platvormilt {p} on lubatud.",
+      "active": "Paus on aktiivne ({p})",
+      "active_detail": "kuni {t} · jäänud {rest} · tase {level}",
+      "blocked": "{p} andis märku blokeeringust. Otsing, jälgitavad allikad ja allalaadimised platvormilt {p} on blokeeritud, kuni aeg lõpeb.",
+      "clear": "Tühista käsitsi",
+      "sc_off": "SoundCloud on välja lülitatud",
+      "sc_off_detail": "SoundCloudi otsingut, jälgitavate allikate kontrolle ega SoundCloudi allalaadimisi pole."
+    },
+    "soundcloud": {
+      "enabled": {
+        "label": "Kasuta SoundCloudi",
+        "help": "Väljas: SoundCloudi otsingut, SoundCloudi allikate kontrolli ega SoundCloudi allalaadimisi pole. Juba allalaaditud kirjed jäävad kogusse."
+      },
+      "sleep_requests": {
+        "label": "Paus päringute vahel",
+        "help": "Ooteaeg metaandmete päringute vahel SoundCloudi poole (otsing, jälgitavad allikad)."
+      },
+      "sleep_interval": {
+        "label": "Allalaadimise paus – miinimum",
+        "help": "Pärast iga SoundCloudi allalaadimist järgneb juhuslik paus miinimumi ja maksimumi vahel."
+      },
+      "max_sleep_interval": {
+        "label": "Allalaadimise paus – maksimum",
+        "help": "Juhusliku pausi ülempiir."
+      },
+      "limit_rate_mb": {
+        "label": "Allalaadimiskiirus",
+        "help": "Maksimaalne ribalaius. 0 = piiranguta (ei soovitata)."
+      },
+      "max_downloads_per_run": {
+        "label": "Maks. allalaadimisi käivituse kohta",
+        "help": "SoundCloudi eraldi loendur. Ülejäänud jäävad järjekorda."
+      },
+      "max_downloads_per_day": {
+        "label": "Maks. allalaadimisi päevas",
+        "help": "SoundCloudi eraldi loendur, käsitsi ja automaatsed allalaadimised koos."
+      },
+      "max_searches_per_hour": {
+        "label": "Maks. otsinguid tunnis",
+        "help": "SoundCloudi eraldi loendur."
+      },
+      "backoff_initial_hours": {
+        "label": "Paus – algväärtus",
+        "help": "Blokeerimise aeg pärast seda, kui SoundCloud teatas liiga paljudest päringutest (HTTP 429)."
+      },
+      "backoff_max_hours": {
+        "label": "Paus – maksimum",
+        "help": "Blokeerimisaeg kahekordistub iga järgmise blokeeringuga kuni selle väärtuseni."
+      }
+    },
+    "ladder": {
+      "label": "Tasemed",
+      "help": "Kuidas blokeerimisaeg praeguste väärtustega kasvab.",
+      "reset": "Lähtesta pärast edukat käivitust",
+      "invalid": "Kehtetud väärtused"
+    },
+    "network": {
+      "po_token_mode": {
+        "label": "Režiim",
+        "help": "yt-dlp bgutil-plugin. Skript käivitab Deno vajaduse korral, HTTP hoiab kohalikku serverit pidevalt töös."
+      },
+      "po_token_port": {
+        "label": "HTTP-port",
+        "help": "Ainult HTTP-režiimis. Server kuulab aadressil 127.0.0.1."
+      },
+      "po_token_ttl_hours": {
+        "label": "Tokeni kehtivus",
+        "help": "Pärast seda aega genereeritakse uus token. Väärtus ümardatakse täistundideks (vähemalt 1 t)."
+      },
+      "cookies_from_browser": {
+        "label": "Küpsised brauserist",
+        "help": "Logib yt-dlp sisse sinu brauseri sisselogimisega. Lülita sisse ainult siis, kui ilma ei tööta enam."
+      },
+      "proxy": {
+        "label": "Proksi",
+        "help": "Valikuline, nt socks5://127.0.0.1:1080. Tühi = otseühendus.",
+        "ph": "proksit pole"
+      }
+    },
+    "po": {
+      "active": "PO-Token on aktiivne",
+      "inactive": "PO-Token pole aktiivne",
+      "error": "PO-Tokeni viga",
+      "mode": "Režiim",
+      "test": "Testi",
+      "testing": "Testimine …",
+      "test_ok": "Test õnnestus.",
+      "test_fail": "Test ebaõnnestus.",
+      "unsaved": "Test kasutab salvestatud seadeid. Salvesta esmalt muudatused."
+    },
+    "cookies": {
+      "warn_off": "<b>Soovitatav: väljas.</b> PO-Token ja brauseri küpsised koos võivad probleeme tekitada.",
+      "warn_on": "<b>Ajutine lahendus on aktiivne.</b> PO-Token ja brauseri küpsised koos võivad põhjustada vigu või blokeeringuid ning päringutes kasutatakse sinu YouTube'i kontot. Lülita see välja niipea, kui ilma töötab. Küpsised ei jõua kunagi logisse."
+    },
+    "schedule": {
+      "in_app_check": {
+        "label": "Kontrolli, kuni rakendus töötab",
+        "help": "Jälgitavaid allikaid kontrollitakse seadistatud intervalliga, kuni aken on avatud."
+      },
+      "watchlist_interval_hours": {
+        "label": "Intervall",
+        "help": "Aeg kahe kontrolli vahel rakenduses."
+      },
+      "entries_per_source": {
+        "label": "Kirjeid allika kohta",
+        "help": "Mitu uusimat kirjet kontrolli kohta tuuakse (flat) (vaikeväärtus uutele allikatele)."
+      },
+      "task_scheduler_enabled": {
+        "label": "Kasuta tegumiplaanijat",
+        "help": "Kontrollib jälgitavaid allikaid ka siis, kui rakendus on suletud (headless). Lülitub sisse nupust „Loo ülesanne”."
+      },
+      "task_time": {
+        "label": "Kellaaeg",
+        "help": "Planeeritud ülesande iga-päevane algusaeg."
+      }
+    },
+    "next": {
+      "title": "Järgmine kontroll",
+      "off": "Automaatset kontrolli pole",
+      "off_detail": "Ei rakenduse kontroll ega Windowsi ülesanne pole aktiivne. Jälgitavaid allikaid kontrollitakse ainult käsitsi.",
+      "app_detail": "Rakenduses iga {h} t järel – kuni HCLoader töötab.",
+      "task_detail": "Windowsi tegumiplaanija kaudu iga päev kell {time} – ka siis, kui rakendus on suletud.",
+      "any_detail": "Varasem rakenduse intervallist ja Windowsi ülesandest.",
+      "also_task": "Lisaks: Windowsi ülesanne iga päev kell {time}.",
+      "also_app": "Lisaks rakenduses iga {h} t järel.",
+      "pending": "Pole veel planeeritud",
+      "pending_detail": "Rakendus määrab järgmise kuupäeva niipea, kui on jälgitavaid allikaid esimest korda kontrollinud.",
+      "due": "On aeg – algab peagi",
+      "backoff": "<b>Paus on aktiivne.</b> Kuni {t} kontrolle ei tehta; pärast seda tehakse kuupäev järele või jäetakse vahele.",
+      "unsaved": "Salvestamata ajakava muudatused jõustuvad alles pärast salvestamist."
+    },
+    "task": {
+      "loading": "Ülesande päring …",
+      "registered": "Ülesanne registreeritud",
+      "registered_detail": "{name} · iga päev {time} · järgmine käivitus {next}",
+      "none": "Ülesannet pole registreeritud",
+      "none_detail": "Loob igapäevase Windowsi ülesande kell {time} (schtasks).",
+      "create": "Loo ülesanne",
+      "remove": "Eemalda ülesanne",
+      "moved": "Rakendus teisaldati – loo ülesanne uuesti",
+      "moved_detail": "Planeeritud ülesanne käivitab endiselt {cmd}. Uuesti loomisel kasutatakse rakenduse praegust kausta.",
+      "recreate": "Loo ülesanne uuesti",
+      "unknown": "Ülesande olek teadmata",
+      "unknown_detail": "Windowsi tegumiplaanija ei vastanud. Säte jääb muutmata.",
+      "recheck": "Kontrolli uuesti"
+    },
+    "appearance": {
+      "reduce_effects": {
+        "label": "Vähenda efekte",
+        "help": "Lülitab välja skaneerimisjooned, tõrked ja kõik animatsioonid."
+      },
+      "scanlines": {
+        "label": "Skaneerimisjooned ja müra",
+        "help": "Peen kiht üle kogu liidese."
+      },
+      "pulse_bpm": {
+        "label": "Kicki puls",
+        "help": "Rütm, millega edenemisriba pulseerib."
+      }
+    },
+    "pulse_preview": {
+      "label": "Eelvaade",
+      "help": "Nii pulseerib käimasolev allalaadimine.",
+      "off": "Efektid vähendatud"
+    },
+    "versions": {
+      "plugin": "PO-Tokeni plugin",
+      "was": "varem {v}"
+    },
+    "update": {
+      "label": "yt-dlp ja plugin",
+      "help": "YouTube muutub pidevalt. Vigade korral uuenda esmalt (pip venv-keskkonnas).",
+      "button": "Uuenda yt-dlp ja plugin",
+      "running": "Uuendamine …",
+      "last_check": "Viimane kontroll",
+      "restart": "<b>Vajalik taaskäivitus.</b> yt-dlp uuendati. Otsing ja allalaadimised on blokeeritud, kuni HCLoader taaskäivitatakse; järjekord säilib.",
+      "restart_title": "Vajalik taaskäivitus",
+      "restart_text": "yt-dlp uuendati. Sulge HCLoader ja käivita see uuesti – seni on otsing ja allalaadimised blokeeritud, järjekord säilib.",
+      "out_live": "Väljund · töötab {t}",
+      "out_done": "Väljund · lõpetatud {t} pärast",
+      "out_failed": "Väljund · ebaõnnestus",
+      "out_last": "Väljund",
+      "waiting": "Pip käivitub …"
+    },
+    "maintenance": {
+      "check_updates_on_start": {
+        "label": "Kontrolli uuendusi käivitamisel",
+        "help": "yt-dlp ja PO-Tokeni plugin, kõige rohkem kord päevas."
+      },
+      "check_app_updates_on_start": {
+        "label": "Kontrolli HCLoaderi uuendusi käivitamisel",
+        "help": "Küsib GitHubilt iga käivitamisel uut versiooni. Midagi ei laadita alla, kuni sa ei klõpsa."
+      },
+      "apply_update_on_exit": {
+        "label": "Installi uuendus väljumisel",
+        "help": "Allalaaditud uuendus installitakse HCLoaderi sulgemisel („Hiljem”). Väljas: seda pakutakse uuesti järgmisel käivitamisel."
+      },
+      "update_repo": {
+        "label": "Uuenduste allikas (GitHub)",
+        "help": "Hoidla kujul „omanik/hoidla”. Muuda ainult hargnemiste (fork) puhul."
+      }
+    },
+    "db": {
+      "label": "Andmebaas",
+      "help": "Kõigi videote, allikate ja käivituste olek. Varukoopia kopeerib faili kausta „backups”.",
+      "backup": "Loo andmebaasi varukoopia",
+      "backing_up": "Varundamine …",
+      "open": "Andmekaust",
+      "open_logs": "Logikaust",
+      "open_title": "Ava kaust andmebaasi, konfiguratsiooni ja varukoopiatega",
+      "open_logs_title": "Ava kaust logifailidega",
+      "info": {
+        "one": "{n} kirje · {mb} MB",
+        "other": "{n} kirjet · {mb} MB"
+      },
+      "last": "Viimane varukoopia",
+      "never": "veel pole",
+      "keep": "Säilitatakse 10 uusimat varukoopiat, vanemad kustutatakse järgmise varundamise ajal.",
+      "backups": "Varukoopiad",
+      "backups_more": "+ {n} vanemat kaustas „backups”",
+      "fresh": "uus"
+    },
+    "reset_all": {
+      "label": "Kõik seaded",
+      "help": "Lähtestab kõik vahekaardid vaikeväärtustele. Andmebaas ja muusikafailid jäävad puutumata.",
+      "button": "Lähtesta kõik"
+    }
+  },
+  "opt": {
+    "general": {
+      "log_level": {
+        "DEBUG": "DEBUG",
+        "INFO": "INFO",
+        "WARNING": "WARNING",
+        "ERROR": "ERROR"
+      },
+      "language": {
+        "auto": "Automaatne (süsteemi keel)"
+      }
+    },
+    "player": {
+      "mode": {
+        "internal": "Sisseehitatud pleier (soovitatav)",
+        "external": "Windowsi vaikimisi pleier"
+      }
+    },
+    "download": {
+      "audio_format": {
+        "mp3": "MP3",
+        "original": "Originaal (Opus/M4A, ilma teisendamata)"
+      },
+      "mp3_quality": {
+        "320": "320 kbps CBR",
+        "v0": "V0 VBR"
+      }
+    },
+    "network": {
+      "cookies_from_browser": {
+        "none": "Väljas",
+        "edge": "Edge",
+        "chrome": "Chrome",
+        "firefox": "Firefox",
+        "brave": "Brave"
+      }
+    }
+  },
+  "dlg": {
+    "block": {
+      "title": "Blokeeri kanal",
+      "text": "Kanali „{ch}” videoid enam ei kuvata. Tühistada saab jaotises Seaded › Filtrid ja märksõnad.",
+      "ok": "Blokeeri"
+    },
+    "ignore_all": {
+      "title": "Eira leide",
+      "text": {
+        "one": "Kas märkida {n} saabunud leidu eiratuks? Neid ei laeta alla ja need ei ilmu enam saabunute hulka.",
+        "other": "Kas märkida {n} saabunud leidu eiratuks? Neid ei laeta alla ja need ei ilmu enam saabunute hulka."
+      },
+      "ok": "Eira"
+    },
+    "del_source": {
+      "title": "Kustuta allikas",
+      "text": "Kas eemaldada „{name}” jälgitavate allikate hulgast? Juba allalaaditud miksid säilivad."
+    },
+    "del_mix": {
+      "title": "Kustuta miks",
+      "text": "„{title}” eemaldatakse kogust ja fail kustutatakse kettalt:",
+      "ok": "Kustuta fail",
+      "warn": "<b>Seda ei saa tagasi võtta.</b> Helifail ja sellega seotud .cue-fail kustutatakse. Miks märgitakse „eiratuks” ja seda <b>ei laeta uuesti alla</b>.",
+      "meta": "{dur} · {size}"
+    },
+    "outside_mix": {
+      "title": "Eemalda ainult kirje",
+      "text": "Faili „{title}” asub väljaspool praegust sihtkausta ega kustutata seetõttu:",
+      "ok": "Eemalda ainult kirje",
+      "warn": "Fail jääb puutumata sinna, kus ta on. Kirje kaob kogust, miks märgitakse „eiratuks” ja seda <b>ei laeta uuesti alla</b>."
+    },
+    "remove_mix": {
+      "title": "Eemalda kirje",
+      "text": "Faili „{title}” ei leitud salvestatud asukohast:",
+      "ok": "Eemalda kirje",
+      "warn": "Kirje kaob kogust. Miks märgitakse „eiratuks” ja seda <b>ei laeta uuesti alla</b>. Kui fail asub mujal, jääb see puutumata."
+    },
+    "backoff": {
+      "title": "Tühista paus",
+      "ok": "Tühista siiski",
+      "text": "Blokeerimisaeg kaitseb sind: {p} andis märku, et päringuid tuli liiga palju.",
+      "warn": "<b>Tühista ainult siis, kui oled kindel, et blokeering on lõppenud.</b> Kui rakendus pöördub liiga vara uuesti, võib {p} sinu IP-aadressi pikemaks ajaks või püsivalt piirata."
+    },
+    "reset_all": {
+      "title": "Lähtesta kõik",
+      "text": "Kõik seaded kõigil vahekaartidel määratakse kohe vaikeväärtustele ja salvestatakse.",
+      "ok": "Lähtesta"
+    }
+  },
+  "toast": {
+    "enqueued": {
+      "one": "{n} miks lisati järjekorda",
+      "other": "{n} miksi lisati järjekorda"
+    },
+    "enqueued_none": "Midagi ei lisatud – juba järjekorras või allalaaditud",
+    "enqueued_skipped": "Vahele jäetud: {n}",
+    "queue_cancelled": "Tühistatud: {title}",
+    "queue_removed": "Eemaldatud: {title}",
+    "queue_retry": "Pandud uuesti järjekorda: {title}",
+    "queue_paused": "Järjekord peatatud",
+    "queue_resumed": "Järjekord jätkub",
+    "new_run": "Uus käivitus alustatud",
+    "ignored": "Eiratud: {title}",
+    "unignored": "Taas nähtav: {title}",
+    "ignored_n": {
+      "one": "{n} leid eiratud",
+      "other": "{n} leidu eiratud"
+    },
+    "opening": "Avan {p} brauseris …",
+    "watch_added": "Lisatud jälgitavatesse: {ch}",
+    "blocked": "Kanal blokeeritud: {ch}",
+    "genre_set": "Žanr määratud: {genre}",
+    "done": "Allalaaditud: {title}",
+    "failed": "Ebaõnnestus: {title} – {error}",
+    "wl_started": {
+      "one": "Jälgitavate allikate kontroll (allikaid: {n}, aeglustatud) …",
+      "other": "Jälgitavate allikate kontroll (allikaid: {n}, aeglustatud) …"
+    },
+    "wl_started_one": "Kontrollin allikat „{name}” …",
+    "wl_none": "Aktiivset allikat pole – pole midagi kontrollida",
+    "wl_done": {
+      "one": "Jälgitavad allikad kontrollitud (allikaid: {n}): midagi uut pole",
+      "other": "Jälgitavad allikad kontrollitud (allikaid: {n}): midagi uut pole"
+    },
+    "wl_done_found": {
+      "one": "Jälgitavad allikad kontrollitud – uusi leide: {n}",
+      "other": "Jälgitavad allikad kontrollitud – uusi leide: {n}"
+    },
+    "wl_errors": {
+      "one": "Vigadega allikaid: {n}",
+      "other": "Vigadega allikaid: {n}"
+    },
+    "source_added": "Allikas lisatud: {name}",
+    "source_saved": "Allikas salvestatud: {name}",
+    "source_deleted": "Allikas kustutatud: {name}",
+    "retagged": "Uuesti sildistatud: {title}",
+    "retagged_moved": "Uuesti sildistatud ja teisaldatud: {title} → {path}",
+    "deleted": "Kustutatud: {title}",
+    "removed": "Kirje eemaldatud: {title}",
+    "folder_opening": "Kausta avamine …",
+    "copied": {
+      "one": "{n} rida kopeeritud",
+      "other": "{n} rida kopeeritud"
+    },
+    "copy_failed": "Kopeerimine ebaõnnestus",
+    "copy_none": "Nähtavaid ridu pole",
+    "settings_saved": "Seaded salvestatud",
+    "settings_errors": {
+      "one": "{n} sisend on kehtetu",
+      "other": "{n} sisendit on kehtetud"
+    },
+    "backoff_cleared": "Paus ({p}) tühistati käsitsi",
+    "genre_moved": "Žanr: {genre} – teisaldatud asukohta {path}",
+    "genre_retagged": "Žanr: {genre} – sildid uuendatud",
+    "genre_entry_only": "Žanr: {genre} – muudeti ainult kirjet, fail pole kättesaadav",
+    "genre_failed": "Žanri määramine ebaõnnestus: {error}",
+    "task_created": "Ülesanne loodud Windowsi tegumiplaanijas",
+    "task_removed": "Ülesanne eemaldatud",
+    "updated": "Uuendatud versioonile yt-dlp {v}",
+    "up_to_date": "Juba uusim versioon (yt-dlp {v})",
+    "update_failed": "Uuendamine ebaõnnestus",
+    "restart_required": "Uuendatud – käivita HCLoader uuesti, et otsing ja allalaadimised taas töötaksid",
+    "backup_done": "Varukoopia loodud: {path}",
+    "reset_all": "Kõik seaded lähtestatud"
+  },
+  "upd": {
+    "available": "Saadaval on versioon {v}",
+    "available_sub": "Installitud: {cur}",
+    "download": "Laadi alla",
+    "notes": "Muudatused",
+    "later": "Hiljem",
+    "close": "Sulge",
+    "cancel": "Tühista",
+    "retry": "Proovi uuesti",
+    "downloading": "Uuenduse {v} allalaadimine",
+    "phase_download": "Allalaadimine",
+    "phase_verify": "Kontroll",
+    "phase_prepare": "Ettevalmistus",
+    "ready": "Uuendus {v} on valmis",
+    "ready_sub": "Installimiseks suletakse HCLoader korraks ja käivitatakse uuesti.",
+    "restart_now": "Taaskäivita kohe",
+    "on_exit": "Väljumisel",
+    "applying": "Uuenduse installimine …",
+    "applying_sub": "HCLoader sulgub ja käivitub kohe uuesti.",
+    "error": "Rakenduse uuendamine ebaõnnestus",
+    "blocked": "Automaatne uuendamine pole võimalik",
+    "notes_title": "Versiooni {v} muudatused",
+    "notes_empty": "Väljalaskemärkmeid pole.",
+    "notes_link": "Väljalase GitHubis",
+    "confirm_title": "Taaskäivita kohe?",
+    "confirm_ok": "Taaskäivita",
+    "confirm_text": "HCLoader suletakse, uuendus installitakse ja rakendus käivitatakse uuesti. Käimasolev allalaadimine katkestatakse ja jääb järjekorda. Muusika, seaded ja andmebaas jäävad muutmata.",
+    "on_exit_toast": "Uuendus installitakse HCLoaderi sulgemisel.",
+    "later_toast": "Uuendus jääb valmis ja seda pakutakse uuesti järgmisel käivitamisel.",
+    "section_label": "HCLoaderi versioon",
+    "section_help": "Uued versioonid tulevad GitHubist. Uuendused ei puuduta andmeid, seadeid ega muusikat; enne andmebaasi migreerimist luuakse automaatselt varukoopia.",
+    "current": "Installitud",
+    "latest": "Uusim",
+    "checked": "Viimane kontroll",
+    "check_now": "Kontrolli kohe",
+    "checking": "Kontrollimine …",
+    "st_idle": "Ajakohane",
+    "st_available": "Uus versioon on saadaval",
+    "st_checking": "Kontrollimine …",
+    "st_downloading": "Allalaadimine …",
+    "st_ready": "Valmis installimiseks",
+    "st_applying": "Installimine …",
+    "st_error": "Viga",
+    "st_unknown": "Pole veel kontrollitud",
+    "up_to_date": "HCLoader on ajakohane (v{v})",
+    "portable": "Portatiivne versioon",
+    "installed": "Installitud (setup)",
+    "git": "Git-koopia",
+    "from_repo": "allikast {repo} (pole ametlik allikas)",
+    "unverified": "ilma kontrollsummata (kontrollitud ainult ZIP-i terviklikkust)"
+  },
+  "err": {
+    "generic": "Tundmatu viga",
+    "bridge": "Viga „{name}” juures: {msg}",
+    "boot": "Käivitamine ebaõnnestus: {msg}",
+    "no_backend": "Taustaprogrammiga puudub ühendus"
+  },
+  "fatal": {
+    "title": "Ühendus taustaprogrammiga ebaõnnestus",
+    "text": "Liides ei saanud vastust HCLoaderi Pythoni osast. Mitteehtsaid andmeid ei kuvata ega salvestata.",
+    "waiting": "Ootan endiselt taustaprogrammi …",
+    "reload": "Laadi uuesti"
+  }
+});
