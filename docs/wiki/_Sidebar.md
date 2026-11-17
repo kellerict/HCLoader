@@ -24,5 +24,6 @@
 - [FAQ](FAQ)
 
 **Project**
+- [Roadmap](Roadmap)
 - [Architecture](Architecture)
 - [Development](Development)
