@@ -1,4 +1,4 @@
-# Portable build
+![](images/divider.svg)
 
 The portable build is a folder that runs without an installed Python and without git. It contains
 an embedded Python 3.12 (Windows embeddable package, amd64) with all dependencies, the app, and
@@ -77,3 +77,7 @@ The build needs python.org, bootstrap.pypa.io, PyPI, GitHub and gyan.dev.
 
 The ZIP contains `THIRD_PARTY_LICENSES.txt` and a `licenses\` folder. Note that the bundled ffmpeg
 build is GPL-3.0-or-later.
+
+---
+
+[← Installation](Installation) · [🏠 Home](Home) · [Getting started →](Getting-Started)

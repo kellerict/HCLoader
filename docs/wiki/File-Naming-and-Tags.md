@@ -1,4 +1,4 @@
-# File naming and tags
+![](images/divider.svg)
 
 ## Folder structure
 
@@ -78,3 +78,7 @@ wrong chapter list never produces a broken CUE. A small metadata sidecar in the 
 Library, Re-tag rewrites tags, cover and chapters from stored metadata, without network access. It
 also moves the file when your path template changed. Foreign ID3 frames you added with other tools
 are kept.
+
+---
+
+[← Library and player](Library-and-Player) · [🏠 Home](Home) · [Scheduled checks →](Scheduled-Checks)

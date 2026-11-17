@@ -1,4 +1,4 @@
-# Architecture
+![](images/divider.svg)
 
 A concise overview for contributors. Requirements are in
 [SPEC.md](https://github.com/kellerict/HCLoader/blob/main/SPEC.md) and design decisions in
@@ -99,3 +99,7 @@ Logging uses a rotating file handler plus a live log stream to the UI.
 `portable.txt` next to the app switches the data folder to `data\`, makes relative target folders
 relative to the app folder, and lets the update button use the embedded Python. The build is
 `scripts/build_portable.ps1`; CI (`portable.yml`) smoke-tests it, including after moving it.
+
+---
+
+[← Roadmap](Roadmap) · [🏠 Home](Home) · [Development →](Development)

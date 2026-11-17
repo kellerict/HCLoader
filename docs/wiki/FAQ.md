@@ -1,4 +1,4 @@
-# FAQ
+![](images/divider.svg)
 
 **Is this legal?**
 This is not legal advice. HCLoader is for **personal use only**. You are responsible for complying
@@ -60,3 +60,7 @@ yt-dlp and the plugin: Settings, Wartung. The app: see [App updates](App-Updates
 **Can I contribute?**
 Issues are welcome. Pull requests are limited to repository collaborators. See
 [CONTRIBUTING.md](https://github.com/kellerict/HCLoader/blob/main/CONTRIBUTING.md).
+
+---
+
+[← Troubleshooting](Troubleshooting) · [🏠 Home](Home) · [Roadmap →](Roadmap)

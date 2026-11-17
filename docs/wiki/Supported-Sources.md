@@ -1,4 +1,4 @@
-# Supported sources
+![](images/divider.svg)
 
 | Source | Status | Search | Watchlist | Download |
 |---|---|---|---|---|
@@ -39,3 +39,7 @@ Mixcloud, hearthis.at and archive.org are on the roadmap. Nothing is promised or
 
 Every source has its own terms. You are responsible for following them. HCLoader keeps the load low,
 but it does not change what you are allowed to do.
+
+---
+
+[← Scheduled checks](Scheduled-Checks) · [🏠 Home](Home) · [Settings reference →](Settings-Reference)

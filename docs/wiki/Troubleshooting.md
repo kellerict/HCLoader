@@ -1,4 +1,4 @@
-# Troubleshooting
+![](images/divider.svg)
 
 First look at the **status bar** (yt-dlp version, Deno, ffmpeg, PO token, backoff) and at the
 **Protokoll** (Log) view. The log file is:
@@ -6,8 +6,8 @@ First look at the **status bar** (yt-dlp version, Deno, ffmpeg, PO token, backof
 - portable build: `HCLoader\data\logs\hcloader.log`
 - venv install: `%APPDATA%\HCLoader\logs\hcloader.log`
 
-Set `log_level` to DEBUG (Settings, Allgemein) only while investigating. Cookies and secrets are
-never written to the log, but **check a log before posting it** and remove personal paths.
+> 🔒 **Before you share a log** – Set `log_level` to DEBUG (Settings, Allgemein) only while investigating. Cookies and secrets are
+> never written to the log, but **check a log before posting it** and remove personal paths.
 
 ## The window is blank, or an error mentions WebView2
 
@@ -118,3 +118,7 @@ delete `app`, `ui` and `scripts` in the app folder and move the folders from `_p
 Open an [issue](https://github.com/kellerict/HCLoader/issues/new/choose) with the app version
 (Settings, Wartung), install type, Windows version, steps and the relevant log lines. Never post
 cookies or tokens.
+
+---
+
+[← Throttling and backoff](Throttling-and-Backoff) · [🏠 Home](Home) · [FAQ →](FAQ)

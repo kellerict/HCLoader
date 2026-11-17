@@ -1,4 +1,4 @@
-# Scheduled checks
+![](images/divider.svg)
 
 HCLoader can check your watchlist automatically in two ways. You can use either or both.
 
@@ -51,3 +51,7 @@ in the portable build).
 The task contains absolute paths. If you move the folder (portable build), the app shows "app was
 moved, re-create the task" and one click re-creates it. It does not do so automatically, in case
 you have two copies.
+
+---
+
+[← File naming and tags](File-Naming-and-Tags) · [🏠 Home](Home) · [Supported sources →](Supported-Sources)

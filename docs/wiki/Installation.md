@@ -1,4 +1,4 @@
-# Installation
+![](images/divider.svg)
 
 There are three ways to run HCLoader. All give you the same app.
 
@@ -119,3 +119,7 @@ yourself if you want a completely clean system. Silent: `"%LOCALAPPDATA%\Program
 the data folder (see [Settings reference](Settings-Reference#where-settings-live)). Your downloaded
 music is in the target folder you configured and is not touched. If you created a scheduled task,
 remove it first in Settings, Zeitplan (schedule).
+
+---
+
+[🏠 Home](Home) · [Portable build →](Portable-Build)

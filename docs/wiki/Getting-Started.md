@@ -1,4 +1,4 @@
-# Getting started
+![](images/divider.svg)
 
 A first session, from empty app to a tagged MP3. The screenshots in the repository use mock data.
 
@@ -49,3 +49,7 @@ matches arrive in the **Eingang** (Inbox) or are downloaded automatically. See
 - [Discover and search](Discover-and-Search)
 - [File naming and tags](File-Naming-and-Tags)
 - [Throttling and backoff](Throttling-and-Backoff)
+
+---
+
+[← Portable build](Portable-Build) · [🏠 Home](Home) · [App updates →](App-Updates)

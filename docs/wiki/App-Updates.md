@@ -1,4 +1,4 @@
-# App updates
+![](images/divider.svg)
 
 There are two kinds of updates.
 
@@ -31,4 +31,8 @@ is published, update manually:
   (or point the new folder at the old data with `HCLOADER_HOME`).
 - **venv install**: `git pull`, then `.\scripts\setup.ps1` again.
 
-Back up `data\` (or `%APPDATA%\HCLoader`) before manual updates if you care about your database.
+> 💾 **Backup first** – Back up `data\` (or `%APPDATA%\HCLoader`) before manual updates if you care about your database.
+
+---
+
+[← Getting started](Getting-Started) · [🏠 Home](Home) · [Discover and search →](Discover-and-Search)

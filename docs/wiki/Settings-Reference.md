@@ -1,4 +1,4 @@
-# Settings reference
+![](images/divider.svg)
 
 All settings are in the app under **Einstellungen** (Settings), one tab per section. Each setting
 shows a label, a help text, its default and a reset link. **Speichern** validates everything and
@@ -185,3 +185,7 @@ data and log folders, and the reset-all button.
 
 Nothing a user would want to change is code-only, with one exception: the number of kept database
 backups (10) is a constant.
+
+---
+
+[← Supported sources](Supported-Sources) · [🏠 Home](Home) · [Throttling and backoff →](Throttling-and-Backoff)

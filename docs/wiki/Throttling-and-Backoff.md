@@ -1,7 +1,7 @@
-# Throttling and backoff
+![](images/divider.svg)
 
-HCLoader's first principle is to **be nice to the platform**. Every network access goes through
-one central throttle. New features must never bypass it.
+> 🛡️ HCLoader's first principle is to **be nice to the platform**. Every network access goes through
+> one central throttle. New features must never bypass it.
 
 ## Rules
 
@@ -63,3 +63,7 @@ only that platform; the queue keeps downloading from the other.
 
 The daily update check asks PyPI (for yt-dlp and the plugin), not YouTube, and is not part of the
 throttle.
+
+---
+
+[← Settings reference](Settings-Reference) · [🏠 Home](Home) · [Troubleshooting →](Troubleshooting)

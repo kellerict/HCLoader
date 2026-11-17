@@ -1,4 +1,4 @@
-# Development
+![](images/divider.svg)
 
 HCLoader targets Windows, but most of the code and all tests run on Linux and macOS too (WebView2,
 `schtasks` and the PowerShell scripts are Windows-only).
@@ -72,3 +72,7 @@ Version bump, changelog, tag and the portable ZIP are described in
 
 The project uses automated QA and independent review steps on top of the test suite (acceptance
 checks per phase, a review before merging). Their notes are in `docs/qa/` and `docs/reviews/`.
+
+---
+
+[← Architecture](Architecture) · [🏠 Home](Home)

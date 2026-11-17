@@ -1,5 +1,6 @@
 name: Publish wiki
-# Mirrors docs/wiki/*.md (except README.md) into the GitHub wiki of this repository.
+# Mirrors docs/wiki/*.md (except README.md) and docs/wiki/images/ into the GitHub wiki of this
+# repository. Pages reference the images relatively as images/<file>.
 # The wiki must have been initialised once in the web UI (create the Home page).
 # Only `main` (and a manual run) may write to the live wiki - never unmerged work branches.
 on:
@@ -29,6 +30,11 @@ jobs:
           for f in docs/wiki/*.md; do
             [ "$(basename "$f")" = "README.md" ] || cp "$f" wiki/
           done
+          # Images: replace the whole folder so files removed from docs/wiki/images disappear too.
+          rm -rf wiki/images
+          if [ -d docs/wiki/images ]; then
+            cp -R docs/wiki/images wiki/images
+          fi
           cd wiki
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

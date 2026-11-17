@@ -1,4 +1,6 @@
-# Discover and search
+![](images/divider.svg)
+
+![Discover view with search results and filters](images/screenshot-discover.jpg)
 
 **Entdecken** (Discover) is where you find mixes on demand.
 
@@ -57,3 +59,7 @@ Channels you block are hidden from all results. You can unblock them in Settings
 
 During a backoff, or when the hourly limit is reached, the search says why instead of sending a
 request. See [Throttling and backoff](Throttling-and-Backoff).
+
+---
+
+[← App updates](App-Updates) · [🏠 Home](Home) · [Watchlist and Inbox →](Watchlist-and-Inbox)

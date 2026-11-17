@@ -1,12 +1,14 @@
-**[HCLoader](Home)**
+[![HCLoader](images/logo.svg)](Home)
 
-**Setup**
+**🏠 [Home](Home)**
+
+**🚀 Setup**
 - [Installation](Installation)
 - [Portable build](Portable-Build)
 - [Getting started](Getting-Started)
 - [App updates](App-Updates)
 
-**Using the app**
+**🎛️ Using the app**
 - [Discover and search](Discover-and-Search)
 - [Watchlist and Inbox](Watchlist-and-Inbox)
 - [Downloads and queue](Downloads-and-Queue)
@@ -15,15 +17,17 @@
 - [Scheduled checks](Scheduled-Checks)
 - [Supported sources](Supported-Sources)
 
-**Configuration**
+**⚙️ Configuration**
 - [Settings reference](Settings-Reference)
 - [Throttling and backoff](Throttling-and-Backoff)
 
-**Help**
+**🛟 Help**
 - [Troubleshooting](Troubleshooting)
 - [FAQ](FAQ)
 
-**Project**
+**🧩 Project**
 - [Roadmap](Roadmap)
 - [Architecture](Architecture)
 - [Development](Development)
+
+**⬇️ [Download](https://github.com/kellerict/HCLoader/releases/latest)**

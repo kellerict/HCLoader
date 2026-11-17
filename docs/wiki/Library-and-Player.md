@@ -1,4 +1,6 @@
-# Library and player
+![](images/divider.svg)
+
+![Library grid with the built-in player](images/screenshot-library.jpg)
 
 **Bibliothek** (Library) lists everything you have downloaded, from the database.
 
@@ -37,3 +39,7 @@ The other variant is always available per entry in the menu.
 
 Point Plex or Jellyfin at the target folder (type: Music). The default folder layout and the tags
 are designed for it; see [File naming and tags](File-Naming-and-Tags).
+
+---
+
+[← Downloads and queue](Downloads-and-Queue) · [🏠 Home](Home) · [File naming and tags →](File-Naming-and-Tags)

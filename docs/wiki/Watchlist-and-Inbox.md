@@ -1,4 +1,6 @@
-# Watchlist and Inbox
+![](images/divider.svg)
+
+![Watchlist view](images/screenshot-watchlist.jpg)
 
 ## Watchlist
 
@@ -43,3 +45,7 @@ exactly like on Discover cards. Downloaded items leave the Inbox.
 
 In the app (default every 24 h while it is open) and via the Windows Task Scheduler even when the
 app is closed: see [Scheduled checks](Scheduled-Checks).
+
+---
+
+[← Discover and search](Discover-and-Search) · [🏠 Home](Home) · [Downloads and queue →](Downloads-and-Queue)

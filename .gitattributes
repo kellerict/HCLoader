@@ -7,6 +7,7 @@ scripts/portable/*.txt text eol=crlf
 # Keep source archives (GitHub zipball / git archive, used by the self-update) small:
 # screenshots and previews are only for README/wiki and stay in the repository.
 docs/screenshots/** export-ignore
+docs/wiki/images/** export-ignore
 docs/icon-preview.png export-ignore
 
 # Inno Setup script: CRLF like the Windows starters (ISCC reads it as ANSI, keep it ASCII)

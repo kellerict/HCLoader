@@ -1,4 +1,6 @@
-# Downloads and queue
+![](images/divider.svg)
+
+![Downloads view with the queue](images/screenshot-downloads.jpg)
 
 The **Downloads** view shows the queue. There is **one** active download at a time, always.
 
@@ -41,3 +43,7 @@ aborted and the item stays queued for the next start.
 A failed item shows the error, for example `HTTP 403` for members-only videos. Local problems
 (for example a target folder that cannot be written, or the PO-token server not running) block the
 queue until fixed instead of marking every item as failed; nothing is counted against the limits. 403 and 429 are never retried automatically.
+
+---
+
+[← Watchlist and Inbox](Watchlist-and-Inbox) · [🏠 Home](Home) · [Library and player →](Library-and-Player)
