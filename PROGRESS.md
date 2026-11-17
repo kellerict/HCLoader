@@ -18,6 +18,7 @@ Cloud-Session (Linux-Container). Abweichend von `build-all.md`: alle Phasen auf 
 | 3 – Entdecken & Downloads | **abgeschlossen** (QA bestanden; Review R1 behoben 00f165c, R2 behoben ba6ccbd) | | | |
 | 4 – Watchlist & Zeitplan | **abgeschlossen** (QA bestanden; Review R1 behoben 06503c8, R2 freigegeben, R2-m1 behoben) | | | |
 | 5 – Bibliothek, Protokoll, Feinschliff | **abgeschlossen** (QA bestanden; Review R1 behoben ea1e9aa, R2 freigegeben, R2-m1 behoben) |
+| 7 – Weitere Quellen (User-Wunsch) | 7a SoundCloud in Arbeit (Backend); 7b Mixcloud + hearthis.at, 7c archive.org geplant |
 | 6 – Portable (User-Wunsch) | gebaut (6ba6448); Windows-Build nie gelaufen (Actions blockiert); QA/Review offen | | | |
 
 ## Aktueller Plan
@@ -73,3 +74,4 @@ Phase 6 – Portable (User-Wunsch, Variante 2: komplett portable)
 - 2026-11-16 – **Windows-CI hing seit e205214 (Phase 3b)**: pytest hängt auf windows-latest. CI mit Job-/Test-Timeouts + Stack-Dump + concurrency versehen (c134358), 31 hängende/wartende Läufe abgebrochen. Ursache wird ermittelt.
 - 2026-11-16 – Phase 6 (Portable) gestartet
 - 2026-11-16 – Hänger-Ursache: modale MessageBox in test_run_gui_without_pywebview → behoben (0aa4709). Phase 6 Portable committet (6ba6448). Actions danach blockiert (Billing vermutet).
+- 2026-11-17 – Portable-Build beim User lauffähig (Fixes: Expand-Archive/PS7-Modulpfade, MAX_PATH, file-URL-Query, relativer Starter HCLoader.cmd, Download-Fortschritt). App-Icon (Fable) und Phase 7a SoundCloud-Backend (Opus) gestartet.
