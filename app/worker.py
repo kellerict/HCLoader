@@ -406,6 +406,7 @@ def video_dict(row: dict[str, Any]) -> dict[str, Any]:
         "platform": row.get("platform") or platform_of(row["id"]),
         "url": row.get("url") or None,
         "preview": bool(row.get("preview")),
+        "geo_blocked": bool(row.get("geo_blocked")),
     }
 
 

@@ -191,6 +191,7 @@ def store_results(
             "url": e.get("url") or None,
             "channel_url": e.get("channel_url") or None,
             "preview": bool(e.get("preview")),
+            "geo_blocked": bool(e.get("geo_blocked")),
         }
         if not row or row.get("status") not in GENRE_LOCKED_STATUSES:
             source_default = None

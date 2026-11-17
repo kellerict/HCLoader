@@ -388,7 +388,7 @@ def test_migration_v5_existing_rows_become_youtube(tmp_path):
     conn.execute("INSERT INTO sources(type, name, url_or_query) VALUES ('channel','K','u')")
     conn.close()
     with Database(path) as d:
-        assert d.schema_version() == len(dbmod.MIGRATIONS) == 5
+        assert d.schema_version() == len(dbmod.MIGRATIONS) == 6
         row = d.get_video("abcdefghijk")
         assert row["platform"] == "youtube" and row["preview"] == 0 and row["url"] is None
         src = d.list_sources()[0]

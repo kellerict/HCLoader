@@ -417,6 +417,7 @@ def _entry_row(entry: Mapping[str, Any], source_id: int, genre: str, status: str
         "url": entry.get("url") or None,
         "channel_url": entry.get("channel_url") or None,
         "preview": bool(entry.get("preview")),
+        "geo_blocked": bool(entry.get("geo_blocked")),
     }
 
 

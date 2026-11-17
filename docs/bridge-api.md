@@ -523,6 +523,9 @@ eine `id` schickt oder bekommt (Video, QueueItem, LibraryItem, Events). `channel
   downloading; Dauer ±5 s, normalisierter Titel Token-Jaccard ≥ 0.8). Ausgeblendet wird nur mit
   `filters.hide_cross_platform_duplicates` (`filter_reason` «Vermutlich bereits geladen (YouTube)» bzw.
   «(SoundCloud)»). `filter_reason` neu: «Nur Vorschau (Go+)».
+- `Video.geo_blocked` (bool, Review M1): SoundCloud-Track mit API-`policy: BLOCK` (in dieser Region
+  gesperrt). Er bleibt in Suche/Liste sichtbar statt die ganze Abfrage abzubrechen; `filter_reason`
+  «Nicht verfügbar (Region)» (vor «Nur Vorschau (Go+)»). DB-Spalte `videos.geo_blocked` (Migration 6).
 - `Source`: `platform`, `name_auto`.
 - `LibraryItem`: `platform`.
 - `get_queue()`: zusätzlich `platform_blocked: {<platform>: {code, reason}}` – Plattformen mit wartenden,

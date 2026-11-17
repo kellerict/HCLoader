@@ -396,3 +396,101 @@ def test_api_suggest_and_save_source_with_name_auto(world):
         {"type": "search", "name": "uptempo", "url_or_query": "uptempo", "platform": "soundcloud"}
     )
     assert res["ok"] and res["source"]["platform"] == "soundcloud"
+
+
+# --------------------------------------------------------------------------- Review 7a/8
+
+
+SC_403 = (
+    "ERROR: [soundcloud] {tid}: Unable to download JSON metadata: HTTP Error 403: Forbidden "
+    "(caused by <HTTPError 403: Forbidden>)"
+)
+
+
+def test_soundcloud_403_after_refresh_is_bot_check(world):
+    """Review M3: a SoundCloud API 403 (after yt-dlp's own client_id refresh) starts the
+    SoundCloud backoff; no second SoundCloud download, YouTube goes on."""
+    w = world
+    assert w.api.search("hardstyle", {"platform": "soundcloud"})["ok"]
+    assert w.api.search("thera", {})["ok"]
+    FakeYDL.behaviour["sc:111111111"] = yt_dlp.utils.DownloadError(SC_403.format(tid=111111111))
+    order = ["sc:111111111", "sc:222222222", "ytTheraMix1"]
+    assert w.api.enqueue(order)["ids"] == order
+    w.api._queue.start()
+    assert w.api._queue.wait_idle(60)
+
+    assert FakeYDL.downloads == ["sc:111111111", "ytTheraMix1"]  # no second SC attempt
+    assert w.db.get_video("sc:111111111")["status"] == "failed"
+    assert w.db.get_video("sc:222222222")["status"] == "queued"
+    assert w.db.get_video("ytTheraMix1")["status"] == "done"
+    sc_th = w.throttle.platform("soundcloud")
+    assert sc_th.backoff_until() is not None and w.throttle.backoff_until() is None
+    assert "403" in w.api.get_status()["platforms"]["soundcloud"]["backoff"]["reason"]
+    res = w.api.search("x", {"platform": "soundcloud"})
+    assert res["ok"] is False and "Backoff (SoundCloud)" in res["error"]
+
+
+def test_soundcloud_404_or_cdn_403_is_no_backoff(world):
+    """Review M3: «track deleted/private» (404) and a 403 of the media CDN (no extractor
+    prefix, e.g. an expired signed URL) fail only this entry."""
+    w = world
+    assert w.api.search("hardstyle", {"platform": "soundcloud"})["ok"]
+    FakeYDL.behaviour["sc:111111111"] = yt_dlp.utils.DownloadError(
+        "ERROR: [soundcloud] 111111111: Unable to download JSON metadata: HTTP Error 404: Not Found"
+    )
+    FakeYDL.behaviour["sc:222222222"] = yt_dlp.utils.DownloadError(
+        "ERROR: unable to download video data: HTTP Error 403: Forbidden"
+    )
+    order = ["sc:111111111", "sc:222222222"]
+    w.api.enqueue(order)
+    w.api._queue.start()
+    assert w.api._queue.wait_idle(60)
+    assert FakeYDL.downloads == order
+    assert all(w.db.get_video(v)["status"] == "failed" for v in order)
+    assert w.throttle.platform("soundcloud").backoff_until() is None
+
+
+def test_soundcloud_403_in_watchlist_stops_soundcloud_sources(world, monkeypatch):
+    """Review M3: the watchlist skips the remaining SoundCloud sources after a 403."""
+    from app.core import watchlist
+
+    w = world
+    w.db.add_source("channel", "SC1", "https://soundcloud.com/a", platform="soundcloud")
+    w.db.add_source("channel", "SC2", "https://soundcloud.com/b", platform="soundcloud")
+    listed: list[str] = []
+
+    def extract_info(self, url, download=True, process=True):
+        listed.append(url)
+        raise yt_dlp.utils.DownloadError(
+            "ERROR: [soundcloud:user] a: Unable to download JSON metadata: HTTP Error 403: "
+            "Forbidden"
+        )
+
+    monkeypatch.setattr(FakeYDL, "extract_info", extract_info)
+    client = ytclient.YtClient(lambda: w.api._cfg, w.db, w.throttle)
+    res = watchlist.check_all(client=client, db=w.db, throttle=w.throttle, settings=w.api._cfg)
+    assert listed == ["https://soundcloud.com/a/tracks"]
+    assert res.backoff and w.throttle.platform("soundcloud").backoff_until() is not None
+    assert w.throttle.backoff_until() is None
+
+
+def test_soundcloud_geo_blocked_hit_is_filtered_not_fatal(world, monkeypatch):
+    """Review M1: a geo-blocked track (policy BLOCK) is a normal hit with a filter reason."""
+    w = world
+    blocked = sc_info(777777777, "Hardcore Mix Label Upload", 3600, policy="BLOCK")
+    monkeypatch.setattr(
+        FakeYDL,
+        "extract_info",
+        lambda self, url, download=True, process=True: {
+            "_type": "playlist",
+            "entries": [dict(blocked), dict(SC_SEARCH[0])],
+        },
+    )
+    res = w.api.search("hardcore", {"platform": "soundcloud"})
+    assert res["ok"], res
+    by_id = {v["id"]: v for v in res["results"]}
+    assert by_id["sc:777777777"]["geo_blocked"] is True
+    assert by_id["sc:777777777"]["filter_reason"] == "Nicht verfügbar (Region)"
+    ok = by_id["sc:111111111"]
+    assert ok["filter_reason"] == "" and ok["geo_blocked"] is False
+    assert w.db.get_video("sc:777777777")["geo_blocked"] == 1

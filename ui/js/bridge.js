@@ -178,7 +178,8 @@
                   gibt es die Quelle nicht mehr: kein Badge, Gruppe «Ohne Quelle»),
                   platform: "youtube"|"soundcloud" (7a; id bei SoundCloud "sc:<zahl>", channel_id "sc:<zahl>"),
                   url (Seite des Videos/Tracks|null), preview (bool: SoundCloud-Go+-Vorschau, nie ladbar,
-                  filter_reason «Nur Vorschau (Go+)»), duplicate_of ({id, platform, title}|null, nur Suchtreffer
+                  filter_reason «Nur Vorschau (Go+)»), geo_blocked (bool: SoundCloud-Track in dieser Region
+                  gesperrt, filter_reason «Nicht verfügbar (Region)»), duplicate_of ({id, platform, title}|null, nur Suchtreffer
                   und Eingang: vermutlich schon von der anderen Plattform geladen/eingereiht – Hinweis
                   «Vermutlich bereits geladen (YouTube)»; ausgeblendet nur mit filters.hide_cross_platform_duplicates).
                   Thumbnails von SoundCloud: https://*.sndcdn.com}

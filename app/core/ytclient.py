@@ -14,6 +14,7 @@ entry for the thumbnail; docs/decisions.md «SoundCloud: yt-dlp-Extractor».
 
 from __future__ import annotations
 
+import inspect
 import logging
 import os
 import re
@@ -1247,13 +1248,107 @@ def _only_previews(ie_result: Mapping[str, Any]) -> bool:
 
 
 _SC_FLAT_CLASSES: list[type] | None = None
+# yt-dlp version the SoundCloud extensions were written and checked against
+SC_CHECKED_YTDLP = "2026.10.26"
+_SC_WARNED: set[str] = set()
+
+
+class ScIncompatible(Exception):
+    """yt-dlp's SoundCloud internals differ from what `_sc_flat_extractor_classes` expects."""
+
+
+def _sc_warn_once(key: str, text: str, *args: Any) -> None:
+    if key in _SC_WARNED:
+        return
+    _SC_WARNED.add(key)
+    log.warning(text, *args)
+
+
+def _sc_fallback(where: str, exc: BaseException) -> None:
+    """Review M2: an override hit an unexpected yt-dlp change at runtime -> stock behaviour."""
+    _sc_warn_once(
+        f"runtime:{where}",
+        "SoundCloud-Erweiterung (%s) passt nicht zu dieser yt-dlp-Version (%s), "
+        "Standardverhalten von yt-dlp wird verwendet: %s",
+        where,
+        getattr(yt_dlp.version, "__version__", "?"),
+        exc,
+    )
+    log.debug("SoundCloud-Erweiterung: Fallback in %s", where, exc_info=exc)
+
+
+# errors that mean «the yt-dlp internals changed» (never ExtractorError: those are real
+# answers of SoundCloud, e.g. 429/403, and must reach the throttle)
+_SC_DRIFT_ERRORS = (AttributeError, TypeError, KeyError, IndexError, ValueError)
+
+
+def _params(func: Any) -> list[inspect.Parameter] | None:
+    try:
+        return list(inspect.signature(func).parameters.values())
+    except (TypeError, ValueError):
+        return None
+
+
+def _sc_check_capabilities(sc: Any) -> list[str]:
+    """Review M2: every yt-dlp internal the overrides use, with the expected shape.
+    Returns the problems (empty = compatible)."""
+    problems: list[str] = []
+    names = (
+        "SoundcloudBaseIE",
+        "SoundcloudIE",
+        "SoundcloudSearchIE",
+        "SoundcloudUserIE",
+        "SoundcloudSetIE",
+        "SoundcloudPlaylistBaseIE",
+    )
+    for name in names:
+        if not isinstance(getattr(sc, name, None), type):
+            problems.append(f"Klasse {name} fehlt")
+    if problems:
+        return problems
+    base = sc.SoundcloudBaseIE
+    for cls in (sc.SoundcloudSearchIE, sc.SoundcloudUserIE, sc.SoundcloudSetIE):
+        if not issubclass(cls, base):
+            problems.append(f"{cls.__name__} erbt nicht von SoundcloudBaseIE")
+    for attr in ("_call_api", "_extract_thumbnails", "_extract_info_dict", "url_result"):
+        if not callable(getattr(base, attr, None)):
+            problems.append(f"SoundcloudBaseIE.{attr} fehlt")
+    if not isinstance(getattr(base, "_API_V2_BASE", None), str):
+        problems.append("SoundcloudBaseIE._API_V2_BASE fehlt")
+    if not isinstance(getattr(base, "_HEADERS", None), dict):
+        problems.append("SoundcloudBaseIE._HEADERS fehlt")
+    if problems:
+        return problems
+
+    def names_of(func: Any) -> list[str] | None:
+        ps = _params(func)
+        return None if ps is None else [p.name for p in ps]
+
+    info_dict = names_of(base._extract_info_dict)
+    if not info_dict or info_dict[:2] != ["self", "info"] or "extract_flat" not in info_dict:
+        problems.append(f"Signatur _extract_info_dict geändert: {info_dict}")
+    thumbs = names_of(base._extract_thumbnails)
+    if not thumbs or thumbs[:2] != ["self", "info"]:
+        problems.append(f"Signatur _extract_thumbnails geändert: {thumbs}")
+    url_res = names_of(base.url_result)  # staticmethod: (url, ie, video_id, video_title, ...)
+    if not url_res or url_res[:3] != ["url", "ie", "video_id"]:
+        problems.append(f"Signatur url_result geändert: {url_res}")
+    ext_set = getattr(sc.SoundcloudSetIE, "_extract_set", None)
+    set_params = _params(ext_set) if callable(ext_set) else None
+    if (
+        set_params is None
+        or [p.name for p in set_params[:3]] != ["self", "playlist", "token"]
+        or set_params[2].default is inspect.Parameter.empty
+    ):
+        problems.append("Signatur _extract_set(playlist, token=None) geändert")
+    return problems
 
 
 def _sc_flat_extractor_classes() -> list[type]:
     """Subclasses of yt-dlp's SoundCloud search/user/set extractors for *flat* listings.
 
     Same `ie_key()` as the originals (class name), so `YoutubeDL.add_info_extractor` replaces
-    them in place for one YoutubeDL instance only. They change three things (yt-dlp 2026.10.26,
+    them in place for one YoutubeDL instance only. They change these things (yt-dlp 2026.10.26,
     `yt_dlp/extractor/soundcloud.py`):
     1. `_extract_thumbnails`: no HEAD request for the «original» artwork (one request per entry
        otherwise, each after `sleep_interval_requests`); the t500x500 URL is built directly.
@@ -1263,13 +1358,33 @@ def _sc_flat_extractor_classes() -> list[type]:
     3. Sets: stub tracks (only `id`, everything after the first few) inside the wanted window
        (`head`/`tail`, n) are fetched in batches of 50 (`tracks?ids=`), like yt-dlp does for
        private sets, so the entries have a duration. Cost: ceil(stubs / 50) requests.
-    Plus `sc_policy` (SNIP = Go+ preview) in every flat entry. If yt-dlp renames one of these
-    internals, the override is simply not used (the stock behaviour stays).
+    4. `sc_policy` in every flat entry (SNIP = Go+ preview, BLOCK = geo-blocked). For flat
+       entries the policy is hidden from yt-dlp: with `extract_flat` the format list is always
+       empty, and yt-dlp would raise GeoRestrictedError for every BLOCK track, which aborted
+       the whole search/listing (Review M1).
+
+    Review M2: before the classes are built, `_sc_check_capabilities` checks every internal
+    used (classes, methods, attributes, signatures); a mismatch raises ScIncompatible and the
+    stock extractors stay in use. At runtime every override falls back to the stock
+    behaviour on an unexpected AttributeError/TypeError/... (warning once in the log).
     """
     global _SC_FLAT_CLASSES
     if _SC_FLAT_CLASSES is not None:
         return _SC_FLAT_CLASSES
     from yt_dlp.extractor import soundcloud as sc
+    from yt_dlp.utils import ExtractorError
+
+    problems = _sc_check_capabilities(sc)
+    if problems:
+        raise ScIncompatible("; ".join(problems))
+    version = getattr(yt_dlp.version, "__version__", "")
+    if version and version != SC_CHECKED_YTDLP:
+        _sc_warn_once(
+            "version",
+            "yt-dlp %s: SoundCloud-Erweiterung geprüft mit %s (Schnittstellen passen)",
+            version,
+            SC_CHECKED_YTDLP,
+        )
 
     class _Mixin:
         _hc_window: tuple[str, int] | None = None
@@ -1304,35 +1419,61 @@ def _sc_flat_extractor_classes() -> list[type]:
 
         def _call_api(self, *args: Any, **kwargs: Any) -> Any:
             res = super()._call_api(*args, **kwargs)  # type: ignore[misc]
-            self._hc_remember(res)
+            try:
+                self._hc_remember(res)
+            except _SC_DRIFT_ERRORS as exc:
+                _sc_fallback("_call_api", exc)
             return res
 
         def _extract_thumbnails(self, info: Any) -> Any:
-            url = (info or {}).get("artwork_url") or ((info or {}).get("user") or {}).get(
-                "avatar_url"
-            )
-            if not url:
-                return None
-            big = re.sub(r"-[0-9a-z]+\.(?:jpg|png)", "-t500x500.jpg", str(url))
-            return [{"id": "t500x500", "url": big, "width": 500, "height": 500}]
+            try:
+                url = (info or {}).get("artwork_url") or ((info or {}).get("user") or {}).get(
+                    "avatar_url"
+                )
+                if not url:
+                    return None
+                big = re.sub(r"-[0-9a-z]+\.(?:jpg|png)", "-t500x500.jpg", str(url))
+                return [{"id": "t500x500", "url": big, "width": 500, "height": 500}]
+            except _SC_DRIFT_ERRORS as exc:
+                _sc_fallback("_extract_thumbnails", exc)
+                return super()._extract_thumbnails(info)  # type: ignore[misc]
 
         def _extract_info_dict(self, info: Any, *args: Any, **kwargs: Any) -> Any:
-            res = super()._extract_info_dict(info, *args, **kwargs)  # type: ignore[misc]
+            flat = bool(kwargs.get("extract_flat") or (len(args) >= 3 and args[2]))
+            policy = info.get("policy") if isinstance(info, dict) else None
+            call_info = info
+            if flat and policy is not None:
+                # M1: no formats in flat mode -> yt-dlp would raise for policy BLOCK
+                call_info = {**info, "policy": None}
+            try:
+                res = super()._extract_info_dict(call_info, *args, **kwargs)  # type: ignore[misc]
+            except _SC_DRIFT_ERRORS as exc:
+                if call_info is info:
+                    raise  # nothing of ours involved: stock behaviour
+                _sc_fallback("_extract_info_dict", exc)
+                return super()._extract_info_dict(info, *args, **kwargs)  # type: ignore[misc]
             if isinstance(res, dict) and isinstance(info, dict):
-                res["sc_policy"] = info.get("policy")
+                res["sc_policy"] = policy
             return res
 
         def url_result(self, url: Any, ie: Any = None, video_id: Any = None, *a: Any, **kw: Any):
-            track = self._hc_store().get(str(video_id)) if video_id is not None else None
-            if track is not None and "duration" not in kw:
-                meta = self._extract_info_dict(track, extract_flat=True)
-                for key in ("formats", "__post_extractor", "id"):
-                    meta.pop(key, None)
-                kw = {**meta, **kw}
+            try:
+                track = self._hc_store().get(str(video_id)) if video_id is not None else None
+                if track is not None and "duration" not in kw:
+                    try:
+                        meta = dict(self._extract_info_dict(track, extract_flat=True))
+                    except ExtractorError as exc:  # never let one track abort the listing
+                        log.debug("SoundCloud-Eintrag %s ohne Metadaten: %s", video_id, exc)
+                        meta = {"sc_policy": track.get("policy")}
+                    for key in ("formats", "__post_extractor", "id"):
+                        meta.pop(key, None)
+                    kw = {**meta, **kw}
+            except _SC_DRIFT_ERRORS as exc:
+                _sc_fallback("url_result", exc)
             return super().url_result(url, ie, video_id, *a, **kw)  # type: ignore[misc]
 
     class _SetMixin(_Mixin):
-        def _extract_set(self, playlist: Any, token: Any = None) -> Any:
+        def _hc_fill_window(self, playlist: Any) -> Any:
             tracks = (playlist or {}).get("tracks") or []
             window = self._hc_window
             if window and tracks:
@@ -1357,7 +1498,15 @@ def _sc_flat_extractor_classes() -> list[type]:
                         "tracks": [full.get(str(t.get("id")), t) for t in tracks],
                     }
             self._hc_remember({"tracks": (playlist or {}).get("tracks") or []})
-            return super()._extract_set(playlist, token)  # type: ignore[misc]
+            return playlist
+
+        def _extract_set(self, playlist: Any, token: Any = None) -> Any:
+            try:
+                filled = self._hc_fill_window(playlist)
+            except _SC_DRIFT_ERRORS as exc:
+                _sc_fallback("_extract_set", exc)
+                filled = playlist
+            return super()._extract_set(filled, token)  # type: ignore[misc]
 
     out = []
     for base, mixin in (
@@ -1377,8 +1526,14 @@ def _install_sc_flat_extractors(ydl: Any, window: tuple[str, int] | None) -> Non
         return
     try:
         classes = _sc_flat_extractor_classes()
-    except Exception:  # yt-dlp changed: stock extractors stay in use
-        log.debug("SoundCloud-Extractor-Erweiterung nicht verfügbar", exc_info=True)
+    except Exception as exc:  # yt-dlp changed: stock extractors stay in use
+        _sc_warn_once(
+            "build",
+            "SoundCloud-Erweiterung nicht aktiv (yt-dlp %s geändert: %s) – Standardverhalten, "
+            "Dauer/Datum in Listen können fehlen",
+            getattr(yt_dlp.version, "__version__", "?"),
+            exc,
+        )
         return
     for cls in classes:
         ie = cls()

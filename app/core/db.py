@@ -45,6 +45,7 @@ _VIDEO_COLUMNS = (
     "url",
     "channel_url",
     "preview",
+    "geo_blocked",
 )
 _SOURCE_FIELDS = (
     "type",
@@ -163,6 +164,13 @@ def _m5_platforms(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX idx_videos_platform_duration ON videos(platform, duration)")
 
 
+def _m6_geo_blocked(conn: sqlite3.Connection) -> None:
+    """Review M1 (Phase 7a/8): `videos.geo_blocked` = SoundCloud track with API policy BLOCK
+    (not available in this region). Flat listings keep such tracks (filter reason «Nicht
+    verfügbar (Region)») instead of aborting the whole search/listing."""
+    conn.execute("ALTER TABLE videos ADD COLUMN geo_blocked INTEGER NOT NULL DEFAULT 0")
+
+
 # Append new steps at the end; never edit existing ones. Step i upgrades version i -> i+1.
 MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [
     _m1_initial,
@@ -170,6 +178,7 @@ MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [
     _m3_newest_last,
     _m4_source_videos,
     _m5_platforms,
+    _m6_geo_blocked,
 ]
 # statuses a user may put into the download queue (enqueue / retry)
 ENQUEUEABLE = ("new", "inbox", "failed")
@@ -348,6 +357,7 @@ class Database:
                 row["date_approx"] = int(bool(video.get("date_approx")))
                 row["platform"] = video.get("platform") or platform_of(vid)
                 row["preview"] = int(bool(video.get("preview")))
+                row["geo_blocked"] = int(bool(video.get("geo_blocked")))
                 self._check_status(row["status"])
                 cols = ", ".join(row)
                 marks = ", ".join("?" for _ in row)
@@ -367,6 +377,8 @@ class Database:
                     updates[key] = video[key]
             if video.get("preview") is not None and "preview" in video:
                 updates["preview"] = int(bool(video["preview"]))
+            if video.get("geo_blocked") is not None and "geo_blocked" in video:
+                updates["geo_blocked"] = int(bool(video["geo_blocked"]))
             if video.get("genre") and not existing["genre_manual"]:
                 updates["genre"] = video["genre"]
             if video.get("source_id") is not None and existing["source_id"] is None:

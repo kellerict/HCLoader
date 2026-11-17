@@ -159,6 +159,14 @@ def is_preview(video: Mapping[str, Any]) -> bool:
     )
 
 
+GEO_REASON = "Nicht verfügbar (Region)"
+
+
+def is_geo_blocked(video: Mapping[str, Any]) -> bool:
+    """SoundCloud track blocked in this region (API policy BLOCK, Review M1)."""
+    return bool(video.get("geo_blocked"))
+
+
 def _period_reason(upload_date: str | None, period: str) -> str:
     if parse_upload_date(upload_date) is None:
         return "Upload-Datum unbekannt"
@@ -174,6 +182,8 @@ def passes(
     """Check all SPEC §4 rules. Returns (ok, reason); reason is '' on success (German text)."""
     if is_live(video):
         return False, "Livestream"
+    if is_geo_blocked(video):
+        return False, GEO_REASON
     if is_preview(video):
         return False, PREVIEW_REASON
     reason = check_duration(video.get("duration"), settings.min_duration, settings.max_duration)
