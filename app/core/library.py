@@ -188,6 +188,8 @@ def library_item(
         "unknown": unknown,
         "has_cue": bool(path and present and path.with_suffix(".cue").is_file()),
         "platform": row.get("platform") or platforms.platform_of(row["id"]),
+        "genre_manual": bool(row.get("genre_manual")),
+        "thumbnail": row.get("thumbnail") or None,
     }
 
 

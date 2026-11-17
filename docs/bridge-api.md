@@ -269,7 +269,8 @@ Aufgaben-Felder unverändert (sie spiegeln den Zustand der Windows-Aufgabe).
   Kein Filter / kein Objekt = alles. Die UI leitet die Auswahllisten (Genres, Kanäle, Jahre) aus der
   Gesamtliste ab.
 - `LibraryItem` = `{id, title, artist, channel_id, genre, duration, upload_date, year, downloaded_at,
-  file_path, size_mb, missing, unknown, has_cue}`. `missing: true`: die Datei existiert nicht mehr (`size_mb` 0).
+  file_path, size_mb, missing, unknown, has_cue, platform, genre_manual, thumbnail}` (`thumbnail`: Bild-URL aus der DB
+  wie bei Suchtreffern, nur über `safeThumb` anzeigen). `missing: true`: die Datei existiert nicht mehr (`size_mb` 0).
   `unknown: true`: der Zielordner ist nicht erreichbar (Laufwerk/Freigabe weg oder hängt >3 s); für
   Dateien darunter wird nichts geprüft, `missing` bleibt `false`. `get_library` bleibt eine Liste, damit
   bestehende Aufrufer nicht brechen; die UI holt Pfad/Zustand mit `get_library_status()` und zeigt das

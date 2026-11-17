@@ -865,6 +865,8 @@ def test_library_from_db(env, tmp_path):
         "unknown",
         "has_cue",
         "platform",
+        "genre_manual",
+        "thumbnail",
     }
     assert lib[0]["missing"] is False and lib[0]["has_cue"] is False
     assert a.open_folder("abcdefghijk") == {"ok": True} and env.opened == [f.parent]
