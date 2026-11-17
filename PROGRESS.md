@@ -103,3 +103,4 @@ Leitfaden `docs/TRANSLATING.md`, Entscheide `docs/decisions.md` «Mehrsprachigke
 - 2026-11-17 – v0.2.0 Mehrsprachigkeit Schritt 1 (Architektur, de/en) fertig; Backfill/7b/7c → v0.3.0
 - 2026-11-17 – v0.2.0: 18 Sprachen registriert (inkl. sv/nb/fi/lt/lv/et/de-x-frk), Installer-Datenschutzseite, Release-Automatik; offen: QA + Review, Windows-CI (Inno-Compile, Release-Job)
 - 2026-11-17 – v0.2.0: QA BESTANDEN, Review FREIGEGEBEN; Review-Minors 1/2/4 behoben, nl-BE (Vlaams) als 19. Sprache, Version 0.2.0 + CHANGELOG → bereit für Release (Merge nach main)
+- 2026-11-17 – Release v0.2.0 automatisch erstellt (19 Sprachen, Installer-Datenschutzseite, Release-Automatik). SignPath-Foundation-Antrag vom User eingereicht; nach Zusage: API-Token als GitHub-Secret, Signierschritt in portable.yml, CODE_SIGNING.md-Status anpassen.
