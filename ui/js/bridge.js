@@ -62,6 +62,11 @@
      cancel_update()                    -> {ok, ...UpdateStatus}   Download abbrechen bzw. bereitgelegtes Update verwerfen
      apply_update_now()                 -> {ok} | {ok:false, error}   schliesst die App; der Updater spielt ein und
                                            startet neu (Downloads werden wie beim Beenden abgebrochen, bleiben in der Queue)
+     get_release_notes()                -> {current, releases:[{version, date, notes}]}   aus der CHANGELOG.md der App
+                                           (offline), neueste zuerst, ohne [Unreleased]; date "YYYY-MM-DD" | null
+     open_url(url)                      -> {ok} | {ok:false, error}   Link im System-Browser; nur https:// auf github.com
+                                           bzw. dem Host des Update-Repos. In der App leitet bridge.js jeden Klick auf
+                                           <a target="_blank" href="https://…"> hierher um; im Mock bleibt target=_blank.
 
    Entdecken / Eingang
      get_last_search()                  -> {query, results:[Video]} | null   (ohne Netzwerk, aus DB)
@@ -356,6 +361,22 @@
         try { fn(data || {}); } catch (err) { console.error(`[event] ${type}:`, err); }
       });
     },
+  });
+
+  /* Externe Links (<a target="_blank">, z. B. Release-Notizen): WebView2 öffnet sie nicht bzw. in einem
+     App-Fenster. Live gehen sie über open_url an den System-Browser (Backend prüft Schema und Host);
+     im Mock/Browser bleibt das normale target=_blank. */
+  bridge.openUrl = async (url) => {
+    const r = await bridge.safe('open_url', url);
+    if (r && r.ok === false && r.error && HC.ui && HC.ui.toast) HC.ui.toast(r.error, 'err');
+    return r;
+  };
+  document.addEventListener('click', (ev) => {
+    if (!bridge.live || ev.defaultPrevented || ev.button !== 0) return;
+    const a = ev.target && ev.target.closest ? ev.target.closest('a[target="_blank"][href]') : null;
+    if (!a) return;
+    ev.preventDefault();
+    if (/^https:\/\//i.test(a.href)) bridge.openUrl(a.href);
   });
 
   /* Python -> UI. Der Name "mv" ist Teil des Vertrags mit worker.py. */

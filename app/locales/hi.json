@@ -376,6 +376,7 @@
     "already_ready": "अपडेट पहले से तैयार है",
     "available": "HCLoader {latest} उपलब्ध है (इंस्टॉल: {current})",
     "bad_url": "डाउनलोड पता अनुमत नहीं: {url}",
+    "link_not_allowed": "लिंक अनुमत नहीं: {url}",
     "cancelled": "ऐप अपडेट रद्द",
     "check_failed": "अपडेट जाँच विफल: {error}",
     "checking": "अपडेट जाँच अभी चल रही है",

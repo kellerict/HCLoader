@@ -41,6 +41,7 @@ SCRIPT = ROOT / "scripts" / "apply_update.ps1"
 REPO = "kellerict/HCLoader"
 LATEST = selfupdate.API_LATEST.format(repo=REPO)
 TAGS = selfupdate.API_TAGS.format(repo=REPO)
+RELEASES = selfupdate.API_RELEASES.format(repo=REPO, n=selfupdate.RELEASES_PER_PAGE)
 
 
 # --------------------------------------------------------------------------- fakes
@@ -982,7 +983,7 @@ def test_foreign_asset_url_is_refused_before_any_request(root):
     up.check()
     res = up.download()
     assert res["ok"] is False and "Unzulässige Download-Adresse" in res["error"]
-    assert [c[0] for c in gh.calls] == [LATEST]
+    assert [c[0] for c in gh.calls] == [LATEST, RELEASES]  # check + release list, no download
 
 
 def test_redirects_are_checked_too():
@@ -1221,3 +1222,196 @@ def test_newer_db_message_only_once_on_stderr(capsys):
                 root_logger.removeHandler(h)
                 h.close()
     assert err.count("neueren HCLoader-Version") == 1
+
+
+# --------------------------------------------------------------------------- release list / links
+
+
+def _listed(tag, published, **kw):
+    return release(tag, body=f"### Highlights\n- {tag}", published_at=published, **kw)
+
+
+RELEASE_LIST = [
+    _listed("v0.5.0-rc1", "2026-12-01T10:00:00Z", prerelease=True),
+    _listed("v0.4.0", "2026-11-30T10:00:00Z"),
+    _listed("v0.3.5", "2026-11-29T10:00:00Z", draft=True),
+    _listed("v0.3.1", "2026-11-28T10:00:00Z", prerelease=True),
+    _listed("v0.3.0", "2026-11-25T10:00:00Z"),
+    _listed("v0.2.0", "2026-11-20T10:00:00Z"),
+    _listed("v0.1.0", "2026-11-17T10:00:00Z"),
+    _listed("v0.0.9", "2026-11-01T10:00:00Z"),
+]
+
+
+def test_check_lists_skipped_releases_with_one_extra_request(root):
+    latest = _listed("v0.4.0", "2026-11-30T10:00:00Z")
+    gh = FakeGitHub({LATEST: latest, RELEASES: RELEASE_LIST})
+    res = make_updater(root, gh).check()
+    assert res["ok"] and res["latest"] == "0.4.0" and res["published"] == "2026-11-30"
+    assert [r["version"] for r in res["releases"]] == ["0.4.0", "0.3.0", "0.2.0"]
+    assert res["releases"][1] == {
+        "version": "0.3.0",
+        "published": "2026-11-25",
+        "notes": "### Highlights\n- v0.3.0",
+        "url": f"https://github.com/{REPO}/releases/tag/v0.3.0",
+    }
+    assert [c[0] for c in gh.calls] == [LATEST, RELEASES]
+    assert "per_page=20" in RELEASES
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [urllib.error.URLError("offline"), {"message": "rate"}, [{"tag_name": "v0.3.0"}]],
+)
+def test_release_list_failure_falls_back_to_latest(root, answer):
+    gh = FakeGitHub({LATEST: _listed("v0.4.0", "2026-11-30T10:00:00Z"), RELEASES: answer})
+    res = make_updater(root, gh).check()
+    assert res["ok"] and res["available"]
+    assert [r["version"] for r in res["releases"]] == ["0.4.0"]
+    assert res["releases"][0]["published"] == "2026-11-30"
+
+
+def test_no_release_list_request_without_update(root):
+    gh = FakeGitHub({LATEST: release("v0.1.0"), RELEASES: RELEASE_LIST})
+    res = make_updater(root, gh).check()
+    assert res["available"] is False and res["releases"] == []
+    assert [c[0] for c in gh.calls] == [LATEST]
+
+
+def test_changelog_releases_between_versions():
+    text = (
+        "# Changelog\n\n## [Unreleased]\n- next\n\n"
+        "## [0.3.0] - 2026-11-25\n\n### Highlights\n- three\n\n"
+        "## [0.2.1-rc1] - 2026-11-21\n- rc\n\n"
+        "## [0.2.1] - 2026-11-22\n\n### Fixed\n- two-one\n\n"
+        "## 0.2.0\n- two\n\n## [0.1.0] - 2026-11-17\n- one\n"
+    )
+    out = selfupdate.changelog_releases(text, newer_than="0.1.0", up_to="0.3.0")
+    assert [(r["version"], r["published"]) for r in out] == [
+        ("0.3.0", "2026-11-25"),
+        ("0.2.1", "2026-11-22"),
+        ("0.2.0", None),
+    ]
+    assert out[0]["notes"] == "### Highlights\n- three"
+    assert out[1]["notes"] == "### Fixed\n- two-one"
+    assert selfupdate.changelog_releases(text, newer_than="0.3.0", up_to="0.3.0") == []
+    assert selfupdate.changelog_releases("", newer_than=None, up_to=None) == []
+
+
+def test_tags_fallback_lists_changelog_sections(root):
+    raw = selfupdate.RAW_CHANGELOG.format(repo=REPO, tag="v0.3.0")
+    changelog = (
+        b"## [0.3.0] - 2026-11-25\n- three\n\n## [0.2.0] - 2026-11-20\n- two\n\n"
+        b"## [0.1.0] - 2026-11-17\n- one\n"
+    )
+    gh = FakeGitHub({TAGS: [{"name": "v0.3.0"}, {"name": "v0.2.0"}], raw: changelog})
+    res = make_updater(root, gh).check()
+    assert res["latest"] == "0.3.0" and res["notes"] == "- three"
+    assert res["published"] == "2026-11-25"
+    assert [(r["version"], r["notes"]) for r in res["releases"]] == [
+        ("0.3.0", "- three"),
+        ("0.2.0", "- two"),
+    ]
+    assert res["releases"][1]["url"] == f"https://github.com/{REPO}/releases/tag/v0.2.0"
+    assert RELEASES not in [c[0] for c in gh.calls]  # no release list without releases
+
+
+def test_releases_survive_restart_via_manifest(root):
+    zurl = f"https://codeload.github.com/{REPO}/zip/refs/tags/v0.2.0"
+    latest = _listed("v0.2.0", "2026-11-20T10:00:00Z")
+    gh = FakeGitHub({LATEST: latest, RELEASES: RELEASE_LIST, zurl: source_zip()})
+    up = make_updater(root, gh)
+    up.check()
+    assert up.download()["ok"]
+    again = make_updater(root, FakeGitHub({}))
+    st = again.restore()
+    assert st["state"] == "ready" and st["published"] == "2026-11-20"
+    assert [r["version"] for r in st["releases"]] == ["0.2.0"]
+
+
+@pytest.mark.parametrize(
+    "url,ok",
+    [
+        (f"https://github.com/{REPO}/releases/tag/v0.2.1", True),
+        ("https://github.com/other/repo/compare/v0.1.0...v0.2.0", True),
+        ("https://GitHub.com/x", True),
+        ("http://github.com/x", False),
+        ("https://github.com.evil.example/x", False),
+        ("https://evil.example/github.com", False),
+        ("https://user:pw@github.com/x", False),
+        ("https://github.com:8443/x", False),
+        ("javascript:alert(1)", False),
+        ("file:///C:/Windows/System32/calc.exe", False),
+        ("https://github.com/x y", False),
+        ("https://github.com/x\n", False),
+        ("", False),
+        (None, False),
+    ],
+)
+def test_external_link_allow_list(url, ok):
+    assert (selfupdate.external_link(url, REPO) is not None) is ok
+
+
+def test_link_hosts_include_update_repo_host():
+    assert selfupdate.link_hosts(REPO) == {"github.com"}
+    assert "git.example.org" in selfupdate.link_hosts("https://git.example.org/o/r")
+
+
+def test_api_open_url_opens_only_allowed_links(env):
+    a = env.make()
+    url = f"https://github.com/{REPO}/releases/tag/v0.2.1"
+    assert a.open_url(url) == {"ok": True}
+    res = a.open_url("https://evil.example/x")
+    assert res["ok"] is False and "evil.example" in res["error"]
+    assert a.open_url("javascript:alert(1)")["ok"] is False
+    assert env.browsed == [url]
+
+
+def test_open_link_reports_browser_failure():
+    def boom(url):
+        raise OSError("no browser")
+
+    res = selfupdate.open_link("https://github.com/x", REPO, boom)
+    assert res == {"ok": False, "error": "no browser"}
+
+
+# --------------------------------------------------------------------------- local release notes
+
+
+def test_local_release_notes_parse_shipped_changelog(tmp_path):
+    (tmp_path / "CHANGELOG.md").write_text(
+        "# Changelog\n\n## [Unreleased]\n- next\n\n## [0.2.1] - 2026-11-17\n\n### Highlights\n"
+        "- a\n\n## [0.2.0] - 2026-11-10\n- b\n\n## 0.1.0\n- c\n",
+        encoding="utf-8",
+    )
+    assert selfupdate.local_release_notes(tmp_path) == [
+        {"version": "0.2.1", "date": "2026-11-17", "notes": "### Highlights\n- a"},
+        {"version": "0.2.0", "date": "2026-11-10", "notes": "- b"},
+        {"version": "0.1.0", "date": None, "notes": "- c"},
+    ]
+    assert selfupdate.local_release_notes(tmp_path / "missing") == []
+
+
+def test_repo_changelog_has_every_version_with_highlights():
+    notes = selfupdate.local_release_notes(ROOT)
+    versions = [n["version"] for n in notes]
+    assert versions[0] == __version__ and "0.1.0" in versions
+    assert versions == sorted(versions, key=selfupdate.parse_version, reverse=True)
+    assert notes[0]["date"] and "### Highlights" in notes[0]["notes"]
+
+
+def test_api_get_release_notes_reads_app_changelog(env, root):
+    (root / "CHANGELOG.md").write_text("## [0.1.0] - 2026-11-17\n- first\n", encoding="utf-8")
+    a = env.make(self_updater=make_updater(root, FakeGitHub({})))
+    assert a.get_release_notes() == {
+        "current": "0.1.0",
+        "releases": [{"version": "0.1.0", "date": "2026-11-17", "notes": "- first"}],
+    }
+
+
+def test_changelog_ships_with_portable_build_installer_and_update():
+    ps1 = (ROOT / "scripts" / "build_portable.ps1").read_text(encoding="utf-8")
+    assert re.search(r"foreach \(\$f in @\([^)]*'CHANGELOG\.md'", ps1)
+    iss = (ROOT / "installer" / "HCLoader.iss").read_text(encoding="utf-8")
+    assert re.search(r'Source: "\{#SourceDir\}\\\*"; DestDir: "\{app\}"', iss)  # whole tree
+    assert "CHANGELOG.md" in selfupdate.PROGRAM_FILES

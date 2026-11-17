@@ -375,6 +375,7 @@
     "already_ready": "La mise à jour est déjà prête",
     "available": "HCLoader {latest} est disponible (installé : {current})",
     "bad_url": "Adresse de téléchargement non autorisée : {url}",
+    "link_not_allowed": "Lien non autorisé : {url}",
     "cancelled": "Mise à jour de l’app annulée",
     "check_failed": "Échec de la recherche de mises à jour : {error}",
     "checking": "La recherche de mises à jour est toujours en cours",

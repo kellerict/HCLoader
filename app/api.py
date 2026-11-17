@@ -639,6 +639,18 @@ class Api:
         self._updater.cancel()
         return {**self.get_update_status(), "ok": True}
 
+    def get_release_notes(self) -> dict[str, Any]:
+        """Release history from the app's own CHANGELOG.md (offline, Maintenance tab)."""
+        return {
+            "current": self._updater.current,
+            "releases": selfupdate.local_release_notes(self._updater.root),
+        }
+
+    def open_url(self, url: str) -> dict[str, Any]:
+        """Link from the release notes in the system browser (https, github.com / update repo
+        host only; selfupdate.open_link)."""
+        return selfupdate.open_link(url, self._updater.repo(), self._browser)
+
     def apply_update_now(self) -> dict[str, Any]:
         """Close the app; after `shutdown` (queue stopped like a normal exit) `main.py` calls
         `finish_update`, which starts the updater with restart."""

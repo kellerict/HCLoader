@@ -1064,3 +1064,20 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
 - **Entscheid:** Zahl-Parameter formatiert nur die UI lokal (`Intl`, z. B. bengalische Ziffern in `bn`);
   Backend-Meldungen setzen Zahlen unformatiert (lateinische Ziffern) ein. **Grund:** funktional
   harmlos; eine zweite Zahlenformatierung in Python (ohne ICU) wäre Aufwand ohne Nutzen (Review v0.2.0 m10).
+
+## 2026-11-17 – Release-Notizen: übersprungene Versionen und externe Links (v0.2.1)
+
+- **Entscheid:** Die Update-Prüfung bleibt bei `releases/latest` (bzw. Tags); nur wenn ein Update
+  verfügbar ist, folgt **eine** Anfrage `releases?per_page=20` für die Notizen der übersprungenen
+  Versionen (`UpdateStatus.releases`). Fehler dort sind still: dann nur das angebotene Release.
+  Entwürfe/Pre-Releases bleiben draussen (es gibt keinen Pre-Release-Kanal). Tags-Fallback:
+  Abschnitte der `CHANGELOG.md` des Tags. **Grund:** bestehendes, getestetes Verhalten für «latest»
+  unverändert; höchstens eine Zusatzanfrage pro Prüfung und nur, wenn der Dialog sie braucht.
+- **Entscheid:** Externe Links (`<a target="_blank">`) gehen in der App über die Bridge-Methode
+  `open_url` → `selfupdate.open_link` → `webbrowser.open`; erlaubt nur `https://` auf `github.com`
+  bzw. dem Host des Update-Repos. `bridge.js` fängt die Klicks global ab (nur live); der Mock behält
+  `target=_blank`. **Grund:** WebView2 öffnet `_blank` je nach pywebview-Version gar nicht oder in
+  einem App-Fenster; die Host-Prüfung im Backend verhindert, dass Release-Text beliebige Ziele startet.
+- **Entscheid:** Wartung › «Versionshinweise» liest die mitgelieferte `CHANGELOG.md` (`get_release_notes`,
+  offline) statt GitHub. **Grund:** funktioniert ohne Netz und ohne Rate-Limit, passt immer zur
+  installierten Version; die Datei liegt schon im Portable-Build, im Installer und im Selbst-Update.

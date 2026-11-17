@@ -372,6 +372,7 @@
     "already_ready": "Pembaruan sudah siap",
     "available": "HCLoader {latest} tersedia (terpasang: {current})",
     "bad_url": "Alamat unduhan tidak diizinkan: {url}",
+    "link_not_allowed": "Tautan tidak diizinkan: {url}",
     "cancelled": "Pembaruan aplikasi dibatalkan",
     "check_failed": "Pemeriksaan pembaruan gagal: {error}",
     "checking": "Pemeriksaan pembaruan masih berjalan",

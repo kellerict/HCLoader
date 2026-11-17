@@ -380,6 +380,7 @@
     "already_ready": "Atjauninājums jau ir gatavs",
     "available": "Pieejams HCLoader {latest} (instalēts: {current})",
     "bad_url": "Lejupielādes adrese nav atļauta: {url}",
+    "link_not_allowed": "Saite nav atļauta: {url}",
     "cancelled": "Lietotnes atjaunināšana atcelta",
     "check_failed": "Atjauninājumu pārbaude neizdevās: {error}",
     "checking": "Atjauninājumu pārbaude vēl notiek",

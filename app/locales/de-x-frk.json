@@ -378,6 +378,7 @@
     "already_ready": "Des Update is scho bereid",
     "available": "HCLoader {latest} is verfügbar (installierd: {current})",
     "bad_url": "Unzulässige Download-Adresse: {url}",
+    "link_not_allowed": "Link nicht zugelassen: {url}",
     "cancelled": "App-Update abgebrochn",
     "check_failed": "Update-Prüfung fehlgschlong: {error}",
     "checking": "Die Update-Prüfung läuft noch",

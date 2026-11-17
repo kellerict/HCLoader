@@ -372,6 +372,7 @@
     "already_ready": "更新已就绪",
     "available": "HCLoader {latest} 可用（已安装：{current}）",
     "bad_url": "不允许的下载地址：{url}",
+    "link_not_allowed": "不允许的链接：{url}",
     "cancelled": "应用更新已取消",
     "check_failed": "检查更新失败：{error}",
     "checking": "更新检查仍在进行",

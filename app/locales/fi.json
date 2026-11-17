@@ -376,6 +376,7 @@
     "already_ready": "Päivitys on jo valmis",
     "available": "HCLoader {latest} on saatavilla (asennettu: {current})",
     "bad_url": "Latausosoite ei ole sallittu: {url}",
+    "link_not_allowed": "Linkki ei ole sallittu: {url}",
     "cancelled": "Sovelluksen päivitys peruttu",
     "check_failed": "Päivityksen tarkistus epäonnistui: {error}",
     "checking": "Päivityksen tarkistus on vielä käynnissä",

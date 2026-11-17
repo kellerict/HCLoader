@@ -384,6 +384,7 @@
     "already_ready": "Naujinimas jau paruoštas",
     "available": "Yra HCLoader {latest} (įdiegta: {current})",
     "bad_url": "Atsisiuntimo adresas neleidžiamas: {url}",
+    "link_not_allowed": "Nuoroda neleidžiama: {url}",
     "cancelled": "Programos naujinimas atšauktas",
     "check_failed": "Naujinimų patikra nepavyko: {error}",
     "checking": "Naujinimų patikra dar vyksta",

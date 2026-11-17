@@ -376,6 +376,7 @@
     "already_ready": "আপডেট আগে থেকেই প্রস্তুত",
     "available": "HCLoader {latest} পাওয়া যাচ্ছে (ইনস্টল করা: {current})",
     "bad_url": "ডাউনলোড ঠিকানা অনুমোদিত নয়: {url}",
+    "link_not_allowed": "লিংক অনুমোদিত নয়: {url}",
     "cancelled": "অ্যাপ আপডেট বাতিল",
     "check_failed": "আপডেট যাচাই ব্যর্থ: {error}",
     "checking": "আপডেট যাচাই এখনও চলছে",

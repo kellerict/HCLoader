@@ -290,3 +290,85 @@ def test_dialog_with_hostile_notes(page, skipped):
     page.keyboard.press("Escape")
     page.evaluate("HC.mock.demo.update('idle')")
     assert page.problems == []
+
+
+LINK_CLICK = """async (live) => {
+  const was = HC.bridge.live;
+  const hadPw = 'pywebview' in window;
+  const pw = window.pywebview;
+  window.__opened = [];
+  window.__popups = [];
+  const realOpen = window.open;
+  window.open = (u) => { window.__popups.push(u); return null; };
+  const openUrl = (u) => { window.__opened.push(u); return { ok: true }; };
+  window.pywebview = { api: { open_url: openUrl } };
+  HC.bridge.live = live;
+  const host = document.createElement('div');
+  host.innerHTML = HC.md.render('[notes](https://github.com/o/r/releases/tag/v1)');
+  document.body.appendChild(host);
+  let prevented = null;
+  const spy = (e) => { prevented = e.defaultPrevented; e.preventDefault(); };
+  window.addEventListener('click', spy);
+  host.querySelector('a').click();
+  await new Promise((r) => setTimeout(r, 50));
+  window.removeEventListener('click', spy);
+  host.remove();
+  HC.bridge.live = was;
+  window.open = realOpen;
+  if (hadPw) window.pywebview = pw; else delete window.pywebview;
+  return { opened: window.__opened, prevented };
+}"""
+
+
+def test_links_open_via_backend_in_the_app(page):
+    """Hosted (live bridge): a click on a notes link goes to open_url, the WebView does not
+    navigate itself. Mock/browser: the normal target=_blank stays untouched."""
+    live = page.evaluate(LINK_CLICK, True)
+    assert live == {"opened": ["https://github.com/o/r/releases/tag/v1"], "prevented": True}
+    mock = page.evaluate(LINK_CLICK, False)
+    assert mock == {"opened": [], "prevented": False}
+    assert page.problems == []
+
+
+HISTORY = """async () => {
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  HC.updater.historySection(host);
+  await new Promise((r) => setTimeout(r, 300));
+  const snap = () => ({
+    ver: host.querySelector('.upd-ver').textContent,
+    pos: host.querySelector('.upd-rn-pos').textContent,
+    cur: !!host.querySelector('.upd-cur'),
+    older: host.querySelector('[data-rn=older]').disabled,
+    newer: host.querySelector('[data-rn=newer]').disabled,
+    sum: host.querySelector('.upd-sum').textContent,
+  });
+  const opts = Array.from(host.querySelectorAll('option')).map((o) => o.textContent);
+  const out = { start: snap(), opts };
+  host.querySelector('[data-rn=newer]').click();
+  out.newer = snap();
+  const pick = host.querySelector('[data-rn-pick]');
+  pick.value = '2';
+  pick.dispatchEvent(new Event('change', { bubbles: true }));
+  out.oldest = snap();
+  host.querySelector('[data-rn=newer]').click();
+  const toggle = host.querySelector('[data-rn-toggle]');
+  toggle.click();
+  out.expanded = host.querySelector('[data-rn-box]').classList.contains('all');
+  host.remove();
+  return out;
+}"""
+
+
+def test_settings_release_notes_browse_versions(page):
+    """Maintenance › Release notes (mock get_release_notes): newest first, installed version
+    selected and marked, ‹ Older / Newer › and the dropdown switch versions."""
+    out = page.evaluate(HISTORY)
+    assert out["opts"] == ["v0.2.1", "v0.2.0 · installed", "v0.1.0"]
+    assert out["start"]["ver"] == "v0.2.0" and out["start"]["pos"] == "2 of 3"
+    assert out["start"]["cur"] and "19 languages" in out["start"]["sum"]
+    assert out["newer"]["ver"] == "v0.2.1" and out["newer"]["newer"] is True
+    assert not out["newer"]["cur"] and "Readable release notes" in out["newer"]["sum"]
+    assert out["oldest"]["ver"] == "v0.1.0" and out["oldest"]["older"] is True
+    assert out["expanded"] is True
+    assert page.problems == []

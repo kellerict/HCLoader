@@ -944,6 +944,7 @@ def test_every_method_json_serializable(env):
         "set_video_status": ("abcdefghijk", "ignored"),
         "set_genre": ("abcdefghijk", "Hardcore"),
         "open_video": ("abcdefghijk",),
+        "open_url": ("https://github.com/kellerict/HCLoader/releases",),
         "block_channel": ("UC1", "x"),
         "delete_source": (1,),
         "open_folder": ("abcdefghijk",),

@@ -376,6 +376,7 @@
     "already_ready": "Uppdateringen är redan redo",
     "available": "HCLoader {latest} finns (installerad: {current})",
     "bad_url": "Nedladdningsadressen är inte tillåten: {url}",
+    "link_not_allowed": "Länken är inte tillåten: {url}",
     "cancelled": "Appuppdateringen avbruten",
     "check_failed": "Uppdateringskontrollen misslyckades: {error}",
     "checking": "Uppdateringskontrollen pågår fortfarande",

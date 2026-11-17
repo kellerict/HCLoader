@@ -46,6 +46,10 @@ log = logging.getLogger(__name__)
 DEFAULT_REPO = config.DEFAULT_UPDATE_REPO
 API_LATEST = "https://api.github.com/repos/{repo}/releases/latest"
 API_TAGS = "https://api.github.com/repos/{repo}/tags?per_page=100"
+# release list (newest first) for the notes of skipped versions: one request per check
+API_RELEASES = "https://api.github.com/repos/{repo}/releases?per_page={n}"
+RELEASES_PER_PAGE = 20
+MAX_RELEASES = 20  # versions listed in `status()["releases"]`
 CODELOAD_ZIP = "https://codeload.github.com/{repo}/zip/refs/tags/{tag}"
 RAW_CHANGELOG = "https://raw.githubusercontent.com/{repo}/{tag}/CHANGELOG.md"
 CHECK_TIMEOUT_S = 5.0
@@ -165,6 +169,67 @@ def changelog_section(text: str, version: str) -> str:
     return rest[: nxt.start() if nxt else len(rest)].strip()
 
 
+_CHANGELOG_HEAD_RE = re.compile(
+    r"^##[ \t]*\[?v?(\d+\.\d+\.\d+)(?![\w.+-])\]?"
+    r"(?:[ \t]*[-\u2013\u2014][ \t]*(\d{4}-\d{2}-\d{2}))?.*$",
+    re.M,
+)
+
+
+def changelog_releases(
+    text: str,
+    *,
+    newer_than: str | None,
+    up_to: str | None,
+    limit: int | None = MAX_RELEASES,
+) -> list[dict[str, Any]]:
+    """All `## [x.y.z] - YYYY-MM-DD` sections with `newer_than` < version <= `up_to`, newest
+    first: [{version, published, notes, url: ""}]. `[Unreleased]` and pre-releases are skipped."""
+    heads = list(_CHANGELOG_HEAD_RE.finditer(text or ""))
+    starts = [m.start() for m in re.finditer(r"^##\s", text or "", re.M)]
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for m in heads:
+        ver = m.group(1)
+        v = parse_version(ver)
+        if v is None or ver in seen:
+            continue
+        if newer_than is not None and not is_newer(ver, newer_than):
+            continue
+        if up_to is not None and is_newer(ver, up_to):
+            continue
+        end = next((p for p in starts if p > m.start()), len(text))
+        seen.add(ver)
+        out.append(
+            {
+                "version": ver,
+                "published": m.group(2),
+                "notes": text[m.end() : end].strip(),
+                "url": "",
+            }
+        )
+    out.sort(key=lambda r: parse_version(r["version"]) or (0, 0, 0), reverse=True)
+    return out if limit is None else out[:limit]
+
+
+MAX_LOCAL_CHANGELOG_BYTES = 2_000_000
+
+
+def local_release_notes(root: Path) -> list[dict[str, Any]]:
+    """Release history from the CHANGELOG.md shipped with the app (offline): every
+    `## [x.y.z]` section, newest first, as [{version, date, notes}]. `[Unreleased]` is skipped;
+    a missing or unreadable file gives []."""
+    try:
+        with (root / "CHANGELOG.md").open("rb") as fh:
+            text = fh.read(MAX_LOCAL_CHANGELOG_BYTES).decode("utf-8", errors="replace")
+    except OSError:
+        return []
+    return [
+        {"version": r["version"], "date": r["published"], "notes": r["notes"]}
+        for r in changelog_releases(text, newer_than=None, up_to=None, limit=None)
+    ]
+
+
 def normalize_requirements(text: str) -> list[str]:
     out = []
     for line in (text or "").splitlines():
@@ -204,6 +269,61 @@ def check_url(url: str) -> str:
     if parts.scheme != "https" or host not in ALLOWED_HOSTS or parts.username or parts.password:
         raise UpdateError(tr("update.bad_url", url=str(url)[:120]))
     return url
+
+
+# Links in the release notes (Api.open_url): only these hosts open in the system browser
+LINK_HOSTS = frozenset({"github.com"})
+
+
+def link_hosts(repo: str | None) -> frozenset[str]:
+    """github.com plus the host of the configured update repo (`owner/repo` lives on
+    github.com; a full `https://host/owner/repo` adds its host)."""
+    hosts = set(LINK_HOSTS)
+    text = str(repo or "").strip()
+    if "://" in text:
+        host = (urllib.parse.urlsplit(text).hostname or "").lower()
+        if host:
+            hosts.add(host)
+    return frozenset(hosts)
+
+
+def external_link(url: Any, repo: str | None) -> str | None:
+    """`url` if it may open in the system browser: `https://`, no credentials, no port, host
+    in `link_hosts(repo)`, no control characters; else None."""
+    text = str(url or "")
+    if not text or len(text) > 2000 or any(ord(c) < 33 or c in '"<>\\^`{|}' for c in text):
+        return None
+    try:
+        parts = urllib.parse.urlsplit(text)
+        port = parts.port
+    except ValueError:
+        return None
+    host = (parts.hostname or "").lower()
+    if (
+        parts.scheme != "https"
+        or parts.username
+        or parts.password
+        or port is not None
+        or host not in link_hosts(repo)
+    ):
+        return None
+    return text
+
+
+def open_link(url: Any, repo: str | None, browser: Callable[[str], Any]) -> dict[str, Any]:
+    """Open an allowed link (`external_link`) with `browser` (webbrowser.open: the system
+    browser, on Windows via os.startfile). {ok} | {ok:false, error}."""
+    target = external_link(url, repo)
+    if target is None:
+        msg = tr("update.link_not_allowed", url=str(url or "")[:120])
+        log.warning("%s", msg)
+        return {"ok": False, "error": msg}
+    try:
+        browser(target)
+    except Exception as exc:
+        log.warning("Browser could not be started: %s", exc)
+        return {"ok": False, "error": str(exc) or exc.__class__.__name__}
+    return {"ok": True}
 
 
 class _CheckedRedirects(urllib.request.HTTPRedirectHandler):
@@ -258,6 +378,17 @@ class Release:
     zip_name: str = ""
     sums_url: str | None = None
     source: str = "release"  # "release" | "tags"
+    published: str | None = None  # ISO date (release: published_at, tags: CHANGELOG heading)
+    # versions > the installed one up to this release, newest first (UpdateStatus.releases)
+    releases: list[dict[str, Any]] = field(default_factory=list)
+
+    def entry(self) -> dict[str, Any]:
+        return {
+            "version": self.version,
+            "published": self.published,
+            "notes": self.notes,
+            "url": self.url,
+        }
 
 
 def _release_from_api(data: dict[str, Any], repo: str) -> Release | None:
@@ -289,10 +420,19 @@ def _release_from_api(data: dict[str, Any], repo: str) -> Release | None:
         zip_name=zip_name,
         sums_url=sums,
         source="release",
+        published=_iso_date(data.get("published_at")),
     )
 
 
-def _latest_from_tags(repo: str, opener: Opener, timeout: float) -> Release | None:
+def _iso_date(value: Any) -> str | None:
+    """`2026-11-17T08:00:00Z` -> `2026-11-17` (None if it is not such a timestamp)."""
+    m = re.match(r"^(\d{4}-\d{2}-\d{2})(?:[T ].*)?$", str(value or "").strip())
+    return m.group(1) if m else None
+
+
+def _latest_from_tags(
+    repo: str, opener: Opener, timeout: float, current: str | None = None
+) -> Release | None:
     data = _get_json(API_TAGS.format(repo=repo), opener, timeout)
     best: tuple[tuple[int, int, int], str] | None = None
     for item in data if isinstance(data, list) else []:
@@ -305,13 +445,14 @@ def _latest_from_tags(repo: str, opener: Opener, timeout: float) -> Release | No
     ver = ".".join(map(str, best[0]))
     tag = best[1]
     notes = ""
+    sections: list[dict[str, Any]] = []
     try:
-        notes = changelog_section(
-            _get_text(RAW_CHANGELOG.format(repo=repo, tag=tag), opener, timeout), ver
-        )
+        text = _get_text(RAW_CHANGELOG.format(repo=repo, tag=tag), opener, timeout)
+        notes = changelog_section(text, ver)
+        sections = changelog_releases(text, newer_than=current, up_to=ver)
     except Exception as exc:  # notes are optional
         log.debug("CHANGELOG of %s not readable: %s", tag, exc)
-    return Release(
+    rel = Release(
         version=ver,
         tag=tag,
         notes=notes,
@@ -320,13 +461,70 @@ def _latest_from_tags(repo: str, opener: Opener, timeout: float) -> Release | No
         zip_name=f"{repo.split('/')[-1]}-{ver}.zip",
         source="tags",
     )
+    own = next((r for r in sections if r["version"] == ver), None)
+    if own:
+        rel.published = own["published"]
+    for r in sections:  # tags have no release page: link the tag
+        r["url"] = f"https://github.com/{repo}/releases/tag/v{r['version']}"
+    rel.releases = sections
+    return rel
+
+
+def releases_between(
+    data: Any, repo: str, *, newer_than: str | None, up_to: str
+) -> list[dict[str, Any]]:
+    """Entries of a `GET /releases` answer with `newer_than` < version <= `up_to`, newest
+    first. Drafts and pre-releases are skipped (the updater only offers stable releases)."""
+    out: dict[str, dict[str, Any]] = {}
+    for item in data if isinstance(data, list) else []:
+        rel = _release_from_api(item, repo)
+        if rel is None or is_newer(rel.version, up_to):
+            continue
+        if newer_than is not None and not is_newer(rel.version, newer_than):
+            continue
+        out.setdefault(rel.version, rel.entry())
+    ordered = sorted(out.values(), key=lambda r: parse_version(r["version"]), reverse=True)
+    return ordered[:MAX_RELEASES]
+
+
+def fill_releases(
+    rel: Release,
+    repo: str,
+    current: str | None,
+    *,
+    opener: Opener = _default_open,
+    timeout: float = CHECK_TIMEOUT_S,
+) -> None:
+    """Set `rel.releases` (all versions newer than `current` up to `rel`) from ONE request to
+    the release list. Fail-safe: on any error, or if the offered release is missing from the
+    list, only the offered release itself is listed."""
+    if rel.releases:  # tags path: already filled from the CHANGELOG
+        return
+    rel.releases = [rel.entry()]
+    if rel.source != "release" or not is_newer(rel.version, current):
+        return
+    try:
+        data = _get_json(API_RELEASES.format(repo=repo, n=RELEASES_PER_PAGE), opener, timeout)
+    except Exception as exc:
+        log.debug("Release list not readable: %s", exc)
+        return
+    found = releases_between(data, repo, newer_than=current, up_to=rel.version)
+    if found and found[0]["version"] == rel.version:
+        found[0] = rel.entry()  # same data as `releases/latest`
+        rel.releases = found
 
 
 def find_latest(
-    repo: str, *, opener: Opener = _default_open, timeout: float = CHECK_TIMEOUT_S
+    repo: str,
+    *,
+    opener: Opener = _default_open,
+    timeout: float = CHECK_TIMEOUT_S,
+    current: str | None = None,
 ) -> Release | None:
     """Newest stable release of `repo` (`releases/latest`, which already skips drafts and
-    pre-releases), else the highest SemVer tag. Network errors propagate (caller logs them)."""
+    pre-releases), else the highest SemVer tag. Network errors propagate (caller logs them).
+    `current`: installed version; on the tags path the CHANGELOG sections of all newer
+    versions become `Release.releases`."""
     try:
         rel = _release_from_api(_get_json(API_LATEST.format(repo=repo), opener, timeout), repo)
     except urllib.error.HTTPError as exc:
@@ -335,7 +533,7 @@ def find_latest(
         rel = None
     if rel is not None:
         return rel
-    return _latest_from_tags(repo, opener, timeout)
+    return _latest_from_tags(repo, opener, timeout, current)
 
 
 # --------------------------------------------------------------------------- download / verify
@@ -704,6 +902,8 @@ class _State:
     latest: str | None = None
     notes: str = ""
     url: str | None = None
+    published: str | None = None
+    releases: list[dict[str, Any]] = field(default_factory=list)
     progress: dict[str, Any] | None = None
     error: str | None = None
     checked: str | None = None
@@ -802,6 +1002,11 @@ class SelfUpdater:
                 "state": s.state,
                 "notes": s.notes,
                 "url": s.url,
+                "published": s.published,
+                # versions > current up to `latest`, newest first (skipped versions included)
+                "releases": [
+                    dict(r) for r in s.releases if is_newer(r.get("version"), self.current)
+                ],
                 "progress": dict(s.progress) if s.progress else None,
                 "error": s.error,
                 "checked": s.checked,
@@ -874,6 +1079,8 @@ class SelfUpdater:
                 latest=m["to_version"],
                 notes=m.get("notes") or "",
                 url=m.get("url") or None,
+                published=m.get("published") or None,
+                releases=_clean_releases(m.get("releases")),
                 manifest=m,
                 error=None,
                 verified=m.get("verified"),
@@ -929,7 +1136,9 @@ class SelfUpdater:
         repo = self.repo()
         self._set(state="checking", error=None if manual else self._s.error)
         try:
-            rel = find_latest(repo, opener=self._open)
+            rel = find_latest(repo, opener=self._open, current=self.current)
+            if rel is not None:
+                fill_releases(rel, repo, self.current, opener=self._open)
         except Exception as exc:
             msg = tr("update.check_failed", error=_reason(exc))
             if manual:
@@ -952,6 +1161,8 @@ class SelfUpdater:
                 latest=rel.version,
                 notes=rel.notes,
                 url=rel.url,
+                published=rel.published,
+                releases=list(rel.releases),
                 release=rel,
                 checked=now,
                 error=None,
@@ -1050,6 +1261,9 @@ class SelfUpdater:
             return {**st, "ok": False, "error": msg}
         zip_path.unlink(missing_ok=True)
         manifest["verified"] = verified
+        with self._lock:
+            manifest["published"] = self._s.published
+            manifest["releases"] = list(self._s.releases)
         _write_manifest(self.update_dir, manifest)
         log.info(
             tr(
@@ -1060,12 +1274,18 @@ class SelfUpdater:
             ),
         )
         if not self._s.notes:
-            notes = changelog_section(
-                _read(self.update_dir / "staging" / "CHANGELOG.md") or "", rel.version
-            )
+            text = _read(self.update_dir / "staging" / "CHANGELOG.md") or ""
+            notes = changelog_section(text, rel.version)
             manifest["notes"] = notes
+            sections = changelog_releases(text, newer_than=self.current, up_to=rel.version)
             with self._lock:
                 self._s.notes = notes
+                if sections and not any(r.get("notes") for r in self._s.releases):
+                    for r in sections:
+                        r["url"] = rel.url if r["version"] == rel.version else ""
+                    self._s.releases = sections
+                    manifest["releases"] = sections
+            _write_manifest(self.update_dir, manifest)
         st = self._set(
             state="ready", manifest=manifest, progress=None, error=None, verified=verified
         )
@@ -1170,6 +1390,22 @@ class SelfUpdater:
         )
         self._set(state="applying")
         return {"ok": True, "args": args}
+
+
+def _clean_releases(value: Any) -> list[dict[str, Any]]:
+    """`releases` from a manifest written by this version (anything else -> [])."""
+    out = []
+    for r in value if isinstance(value, list) else []:
+        if isinstance(r, dict) and parse_version(str(r.get("version") or "")):
+            out.append(
+                {
+                    "version": str(r["version"]),
+                    "published": r.get("published") or None,
+                    "notes": str(r.get("notes") or ""),
+                    "url": str(r.get("url") or ""),
+                }
+            )
+    return out[:MAX_RELEASES]
 
 
 def _probe_run_lock() -> bool:

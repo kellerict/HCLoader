@@ -8,8 +8,8 @@
 
    Supported: headings (#..######, a line that is only **bold**), bullet and numbered lists
    (nested, task boxes), **bold**, *italic*, ~~strike~~, `code`, fenced code, links and bare URLs
-   (https:// only, opened externally: target=_blank – pywebview hands those to the system
-   browser), tables, blockquotes, horizontal rules. Images become their alt text.
+   (https:// only, target=_blank; in the app bridge.js routes the click to the backend
+   open_url, which opens github.com links in the system browser), tables, blockquotes, horizontal rules. Images become their alt text.
 
    HC.md.parse(md)            -> blocks
    HC.md.render(md | blocks)  -> HTML string

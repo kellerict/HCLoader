@@ -150,10 +150,20 @@ kein Throttle.
 | `download_update()` | – | `{ok:true, ...UpdateStatus}` (Start im Hintergrund) \| `{ok:false, error, ...UpdateStatus}` |
 | `cancel_update()` | – | `{ok:true, ...UpdateStatus}` |
 | `apply_update_now()` | – | `{ok:true}` \| `{ok:false, error}` |
+| `get_release_notes()` | – | `{current, releases:[{version, date, notes}]}` – alle `## [x.y.z]`-Abschnitte der mit der App ausgelieferten `CHANGELOG.md` (offline, kein Netzwerk), neueste zuerst, ohne `[Unreleased]`; `date` = `YYYY-MM-DD` \| null; fehlt die Datei: `releases: []`. Anzeige: Wartung › «Versionshinweise» |
+| `open_url(url)` | `https://…`-Link | `{ok:true}` \| `{ok:false, error}` – öffnet den Link im System-Browser (`webbrowser.open`, unter Windows `os.startfile`); nur `https://` ohne Benutzer/Port auf `github.com` bzw. dem Host des Update-Repos, sonst `error` «Link not allowed: …» |
 
 - **Automatik:** einmal pro GUI-Start (nach `loaded`), nur wenn `maintenance.check_app_updates_on_start`
   an ist. Fehler/offline: nur Log (Info), kein Toast, `error` bleibt leer. Gefunden wird das neueste
   stabile Release (`releases/latest`; Fallback `tags`, höchste SemVer-Version, Pre-Releases `-rc…` nie).
+- **Versionsliste:** Ist ein Update verfügbar, holt dieselbe Prüfung mit **einer** weiteren Anfrage
+  `GET /repos/<repo>/releases?per_page=20` die Notizen der übersprungenen Versionen (`releases`).
+  Entwürfe und Pre-Releases fehlen immer (der Updater bietet keine an). Schlägt die Anfrage fehl
+  oder fehlt das angebotene Release darin, enthält `releases` nur das angebotene. Ohne Releases
+  (Tags-Fallback) kommen die Einträge aus den Abschnitten der `CHANGELOG.md` des Tags.
+- **Links** in den Notizen (`<a target="_blank">`): in der App fängt `bridge.js` den Klick ab und ruft
+  `open_url(url)` (WebView2 würde sonst nichts bzw. ein App-Fenster öffnen); im Browser-Mock bleibt
+  das normale `target=_blank`. Gilt für jeden `target="_blank"`-Link der UI.
 - **Herunterladen** startet nie automatisch, nur über `download_update()` (Klick im Banner / Wartung).
   Refusals (deutsch): Git-Checkout («Git-Checkout – bitte «git pull» …»), nicht Windows, «Kein neueres
   Update bekannt – bitte zuerst prüfen», «… wird bereits heruntergeladen», «… ist schon bereit».
@@ -410,18 +420,20 @@ Status). Ergänzungen der Python-Seite:
 ### UpdateStatus (App-Update)
 
 ```
-{current, latest, available, state, notes, url, progress, error, checked, portable, git_checkout,
- installed, blocked, apply_on_exit, verified, repo, foreign_repo}
+{current, latest, available, state, notes, url, published, releases, progress, error, checked,
+ portable, git_checkout, installed, blocked, apply_on_exit, verified, repo, foreign_repo}
 ```
 - `current`: installierte Version (`app.__version__`); `latest`: neueste gefundene (null = noch nicht
   geprüft); `available` = `latest` > `current` (SemVer, numerisch).
 - `state`: `idle` | `checking` | `downloading` | `ready` | `applying` | `error`.
 - `notes`: Release-Text bzw. Abschnitt aus `CHANGELOG.md` (Markdown; die UI rendert ihn mit
   `HC.md` aus `ui/js/markdown.js` – alles escaped, nur `https://`-Links); `url`: Release-Seite.
-- Optional, **vom Backend noch nicht geliefert** (die UI nutzt sie, sobald vorhanden): `published`
-  (ISO-Datum des neuesten Releases) und `releases` = `[{version, published, notes, url}]` für alle
-  Versionen > `current`, neueste zuerst – der Dialog zeigt dann die Highlights jeder übersprungenen
-  Version. Ohne `releases` zeigt er nur `notes`.
+- `published`: Datum des neuesten Releases (`YYYY-MM-DD`, aus `published_at` bzw. der
+  CHANGELOG-Überschrift `## [x.y.z] - YYYY-MM-DD`) oder null.
+- `releases`: `[{version, published, notes, url}]` für alle Versionen > `current` bis `latest`,
+  neueste zuerst (höchstens 20; ohne Update `[]`) – der Dialog zeigt die Highlights jeder
+  übersprungenen Version. `url` kann `""` sein (Abschnitt aus der CHANGELOG des Downloads). Bleibt
+  über einen Neustart erhalten (`manifest.json`). Leer → der Dialog zeigt nur `notes`.
 - `progress`: `{phase: "download"|"verify"|"prepare", pct (0–100 | null = Grösse unbekannt), bytes,
   total}` oder null.
 - `error`: deutscher Text (nur bei `state: "error"` oder nach manueller Prüfung); `checked`: ISO der

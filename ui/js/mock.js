@@ -906,6 +906,19 @@
         return Object.assign({ ok: true }, updStatus());
       });
     },
+    get_release_notes: () => later(40, () => ({
+      current: upd.current,
+      releases: [
+        { version: '0.2.1', date: '2026-11-17', notes: '### Highlights\n- Readable release notes in the app\n- Skipped versions listed\n- Links open in the browser\n\n### Added\n- `open_url` bridge method\n\n### Fixed\n- Enter in dialogs' },
+        { version: '0.2.0', date: '2026-11-17', notes: '**Highlights**\n- 19 languages, English default\n- Installer privacy page\n\n### Added\n- Language picker' },
+        { version: '0.1.0', date: '2026-11-17', notes: '### Added\n- First release' },
+      ],
+    })),
+    open_url(url) {
+      const ok = /^https:\/\/([a-z0-9-]+\.)*github\.com(\/|$)/i.test(String(url || ''));
+      if (ok) window.open(url, '_blank', 'noopener');
+      return later(30, ok ? { ok: true } : { ok: false, error: `Link not allowed: ${url}` });
+    },
     cancel_update() {
       return later(40, () => { clearInterval(upd.timer); clearTimeout(upd.timer); return Object.assign({ ok: true }, updSet({ state: 'idle', progress: null, error: null })); });
     },

@@ -376,6 +376,7 @@
     "already_ready": "Uuendus on juba valmis",
     "available": "Saadaval on HCLoader {latest} (installitud: {current})",
     "bad_url": "Allalaadimisaadress pole lubatud: {url}",
+    "link_not_allowed": "Link pole lubatud: {url}",
     "cancelled": "Rakenduse uuendamine tühistatud",
     "check_failed": "Uuenduste kontroll ebaõnnestus: {error}",
     "checking": "Uuenduste kontroll käib veel",

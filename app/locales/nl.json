@@ -376,6 +376,7 @@
     "already_ready": "De update is al gereed",
     "available": "HCLoader {latest} is beschikbaar (geïnstalleerd: {current})",
     "bad_url": "Downloadadres niet toegestaan: {url}",
+    "link_not_allowed": "Link niet toegestaan: {url}",
     "cancelled": "App-update geannuleerd",
     "check_failed": "Updatecontrole mislukt: {error}",
     "checking": "De updatecontrole loopt nog",
