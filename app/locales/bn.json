@@ -10,6 +10,8 @@
     "app_update_failed": "অ্যাপ আপডেট ব্যর্থ: {error}",
     "app_update_rolled_back": " – আগের সংস্করণ ফিরিয়ে আনা হয়েছে",
     "app_updated": "HCLoader v{version}-এ আপডেট হয়েছে",
+    "backfill_busy": "অন্য একটি প্রক্রিয়া এখন একটি উৎস সম্পূর্ণ পড়ছে – পরে চলবে",
+    "backfill_none": "এই উৎসের জন্য কোনো “সব পড়ুন” নেই",
     "backup_done": "ডাটাবেসের ব্যাকআপ হয়েছে: {path}",
     "backup_failed": "ব্যাকআপ ব্যর্থ: {error}",
     "backup_failed_log": "ডাটাবেস ব্যাকআপ ব্যর্থ: {error}",
@@ -78,6 +80,18 @@
     "watchlist_backoff": "ব্যাকঅফ {until} পর্যন্ত সক্রিয় – যাচাই আটকানো",
     "ytdlp_up_to_date": "yt-dlp ও প্লাগইন হালনাগাদ",
     "ytdlp_updated_restart": "yt-dlp আপডেট হয়েছে – অনুগ্রহ করে HCLoader রিস্টার্ট করুন"
+  },
+  "backfill": {
+    "done": "সব পড়ুন: {name} শেষ – {n}টি এন্ট্রি পড়া হয়েছে, ইনবক্সে {added}টি নতুন",
+    "failed": "সব পড়ুন ব্যর্থ: {error}",
+    "note_backoff": "ব্যাকঅফ ({platform}) {until} পর্যন্ত – নিজে থেকে চলতে থাকবে",
+    "note_budget": "এই রানের অনুরোধ বাজেট শেষ – পরের রানে চলবে",
+    "note_error": "ত্রুটি: {error}",
+    "note_interrupted": "বাধাপ্রাপ্ত – নিজে থেকে চলতে থাকবে",
+    "resumed": "সব পড়ুন: {name} – {n}টি এন্ট্রির পরে চালিয়ে যাচ্ছে",
+    "search_refused": "সার্চ উৎস সম্পূর্ণ পড়া যায় না – একটি সার্চ সর্বোচ্চ 100টি ফল দেয়",
+    "started": "সব পড়ুন: {name} – পাতা ধরে সর্বোচ্চ {cap}টি এন্ট্রি পড়ছে",
+    "stopped": "সব পড়ুন: {name} থেমেছে – {note}"
   },
   "cli": {
     "headless": "GUI ছাড়া চালান",
@@ -167,6 +181,7 @@
     "unknown": "অজানা জনরা: {genre}"
   },
   "headless": {
+    "backfill": "সব পড়ুন: {n}টি উৎস চালু · ইনবক্সে {added}টি নতুন · {done}টি শেষ",
     "backoff": "ব্যাকঅফ {until} পর্যন্ত সক্রিয় – কিছু যাচাই হয়নি",
     "backoff_until": "ব্যাকঅফ {until} পর্যন্ত",
     "finished": "হেডলেস রান শেষ: {n}টি নতুন, {downloaded}টি ডাউনলোড, {errors}টি ত্রুটি{extra}",

@@ -10,6 +10,8 @@
     "app_update_failed": "App update failed: {error}",
     "app_update_rolled_back": " – the previous version was restored",
     "app_updated": "HCLoader updated to v{version}",
+    "backfill_busy": "Another process is reading a source completely right now – it continues later",
+    "backfill_none": "No “Read everything” for this source",
     "backup_done": "Database backed up: {path}",
     "backup_failed": "Backup failed: {error}",
     "backup_failed_log": "Database backup failed: {error}",
@@ -78,6 +80,18 @@
     "watchlist_backoff": "Backoff active until {until} – checking blocked",
     "ytdlp_up_to_date": "yt-dlp and plugin are up to date",
     "ytdlp_updated_restart": "yt-dlp updated – please restart HCLoader"
+  },
+  "backfill": {
+    "done": "Read everything: {name} finished – {n} entries read, {added} new in the inbox",
+    "failed": "Read everything failed: {error}",
+    "note_backoff": "Backoff ({platform}) until {until} – continues automatically",
+    "note_budget": "Request budget of this run used up – continues in the next run",
+    "note_error": "Error: {error}",
+    "note_interrupted": "Interrupted – continues automatically",
+    "resumed": "Read everything: {name} – continuing after {n} entries",
+    "search_refused": "Search sources cannot be read completely – a search returns at most 100 results",
+    "started": "Read everything: {name} – reading up to {cap} entries page by page",
+    "stopped": "Read everything: {name} stopped – {note}"
   },
   "cli": {
     "headless": "run without GUI",
@@ -167,6 +181,7 @@
     "unknown": "Unknown genre: {genre}"
   },
   "headless": {
+    "backfill": "Read everything: {n} source(s) continued · {added} new in the inbox · {done} finished",
     "backoff": "Backoff active until {until} – nothing checked",
     "backoff_until": "Backoff until {until}",
     "finished": "Headless run finished: {n} new, {downloaded} downloaded, {errors} errors{extra}",

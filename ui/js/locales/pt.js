@@ -60,7 +60,8 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "chars": "caracteres",
     "results": "resultados",
     "entries": "entradas",
-    "clock": "h"
+    "clock": "h",
+    "req_h": "req./h"
   },
   "range": {
     "ge_sleep": "≥ mínimo",
@@ -656,7 +657,8 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
       "database": "Banco de dados",
       "reset": "Redefinir",
       "detection": "Detecção",
-      "series": "Séries"
+      "series": "Séries",
+      "backfill": "Ler tudo (uma vez)"
     },
     "general": {
       "language": {
@@ -1161,6 +1163,16 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
       "variants_help": "Edições próprias, ex.: Australia ou at Home.",
       "channels": "Canais do organizador",
       "channels_help": "Nome, ID ou URL do canal. Apenas aumenta a confiança."
+    },
+    "watchlist": {
+      "backfill_max_entries": {
+        "label": "Máx. de itens por fonte",
+        "help": "“Ler tudo (uma vez)” na lista de acompanhamento lê no máximo esta quantidade de itens de um canal ou playlist."
+      },
+      "backfill_requests_per_hour": {
+        "label": "Requisições por hora",
+        "help": "As requisições de páginas de “Ler tudo” são distribuídas por igual (120 = uma a cada 30 s); o intervalo normal e o backoff também valem. Uma execução agendada (Agendador de Tarefas) continua por no máximo esta quantidade de requisições."
+      }
     }
   },
   "opt": {
@@ -1471,5 +1483,43 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "p_type": "Tipo de set",
     "p_apply": "Aplicar",
     "p_auto": "Voltar ao automático"
+  },
+  "backfill": {
+    "action": "Ler tudo (uma vez)",
+    "action_title": "Ler uma vez a lista completa desta fonte, página por página – novos resultados vão para a caixa de entrada",
+    "again_title": "Ler tudo de novo – só entram itens ainda desconhecidos",
+    "search_title": "Não para buscas salvas – uma busca retorna no máximo 100 resultados",
+    "why_open": "A leitura já começou – pause ou cancele abaixo do nome",
+    "st_pending": "Aguardando",
+    "st_running": "Lendo …",
+    "st_paused": "Pausado",
+    "progress": "{n} / ~{total}",
+    "progress_cap": "{n} / máx. {cap}",
+    "added": "+{n} na caixa de entrada",
+    "done_short": "Tudo lido {date}",
+    "done_title": "Lido por completo: {date} · {n} itens",
+    "note_title": "Última interrupção",
+    "pause": "Pausar",
+    "resume": "Retomar",
+    "cancel": "Cancelar",
+    "keep": "Continuar lendo",
+    "dlg_title": "Ler tudo de “{name}”?",
+    "dlg_text": "Lê uma vez a lista completa desta fonte, página por página – requisições leves e baratas, pelo limitador; nada é baixado. Resultados que passam pelos seus filtros vão para a <b>caixa de entrada</b>, também em fontes com download automático. Vídeos que você já conhece nunca entram duas vezes.",
+    "dlg_requests": "requisições",
+    "dlg_time": "duração",
+    "dlg_entries": "itens",
+    "dlg_known": "Conhecido pela última verificação: <b>{n}</b> itens.",
+    "dlg_unknown": "Tamanho desconhecido – estimativa cautelosa para o máximo de {cap} itens.",
+    "dlg_capped": "Só os primeiros {cap} itens são lidos (Configurações › Agendamento).",
+    "dlg_resume": "Continua após {n} itens já lidos; as páginas deles são pedidas de novo primeiro.",
+    "dlg_pace": "No máximo {n} requisições por hora, distribuídas por igual. Um backoff (HTTP 429 / verificação anti-bot), fechar o app ou um erro só interrompem – continua automaticamente depois. Você pode pausar ou cancelar a qualquer momento.",
+    "dlg_ok": "Começar a ler",
+    "dlg_ok_resume": "Continuar lendo",
+    "dlg_cancel_title": "Cancelar a leitura?",
+    "dlg_cancel_text": "A leitura de “{name}” para e o progresso é descartado. Resultados já na caixa de entrada ficam.",
+    "toast_started": "Lendo “{name}” por completo – em segundo plano",
+    "toast_done": "“{name}” lido por completo – +{n} na caixa de entrada",
+    "toast_paused": "“{name}” pausado – continue com “Retomar”",
+    "toast_cancelled": "Leitura de “{name}” cancelada"
   }
 });

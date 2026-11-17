@@ -10,6 +10,8 @@
     "app_update_failed": "App-update mislukt: {error}",
     "app_update_rolled_back": " – de vorige versie is hersteld",
     "app_updated": "HCLoader bijgewerkt naar v{version}",
+    "backfill_busy": "Een ander proces leest nu een bron volledig in – het gaat later verder",
+    "backfill_none": "Geen ‘Alles inlezen’ voor deze bron",
     "backup_done": "Back-up van database gemaakt: {path}",
     "backup_failed": "Back-up mislukt: {error}",
     "backup_failed_log": "Database-back-up mislukt: {error}",
@@ -78,6 +80,18 @@
     "watchlist_backoff": "Backoff actief tot {until} – controleren geblokkeerd",
     "ytdlp_up_to_date": "yt-dlp en plug-in zijn up-to-date",
     "ytdlp_updated_restart": "yt-dlp bijgewerkt – start HCLoader opnieuw"
+  },
+  "backfill": {
+    "done": "Alles inlezen: {name} klaar – {n} items gelezen, {added} nieuw in de inbox",
+    "failed": "Alles inlezen mislukt: {error}",
+    "note_backoff": "Backoff ({platform}) tot {until} – gaat automatisch verder",
+    "note_budget": "Verzoekbudget van deze run op – gaat verder in de volgende run",
+    "note_error": "Fout: {error}",
+    "note_interrupted": "Onderbroken – gaat automatisch verder",
+    "resumed": "Alles inlezen: {name} – gaat verder na {n} items",
+    "search_refused": "Zoekbronnen kunnen niet volledig worden ingelezen – een zoekopdracht levert maximaal 100 resultaten",
+    "started": "Alles inlezen: {name} – leest tot {cap} items pagina voor pagina",
+    "stopped": "Alles inlezen: {name} gestopt – {note}"
   },
   "cli": {
     "headless": "zonder GUI uitvoeren",
@@ -167,6 +181,7 @@
     "unknown": "Onbekend genre: {genre}"
   },
   "headless": {
+    "backfill": "Alles inlezen: {n} bron(nen) voortgezet · {added} nieuw in de inbox · {done} klaar",
     "backoff": "Backoff actief tot {until} – niets gecontroleerd",
     "backoff_until": "Backoff tot {until}",
     "finished": "Headless run voltooid: {n} nieuw, {downloaded} gedownload, {errors} fouten{extra}",

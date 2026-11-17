@@ -220,6 +220,13 @@ schedule:
   # Einträge pro Quelle und Prüfung (1-200)
   entries_per_source: 30
 
+# --- Watchlist ---
+watchlist:
+  # «Alles einlesen (einmalig)»: höchstens so viele Einträge pro Quelle (100-10000)
+  backfill_max_entries: 2000
+  # «Alles einlesen»: höchstens so viele Seiten-Anfragen pro Stunde (10-600, gleichmässig verteilt; Headless-Lauf: Budget pro Lauf)
+  backfill_requests_per_hour: 120
+
 # --- Darstellung ---
 appearance:
   # Effekte reduzieren

@@ -9,6 +9,8 @@
     "app_update_failed": "Échec de la mise à jour de l’app : {error}",
     "app_update_rolled_back": " – la version précédente a été restaurée",
     "app_updated": "HCLoader mis à jour vers v{version}",
+    "backfill_busy": "Un autre processus lit une source en entier en ce moment – la lecture reprendra plus tard",
+    "backfill_none": "Aucun « Tout lire » pour cette source",
     "backup_done": "Base de données sauvegardée : {path}",
     "backup_failed": "Échec de la sauvegarde : {error}",
     "backup_failed_log": "Échec de la sauvegarde de la base de données : {error}",
@@ -77,6 +79,18 @@
     "watchlist_backoff": "Blocage temporaire actif jusqu’à {until} – vérification bloquée",
     "ytdlp_up_to_date": "yt-dlp et le plugin sont à jour",
     "ytdlp_updated_restart": "yt-dlp mis à jour – veuillez redémarrer HCLoader"
+  },
+  "backfill": {
+    "done": "Tout lire : {name} terminé – {n} entrées lues, {added} nouvelles dans la boîte",
+    "failed": "Échec de « Tout lire » : {error}",
+    "note_backoff": "Backoff ({platform}) jusqu’à {until} – reprend automatiquement",
+    "note_budget": "Budget de requêtes de cette exécution épuisé – reprend à la prochaine",
+    "note_error": "Erreur : {error}",
+    "note_interrupted": "Interrompu – reprend automatiquement",
+    "resumed": "Tout lire : {name} – reprise après {n} entrées",
+    "search_refused": "Les sources de recherche ne peuvent pas être lues entièrement – une recherche renvoie au plus 100 résultats",
+    "started": "Tout lire : {name} – lecture de jusqu’à {cap} entrées page par page",
+    "stopped": "Tout lire : {name} arrêté – {note}"
   },
   "cli": {
     "headless": "exécuter sans interface graphique",
@@ -166,6 +180,7 @@
     "unknown": "Genre inconnu : {genre}"
   },
   "headless": {
+    "backfill": "Tout lire : {n} source(s) poursuivie(s) · {added} nouvelles dans la boîte · {done} terminée(s)",
     "backoff": "Blocage temporaire actif jusqu’à {until} – rien vérifié",
     "backoff_until": "Blocage temporaire jusqu’à {until}",
     "finished": "Exécution headless terminée : {n} nouveaux, {downloaded} téléchargés, {errors} erreurs{extra}",

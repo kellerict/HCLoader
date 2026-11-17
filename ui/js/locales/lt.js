@@ -62,7 +62,8 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "chars": "simbolių",
     "results": "rezultatų",
     "entries": "įrašų",
-    "clock": "val."
+    "clock": "val.",
+    "req_h": "užkl./val."
   },
   "range": {
     "ge_sleep": "≥ minimumas",
@@ -696,7 +697,8 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
       "database": "Duomenų bazė",
       "reset": "Atstatymas",
       "detection": "Atpažinimas",
-      "series": "Serijos"
+      "series": "Serijos",
+      "backfill": "Nuskaityti viską (vieną kartą)"
     },
     "general": {
       "language": {
@@ -1203,6 +1205,16 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
       "variants_help": "Atskiros laidos, pvz., Australia arba at Home.",
       "channels": "Organizatoriaus kanalai",
       "channels_help": "Kanalo pavadinimas, ID arba URL. Tik padidina tikrumą."
+    },
+    "watchlist": {
+      "backfill_max_entries": {
+        "label": "Daugiausia įrašų vienam šaltiniui",
+        "help": "„Nuskaityti viską (vieną kartą)“ stebimų sąraše nuskaito daugiausia tiek kanalo ar grojaraščio įrašų."
+      },
+      "backfill_requests_per_hour": {
+        "label": "Užklausų per valandą",
+        "help": "„Nuskaityti viską“ puslapių užklausos paskirstomos tolygiai (120 = viena kas 30 s); taip pat galioja įprastas intervalas ir backoff. Suplanuotas paleidimas (Užduočių planuoklis) tęsia daugiausia tiek užklausų."
+      }
     }
   },
   "opt": {
@@ -1539,5 +1551,43 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "p_type": "Seto tipas",
     "p_apply": "Taikyti",
     "p_auto": "Grąžinti automatinį"
+  },
+  "backfill": {
+    "action": "Nuskaityti viską (vieną kartą)",
+    "action_title": "Vieną kartą nuskaityti visą šio šaltinio sąrašą puslapis po puslapio – nauji radiniai keliauja į gautuosius",
+    "again_title": "Nuskaityti viską dar kartą – pridedami tik dar nežinomi įrašai",
+    "search_title": "Ne išsaugotoms paieškoms – paieška grąžina daugiausia 100 rezultatų",
+    "why_open": "Nuskaitymas jau pradėtas – pristabdykite arba atšaukite jį po pavadinimu",
+    "st_pending": "Laukia",
+    "st_running": "Nuskaitoma …",
+    "st_paused": "Pristabdyta",
+    "progress": "{n} / ~{total}",
+    "progress_cap": "{n} / daug. {cap}",
+    "added": "+{n} gautuosiuose",
+    "done_short": "Viskas nuskaityta {date}",
+    "done_title": "Visiškai nuskaityta: {date} · įrašų: {n}",
+    "note_title": "Paskutinis pertraukimas",
+    "pause": "Pristabdyti",
+    "resume": "Tęsti",
+    "cancel": "Atšaukti",
+    "keep": "Toliau skaityti",
+    "dlg_title": "Nuskaityti viską iš „{name}“?",
+    "dlg_text": "Vieną kartą nuskaito visą šio šaltinio sąrašą puslapis po puslapio – plokščiai ir pigiai, per ribotuvą; nieko neatsisiunčiama. Radiniai, praeinantys jūsų filtrus, keliauja į <b>gautuosius</b>, net šaltiniuose su automatiniu atsisiuntimu. Jau žinomi vaizdo įrašai niekada nepridedami du kartus.",
+    "dlg_requests": "užklausų",
+    "dlg_time": "trukmė",
+    "dlg_entries": "įrašų",
+    "dlg_known": "Žinoma iš paskutinio patikrinimo: įrašų – <b>{n}</b>.",
+    "dlg_unknown": "Dydis nežinomas – atsargiai įvertinta maksimaliam {cap} įrašų skaičiui.",
+    "dlg_capped": "Nuskaitomi tik pirmieji {cap} įrašų (Nustatymai › Tvarkaraštis).",
+    "dlg_resume": "Tęsia po {n} jau nuskaitytų įrašų; jų puslapiai pirmiausia užklausiami iš naujo.",
+    "dlg_pace": "Daugiausia {n} užklausų per valandą, tolygiai paskirstytų. Backoff (HTTP 429 / botų patikra), programos uždarymas ar klaida tik pertraukia – vėliau tęsiama automatiškai. Pristabdyti ar atšaukti galite bet kada.",
+    "dlg_ok": "Pradėti nuskaitymą",
+    "dlg_ok_resume": "Toliau skaityti",
+    "dlg_cancel_title": "Atšaukti nuskaitymą?",
+    "dlg_cancel_text": "„{name}“ nuskaitymas sustoja, o pažanga atmetama. Gautuosiuose jau esantys radiniai lieka.",
+    "toast_started": "„{name}“ nuskaitoma visa – vyksta fone",
+    "toast_done": "„{name}“ nuskaityta visa – +{n} gautuosiuose",
+    "toast_paused": "„{name}“ pristabdyta – tęskite mygtuku „Tęsti“",
+    "toast_cancelled": "„{name}“ nuskaitymas atšauktas"
   }
 });

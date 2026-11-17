@@ -60,7 +60,8 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
   "chars": "tekens",
   "results": "resultaten",
   "entries": "items",
-  "clock": "uur"
+  "clock": "uur",
+  "req_h": "verz./u"
  },
  "range": {
   "ge_sleep": "≥ minimum",
@@ -656,7 +657,8 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
    "database": "Database",
    "reset": "Herstellen",
    "detection": "Herkenning",
-   "series": "Reeksen"
+   "series": "Reeksen",
+   "backfill": "Alles inlezen (eenmalig)"
   },
   "general": {
    "language": {
@@ -1161,6 +1163,16 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
    "variants_help": "Eigen edities, bijv. Australia of at Home.",
    "channels": "Kanalen van de organisator",
    "channels_help": "Kanaalnaam, ID of URL. Verhoogt alleen de zekerheid."
+  },
+  "watchlist": {
+   "backfill_max_entries": {
+    "label": "Max. items per bron",
+    "help": "‘Alles inlezen (eenmalig)’ in de watchlist leest maximaal zoveel items van een kanaal of playlist."
+   },
+   "backfill_requests_per_hour": {
+    "label": "Verzoeken per uur",
+    "help": "Paginaverzoeken van ‘Alles inlezen’ worden gelijkmatig verdeeld (120 = één per 30 s); de normale tussenpauze en de backoff gelden ook. Een geplande run (Taakplanner) gaat met maximaal zoveel verzoeken verder."
+   }
   }
  },
  "opt": {
@@ -1471,5 +1483,43 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
   "p_type": "Soort set",
   "p_apply": "Toepassen",
   "p_auto": "Terug naar automatisch"
+ },
+ "backfill": {
+  "action": "Alles inlezen (eenmalig)",
+  "action_title": "De volledige lijst van deze bron één keer pagina voor pagina inlezen – nieuwe treffers gaan naar de inbox",
+  "again_title": "Alles opnieuw inlezen – alleen nog onbekende items komen erbij",
+  "search_title": "Niet voor opgeslagen zoekopdrachten – een zoekopdracht levert maximaal 100 resultaten",
+  "why_open": "Inlezen is al gestart – pauzeer of annuleer het onder de naam",
+  "st_pending": "Wacht",
+  "st_running": "Leest in …",
+  "st_paused": "Gepauzeerd",
+  "progress": "{n} / ~{total}",
+  "progress_cap": "{n} / max. {cap}",
+  "added": "+{n} in de inbox",
+  "done_short": "Alles ingelezen {date}",
+  "done_title": "Volledig ingelezen: {date} · {n} items",
+  "note_title": "Laatste onderbreking",
+  "pause": "Pauzeren",
+  "resume": "Hervatten",
+  "cancel": "Annuleren",
+  "keep": "Verder inlezen",
+  "dlg_title": "Alles van ‘{name}’ inlezen?",
+  "dlg_text": "Leest de volledige lijst van deze bron één keer pagina voor pagina in – plat en goedkoop, via de begrenzer; er wordt niets gedownload. Treffers die door je filters komen, gaan naar de <b>inbox</b>, ook bij bronnen met automatische download. Video’s die je al kent komen er nooit dubbel in.",
+  "dlg_requests": "verzoeken",
+  "dlg_time": "duur",
+  "dlg_entries": "items",
+  "dlg_known": "Bekend van de laatste controle: <b>{n}</b> items.",
+  "dlg_unknown": "De grootte is onbekend – voorzichtig geschat voor het maximum van {cap} items.",
+  "dlg_capped": "Alleen de eerste {cap} items worden ingelezen (Instellingen › Planning).",
+  "dlg_resume": "Gaat verder na {n} al gelezen items; hun pagina’s worden eerst opnieuw opgevraagd.",
+  "dlg_pace": "Maximaal {n} verzoeken per uur, gelijkmatig verdeeld. Een backoff (HTTP 429 / botcontrole), het sluiten van de app of een fout onderbreken alleen – het gaat later automatisch verder. Pauzeren of annuleren kan altijd.",
+  "dlg_ok": "Inlezen starten",
+  "dlg_ok_resume": "Verder inlezen",
+  "dlg_cancel_title": "Inlezen annuleren?",
+  "dlg_cancel_text": "Het inlezen van ‘{name}’ stopt en de voortgang vervalt. Treffers in de inbox blijven.",
+  "toast_started": "‘{name}’ wordt volledig ingelezen – loopt op de achtergrond",
+  "toast_done": "‘{name}’ volledig ingelezen – +{n} in de inbox",
+  "toast_paused": "‘{name}’ gepauzeerd – ga verder met ‘Hervatten’",
+  "toast_cancelled": "Inlezen van ‘{name}’ geannuleerd"
  }
 });

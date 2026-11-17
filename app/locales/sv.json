@@ -10,6 +10,8 @@
     "app_update_failed": "Appuppdateringen misslyckades: {error}",
     "app_update_rolled_back": " – den föregående versionen återställdes",
     "app_updated": "HCLoader uppdaterad till v{version}",
+    "backfill_busy": "En annan process läser just nu in en källa helt – det fortsätter senare",
+    "backfill_none": "Ingen ”Läs in allt” för den här källan",
     "backup_done": "Databasen säkerhetskopierad: {path}",
     "backup_failed": "Säkerhetskopieringen misslyckades: {error}",
     "backup_failed_log": "Säkerhetskopiering av databasen misslyckades: {error}",
@@ -78,6 +80,18 @@
     "watchlist_backoff": "Backoff aktiv till {until} – kontroll blockerad",
     "ytdlp_up_to_date": "yt-dlp och plugin är aktuella",
     "ytdlp_updated_restart": "yt-dlp uppdaterat – starta om HCLoader"
+  },
+  "backfill": {
+    "done": "Läs in allt: {name} klar – {n} poster lästa, {added} nya i inkorgen",
+    "failed": "Läs in allt misslyckades: {error}",
+    "note_backoff": "Backoff ({platform}) till {until} – fortsätter automatiskt",
+    "note_budget": "Förfrågningsbudgeten för den här körningen är slut – fortsätter i nästa körning",
+    "note_error": "Fel: {error}",
+    "note_interrupted": "Avbrutet – fortsätter automatiskt",
+    "resumed": "Läs in allt: {name} – fortsätter efter {n} poster",
+    "search_refused": "Sökkällor kan inte läsas in helt – en sökning ger högst 100 träffar",
+    "started": "Läs in allt: {name} – läser upp till {cap} poster sida för sida",
+    "stopped": "Läs in allt: {name} stoppad – {note}"
   },
   "cli": {
     "headless": "kör utan GUI",
@@ -167,6 +181,7 @@
     "unknown": "Okänd genre: {genre}"
   },
   "headless": {
+    "backfill": "Läs in allt: {n} källa/källor fortsatta · {added} nya i inkorgen · {done} klara",
     "backoff": "Backoff aktiv till {until} – inget kontrollerat",
     "backoff_until": "Backoff till {until}",
     "finished": "Headless-körning klar: {n} nya, {downloaded} nedladdade, {errors} fel{extra}",

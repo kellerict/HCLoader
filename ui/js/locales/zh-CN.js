@@ -59,7 +59,8 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "chars": "个字符",
     "results": "条结果",
     "entries": "条",
-    "clock": "点"
+    "clock": "点",
+    "req_h": "次/时"
   },
   "range": {
     "ge_sleep": "≥ 最小值",
@@ -636,7 +637,8 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
       "database": "数据库",
       "reset": "重置",
       "detection": "识别",
-      "series": "系列"
+      "series": "系列",
+      "backfill": "全部读取（一次性）"
     },
     "general": {
       "language": {
@@ -1140,6 +1142,16 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
       "variants_help": "独立的届次，例如 Australia 或 at Home。",
       "channels": "主办方频道",
       "channels_help": "频道名称、ID 或网址。只会提高置信度。"
+    },
+    "watchlist": {
+      "backfill_max_entries": {
+        "label": "每个来源最多条目数",
+        "help": "关注列表中的“全部读取（一次性）”最多读取频道或播放列表的这么多条目。"
+      },
+      "backfill_requests_per_hour": {
+        "label": "每小时请求数",
+        "help": "“全部读取”的分页请求会均匀分布（120 = 每 30 秒一次）；常规间隔和退避同样适用。计划运行（任务计划程序）最多继续这么多次请求。"
+      }
     }
   },
   "opt": {
@@ -1437,5 +1449,43 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "p_type": "Set 类型",
     "p_apply": "应用",
     "p_auto": "恢复自动识别"
+  },
+  "backfill": {
+    "action": "全部读取（一次性）",
+    "action_title": "逐页读取此来源的完整列表一次 – 新结果进入收件箱",
+    "again_title": "再次全部读取 – 只添加尚未知道的条目",
+    "search_title": "不适用于已保存的搜索 – 搜索最多返回 100 个结果",
+    "why_open": "读取已开始 – 可在名称下方暂停或取消",
+    "st_pending": "等待中",
+    "st_running": "读取中 …",
+    "st_paused": "已暂停",
+    "progress": "{n} / ~{total}",
+    "progress_cap": "{n} / 最多 {cap}",
+    "added": "收件箱 +{n}",
+    "done_short": "已全部读取 {date}",
+    "done_title": "已完整读取：{date} · {n} 个条目",
+    "note_title": "上次中断",
+    "pause": "暂停",
+    "resume": "继续",
+    "cancel": "取消",
+    "keep": "继续读取",
+    "dlg_title": "读取“{name}”的全部内容？",
+    "dlg_text": "逐页读取此来源的完整列表一次 – 扁平且低成本，经由限速器；不下载任何内容。通过筛选的结果进入<b>收件箱</b>，即使来源设置了自动下载。已知的视频绝不会重复添加。",
+    "dlg_requests": "次请求",
+    "dlg_time": "时长",
+    "dlg_entries": "个条目",
+    "dlg_known": "上次检查得知：<b>{n}</b> 个条目。",
+    "dlg_unknown": "大小未知 – 按最多 {cap} 个条目保守估计。",
+    "dlg_capped": "只读取前 {cap} 个条目（设置 › 计划）。",
+    "dlg_resume": "从已读的 {n} 个条目之后继续；这些页面会先重新请求一次。",
+    "dlg_pace": "每小时最多 {n} 次请求，均匀分布。退避（HTTP 429 / 机器人检查）、关闭应用或出错只会中断 – 之后会自动继续。可随时暂停或取消。",
+    "dlg_ok": "开始读取",
+    "dlg_ok_resume": "继续读取",
+    "dlg_cancel_title": "取消读取？",
+    "dlg_cancel_text": "“{name}”的读取将停止，进度会被丢弃。已在收件箱中的结果保留。",
+    "toast_started": "正在完整读取“{name}” – 在后台运行",
+    "toast_done": "“{name}”已完整读取 – 收件箱 +{n}",
+    "toast_paused": "“{name}”已暂停 – 用“继续”恢复",
+    "toast_cancelled": "已取消读取“{name}”"
   }
 });

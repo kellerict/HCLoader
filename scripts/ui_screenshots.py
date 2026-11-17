@@ -262,6 +262,35 @@ class Shooter:
         page.evaluate("HC.player.close()")
         self.go("discover")
 
+    def backfill_scenes(self) -> None:
+        """v0.4.0 «Alles einlesen (einmalig)»: Bestätigung mit Schätzung, Fortschritt an der
+        Quelle (liest / angehalten / wartet nach Backoff), «fertig» unter dem Namen."""
+        page = self.page
+        page.evaluate("HC.mock.api.clear_backoff(); HC.mock.api.clear_backoff('soundcloud')")
+        self.go("watchlist")
+        page.click('#wl-body tr[data-id="2"] [data-act="bf"]')
+        page.wait_for_selector(".modal.bf-dlg")
+        self.settle()
+        self.shot("watchlist-backfill-dialog")
+        page.keyboard.press("Escape")
+        page.click('#wl-body tr[data-id="1"] [data-act="bf"]')
+        page.wait_for_selector(".modal.bf-dlg")
+        self.settle()
+        self.shot("watchlist-backfill-dialog-unknown")
+        page.keyboard.press("Escape")
+        page.evaluate(
+            "HC.mock.demo.backfill(2, {state: 'running', position: 240, added: 37, requests: 9});"
+            " HC.mock.demo.backfill(8, {state: 'paused', position: 400, total: null, added: 52,"
+            " requests: 3});"
+            " HC.mock.demo.backfill(9, {state: 'pending', position: 50, added: 6, requests: 2,"
+            " note: 'Backoff (SoundCloud) until 14:30 – continues automatically'});"
+            " HC.mock.demo.backfill(6, {state: 'done', position: 312, added: 64,"
+            " finished: new Date(Date.now() - 2 * 86400000).toISOString()})"
+        )
+        page.evaluate("document.activeElement && document.activeElement.blur()")
+        self.settle(300)
+        self.shot("watchlist-backfill-progress")
+
     def watchlist_scenes(self) -> None:
         """Phase 4: laufende Prüfung, Backoff-Sperre, Eingang mit Auswahl, Zeitplan mit Aufgabe.
 
@@ -705,6 +734,7 @@ class Shooter:
         self.maintenance_scenes()
         self.soundcloud_scenes()
         self.player_scenes()
+        self.backfill_scenes()
 
         # m9: in pywebview gestartet, Backend antwortet nicht -> Fehlerzustand statt Mock
         page.clock.install(time=FIXED_NOW)

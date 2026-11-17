@@ -9,6 +9,8 @@
     "app_update_failed": "A atualização do app falhou: {error}",
     "app_update_rolled_back": " – a versão anterior foi restaurada",
     "app_updated": "HCLoader atualizado para v{version}",
+    "backfill_busy": "Outro processo está lendo uma fonte por completo agora – continua depois",
+    "backfill_none": "Nenhum “Ler tudo” para esta fonte",
     "backup_done": "Backup do banco de dados criado: {path}",
     "backup_failed": "O backup falhou: {error}",
     "backup_failed_log": "O backup do banco de dados falhou: {error}",
@@ -77,6 +79,18 @@
     "watchlist_backoff": "Bloqueio temporário ativo até {until} – verificação bloqueada",
     "ytdlp_up_to_date": "yt-dlp e plugin estão atualizados",
     "ytdlp_updated_restart": "yt-dlp atualizado – reinicie o HCLoader"
+  },
+  "backfill": {
+    "done": "Ler tudo: {name} concluído – {n} itens lidos, {added} novos na caixa de entrada",
+    "failed": "“Ler tudo” falhou: {error}",
+    "note_backoff": "Backoff ({platform}) até {until} – continua automaticamente",
+    "note_budget": "Orçamento de requisições desta execução esgotado – continua na próxima",
+    "note_error": "Erro: {error}",
+    "note_interrupted": "Interrompido – continua automaticamente",
+    "resumed": "Ler tudo: {name} – continuando após {n} itens",
+    "search_refused": "Fontes de busca não podem ser lidas por completo – uma busca retorna no máximo 100 resultados",
+    "started": "Ler tudo: {name} – lendo até {cap} itens página por página",
+    "stopped": "Ler tudo: {name} parado – {note}"
   },
   "cli": {
     "headless": "executar sem interface gráfica",
@@ -166,6 +180,7 @@
     "unknown": "Gênero desconhecido: {genre}"
   },
   "headless": {
+    "backfill": "Ler tudo: {n} fonte(s) continuada(s) · {added} novos na caixa de entrada · {done} concluída(s)",
     "backoff": "Bloqueio temporário ativo até {until} – nada verificado",
     "backoff_until": "Bloqueio temporário até {until}",
     "finished": "Execução headless concluída: {n} novos, {downloaded} baixados, {errors} erros{extra}",

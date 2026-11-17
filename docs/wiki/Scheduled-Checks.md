@@ -34,7 +34,10 @@ in the portable build).
 3. Checks all enabled sources incrementally.
 4. Downloads the queued videos sequentially through the normal queue; the per-run and per-day limits
    still apply and the rest stays queued.
-5. Writes one `headless` entry into the run history (Protokoll, shown as "Aufgabenplanung").
+5. Continues an interrupted [«Read everything (once)»](Watchlist-and-Inbox#read-everything-once)
+   for at most `watchlist.backfill_requests_per_hour` requests (default 120, about one hour); the
+   rest follows in the next run. Paused backfills are left alone.
+6. Writes one `headless` entry into the run history (Protokoll, shown as "Aufgabenplanung").
 
 ### Exit codes
 

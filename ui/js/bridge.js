@@ -118,6 +118,22 @@
                                            "watchlist_done"). {ok:false, error}: Backoff aktiv oder es läuft
                                            schon eine Prüfung -> Fehler-Toast. Fortschritt über die Events
                                            "source" / "watchlist_done"; die UI sperrt «Prüfen» bis "watchlist_done".
+     estimate_backfill(id)              -> {ok, source_id, known_total|null, entries, cap, requests, seconds, per_hour,
+                                           page_size, conservative, position, resume} | {ok:false, error}
+                                           v0.4.0 «Alles einlesen (einmalig)», ohne Netzwerk: geschätzte Anfragen
+                                           und Dauer für den Bestätigungsdialog. known_total = bekannte Grösse
+                                           (letzte Prüfung/früherer Versuch), sonst conservative:true und entries = cap.
+                                           resume: es gibt einen Cursor (position) – die gelesenen Seiten werden
+                                           erneut (schnell) durchlaufen. Suchquellen -> {ok:false, error}.
+     start_backfill(id)                 -> {ok, backfill: Backfill} | {ok:false, error}
+                                           startet bzw. setzt fort (pausiert/unterbrochen: ab dem Cursor; fertig/
+                                           abgebrochen: von vorne). Läuft im Hintergrund, eins nach dem anderen;
+                                           Fortschritt als Event "backfill". Abgelehnt: Suchquelle, SoundCloud aus,
+                                           Backoff der Plattform, yt-dlp-Update, Neustart nötig.
+     pause_backfill(id)                 -> {ok, backfill} | {ok:false, error}   hält vor der nächsten Anfrage an;
+                                           bleibt pausiert bis start_backfill (kein automatisches Fortsetzen)
+     cancel_backfill(id)                -> {ok, backfill} | {ok:false, error}   verwirft den Cursor (state
+                                           "cancelled"); Treffer im Eingang bleiben
 
    Downloads
      get_queue()                        -> {paused, items:[QueueItem], blocked_code, blocked_reason, platform_blocked}
@@ -211,7 +227,8 @@
                   Thumbnails von SoundCloud: https://*.sndcdn.com}
      Source      {id, type: "channel"|"playlist"|"search", name, url_or_query, default_genre|null,
                   enabled, auto_download, max_entries (int|null), newest_last (bool), last_checked (ISO|null), new_count,
-                  platform: "youtube"|"soundcloud", name_auto (bool)}
+                  platform: "youtube"|"soundcloud", name_auto (bool), item_count (int|null), backfill (Backfill|null)}
+                  item_count (v0.4.0): Grösse der Liste laut letzter Prüfung (yt-dlp playlist_count), null = unbekannt.
                   SoundCloud: channel = soundcloud.com/<nutzer> oder …/tracks, playlist = …/<nutzer>/sets/<set>.
                   max_entries: null (Feld im Dialog leer) = Standard schedule.entries_per_source zum Zeitpunkt der
                   Prüfung; die Liste zeigt dann «30 (Standard)», das Feld den Standard als Platzhalter. Obergrenze
@@ -219,6 +236,13 @@
                   newest_last: nur bei type "playlist" – neue Videos stehen hinten, die Playlist wird von hinten
                   gelesen. Die UI schickt bei Kanal/Suche immer false und wählt es bei neuen Playlists nicht vor.
                   new_count = Treffer dieser Quelle, die noch im Eingang liegen (Status "inbox")
+     Backfill    {source_id, state: "pending"|"running"|"paused"|"done"|"cancelled", position, total (int|null),
+                  target (min(total, cap)|null), cap, added, found, requests, note|null, started, updated, finished|null}
+                  v0.4.0 «Alles einlesen (einmalig)». position = gelesene Einträge (Cursor), added = davon im Eingang,
+                  found = neu gespeicherte Videos. pending = wartet bzw. unterbrochen (Backoff, App beendet, Fehler –
+                  note sagt warum), setzt automatisch fort (App-Start, nach einer Prüfung, Headless-Lauf);
+                  paused = vom User angehalten (oder nach 3 Fehlern in Folge). Anzeige «Liest ein … 240 / ~500»
+                  (target bekannt) bzw. «240 / max. 2000»; fertig: Datum (finished) + added.
      QueueItem   {id, video: Video, state: "waiting"|"active"|"failed",
                   phase: "waiting"|"sleep"|"download"|"convert"|"tag",
                   pct (0–100), speed (MB/s), eta (s), error|null, target (relativer Ordner)}
@@ -297,6 +321,8 @@
                      Start: {id, checking:true}. Ende: {id, checking:false, last_checked, new_count} oder bei
                      Fehler {id, checking:false, error:"Meldung"} – die UI zeigt die Meldung an der Quelle, bis
                      sie wieder geprüft wird (nur im Speicher der UI, Source kennt kein Fehlerfeld).
+     backfill        Backfill | {source_id, state:"none"}   v0.4.0 «Alles einlesen»: Zustand/Fortschritt einer Quelle
+                     (nach jeder Seite, bei Start, Pause, Abbruch, Ende). Die UI zeichnet die Zeile neu und meldet «fertig».
      watchlist_done  {checked, found}                  Watchlist-Lauf beendet (auch bei Abbruch, z.B. Backoff)
                      checked = geprüfte Quellen, found = neue Treffer insgesamt (Eingang + automatisch geladen).
                      Gilt für jeden Lauf (von Hand, In-App-Intervall); die UI gibt danach «Prüfen» wieder frei,

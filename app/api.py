@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any
 
 from .core import (
+    backfill,
     binaries,
     config,
     discover,
@@ -74,6 +75,8 @@ SEARCH_TIMEOUT_S = 180
 # m5: an ffmpeg conversion has no cancel hook; wait this long for the queue thread at exit
 QUEUE_STOP_TIMEOUT_S = 60.0
 WATCHLIST_STOP_TIMEOUT_S = 10.0  # n5: a cancelled check ends after the current request
+# v0.4.0: open «Read everything (once)» backfills continue this long after the app start
+BACKFILL_START_DELAY_S = 90.0
 # m2: at the first queue start in HTTP mode, wait this long for the PO-token watchdog
 POT_START_WAIT_S = 20.0
 # message keys (app/locales), translated when used
@@ -121,6 +124,7 @@ class Api:
         update_checker: Callable[[], dict[str, Any]] | None = None,
         run_lock: Callable[[], Any] | None = None,
         watchlist_lock: Callable[[], Any] | None = None,
+        backfill_lock: Callable[[], Any] | None = None,
         client_factory: Callable[[], Any] | None = None,
         throttle: Throttle | None = None,
         queue_options: dict[str, Any] | None = None,
@@ -161,6 +165,7 @@ class Api:
         self._update_checker = update_checker or maintenance.check_updates
         self._run_lock = run_lock or locks.acquire_run_lock
         self._watchlist_lock = watchlist_lock or locks.acquire_watchlist_lock
+        self._backfill_lock = backfill_lock or locks.acquire_backfill_lock
         self._client_factory = client_factory or self._make_client
         qopts: dict[str, Any] = {"pot_wait": POT_START_WAIT_S, **(queue_options or {})}
         self._queue = DownloadQueue(
@@ -187,6 +192,14 @@ class Api:
             self._trigger_scheduled_check,
             **(schedule_options or {}),
         )
+        # v0.4.0 «Read everything (once)»: own thread (a backfill takes long and must not block
+        # watchlist checks), one backfill at a time; per-source stop events (pause/cancel)
+        self._bf_worker = Worker("hcloader-backfill")
+        self._bf_events: dict[int, threading.Event] = {}
+        self._bf_stop = threading.Event()  # app exit
+        self._bf_jobs = 0
+        self._bf_current: int | None = None  # source read by the backfill thread right now
+        self._bf_timer: threading.Timer | None = None
         # Self-update of HCLoader (GitHub releases): own worker, never blocks maintenance jobs
         self._updater = self_updater or selfupdate.SelfUpdater(
             current=maintenance.app_version(),
@@ -254,6 +267,13 @@ class Api:
         self._wl_worker.stop(WATCHLIST_STOP_TIMEOUT_S)
         if self._wl_worker.alive():  # stuck in a request: close its run entry now
             watchlist.close_interrupted(self._db, tr("run.cancelled_exit"))
+        self._bf_stop.set()  # v0.4.0: the running backfill stops before its next request
+        if self._bf_timer is not None:
+            self._bf_timer.cancel()
+        for ev in list(self._bf_events.values()):
+            ev.set()
+        self._bf_worker.stop(WATCHLIST_STOP_TIMEOUT_S)
+        backfill.release_running(self._db, tr("backfill.note_interrupted"))
         self._fest_cancel.set()  # a running «Assign festivals» pass stops after the current row
         self._updater.stop()  # a running app-update download is aborted and discarded
         self._update_worker.stop()
@@ -280,6 +300,7 @@ class Api:
             self._startup_update_check()
             self._startup_task_check()
             self._startup_app_update()
+            self._startup_backfills()
 
     def _on_run_finished(self, row: dict[str, Any]) -> None:
         """A run (watchlist, headless, manual queue) ended: event `run` for the log view."""
@@ -1037,6 +1058,8 @@ class Api:
             "name_auto": bool(s.get("name_auto")),
             "last_checked": s.get("last_checked"),
             "new_count": self._db.count_videos(status="inbox", source_id=s["id"]),
+            "item_count": s.get("item_count"),
+            "backfill": backfill.view(self._db.get_backfill(s["id"]), self._cfg),
         }
 
     def get_sources(self) -> list[dict[str, Any]]:
@@ -1158,7 +1181,148 @@ class Api:
         checked = result.checked + result.errors  # sources processed (checked or failed)
         self._bus.emit("watchlist_done", {"checked": checked, "found": result.found})
         self._push()
+        if not result.backoff and not result.cancelled:
+            self._resume_backfills()  # v0.4.0: open backfills continue after a check
         return {"ok": True, "checked": checked, "found": result.found}
+
+    # ================================================================== backfill (v0.4.0)
+
+    def estimate_backfill(self, source_id: int) -> dict[str, Any]:
+        """Requests/time of «Read everything (once)» for the confirmation dialog (no network)."""
+        source = self._source_row(source_id)
+        reason = backfill.refusal(source, self._cfg)
+        if reason:
+            return {"ok": False, "error": reason}
+        return backfill.estimate(source, self._db, self._cfg)  # type: ignore[arg-type]
+
+    def start_backfill(self, source_id: int) -> dict[str, Any]:
+        """Start or resume «Read everything (once)» in the backfill thread; progress comes as
+        `backfill` events. Refused for search sources, during a backoff of the platform, a
+        yt-dlp update or when a restart is required."""
+        source = self._source_row(source_id)
+        reason = backfill.refusal(source, self._cfg)
+        if reason is None and self._queue.restart_required:
+            reason = tr("api.restart_required")
+        if reason is None and self._ytdlp_gate.updating:
+            reason = tr(_UPDATE_BUSY)
+        if reason is None:
+            platform = source.get("platform") or "youtube"  # type: ignore[union-attr]
+            until = self._throttle.platform(platform).backoff_until()
+            if until is not None:
+                reason = tr("api.watchlist_backoff", until=discover.format_until(until))
+        if reason:
+            return {"ok": False, "error": reason}
+        sid = int(source["id"])  # type: ignore[index]
+        row = self._db.get_backfill(sid)
+        if row and row["state"] == "running" and self._bf_current == sid:
+            # already being read (double click / second window): nothing to change
+            return {"ok": True, "backfill": backfill.view(row, self._cfg)}
+        backfill.request(self._db, sid)
+        self._emit_backfill(sid)
+        self._submit_backfill([sid])
+        return {"ok": True, "backfill": backfill.view(self._db.get_backfill(sid), self._cfg)}
+
+    def pause_backfill(self, source_id: int) -> dict[str, Any]:
+        return self._stop_backfill(source_id, backfill.pause)
+
+    def cancel_backfill(self, source_id: int) -> dict[str, Any]:
+        return self._stop_backfill(source_id, backfill.cancel)
+
+    def _stop_backfill(
+        self, source_id: int, change: Callable[[Database, int], bool]
+    ) -> dict[str, Any]:
+        try:
+            sid = int(source_id)
+        except (TypeError, ValueError):
+            return {"ok": False, "error": tr("api.invalid_source")}
+        if self._db.get_backfill(sid) is None:
+            return {"ok": False, "error": tr("api.backfill_none")}
+        change(self._db, sid)
+        ev = self._bf_events.get(sid)
+        if ev is not None:
+            ev.set()  # the running backfill stops before its next request
+        self._emit_backfill(sid)
+        return {"ok": True, "backfill": backfill.view(self._db.get_backfill(sid), self._cfg)}
+
+    def _source_row(self, source_id: Any) -> dict[str, Any] | None:
+        try:
+            return self._db.get_source(int(source_id))
+        except (TypeError, ValueError):
+            return None
+
+    def _emit_backfill(self, sid: int) -> None:
+        data = backfill.view(self._db.get_backfill(sid), self._cfg)
+        self._bus.emit("backfill", data or {"source_id": sid, "state": "none"})
+
+    def _bf_event(self, sid: int) -> threading.Event:
+        ev = threading.Event()
+        if self._bf_stop.is_set():
+            ev.set()
+        self._bf_events[sid] = ev
+        self._bf_current = sid
+        return ev
+
+    def _submit_backfill(self, ids: list[int] | None) -> None:
+        if ids is None:
+            if not self._bf_worker.busy("backfill:open"):
+                self._bf_worker.submit("backfill:open", self._do_backfill, None)
+            return
+        self._bf_jobs += 1  # own key: a resume right after a pause must not be swallowed
+        self._bf_worker.submit(f"backfill:{self._bf_jobs}", self._do_backfill, ids)
+
+    def _resume_backfills(self) -> None:
+        """Continue open backfills (app start, after a watchlist check). Interrupted ones only;
+        paused ones wait for the user. Sources in backoff are skipped without a request."""
+        if self._bf_stop.is_set() or not backfill.open_ids(self._db):
+            return
+        self._submit_backfill(None)
+
+    def _startup_backfills(self) -> None:
+        if not backfill.open_ids(self._db):
+            return
+        timer = threading.Timer(BACKFILL_START_DELAY_S, self._resume_backfills)
+        timer.daemon = True
+        self._bf_timer = timer
+        timer.start()
+
+    def _do_backfill(self, ids: list[int] | None) -> dict[str, Any]:
+        lock = self._backfill_lock()
+        if lock is None:  # a headless run reads a source right now
+            msg = tr("api.backfill_busy")
+            log.warning(msg)
+            if ids is not None:
+                self._bus.toast(msg, "warn")
+            return {"ok": False, "error": msg}
+        results: list[backfill.BackfillResult] = []
+        try:
+            with self._ytdlp_gate.search():  # no yt-dlp update meanwhile (n2)
+                client = self._client_factory()
+                try:
+                    results = backfill.continue_open(
+                        client=client,
+                        db=self._db,
+                        throttle=self._throttle,
+                        settings=self._cfg,
+                        ids=ids,
+                        cancel_for=self._bf_event,
+                        on_progress=lambda data: self._bus.emit("backfill", data),
+                        stop=self._bf_stop,
+                    )
+                finally:
+                    client.close()
+        except GateBusy:
+            self._bus.toast(tr(_UPDATE_BUSY), "warn")
+        except Exception as exc:
+            log.exception(tr("backfill.failed", error=redact(exc)))
+            self._bus.toast(tr("backfill.failed", error=redact(exc)), "err")
+        finally:
+            self._bf_current = None
+            lock.release()
+            for sid in ids or []:
+                self._emit_backfill(sid)  # also when nothing ran (busy, refused)
+        if any(r.found or r.added for r in results):
+            self._push()  # inbox badge
+        return {"ok": True, "ran": sum(1 for r in results if not r.skipped)}
 
     # ================================================================== downloads
 

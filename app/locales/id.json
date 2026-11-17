@@ -10,6 +10,8 @@
     "app_update_failed": "Pembaruan aplikasi gagal: {error}",
     "app_update_rolled_back": " – versi sebelumnya dipulihkan",
     "app_updated": "HCLoader diperbarui ke v{version}",
+    "backfill_busy": "Proses lain sedang membaca sebuah sumber secara lengkap – nanti dilanjutkan",
+    "backfill_none": "Tidak ada “Baca semua” untuk sumber ini",
     "backup_done": "Basis data dicadangkan: {path}",
     "backup_failed": "Pencadangan gagal: {error}",
     "backup_failed_log": "Pencadangan basis data gagal: {error}",
@@ -77,6 +79,18 @@
     "watchlist_backoff": "Backoff aktif hingga {until} – pemeriksaan diblokir",
     "ytdlp_up_to_date": "yt-dlp dan plugin sudah terbaru",
     "ytdlp_updated_restart": "yt-dlp diperbarui – mulai ulang HCLoader"
+  },
+  "backfill": {
+    "done": "Baca semua: {name} selesai – {n} entri dibaca, {added} baru di kotak masuk",
+    "failed": "Baca semua gagal: {error}",
+    "note_backoff": "Backoff ({platform}) sampai {until} – berlanjut otomatis",
+    "note_budget": "Anggaran permintaan jalankan ini habis – berlanjut di jalankan berikutnya",
+    "note_error": "Galat: {error}",
+    "note_interrupted": "Terputus – berlanjut otomatis",
+    "resumed": "Baca semua: {name} – melanjutkan setelah {n} entri",
+    "search_refused": "Sumber pencarian tidak bisa dibaca lengkap – pencarian memberi paling banyak 100 hasil",
+    "started": "Baca semua: {name} – membaca hingga {cap} entri halaman demi halaman",
+    "stopped": "Baca semua: {name} berhenti – {note}"
   },
   "cli": {
     "headless": "jalankan tanpa GUI",
@@ -166,6 +180,7 @@
     "unknown": "Genre tidak dikenal: {genre}"
   },
   "headless": {
+    "backfill": "Baca semua: {n} sumber dilanjutkan · {added} baru di kotak masuk · {done} selesai",
     "backoff": "Backoff aktif hingga {until} – tidak ada yang diperiksa",
     "backoff_until": "Backoff hingga {until}",
     "finished": "Sesi headless selesai: {n} baru, {downloaded} terunduh, {errors} galat{extra}",

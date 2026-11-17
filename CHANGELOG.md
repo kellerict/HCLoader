@@ -10,6 +10,39 @@ appears after «Show all changes» (`docs/RELEASING.md`).
 
 ## [Unreleased]
 
+### Highlights
+- Watchlist «Read everything (once)»: read the complete back catalogue of a channel, playlist or SoundCloud profile/set – page by page, gently, into the inbox
+- Confirmation with the estimated number of requests and time before anything starts
+- Progress right at the source («Reading … 240 / ~486»), pause, resume and cancel
+- Interrupted by a backoff, a restart or an error? It continues automatically where it stopped – also in scheduled runs
+
+### Added
+- «Read everything (once)» per watchlist source (channel, playlist, SoundCloud user or set; not for
+  saved searches): reads the whole flat listing page by page up to `watchlist.backfill_max_entries`
+  (default 2000, 100–10000). Every single page request goes through the throttle of the platform:
+  backoff check, even pacing of `watchlist.backfill_requests_per_hour` (default 120 = one every 30 s,
+  persisted across restarts) and the normal request spacing; the metadata lock is held per request,
+  so searches and downloads keep working in between.
+- Hits always go to the inbox, never into the download queue (also for auto-download sources);
+  filters, de-duplication (never twice) and festival detection work exactly as for a normal check.
+- Resumable: the position is stored after every page. Backoff, closing the app, a network error or
+  the request budget of a scheduled run only interrupt it; it continues automatically 90 s after the
+  next app start, after the next watchlist check and in headless runs (at most one hour's worth of
+  requests per run). Pause waits for «Resume»; cancel discards the position (hits stay in the inbox).
+  Three errors in a row pause the backfill with the error as a note.
+- Confirmation dialog with the estimated requests and duration, based on the size reported by the
+  last check (new: `item_count` per source, no extra request) or a conservative estimate.
+- Bridge: `estimate_backfill`, `start_backfill`, `pause_backfill`, `cancel_backfill`, event `backfill`,
+  `Source.backfill` and `Source.item_count` (docs/bridge-api.md).
+- Settings tab «Schedule»: new section «Read everything (once)» (`watchlist.backfill_max_entries`,
+  `watchlist.backfill_requests_per_hour`).
+- Texts in all 19 languages.
+
+### Changed
+- Database migration 8 (`backfills` table, `sources.item_count`) with the automatic pre-migration
+  backup.
+- The watchlist check and the backfill share one ingestion step (`watchlist.Ingest`).
+
 ## [0.3.0] - 2026-11-18
 
 ### Highlights

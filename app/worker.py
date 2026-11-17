@@ -55,6 +55,7 @@ EVENT_TYPES = (
     "log",
     "source",
     "watchlist_done",
+    "backfill",
     "toast",
 )
 UI_LEVELS = {

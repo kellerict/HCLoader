@@ -10,6 +10,8 @@
     "app_update_failed": "Sovelluksen päivitys epäonnistui: {error}",
     "app_update_rolled_back": " – edellinen versio palautettiin",
     "app_updated": "HCLoader päivitetty versioon v{version}",
+    "backfill_busy": "Toinen prosessi lukee juuri lähdettä kokonaan – jatkuu myöhemmin",
+    "backfill_none": "Lähteellä ei ole ”Lue kaikki” -lukua",
     "backup_done": "Tietokannan varmuuskopio luotu: {path}",
     "backup_failed": "Varmuuskopiointi epäonnistui: {error}",
     "backup_failed_log": "Tietokannan varmuuskopiointi epäonnistui: {error}",
@@ -78,6 +80,18 @@
     "watchlist_backoff": "Backoff aktiivinen asti {until} – tarkistus estetty",
     "ytdlp_up_to_date": "yt-dlp ja lisäosa ovat ajan tasalla",
     "ytdlp_updated_restart": "yt-dlp päivitetty – käynnistä HCLoader uudelleen"
+  },
+  "backfill": {
+    "done": "Lue kaikki: {name} valmis – {n} kohdetta luettu, {added} uutta saapuneissa",
+    "failed": "Lue kaikki epäonnistui: {error}",
+    "note_backoff": "Backoff ({platform}) {until} asti – jatkuu automaattisesti",
+    "note_budget": "Tämän ajon pyyntöbudjetti käytetty – jatkuu seuraavassa ajossa",
+    "note_error": "Virhe: {error}",
+    "note_interrupted": "Keskeytetty – jatkuu automaattisesti",
+    "resumed": "Lue kaikki: {name} – jatketaan {n} kohteen jälkeen",
+    "search_refused": "Hakulähteitä ei voi lukea kokonaan – haku palauttaa enintään 100 tulosta",
+    "started": "Lue kaikki: {name} – luetaan enintään {cap} kohdetta sivu kerrallaan",
+    "stopped": "Lue kaikki: {name} pysäytetty – {note}"
   },
   "cli": {
     "headless": "suorita ilman graafista käyttöliittymää",
@@ -167,6 +181,7 @@
     "unknown": "Tuntematon tyylilaji: {genre}"
   },
   "headless": {
+    "backfill": "Lue kaikki: {n} lähdettä jatkettu · {added} uutta saapuneissa · {done} valmiina",
     "backoff": "Backoff aktiivinen asti {until} – mitään ei tarkistettu",
     "backoff_until": "Backoff asti {until}",
     "finished": "Headless-ajo valmis: {n} uutta, {downloaded} ladattu, {errors} virhettä{extra}",

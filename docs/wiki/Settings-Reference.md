@@ -195,6 +195,15 @@ See [Scheduled checks](Scheduled-Checks).
 | `task_time` | `03:00` | `HH:MM` | Daily start time of the scheduled task. |
 | `entries_per_source` | `30` | 1 to 200 | Default number of entries read per source and check. |
 
+## watchlist (tab Schedule, section «Read everything (once)», v0.4.0)
+
+See [Watchlist and inbox](Watchlist-and-Inbox#read-everything-once).
+
+| Key | Default | Range / values | Description |
+|---|---|---|---|
+| `backfill_max_entries` | `2000` | 100 to 10000 | «Read everything (once)» reads at most this many entries of a channel, playlist or SoundCloud profile/set. |
+| `backfill_requests_per_hour` | `120` | 10 to 600 | Page requests of «Read everything» are spread evenly (120 = one every 30 s); the normal request spacing and the backoff apply as well. A scheduled (headless) run continues an open backfill for at most this many requests. |
+
 ## appearance (tab Darstellung)
 
 | Key | Default | Range / values | Description |

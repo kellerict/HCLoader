@@ -528,6 +528,44 @@ tr.checking.has-error td:first-child::before{background:var(--warn)}
 .seg.wide button{flex:1;padding:7px 12px}
 .seg.wide button.on{color:var(--text);background:var(--accent-soft);box-shadow:inset 0 -2px 0 var(--accent)}
 .modal-body .fhint{border:0;padding:0;margin-top:6px;font-size:12px;line-height:1.45}
+/* v0.4.0 «Alles einlesen (einmalig)»: Fortschrittszeile unter der Quelle, «fertig» unter dem Namen */
+.wl-table tr.has-bf td{border-bottom-color:transparent}
+.wl-table tr.wl-bf-row td{padding-top:0;padding-bottom:10px}
+.wl-table tr.wl-bf-row td.bf-cell{max-width:0;overflow:hidden}
+.wl-table tr.wl-bf-row:hover td{background:none}
+.wl-table tr.wl-bf-row:hover td:first-child{box-shadow:none}
+.wl-table tr.wl-bf-row.off .wl-bf{opacity:.6}
+.wl-bf{display:flex;align-items:center;gap:10px;font:11.5px var(--f-mono);color:var(--muted);white-space:nowrap;min-width:0;
+  padding:6px 10px;border:1px solid var(--line);border-left:2px solid var(--line-2);background:var(--panel-2);border-radius:var(--radius-sm)}
+.wl-bf.bf-running{border-left-color:var(--acid)}
+.wl-bf.bf-paused{border-left-color:var(--warn)}
+.wl-bf>svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.2;flex:none}
+.wl-bf .spinner{width:10px;height:10px;border-width:1.5px;color:var(--acid)}
+.wl-bf .bf-lbl{color:var(--text);flex:none;font-weight:600}
+.wl-bf.bf-running .bf-lbl{color:var(--acid)}
+.wl-bf.bf-paused .bf-lbl{color:var(--warn)}
+.wl-bf .bf-n{flex:none;color:var(--text)}
+.wl-bf .progress{flex:1 1 120px;max-width:320px;min-width:60px;height:6px;display:block}
+.wl-bf .progress .bar{display:block}
+.wl-bf .bf-add{flex:none}
+.wl-bf .bf-note{display:inline-flex;align-items:center;gap:5px;min-width:0;overflow:hidden;color:var(--warn)}
+.wl-bf .bf-note span{overflow:hidden;text-overflow:ellipsis}
+.wl-bf .bf-note svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.2;flex:none}
+.wl-bf .bf-btns{margin-left:auto;display:inline-flex;gap:14px;flex:none}
+.wl-bf .linkbtn{display:inline-flex;align-items:center;gap:4px;flex:none}
+.wl-bf .linkbtn svg{width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:2.6}
+.wl-bf .linkbtn.danger:hover:not(:disabled){color:var(--error)}
+.cell-title small.wl-bf.done{display:flex;align-items:center;gap:6px;margin-top:3px;padding:0;border:0;background:none;color:var(--acid)}
+.cell-title small.wl-bf.done span{overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+.cell-title small.wl-bf.done svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.4;flex:none}
+td.act .iconbtn.on{color:var(--acid);border-color:var(--acid)}
+.modal.bf-dlg{width:min(560px,100%)}
+.bf-est{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0 10px}
+.bf-big{border:1px solid var(--line);background:var(--panel-2);border-radius:var(--radius-sm);padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.bf-big b{font-size:20px;color:var(--text);letter-spacing:.5px}
+.bf-big span{font-size:11.5px;color:var(--muted)}
+.bf-facts{font-size:12.5px;margin-bottom:10px}
+.bf-facts b{color:var(--text)}
 .cell-title small.has-rev{display:flex;align-items:center;gap:8px}
 .cell-title small.has-rev>span:last-child{overflow:hidden;text-overflow:ellipsis}
 .wl-rev{display:inline-flex;align-items:center;gap:3px;flex:none;padding:0 5px 0 3px;border:1px solid var(--line-2);border-radius:var(--radius-sm);color:var(--text);

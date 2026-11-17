@@ -60,7 +60,8 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "chars": "Zeichen",
     "results": "Treffer",
     "entries": "Einträge",
-    "clock": "Uhr"
+    "clock": "Uhr",
+    "req_h": "Anfr./h"
   },
   "range": {
     "ge_sleep": "≥ Minimum",
@@ -656,7 +657,8 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
       "database": "Datenbank",
       "reset": "Zurücksetzen",
       "detection": "Erkennung",
-      "series": "Serien"
+      "series": "Serien",
+      "backfill": "Alles einlesen (einmalig)"
     },
     "general": {
       "start_view": {
@@ -1161,6 +1163,16 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
       "variants_help": "Eigene Ausgaben, z.B. Australia oder at Home.",
       "channels": "Kanäle des Veranstalters",
       "channels_help": "Kanalname, ID oder URL. Erhöht nur die Sicherheit."
+    },
+    "watchlist": {
+      "backfill_max_entries": {
+        "label": "Maximale Einträge pro Quelle",
+        "help": "«Alles einlesen (einmalig)» in der Watchlist liest höchstens so viele Einträge eines Kanals oder einer Playlist."
+      },
+      "backfill_requests_per_hour": {
+        "label": "Anfragen pro Stunde",
+        "help": "Seiten-Anfragen von «Alles einlesen» werden gleichmässig verteilt (120 = alle 30 s); der normale Abstand und der Backoff gelten zusätzlich. Ein geplanter Lauf (Aufgabenplanung) macht höchstens so viele Anfragen weiter."
+      }
     }
   },
   "opt": {
@@ -1471,5 +1483,43 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "p_type": "Set-Art",
     "p_apply": "Übernehmen",
     "p_auto": "Zurück auf automatisch"
+  },
+  "backfill": {
+    "action": "Alles einlesen (einmalig)",
+    "action_title": "Die komplette Liste dieser Quelle einmal seitenweise einlesen – neue Treffer kommen in den Eingang",
+    "again_title": "Nochmals alles einlesen – nur noch Unbekanntes kommt dazu",
+    "search_title": "Nicht für gespeicherte Suchen – eine Suche liefert höchstens 100 Treffer",
+    "why_open": "Einlesen läuft bereits – unter dem Namen anhalten oder abbrechen",
+    "st_pending": "Wartet",
+    "st_running": "Liest ein …",
+    "st_paused": "Angehalten",
+    "progress": "{n} / ~{total}",
+    "progress_cap": "{n} / max. {cap}",
+    "added": "+{n} im Eingang",
+    "done_short": "Alles eingelesen {date}",
+    "done_title": "Komplett eingelesen: {date} · {n} Einträge",
+    "note_title": "Letzte Unterbrechung",
+    "pause": "Anhalten",
+    "resume": "Fortsetzen",
+    "cancel": "Abbrechen",
+    "keep": "Weiter einlesen",
+    "dlg_title": "Alles von «{name}» einlesen?",
+    "dlg_text": "Liest die komplette Liste dieser Quelle einmal seitenweise ein – flach und günstig, durch die Drosselung; geladen wird nichts. Treffer, die deine Filter bestehen, kommen in den <b>Eingang</b>, auch bei Quellen mit automatischem Download. Bekannte Videos kommen nie doppelt.",
+    "dlg_requests": "Anfragen",
+    "dlg_time": "Dauer",
+    "dlg_entries": "Einträge",
+    "dlg_known": "Bekannt aus der letzten Prüfung: <b>{n}</b> Einträge.",
+    "dlg_unknown": "Die Grösse ist unbekannt – vorsichtig geschätzt für das Maximum von {cap} Einträgen.",
+    "dlg_capped": "Eingelesen werden nur die ersten {cap} Einträge (Einstellungen › Zeitplan).",
+    "dlg_resume": "Macht nach {n} bereits gelesenen Einträgen weiter; deren Seiten werden zuerst nochmals abgefragt.",
+    "dlg_pace": "Höchstens {n} Anfragen pro Stunde, gleichmässig verteilt. Ein Backoff (HTTP 429 / Bot-Prüfung), das Schliessen der App oder ein Fehler unterbrechen nur – es geht später automatisch weiter. Anhalten oder abbrechen kannst du jederzeit.",
+    "dlg_ok": "Einlesen starten",
+    "dlg_ok_resume": "Weiter einlesen",
+    "dlg_cancel_title": "Einlesen abbrechen?",
+    "dlg_cancel_text": "Das Einlesen von «{name}» stoppt, der Fortschritt wird verworfen. Treffer im Eingang bleiben.",
+    "toast_started": "«{name}» wird komplett eingelesen – läuft im Hintergrund",
+    "toast_done": "«{name}» komplett eingelesen – +{n} im Eingang",
+    "toast_paused": "«{name}» angehalten – weiter mit «Fortsetzen»",
+    "toast_cancelled": "Einlesen von «{name}» abgebrochen"
   }
 });

@@ -35,6 +35,41 @@ Buttons: **Prüfen** (check one source) and **Alle jetzt prüfen** (check all).
 - If the platform signals a rate limit, the whole check stops and a backoff starts; the check is
   repeated after the backoff.
 
+## Read everything (once)
+
+A normal check only looks at the newest entries of a source (at most 200). To pick up the **back
+catalogue** of a channel, playlist, SoundCloud profile or set, use the stacked-layers button
+**Read everything (once)** in the source's row. Saved searches do not have it (a search returns at
+most 100 results anyway).
+
+![Read everything – confirmation](images/screenshot-backfill-dialog.jpg)
+
+- **Confirmation first.** The dialog shows how many requests and how much time it will take,
+  without any network access: based on the size HCLoader learned from the last check (playlists
+  usually report it), otherwise a conservative estimate for the maximum.
+- **Gentle.** The listing is read page by page with flat, cheap requests. Every single request goes
+  through the throttle: at most `backfill_requests_per_hour` per hour (default 120, i.e. one every
+  30 s), plus the normal request spacing. Searches and downloads keep working in between.
+- **Inbox only.** Hits that pass your filters go to the **Inbox** – never straight into the queue,
+  even for sources with auto-download. Videos HCLoader already knows (downloaded, ignored, in the
+  inbox, seen by this source) are never added twice. Festival detection works as for a normal check.
+- **Capped.** At most `backfill_max_entries` entries per source (default 2000, 100–10000), in listing
+  order (channels: newest first).
+- **Progress at the source**: «Reading … 240 / ~486» with a bar, the number of hits added to the
+  inbox, **Pause** and **Cancel**. When it is done, the row shows «All read <date> · +N».
+
+![Read everything – progress](images/screenshot-backfill-progress.jpg)
+
+**Interruptions are harmless.** The position is saved after every page. A backoff (HTTP 429 / bot
+check), closing the app or a network error only interrupts the backfill; it continues automatically
+at the next app start (after about 90 s), after the next watchlist check and in scheduled
+(headless) runs – there for at most one hour's worth of requests per run. Continuing has to request
+the pages already read once more (YouTube and SoundCloud only know "next page"), which is included
+in the estimate. After three errors in a row the backfill pauses with the error as a note.
+
+**Pause** keeps the position until you click **Resume** (no automatic continuation). **Cancel**
+discards the position; hits already in the inbox stay. Only one source is read at a time.
+
 ## Inbox
 
 **Eingang** (Inbox) lists new matches from the watchlist that passed all filters, waiting for your

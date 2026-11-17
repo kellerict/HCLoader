@@ -60,7 +60,8 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "chars": "merkkiä",
     "results": "tulosta",
     "entries": "merkintää",
-    "clock": "24 h"
+    "clock": "24 h",
+    "req_h": "pyynt./h"
   },
   "range": {
     "ge_sleep": "≥ vähimmäisarvo",
@@ -656,7 +657,8 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
       "database": "Tietokanta",
       "reset": "Palautus",
       "detection": "Tunnistus",
-      "series": "Sarjat"
+      "series": "Sarjat",
+      "backfill": "Lue kaikki (kerran)"
     },
     "general": {
       "language": {
@@ -1161,6 +1163,16 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
       "variants_help": "Omat tapahtumansa, esim. Australia tai at Home.",
       "channels": "Järjestäjän kanavat",
       "channels_help": "Kanavan nimi, tunnus tai URL. Lisää vain varmuutta."
+    },
+    "watchlist": {
+      "backfill_max_entries": {
+        "label": "Kohteita enintään lähdettä kohden",
+        "help": "”Lue kaikki (kerran)” seurantalistassa lukee kanavasta tai soittolistasta enintään näin monta kohdetta."
+      },
+      "backfill_requests_per_hour": {
+        "label": "Pyyntöjä tunnissa",
+        "help": "”Lue kaikki” -toiminnon sivupyynnöt jaetaan tasaisesti (120 = yksi 30 s välein); tavallinen väli ja backoff pätevät myös. Ajastettu ajo (Tehtävien ajoitus) jatkaa enintään näin monella pyynnöllä."
+      }
     }
   },
   "opt": {
@@ -1471,5 +1483,43 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "p_type": "Setin tyyppi",
     "p_apply": "Käytä",
     "p_auto": "Palauta automaattiseksi"
+  },
+  "backfill": {
+    "action": "Lue kaikki (kerran)",
+    "action_title": "Lue tämän lähteen koko lista kerran sivu kerrallaan – uudet osumat menevät saapuneisiin",
+    "again_title": "Lue kaikki uudelleen – vain vielä tuntemattomat lisätään",
+    "search_title": "Ei tallennetuille hauille – haku palauttaa enintään 100 tulosta",
+    "why_open": "Lukeminen on jo käynnissä – keskeytä tai peru se nimen alta",
+    "st_pending": "Odottaa",
+    "st_running": "Luetaan …",
+    "st_paused": "Tauolla",
+    "progress": "{n} / ~{total}",
+    "progress_cap": "{n} / enint. {cap}",
+    "added": "+{n} saapuneissa",
+    "done_short": "Kaikki luettu {date}",
+    "done_title": "Luettu kokonaan: {date} · {n} kohdetta",
+    "note_title": "Viimeisin keskeytys",
+    "pause": "Tauko",
+    "resume": "Jatka",
+    "cancel": "Peru",
+    "keep": "Jatka lukemista",
+    "dlg_title": "Luetaanko kaikki lähteestä ”{name}”?",
+    "dlg_text": "Lukee tämän lähteen koko listan kerran sivu kerrallaan – kevyesti ja edullisesti, rajoittimen kautta; mitään ei ladata. Suodattimesi läpäisevät osumat menevät <b>saapuneisiin</b>, myös automaattisen latauksen lähteissä. Jo tuttuja videoita ei koskaan lisätä kahdesti.",
+    "dlg_requests": "pyyntöä",
+    "dlg_time": "kesto",
+    "dlg_entries": "kohdetta",
+    "dlg_known": "Tiedossa viime tarkistuksesta: <b>{n}</b> kohdetta.",
+    "dlg_unknown": "Kokoa ei tiedetä – varovainen arvio enimmäismäärälle {cap} kohdetta.",
+    "dlg_capped": "Vain ensimmäiset {cap} kohdetta luetaan (Asetukset › Ajastus).",
+    "dlg_resume": "Jatkaa {n} jo luetun kohteen jälkeen; niiden sivut haetaan ensin uudelleen.",
+    "dlg_pace": "Enintään {n} pyyntöä tunnissa tasaisesti jaettuna. Backoff (HTTP 429 / bottitarkistus), sovelluksen sulkeminen tai virhe vain keskeyttää – lukeminen jatkuu myöhemmin automaattisesti. Voit keskeyttää tai perua milloin tahansa.",
+    "dlg_ok": "Aloita lukeminen",
+    "dlg_ok_resume": "Jatka lukemista",
+    "dlg_cancel_title": "Perutaanko lukeminen?",
+    "dlg_cancel_text": "Lähteen ”{name}” lukeminen pysähtyy ja edistyminen hylätään. Saapuneissa jo olevat osumat säilyvät.",
+    "toast_started": "”{name}” luetaan kokonaan – taustalla",
+    "toast_done": "”{name}” luettu kokonaan – +{n} saapuneissa",
+    "toast_paused": "”{name}” tauolla – jatka valinnalla ”Jatka”",
+    "toast_cancelled": "Lähteen ”{name}” lukeminen peruttu"
   }
 });

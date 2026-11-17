@@ -10,6 +10,8 @@
     "app_update_failed": "App-Update fehlgeschlagen: {error}",
     "app_update_rolled_back": " – die bisherige Version wurde wiederhergestellt",
     "app_updated": "HCLoader aktualisiert auf v{version}",
+    "backfill_busy": "Ein anderer Prozess liest gerade eine Quelle komplett ein – es geht später weiter",
+    "backfill_none": "Kein «Alles einlesen» für diese Quelle",
     "backup_done": "Datenbank gesichert: {path}",
     "backup_failed": "Sicherung fehlgeschlagen: {error}",
     "backup_failed_log": "Datenbank-Sicherung fehlgeschlagen: {error}",
@@ -78,6 +80,18 @@
     "watchlist_backoff": "Backoff aktiv bis {until} – Prüfung gesperrt",
     "ytdlp_up_to_date": "yt-dlp und Plugin sind aktuell",
     "ytdlp_updated_restart": "yt-dlp aktualisiert – bitte HCLoader neu starten"
+  },
+  "backfill": {
+    "done": "Alles einlesen: {name} fertig – {n} Einträge gelesen, {added} neu im Eingang",
+    "failed": "Alles einlesen fehlgeschlagen: {error}",
+    "note_backoff": "Backoff ({platform}) bis {until} – geht automatisch weiter",
+    "note_budget": "Anfragen-Budget dieses Laufs aufgebraucht – geht im nächsten Lauf weiter",
+    "note_error": "Fehler: {error}",
+    "note_interrupted": "Unterbrochen – geht automatisch weiter",
+    "resumed": "Alles einlesen: {name} – macht nach {n} Einträgen weiter",
+    "search_refused": "Suchquellen lassen sich nicht komplett einlesen – eine Suche liefert höchstens 100 Treffer",
+    "started": "Alles einlesen: {name} – liest bis zu {cap} Einträge seitenweise",
+    "stopped": "Alles einlesen: {name} gestoppt – {note}"
   },
   "cli": {
     "headless": "ohne GUI laufen",
@@ -167,6 +181,7 @@
     "unknown": "Unbekanntes Genre: {genre}"
   },
   "headless": {
+    "backfill": "Alles einlesen: {n} Quelle(n) fortgesetzt · {added} neu im Eingang · {done} fertig",
     "backoff": "Backoff aktiv bis {until} – nichts geprüft",
     "backoff_until": "Backoff bis {until}",
     "finished": "Headless-Lauf beendet: {n} neu, {downloaded} geladen, {errors} Fehler{extra}",

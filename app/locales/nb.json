@@ -10,6 +10,8 @@
     "app_update_failed": "Appoppdateringen mislyktes: {error}",
     "app_update_rolled_back": " – forrige versjon ble gjenopprettet",
     "app_updated": "HCLoader oppdatert til v{version}",
+    "backfill_busy": "En annen prosess leser inn en kilde helt akkurat nå – det fortsetter senere",
+    "backfill_none": "Ingen «Les inn alt» for denne kilden",
     "backup_done": "Databasen sikkerhetskopiert: {path}",
     "backup_failed": "Sikkerhetskopieringen mislyktes: {error}",
     "backup_failed_log": "Sikkerhetskopiering av databasen mislyktes: {error}",
@@ -78,6 +80,18 @@
     "watchlist_backoff": "Backoff aktiv til {until} – sjekking blokkert",
     "ytdlp_up_to_date": "yt-dlp og plugin er oppdatert",
     "ytdlp_updated_restart": "yt-dlp oppdatert – start HCLoader på nytt"
+  },
+  "backfill": {
+    "done": "Les inn alt: {name} ferdig – {n} oppføringer lest, {added} nye i innboksen",
+    "failed": "Les inn alt mislyktes: {error}",
+    "note_backoff": "Backoff ({platform}) til {until} – fortsetter automatisk",
+    "note_budget": "Forespørselsbudsjettet for denne kjøringen er brukt opp – fortsetter i neste kjøring",
+    "note_error": "Feil: {error}",
+    "note_interrupted": "Avbrutt – fortsetter automatisk",
+    "resumed": "Les inn alt: {name} – fortsetter etter {n} oppføringer",
+    "search_refused": "Søkekilder kan ikke leses inn helt – et søk gir maks. 100 treff",
+    "started": "Les inn alt: {name} – leser opptil {cap} oppføringer side for side",
+    "stopped": "Les inn alt: {name} stoppet – {note}"
   },
   "cli": {
     "headless": "kjør uten GUI",
@@ -167,6 +181,7 @@
     "unknown": "Ukjent sjanger: {genre}"
   },
   "headless": {
+    "backfill": "Les inn alt: {n} kilde(r) fortsatt · {added} nye i innboksen · {done} ferdig",
     "backoff": "Backoff aktiv til {until} – ingenting sjekket",
     "backoff_until": "Backoff til {until}",
     "finished": "Headless-kjøring ferdig: {n} nye, {downloaded} lastet ned, {errors} feil{extra}",

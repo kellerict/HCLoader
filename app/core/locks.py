@@ -42,6 +42,7 @@ ERROR_ALREADY_EXISTS = 183
 SINGLE_INSTANCE = "single-instance"
 RUN_LOCK = "run"
 WATCHLIST_LOCK = "watchlist"
+BACKFILL_LOCK = "backfill"  # v0.4.0 «Read everything (once)»: one backfill at a time
 THROTTLE_LOCK = "throttle"
 METADATA_LOCK = "metadata"
 MUTEX_NAMESPACES = ("Global\\", "Local\\")
@@ -288,6 +289,13 @@ def acquire_run_lock() -> ProcessLock | None:
 def acquire_watchlist_lock() -> ProcessLock | None:
     """Exclusive watchlist-check lock; None if another check (GUI interval or headless) runs."""
     lock = ProcessLock(WATCHLIST_LOCK)
+    return lock if lock.acquire() else None
+
+
+def acquire_backfill_lock() -> ProcessLock | None:
+    """v0.4.0: exclusive backfill lock («Read everything (once)»); None if another process
+    (GUI or headless) is reading a source right now."""
+    lock = ProcessLock(BACKFILL_LOCK)
     return lock if lock.acquire() else None
 
 

@@ -17,7 +17,7 @@ import sys
 from collections.abc import Callable
 from typing import Any
 
-from .core import config, i18n, locks, watchlist
+from .core import backfill, config, i18n, locks, watchlist
 from .core.config import Settings
 from .core.db import Database, MigrationBackupError, SchemaTooNewError
 from .core.discover import format_until
@@ -109,6 +109,7 @@ def run_watchlist(
     watchdog: PotWatchdog | SharedPotWatchdog | None = None,
     run_lock: Callable[[], Any] = locks.acquire_run_lock,
     watchlist_lock: Callable[[], Any] = locks.acquire_watchlist_lock,
+    backfill_lock: Callable[[], Any] = locks.acquire_backfill_lock,
     configure_logging: bool = True,
     throttle: Throttle | None = None,
     pot_wait: float = 20.0,
@@ -163,6 +164,7 @@ def run_watchlist(
                 platform_settings={"soundcloud": lambda: settings.soundcloud},
             ),
             pot_wait,
+            backfill_lock,
         )
     finally:
         if own_db:
@@ -201,6 +203,43 @@ def _default_factory(
     return make
 
 
+def _continue_backfills(
+    client: Any,
+    db: Database,
+    throttle: Throttle,
+    settings: Settings,
+    backfill_lock: Callable[[], Any],
+) -> tuple[int, str | None]:
+    """Open backfills (interrupted, not paused) continue for at most
+    `watchlist.backfill_requests_per_hour` requests in this run. Returns (new videos, note)."""
+    if not backfill.open_ids(db):
+        return 0, None
+    lock = backfill_lock()
+    if lock is None:  # the GUI reads a source right now
+        log.info(tr("api.backfill_busy"))
+        return 0, None
+    try:
+        results = backfill.continue_open(
+            client=client,
+            db=db,
+            throttle=throttle,
+            settings=settings,
+            max_requests=int(settings.watchlist.backfill_requests_per_hour),
+        )
+    except Exception as exc:
+        log.error(tr("backfill.failed", error=exc))
+        return 0, None
+    finally:
+        lock.release()
+    ran = [r for r in results if not r.skipped]
+    if not ran:
+        return 0, None
+    added = sum(r.added for r in ran)
+    return sum(r.found for r in ran), tr(
+        "headless.backfill", n=len(ran), added=added, done=sum(1 for r in ran if r.state == "done")
+    )
+
+
 def _run(
     settings: Settings,
     db: Database,
@@ -208,6 +247,7 @@ def _run(
     watchdog: PotWatchdog | SharedPotWatchdog | None,
     throttle: Throttle,
     pot_wait: float,
+    backfill_lock: Callable[[], Any] = locks.acquire_backfill_lock,
 ) -> int:
     # we hold the run lock: rows left in 'downloading' by a crash are not in use by anyone
     n = db.reset_interrupted_downloads()
@@ -288,6 +328,12 @@ def _run(
                     block_code, block_note = queue.blocked()
                     notes.append(block_note)
                     backoff_noted = backoff_noted or block_code == "backoff"
+        # v0.4.0: continue open «Read everything (once)» backfills within one hour's budget
+        if not res.backoff:
+            added, note = _continue_backfills(client, db, throttle, settings, backfill_lock)
+            found += added
+            if note:
+                notes.append(note)
         # SPEC §5: a successful run resets the backoff escalation (never lifts an active
         # backoff). Review m5: per platform - every platform whose sources were checked
         # without a 429/bot check (SoundCloud's level was never reset by watchlist checks)

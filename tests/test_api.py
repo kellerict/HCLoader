@@ -968,6 +968,11 @@ def test_every_method_json_serializable(env):
         "set_festival": ("abcdefghijk", None),
         "reset_festival": ("abcdefghijk",),
         "detect_festival": ("Defqon.1 2019 | RED",),
+        # v0.4.0 «Read everything (once)»: unknown source -> {ok:false, error}
+        "estimate_backfill": (999,),
+        "start_backfill": (999,),
+        "pause_backfill": (999,),
+        "cancel_backfill": (999,),
     }
     for name in sorted(_bridge_comment_methods()):
         res = getattr(a, name)(*args.get(name, ()))
@@ -1367,7 +1372,9 @@ def test_save_source_validates_and_persists(env):
     assert set(ok["source"]) == {
         "id", "type", "name", "url_or_query", "default_genre", "enabled", "auto_download",
         "max_entries", "newest_last", "last_checked", "new_count", "platform", "name_auto",
+        "item_count", "backfill",
     }  # fmt: skip
+    assert ok["source"]["backfill"] is None and ok["source"]["item_count"] is None
     assert ok["source"]["platform"] == "youtube" and ok["source"]["name_auto"] is False
     assert ok["source"]["newest_last"] is False
     pl = a.save_source(

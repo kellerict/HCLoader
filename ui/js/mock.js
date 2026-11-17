@@ -70,6 +70,7 @@
     player: { mode: 'internal' },
     festivals: { detect: true, min_confidence: 0.65, year_from_upload_date: true, match_description: true, extra_stages: [], extra_set_types: [] },
     schedule: { watchlist_interval_hours: 24, in_app_check: true, task_scheduler_enabled: false, task_time: '03:00', entries_per_source: 30 },
+    watchlist: { backfill_max_entries: 2000, backfill_requests_per_hour: 120 },
     appearance: { reduce_effects: false, scanlines: true, pulse_bpm: 200 },
     maintenance: { check_updates_on_start: true, check_app_updates_on_start: true, apply_update_on_exit: true, update_repo: 'kellerict/HCLoader' },
   };
@@ -148,6 +149,8 @@
     'schedule.task_scheduler_enabled': { bool: 1 },
     'schedule.task_time': { time: 1 },
     'schedule.entries_per_source': { int: 1, min: 1, max: 200 },
+    'watchlist.backfill_max_entries': { int: 1, min: 100, max: 10000 },
+    'watchlist.backfill_requests_per_hour': { int: 1, min: 10, max: 600 },
     'appearance.reduce_effects': { bool: 1 },
     'appearance.scanlines': { bool: 1 },
     'appearance.pulse_bpm': { int: 1, min: 60, max: 300 },
@@ -376,8 +379,47 @@
   SOURCES.forEach((s) => { s.platform = s.platform || 'youtube'; s.name_auto = !!s.name_auto; });
   /* Echte Namen, die eine Prüfung liefert (name_auto). */
   const REAL_NAMES = { 'https://soundcloud.com/pulsewerk-audio': 'Pulsewerk' };
+  /* v0.4.0 «Alles einlesen»: bekannte Grösse der Liste (letzte Prüfung) und Zustand pro Quelle. */
+  const ITEM_COUNT = { 2: 486, 6: 312, 9: 74 };
+  const BACKFILLS = {}; // source_id -> Backfill (wie core/backfill.view)
+  const bfTimers = {};
   /* new_count = Treffer dieser Quelle, die noch im Eingang liegen (wie api.get_sources). */
-  const sourceView = (x) => Object.assign({ newest_last: false }, clone(x), { new_count: VIDEOS.filter((v) => v.status === 'inbox' && v.source_id === x.id).length });
+  const sourceView = (x) => Object.assign({ newest_last: false }, clone(x), {
+    new_count: VIDEOS.filter((v) => v.status === 'inbox' && v.source_id === x.id).length,
+    item_count: ITEM_COUNT[x.id] == null ? null : ITEM_COUNT[x.id],
+    backfill: BACKFILLS[x.id] ? bfView(x.id) : null,
+  });
+  function bfView(id) {
+    const b = BACKFILLS[id], cap = settings.watchlist.backfill_max_entries;
+    return Object.assign({}, b, { source_id: id, cap, target: b.total == null ? null : Math.min(b.total, cap) });
+  }
+  const bfEmit = (id) => emit('backfill', BACKFILLS[id] ? bfView(id) : { source_id: id, state: 'none' });
+  /* Simulation: eine «Seite» pro Tick, ca. 1 von 6 Einträgen landet im Eingang. */
+  function bfRun(id) {
+    clearTimeout(bfTimers[id]);
+    const s = SOURCES.find((x) => x.id === id), b = BACKFILLS[id];
+    if (!s || !b || !['pending', 'running'].includes(b.state)) return;
+    const others = Object.entries(BACKFILLS).some(([k, x]) => +k !== id && x.state === 'running');
+    if (others) { bfTimers[id] = setTimeout(() => bfRun(id), 1500 * speed.factor); return; } // eins nach dem anderen
+    if (boOf(s.platform).active) { b.state = 'pending'; b.note = `Backoff (${s.platform === 'soundcloud' ? 'SoundCloud' : 'YouTube'}) until ${hhmm(boOf(s.platform).until)} – continues automatically`; bfEmit(id); return; }
+    if (b.state === 'pending') pushLog('info', b.position ? `Read everything: ${s.name} – continuing after ${b.position} entries` : `Read everything: ${s.name} – reading up to ${settings.watchlist.backfill_max_entries} entries page by page`);
+    b.state = 'running';
+    b.note = null;
+    const page = s.platform === 'soundcloud' ? 200 : s.type === 'playlist' ? 100 : 30;
+    const end = Math.min(b.total == null ? settings.watchlist.backfill_max_entries : b.total, settings.watchlist.backfill_max_entries);
+    const got = Math.min(page, end - b.position);
+    b.position += got;
+    b.requests += 1;
+    b.added += Math.round(got / 6);
+    b.found += Math.round(got / 3);
+    b.updated = new Date().toISOString();
+    if (b.position >= end) {
+      Object.assign(b, { state: 'done', finished: new Date().toISOString(), total: b.total == null ? b.position : b.total });
+      pushLog('ok', `Read everything: ${s.name} finished – ${b.position} entries read, ${b.added} new in the inbox`);
+      pushStatus();
+    } else bfTimers[id] = setTimeout(() => bfRun(id), 700 * speed.factor);
+    bfEmit(id);
+  }
   let nextSourceId = 10;
   let BLACKLIST = [
     { channel_id: 'UCreact0001', channel_name: 'Reaction Bros', added: isoDay(34) },
@@ -1314,7 +1356,55 @@
       });
     },
     delete_source(id) {
-      return later(60, () => { SOURCES = SOURCES.filter((s) => s.id !== id); return { ok: true }; });
+      return later(60, () => { SOURCES = SOURCES.filter((s) => s.id !== id); clearTimeout(bfTimers[id]); delete BACKFILLS[id]; return { ok: true }; });
+    },
+    /* v0.4.0 «Alles einlesen (einmalig)» – wie core/backfill.estimate (ohne Netzwerk) */
+    estimate_backfill(id) {
+      return later(60, () => {
+        const s = SOURCES.find((x) => x.id === id);
+        if (!s) return { ok: false, error: 'Source no longer exists' };
+        if (s.type === 'search') return { ok: false, error: 'Search sources cannot be read completely – a search returns at most 100 results' };
+        const cap = settings.watchlist.backfill_max_entries, b = BACKFILLS[id];
+        const known = b && b.total != null ? b.total : ITEM_COUNT[id] == null ? null : ITEM_COUNT[id];
+        const entries = known == null ? cap : Math.min(known, cap);
+        const sc = s.platform === 'soundcloud', page = sc ? (s.type === 'playlist' ? 50 : 200) : s.type === 'playlist' ? 100 : 30;
+        const requests = (sc ? 3 : 1) + Math.max(1, Math.ceil(entries / page));
+        const perHour = settings.watchlist.backfill_requests_per_hour;
+        const interval = Math.max(3600 / perHour, (sc ? settings.soundcloud : settings.throttle).sleep_requests);
+        const position = b && ['pending', 'running', 'paused'].includes(b.state) ? b.position : 0;
+        return { ok: true, source_id: id, known_total: known, entries, cap, requests, seconds: Math.round(requests * interval), per_hour: perHour, page_size: page, conservative: known == null, position, resume: position > 0 };
+      });
+    },
+    start_backfill(id) {
+      return later(80, () => {
+        const s = SOURCES.find((x) => x.id === id);
+        if (!s) return { ok: false, error: 'Source no longer exists' };
+        if (s.type === 'search') return { ok: false, error: 'Search sources cannot be read completely – a search returns at most 100 results' };
+        if (boOf(s.platform).active) return { ok: false, error: `Backoff active until ${hhmm(boOf(s.platform).until)} – the watchlist check is blocked` };
+        const b = BACKFILLS[id];
+        if (b && ['pending', 'running', 'paused'].includes(b.state)) Object.assign(b, { state: 'pending', note: null });
+        else BACKFILLS[id] = { state: 'pending', position: 0, total: ITEM_COUNT[id] == null ? null : ITEM_COUNT[id], added: 0, found: 0, requests: 0, note: null, started: new Date().toISOString(), updated: new Date().toISOString(), finished: null };
+        bfTimers[id] = setTimeout(() => bfRun(id), 400 * speed.factor);
+        return { ok: true, backfill: bfView(id) };
+      });
+    },
+    pause_backfill(id) {
+      return later(40, () => {
+        const b = BACKFILLS[id];
+        if (!b) return { ok: false, error: 'No “Read everything” for this source' };
+        if (['pending', 'running'].includes(b.state)) { clearTimeout(bfTimers[id]); b.state = 'paused'; b.note = null; }
+        bfEmit(id);
+        return { ok: true, backfill: bfView(id) };
+      });
+    },
+    cancel_backfill(id) {
+      return later(40, () => {
+        const b = BACKFILLS[id];
+        if (!b) return { ok: false, error: 'No “Read everything” for this source' };
+        if (['pending', 'running', 'paused'].includes(b.state)) { clearTimeout(bfTimers[id]); Object.assign(b, { state: 'cancelled', position: 0, finished: new Date().toISOString() }); }
+        bfEmit(id);
+        return { ok: true, backfill: bfView(id) };
+      });
     },
     check_sources(ids) {
       if (state.checking) return later(30, { ok: false, error: 'The watchlist is already being checked.' });
@@ -1728,6 +1818,15 @@
       /** Watchlist-Prüfung hält bei dieser Quelle im Zustand «prüft …» an, bis checkRelease(). */
       checkHold(id) { state.hold = { id, release: null }; },
       checkRelease() { const h = state.hold; state.hold = null; if (h && h.release) h.release(); },
+      /** v0.4.0: Zustand «Alles einlesen» einer Quelle setzen (Screenshots), z.B.
+          backfill(2, {state: 'running', position: 240, added: 37}); run = true lässt die Simulation weiterlaufen. */
+      backfill(id, fields, run) {
+        clearTimeout(bfTimers[id]);
+        const now = new Date().toISOString();
+        BACKFILLS[id] = Object.assign({ state: 'running', position: 0, total: ITEM_COUNT[id] == null ? null : ITEM_COUNT[id], added: 0, found: 0, requests: 0, note: null, started: now, updated: now, finished: null }, BACKFILLS[id] || {}, fields);
+        bfEmit(id);
+        if (run) bfTimers[id] = setTimeout(() => bfRun(id), 500 * speed.factor);
+      },
       /** Die nächste Prüfung dieser Quelle schlägt mit der Meldung fehl. */
       sourceError(id, msg) { state.sourceErrors[id] = msg || 'Channel not found (HTTP 404)'; },
       /** Lokale Sperre der Warteschlange (code "pot" | "target" | "error", null = aufheben). */

@@ -68,6 +68,8 @@ Leitfaden `docs/TRANSLATING.md`); Validierungsmeldungen aus `app/locales/<code>.
 | | `task_scheduler_enabled` | bool | false | |
 | | `task_time` | str | `03:00` | HH:MM |
 | | `entries_per_source` | int | 30 | 1–200 |
+| `watchlist` (Tab «Zeitplan», Abschnitt «Alles einlesen (einmalig)», v0.4.0) | `backfill_max_entries` | int | 2000 | 100–10000: so viele Einträge liest «Alles einlesen» höchstens pro Quelle (in Listen-Reihenfolge) |
+| | `backfill_requests_per_hour` | int | 120 | 10–600: Seiten-Anfragen von «Alles einlesen» pro Stunde, gleichmässig verteilt (120 = alle 30 s; zusätzlich gilt `sleep_requests`); Headless-Lauf: Budget pro Lauf |
 | `appearance` (Darstellung) | `reduce_effects` | bool | false | |
 | | `scanlines` | bool | true | |
 | | `pulse_bpm` | int | 200 | 60–300 |
@@ -119,3 +121,13 @@ Bridge (`ui/js/bridge.js`): `get_settings()` → `{values, defaults}`; `save_set
 - UI der Serienliste: Zeile pro Serie (Art, Name, Kennzeichen mitgeliefert/eigene/angepasst/ausgeblendet,
   Aliase, Anzahl, Schalter «erkennen»), Dialog zum Anlegen/Bearbeiten; jede Änderung ruft sofort
   `save_series`/`delete_series`/`reset_series` auf und sendet UI-intern `series_changed`.
+
+## v0.4.0 – «Alles einlesen (einmalig)» (Entscheid)
+- Neuer Abschnitt `watchlist` (in `config.yaml` nach `schedule`), in der UI im Tab «Zeitplan» unter der
+  Zwischenüberschrift «Alles einlesen (einmalig)» (`set.h.backfill`); Einheit von
+  `backfill_requests_per_hour` = `unit.req_h`.
+- Bewusst nur zwei Werte: Obergrenze und Tempo. Seitengrösse bestimmt yt-dlp (YouTube-Kanal ~30,
+  Playlist 100, SoundCloud 200), das Tempo gilt pro Anfrage. Ein eigenes Stundenbudget mit hartem Stopp
+  gibt es nicht (ein Fortsetzen muss die schon gelesenen Seiten erneut abfragen – ein hartes Budget unter
+  dieser Seitenzahl käme nie voran); stattdessen gleichmässige Verteilung, im Headless-Lauf als Budget
+  pro Lauf (docs/decisions.md «Alles einlesen»).

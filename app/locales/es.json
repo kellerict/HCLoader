@@ -9,6 +9,8 @@
     "app_update_failed": "Falló la actualización de la app: {error}",
     "app_update_rolled_back": " – se restauró la versión anterior",
     "app_updated": "HCLoader actualizado a v{version}",
+    "backfill_busy": "Otro proceso está leyendo una fuente por completo ahora mismo – continuará más tarde",
+    "backfill_none": "No hay «Leer todo» para esta fuente",
     "backup_done": "Copia de la base de datos creada: {path}",
     "backup_failed": "Falló la copia de seguridad: {error}",
     "backup_failed_log": "Falló la copia de seguridad de la base de datos: {error}",
@@ -77,6 +79,18 @@
     "watchlist_backoff": "Bloqueo temporal activo hasta las {until}: revisión bloqueada",
     "ytdlp_up_to_date": "yt-dlp y el plugin están al día",
     "ytdlp_updated_restart": "yt-dlp actualizado: reinicia HCLoader"
+  },
+  "backfill": {
+    "done": "Leer todo: {name} terminado – {n} entradas leídas, {added} nuevas en la bandeja",
+    "failed": "«Leer todo» falló: {error}",
+    "note_backoff": "Backoff ({platform}) hasta {until} – continúa automáticamente",
+    "note_budget": "Presupuesto de peticiones de esta ejecución agotado – continúa en la siguiente",
+    "note_error": "Error: {error}",
+    "note_interrupted": "Interrumpido – continúa automáticamente",
+    "resumed": "Leer todo: {name} – continúa tras {n} entradas",
+    "search_refused": "Las fuentes de búsqueda no se pueden leer por completo – una búsqueda devuelve como máximo 100 resultados",
+    "started": "Leer todo: {name} – leyendo hasta {cap} entradas página a página",
+    "stopped": "Leer todo: {name} detenido – {note}"
   },
   "cli": {
     "headless": "ejecutar sin interfaz gráfica",
@@ -166,6 +180,7 @@
     "unknown": "Género desconocido: {genre}"
   },
   "headless": {
+    "backfill": "Leer todo: {n} fuente(s) continuada(s) · {added} nuevas en la bandeja · {done} terminada(s)",
     "backoff": "Bloqueo temporal activo hasta las {until}: no se revisó nada",
     "backoff_until": "Bloqueo temporal hasta las {until}",
     "finished": "Ejecución headless terminada: {n} nuevos, {downloaded} descargados, {errors} errores{extra}",

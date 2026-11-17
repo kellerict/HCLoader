@@ -229,6 +229,10 @@ kein Throttle.
 | `delete_source(id)` | | `{ok}` | 4 |
 | `check_sources(ids?)` | `[id]` \| `null` = alle aktiven | `{ok:true, started:n}` (n = Anzahl Quellen; 0 = nichts zu tun) \| `{ok:false, error, started:0}` + Events `source`, `watchlist_done` | 4 |
 | `get_inbox()` | – | `[Video]` (Status `inbox`, neueste zuerst) | 4 |
+| `estimate_backfill(id)` | Quellen-`id` | `{ok:true, source_id, known_total, entries, cap, requests, seconds, per_hour, page_size, conservative, position, resume}` \| `{ok:false, error}` – ohne Netzwerk | 0.4.0 |
+| `start_backfill(id)` | Quellen-`id` | `{ok:true, backfill:Backfill}` \| `{ok:false, error}` + Events `backfill` | 0.4.0 |
+| `pause_backfill(id)` | Quellen-`id` | `{ok:true, backfill}` \| `{ok:false, error}` | 0.4.0 |
+| `cancel_backfill(id)` | Quellen-`id` | `{ok:true, backfill}` \| `{ok:false, error}` | 0.4.0 |
 
 - `save_source`-Feldfehler (deutsch, Schlüssel = Feldname): `name` (Pflicht, max. 120), `url_or_query`
   (Kanal: `youtube.com/@name`, `/channel/ID`, `/c/name`, `/user/name`, optional **nur** `/videos` oder
@@ -273,6 +277,40 @@ kein Throttle.
   `state.watchlist_running_since`; die In-App-Prüfung wartet dann 10 min ab dessen Start. Ohne bisherigen
   Lauf startet die erste Prüfung 60 s nach dem App-Start. Nie während eines Backoffs. `Status.next_check` = Frühestes aus
   Aufgabenplanung und In-App-Prüfung (bei aktivem Backoff frühestens dessen Ende).
+
+### Alles einlesen (einmalig) (v0.4.0)
+
+Liest die komplette Liste einer Quelle (Kanal, Playlist, SoundCloud-Nutzer/-Set; **nicht** Suchquellen)
+einmal seitenweise ein (`app/core/backfill.py`, `YtClient.list_source_paged`, Entscheid in
+docs/decisions.md «Alles einlesen»). Treffer gehen immer in den Eingang, nie in die Queue.
+
+- `Source` hat zusätzlich `item_count` (Grösse der Liste laut letzter Prüfung, `null` = unbekannt) und
+  `backfill` (`Backfill` | `null`).
+- **`Backfill`** `{source_id, state, position, total, target, cap, added, found, requests, note, started,
+  updated, finished}`. `state`: `pending` (wartet bzw. unterbrochen – setzt automatisch fort), `running`,
+  `paused` (vom User oder nach 3 Fehlern in Folge – wartet auf `start_backfill`), `done`, `cancelled`.
+  `position` = gelesene Einträge (Cursor), `total` = bekannte Grösse (`null` = unbekannt), `target` =
+  `min(total, cap)` oder `null`, `cap` = `watchlist.backfill_max_entries`, `added` = davon in den Eingang,
+  `found` = neu gespeicherte Videos, `requests` = Seitenanfragen bisher, `note` = Grund der letzten
+  Unterbrechung (übersetzt, z.B. «Backoff (YouTube) bis 14:30 – geht automatisch weiter»).
+- `estimate_backfill`: `known_total` aus `backfills.total` oder `sources.item_count`; `entries` =
+  `min(known_total, cap)`, ohne bekannte Grösse `cap` und `conservative:true`. `requests` = Anlaufanfragen
+  (YouTube 1, SoundCloud 3) + `ceil(entries / page_size)` (YouTube-Kanal 30, Playlist 100, SoundCloud
+  200 bzw. Set 50) – beim Fortsetzen inklusive der erneut abgefragten Seiten. `seconds` = `requests ×
+  max(3600 / per_hour, sleep_requests)`. `resume`/`position`: es gibt einen Cursor.
+- `start_backfill`: abgelehnt (`{ok:false, error}`) bei Suchquelle, SoundCloud aus, Backoff der Plattform,
+  laufendem yt-dlp-Update, «Neustart nötig». Pausiert/unterbrochen → setzt am Cursor fort; fertig/
+  abgebrochen/neu → von vorne. Läuft im Thread `hcloader-backfill` (eins nach dem anderen, prozess-
+  übergreifender Lock `backfill`); hält ein Headless-Lauf den Lock, kommt ein `toast` (warn) und der
+  Backfill bleibt `pending`.
+- `pause_backfill`: `pending`/`running` → `paused`; der laufende hält vor der nächsten Anfrage an
+  (gelesene Seiten sind gespeichert). `cancel_backfill`: → `cancelled`, Cursor 0; Treffer bleiben.
+  Ohne Backfill-Zeile `{ok:false, error}`.
+- **Automatisches Fortsetzen** (`pending`, aktive Quellen): 90 s nach dem App-Start, nach jeder
+  Watchlist-Prüfung ohne Backoff und im Headless-Lauf nach den Downloads (dort höchstens
+  `watchlist.backfill_requests_per_hour` Anfragen pro Lauf, Notiz im `runs`-Eintrag). Quellen einer
+  Plattform im Backoff werden ohne Anfrage übersprungen (`note` = Backoff-Ende).
+- Beim Beenden der App hält der laufende Backfill vor der nächsten Anfrage an und bleibt `pending`.
 
 ### Downloads
 
@@ -581,6 +619,7 @@ Status). Ergänzungen der Python-Seite:
 | `run` | `Run` (inkl. `duration`) | ein Lauf ist zu Ende (`DB.finish_run`: GUI-Watchlist-Prüfung, Download-Lauf der Warteschlange; Headless-Läufe sind ein anderer Prozess und senden nichts) | 5 |
 | `update` | `UpdateStatus` | jeder Zustandswechsel des App-Updates (Prüfung Start/Ende, Download, bereit, Fehler, Abbruch, Updater gestartet) | Selbst-Update |
 | `update_progress` | `{phase, pct, bytes, total}` | Download (höchstens ca. 4×/s, 100 % immer), dann einmal `verify`, einmal `prepare` | Selbst-Update |
+| `backfill` | `Backfill` \| `{source_id, state:"none"}` | «Alles einlesen»: bei Start/Fortsetzen (`pending`), Beginn (`running`), nach jeder gespeicherten Seite, Pause, Abbruch, Unterbrechung (`pending` + `note`) und Ende (`done`); `none` = Zeile gibt es nicht (mehr). Die UI aktualisiert nur die Fortschrittszeile der Quelle | 0.4.0 |
 | `watchlist_done` | `{checked, found}` | Watchlist-Lauf beendet; `checked` = bearbeitete Quellen (auch fehlerhafte), `found` = neu gespeicherte Videos | 4 |
 | `festival_assign` | `{phase, scope, done?, total?, assigned?, suggested?, none?, manual?, unchanged?, cancelled?, ok?, error?}` | «Festivals zuordnen»: `phase` `start` (einmal), `progress` (alle 25 Einträge und am Ende), `done` (Ergebnis wie `assign_pass`: `{ok, cancelled, total, done, assigned, suggested, none, manual, unchanged}`) oder `error` (`{ok:false, error}`). Danach lädt die UI Bibliothek/Gruppen neu | 0.3.0 |
 
@@ -625,6 +664,9 @@ Ist die GUI offen und antwortet ihr PO-Token-Server auf `/ping` am konfigurierte
 mitbenutzt (nicht gestartet, nicht gestoppt); sonst ohne PO-Token-Server Exit 1 wie bisher. Läuft gerade
 die In-App-Prüfung der GUI, endet der Lauf mit Exit 4 (Notiz im Log; die GUI-Prüfung übernimmt).
 Erreicht der Lauf `max_downloads_per_run`, lautet die Notiz «… – Rest wird beim nächsten Lauf geladen».
+v0.4.0: nach den Downloads (ohne Backoff) setzt der Lauf offene «Alles einlesen» fort, höchstens
+`watchlist.backfill_requests_per_hour` Anfragen (Lock `backfill`; hält ihn die GUI, wird übersprungen);
+neue Videos zählen in `found`, Notiz «Alles einlesen: n Quelle(n) fortgesetzt · …».
 Exit-Codes (`app/exitcodes.py`): 0 ok · 1 Fehler (Quelle/Download/PO-Token/unerwartet) · 2 Backoff (beim
 Start aktiv oder im Lauf ausgelöst) · 3 falsche Argumente · 4 anderer Lauf aktiv (Lauf- oder Watchlist-Lock).
 

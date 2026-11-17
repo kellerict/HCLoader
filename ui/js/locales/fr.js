@@ -60,7 +60,8 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
     "chars": "caractères",
     "results": "résultats",
     "entries": "entrées",
-    "clock": "h"
+    "clock": "h",
+    "req_h": "req./h"
   },
   "range": {
     "ge_sleep": "≥ minimum",
@@ -656,7 +657,8 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
       "database": "Base de données",
       "reset": "Réinitialisation",
       "detection": "Détection",
-      "series": "Séries"
+      "series": "Séries",
+      "backfill": "Tout lire (une fois)"
     },
     "general": {
       "language": {
@@ -1161,6 +1163,16 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
       "variants_help": "Éditions à part, p. ex. Australia ou at Home.",
       "channels": "Chaînes de l’organisateur",
       "channels_help": "Nom, ID ou URL de la chaîne. Augmente seulement la certitude."
+    },
+    "watchlist": {
+      "backfill_max_entries": {
+        "label": "Entrées max. par source",
+        "help": "« Tout lire (une fois) » dans la liste de suivi lit au plus ce nombre d’entrées d’une chaîne ou d’une playlist."
+      },
+      "backfill_requests_per_hour": {
+        "label": "Requêtes par heure",
+        "help": "Les requêtes de pages de « Tout lire » sont réparties régulièrement (120 = une toutes les 30 s) ; l’intervalle normal et le backoff s’appliquent aussi. Une exécution planifiée (Planificateur de tâches) continue pour au plus ce nombre de requêtes."
+      }
     }
   },
   "opt": {
@@ -1471,5 +1483,43 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
     "p_type": "Type de set",
     "p_apply": "Appliquer",
     "p_auto": "Revenir à l’automatique"
+  },
+  "backfill": {
+    "action": "Tout lire (une fois)",
+    "action_title": "Lire une fois toute la liste de cette source, page par page – les nouveaux résultats vont dans la boîte de réception",
+    "again_title": "Tout relire – seules les entrées encore inconnues sont ajoutées",
+    "search_title": "Pas pour les recherches enregistrées – une recherche renvoie au plus 100 résultats",
+    "why_open": "La lecture a déjà commencé – mettez-la en pause ou annulez-la sous le nom",
+    "st_pending": "En attente",
+    "st_running": "Lecture …",
+    "st_paused": "En pause",
+    "progress": "{n} / ~{total}",
+    "progress_cap": "{n} / max. {cap}",
+    "added": "+{n} dans la boîte",
+    "done_short": "Tout lu le {date}",
+    "done_title": "Lu entièrement : {date} · {n} entrées",
+    "note_title": "Dernière interruption",
+    "pause": "Pause",
+    "resume": "Reprendre",
+    "cancel": "Annuler",
+    "keep": "Continuer la lecture",
+    "dlg_title": "Tout lire de « {name} » ?",
+    "dlg_text": "Lit une fois toute la liste de cette source, page par page – requêtes plates et légères, via la limitation ; rien n’est téléchargé. Les résultats qui passent vos filtres vont dans la <b>boîte de réception</b>, même pour les sources en téléchargement automatique. Les vidéos déjà connues ne sont jamais ajoutées deux fois.",
+    "dlg_requests": "requêtes",
+    "dlg_time": "durée",
+    "dlg_entries": "entrées",
+    "dlg_known": "Connu depuis la dernière vérification : <b>{n}</b> entrées.",
+    "dlg_unknown": "Taille inconnue – estimation prudente pour le maximum de {cap} entrées.",
+    "dlg_capped": "Seules les {cap} premières entrées sont lues (Paramètres › Planification).",
+    "dlg_resume": "Reprend après {n} entrées déjà lues ; leurs pages sont d’abord redemandées.",
+    "dlg_pace": "Au plus {n} requêtes par heure, réparties régulièrement. Un backoff (HTTP 429 / contrôle anti-bot), la fermeture de l’app ou une erreur ne font qu’interrompre – la lecture reprend automatiquement plus tard. Vous pouvez la mettre en pause ou l’annuler à tout moment.",
+    "dlg_ok": "Lancer la lecture",
+    "dlg_ok_resume": "Continuer la lecture",
+    "dlg_cancel_title": "Annuler la lecture ?",
+    "dlg_cancel_text": "La lecture de « {name} » s’arrête et sa progression est perdue. Les résultats déjà dans la boîte restent.",
+    "toast_started": "Lecture complète de « {name} » – en arrière-plan",
+    "toast_done": "« {name} » lu entièrement – +{n} dans la boîte",
+    "toast_paused": "« {name} » en pause – reprenez avec « Reprendre »",
+    "toast_cancelled": "Lecture de « {name} » annulée"
   }
 });

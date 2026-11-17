@@ -62,7 +62,7 @@ def test_migration_v7_adds_tables_and_columns_and_keeps_rows(tmp_path):
     conn.execute("INSERT INTO videos(id, title, status) VALUES ('abcdefghijk', 'Alt', 'done')")
     conn.close()
     with Database(path) as d:
-        assert d.schema_version() == len(dbmod.MIGRATIONS) == 7
+        assert d.schema_version() == len(dbmod.MIGRATIONS) >= 7
         row = d.get_video("abcdefghijk")
         assert row["title"] == "Alt" and row["edition_id"] is None
         assert row["festival_manual"] == 0 and row["stage"] is None
@@ -70,7 +70,7 @@ def test_migration_v7_adds_tables_and_columns_and_keeps_rows(tmp_path):
         assert {"key", "name", "kind", "aliases", "builtin", "enabled", "hidden"} <= cols
         cols = {r["name"] for r in d.query("PRAGMA table_info(editions)")}
         assert cols == {"id", "series_id", "year", "variant"}
-    backups = list((tmp_path / "backups").glob("hcloader-premigrate-v6-to-v7-*.db"))
+    backups = list((tmp_path / "backups").glob("hcloader-premigrate-v6-to-v*.db"))
     assert len(backups) == 1  # automatic pre-migration backup
 
 

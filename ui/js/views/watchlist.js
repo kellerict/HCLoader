@@ -8,6 +8,10 @@
 
    Phase 7a: Quellen von YouTube und SoundCloud. Backoff gilt pro Plattform – die andere
    läuft weiter. Der Dialog schlägt Typ, Plattform und Namen aus der URL vor (suggest_source).
+
+   v0.4.0 «Alles einlesen (einmalig)»: Knopf pro Kanal/Playlist (nicht bei Suchen), Bestätigung
+   mit Schätzung (estimate_backfill), Fortschritt unter dem Namen (Event «backfill»), Pause /
+   Fortsetzen / Abbrechen, Abschluss mit Datum und Anzahl im Eingang.
    ===================================================================== */
 (function () {
   'use strict';
@@ -38,6 +42,48 @@
   /** Jede Plattform mit aktiver Quelle ist im Backoff -> es gibt nichts zu prüfen. */
   const allBlocked = () => { const act = sources.filter((s) => s.enabled); return act.length > 0 && act.every(boOf); };
   const busy = () => checking.size > 0 || pending.size > 0;
+
+  /* ---------- «Alles einlesen (einmalig)» ---------- */
+  const BF_OPEN = ['pending', 'running'];
+  const canBackfill = (s) => s.type === 'channel' || s.type === 'playlist';
+  const bfOf = (s) => (s.backfill && s.backfill.state !== 'cancelled' ? s.backfill : null);
+  /** «240 / ~500» (Grösse bekannt) bzw. «240 / max. 2000». */
+  function bfCount(b) {
+    const n = util.fmtNum(b.position || 0);
+    return b.target != null ? t('backfill.progress', { n, total: util.fmtNum(b.target) }) : t('backfill.progress_cap', { n, cap: util.fmtNum(b.cap) });
+  }
+  const bfPct = (b) => { const of = b.target != null ? b.target : b.cap; return of ? Math.max(2, Math.min(100, Math.round((100 * (b.position || 0)) / of))) : 0; };
+  /** Fertig: kurze Zeile unter dem Namen (Datum + Anzahl im Eingang, Details im Tooltip). */
+  function bfDone(s) {
+    const b = bfOf(s);
+    if (!b || b.state !== 'done') return '';
+    return `<small class="wl-bf done" title="${esc(t('backfill.done_title', { date: util.fmtFull(b.finished), n: util.fmtNum(b.position) }))} · ${esc(t('backfill.added', { n: util.fmtNum(b.added) }))}">${I.layers}<span>${esc(t('backfill.done_short', { date: util.fmtDate(b.finished) }))} · +${esc(util.fmtNum(b.added))}</span></small>`;
+  }
+  /** Läuft / wartet / angehalten: eigene Zeile unter der Quelle über die ganze Breite
+      (Fortschritt «Liest ein … 240 / ~500», Balken, Anzahl im Eingang, Anhalten/Fortsetzen, Abbrechen). */
+  function bfRow(s) {
+    const b = bfOf(s);
+    if (!b || b.state === 'done') return '';
+    const label = b.state === 'running' ? t('backfill.st_running') : b.state === 'paused' ? t('backfill.st_paused') : t('backfill.st_pending');
+    const btns = b.state === 'paused'
+      ? `<button type="button" class="linkbtn" data-bf="resume">${I.play}${t('backfill.resume')}</button>`
+      : `<button type="button" class="linkbtn" data-bf="pause">${I.pause}${t('backfill.pause')}</button>`;
+    const note = b.note && b.state !== 'running' ? `<span class="bf-note" title="${esc(t('backfill.note_title'))}">${I.info}<span>${esc(b.note)}</span></span>` : '';
+    return `<tr class="wl-bf-row bf-${esc(b.state)}${s.enabled ? '' : ' off'}" data-bf-id="${s.id}"><td></td><td colspan="8" class="bf-cell"><div class="wl-bf bf-${esc(b.state)}">
+      ${b.state === 'running' ? '<span class="spinner"></span>' : b.state === 'paused' ? I.pause : I.clock}
+      <span class="bf-lbl">${esc(label)}</span><span class="bf-n mono">${esc(bfCount(b))}</span>
+      <span class="progress" aria-hidden="true"><span class="bar${b.state === 'running' ? '' : ' idle'}" style="--p:${bfPct(b)}"></span></span>
+      <span class="bf-add">${esc(t('backfill.added', { n: util.fmtNum(b.added) }))}</span>${note}
+      <span class="bf-btns">${btns}<button type="button" class="linkbtn danger" data-bf="cancel">${I.x}${t('backfill.cancel')}</button></span></div></td></tr>`;
+  }
+  function bfButton(s) {
+    if (!canBackfill(s)) return `<button class="iconbtn" data-act="bf" title="${esc(t('backfill.search_title'))}" disabled>${I.layers}</button>`;
+    const b = bfOf(s);
+    const open = b && (BF_OPEN.includes(b.state) || b.state === 'paused');
+    const why = open ? t('backfill.why_open') : HC.platform.enabled(HC.platform.of(s)) ? '' : t('watchlist.why_sc_off');
+    const title = why || t(b && b.state === 'done' ? 'backfill.again_title' : 'backfill.action_title');
+    return `<button class="iconbtn${open ? ' on' : ''}" data-act="bf" title="${esc(title)}" aria-label="${esc(t('backfill.action'))}"${why ? ' disabled' : ''}>${I.layers}</button>`;
+  }
   /** Warum «Prüfen» gerade nicht geht (Text für den Tooltip) oder ''. s = null: «Alle prüfen». */
   function lockReason(s) {
     if (!s) return allBlocked() ? t('watchlist.why_backoff') : busy() ? t('watchlist.why_running') : '';
@@ -55,12 +101,12 @@
   function row(s) {
     const err = errors.get(s.id);
     const lock = lockReason(s);
-    const cls = [s.enabled ? '' : 'off', checking.has(s.id) ? 'checking' : '', pending.has(s.id) ? 'pending' : '', err ? 'has-error' : '', flash.has(s.id) ? 'flash' : ''].filter(Boolean).join(' ');
+    const cls = [s.enabled ? '' : 'off', bfRow(s) ? 'has-bf' : '', checking.has(s.id) ? 'checking' : '', pending.has(s.id) ? 'pending' : '', err ? 'has-error' : '', flash.has(s.id) ? 'flash' : ''].filter(Boolean).join(' ');
     return `<tr data-id="${s.id}" class="${cls}">
       <td>${ui.toggle(s.enabled, `data-k="enabled" title="${esc(t('watchlist.col_active'))}"`)}</td>
       <td class="clip"><div class="cell-title"><div><b${s.name_auto ? ' class="auto"' : ''} title="${esc(s.name_auto ? t('watchlist.name_auto_title') : `${t('source_type.' + s.type)} · ${s.name}`)}">${esc(s.name)}</b>${err
     ? `<small class="src-err" title="${esc(`${t('watchlist.error_title')}: ${err}`)}">${ui.pbadge(s)}${I.warn}<span>${esc(err)}</span></small>`
-    : `<small class="has-rev">${ui.pbadge(s)}${reversed(s) ? `<span class="wl-rev" title="${esc(t('watchlist.rev_title'))}">${I.up}${t('watchlist.rev_short')}</span>` : ''}<span title="${esc(s.url_or_query)}">${esc(s.url_or_query)}</span></small>`}</div></div></td>
+    : `<small class="has-rev">${ui.pbadge(s)}${reversed(s) ? `<span class="wl-rev" title="${esc(t('watchlist.rev_title'))}">${I.up}${t('watchlist.rev_short')}</span>` : ''}<span title="${esc(s.url_or_query)}">${esc(s.url_or_query)}</span></small>`}${bfDone(s)}</div></div></td>
       <td class="mono">${esc(t('source_type.' + s.type))}</td>
       <td>${s.default_genre ? ui.genreDot(s.default_genre) : `<span class="unit">${t('watchlist.genre_auto')}</span>`}</td>
       <td><span class="okline" title="${esc(t(s.auto_download ? 'watchlist.auto_title_on' : 'watchlist.auto_title_off'))}">${ui.toggle(s.auto_download, 'data-k="auto_download"')}<span class="toggle-label">${t(s.auto_download ? 'watchlist.auto_on' : 'watchlist.auto_off')}</span></span></td>
@@ -69,9 +115,10 @@
       <td class="num">${s.new_count ? `<button type="button" class="badge" data-act="inbox" title="${esc(t('watchlist.new_title'))}">${esc(s.new_count)}</button>` : '<span class="mono muted">–</span>'}</td>
       <td class="act">
         <button class="btn sm ghost" data-act="check" title="${esc(lock || t('watchlist.check_title'))}" ${lock ? 'disabled' : ''}>${t('watchlist.check')}</button>
+        ${bfButton(s)}
         <button class="iconbtn" data-act="edit" title="${esc(t('common.edit'))}">${I.edit}</button>
         <button class="iconbtn danger" data-act="del" title="${esc(t('common.delete'))}">${I.trash}</button>
-      </td></tr>`;
+      </td></tr>${bfRow(s)}`;
   }
 
   /* Kopf: Zähler, nächste Prüfung, «Alle prüfen» mit Fortschritt, Backoff-Hinweis. */
@@ -323,6 +370,49 @@
     });
   }
 
+  /* Bestätigung mit Schätzung (ohne Netzwerk), dann Start im Hintergrund. */
+  async function backfillAsk(s) {
+    const e = await HC.bridge.safe('estimate_backfill', s.id);
+    if (!e) return;
+    if (!e.ok) { ui.toast(e.error || t('err.generic'), 'err'); return; }
+    const facts = [
+      e.known_total != null ? t('backfill.dlg_known', { n: util.fmtNum(e.known_total) }) : esc(t('backfill.dlg_unknown', { cap: util.fmtNum(e.cap) })),
+      e.known_total != null && e.known_total > e.cap ? esc(t('backfill.dlg_capped', { cap: util.fmtNum(e.cap) })) : '',
+      e.resume ? esc(t('backfill.dlg_resume', { n: util.fmtNum(e.position) })) : '',
+    ].filter(Boolean);
+    const body = `<p>${t('backfill.dlg_text')}</p>
+      <div class="bf-est">
+        <div class="bf-big"><b class="mono">~${esc(util.fmtNum(e.requests))}</b><span>${esc(t('backfill.dlg_requests'))}</span></div>
+        <div class="bf-big"><b class="mono">~${esc(util.fmtSpan(e.seconds))}</b><span>${esc(t('backfill.dlg_time'))}</span></div>
+        <div class="bf-big"><b class="mono">${e.conservative ? '≤ ' : ''}${esc(util.fmtNum(e.entries))}</b><span>${esc(t('backfill.dlg_entries'))}</span></div>
+      </div>
+      <p class="bf-facts">${facts.join('<br>')}</p>
+      ${ui.notice('info', esc(t('backfill.dlg_pace', { n: e.per_hour })))}`;
+    const yes = await ui.modal({ title: t('backfill.dlg_title', { name: s.name }), body, kind: 'bf-dlg', okLabel: t(e.resume ? 'backfill.dlg_ok_resume' : 'backfill.dlg_ok') });
+    if (yes) backfillStart(s);
+  }
+  async function backfillStart(s, quiet) {
+    const r = await HC.bridge.safe('start_backfill', s.id);
+    if (!r) return;
+    if (!r.ok) { ui.toast(r.error || t('err.generic'), 'err'); return; }
+    s.backfill = r.backfill;
+    if (!quiet) ui.toast(t('backfill.toast_started', { name: s.name }), 'info');
+    render();
+  }
+  async function backfillAct(s, act) {
+    if (act === 'resume') return backfillStart(s, true);
+    if (act === 'cancel') {
+      const yes = await ui.confirm(t('backfill.dlg_cancel_title'), t('backfill.dlg_cancel_text', { name: s.name }), { okLabel: t('backfill.cancel'), cancelLabel: t('backfill.keep'), danger: true });
+      if (!yes) return;
+    }
+    const r = await HC.bridge.safe(act === 'pause' ? 'pause_backfill' : 'cancel_backfill', s.id);
+    if (!r) return;
+    if (!r.ok) { ui.toast(r.error || t('err.generic'), 'err'); return; }
+    s.backfill = r.backfill;
+    ui.toast(t(act === 'pause' ? 'backfill.toast_paused' : 'backfill.toast_cancelled', { name: s.name }), 'info');
+    render();
+  }
+
   function init(root) {
     el = root;
     el.innerHTML = `
@@ -336,7 +426,7 @@
         <table class="wl-table">
           <thead><tr><th style="width:62px">${t('watchlist.col_active')}</th><th>${t('watchlist.col_name')}</th><th style="width:84px">${t('watchlist.col_type')}</th>
             <th style="width:124px">${t('watchlist.col_genre')}</th><th style="width:132px">${t('watchlist.col_auto')}</th><th class="num" style="width:62px">${t('watchlist.col_max')}</th>
-            <th style="width:148px">${t('watchlist.col_last')}</th><th class="num" style="width:58px">${t('watchlist.col_new')}</th><th style="width:166px"></th></tr></thead>
+            <th style="width:148px">${t('watchlist.col_last')}</th><th class="num" style="width:58px">${t('watchlist.col_new')}</th><th style="width:200px"></th></tr></thead>
           <tbody id="wl-body"></tbody>
         </table>
       </div>`;
@@ -347,11 +437,13 @@
       if (go) { const [view, arg] = go.dataset.goto.split('/'); HC.app.go(view, arg); }
     });
     $('#wl-body', el).addEventListener('click', async (e) => {
-      const tr = e.target.closest('tr[data-id]');
+      const tr = e.target.closest('tr[data-id], tr[data-bf-id]');
       if (!tr) return;
-      const s = sources.find((x) => x.id === +tr.dataset.id);
+      const s = sources.find((x) => x.id === +(tr.dataset.id || tr.dataset.bfId));
       if (!s) return;
       const tog = e.target.closest('.toggle');
+      const bf = e.target.closest('[data-bf]');
+      if (bf) { if (!bf.disabled) backfillAct(s, bf.dataset.bf); return; }
       const b = e.target.closest('[data-act]');
       const act = b && !b.disabled ? b.dataset.act : null;
       if (tog) {
@@ -368,6 +460,8 @@
         setTimeout(() => render(), HC.fx.reduced() ? 0 : 180);
       } else if (act === 'check') {
         check([s.id]);
+      } else if (act === 'bf') {
+        backfillAsk(s);
       } else if (act === 'inbox') {
         HC.app.go('inbox', `src-${s.id}`);
       } else if (act === 'edit') {
@@ -401,6 +495,35 @@
       render();
     });
     HC.bridge.on('watchlist_done', () => { endRun(); refresh(); });
+    const bfResync = util.debounce(() => { if (HC.app.current() === 'watchlist' && !busy()) refresh(); }, 1500);
+    HC.bridge.on('backfill', (d) => {
+      const s = sources.find((x) => x.id === d.source_id);
+      if (!s) return;
+      const before = s.backfill && s.backfill.state;
+      if (d.added > ((s.backfill && s.backfill.added) || 0)) bfResync(); // «Neu» der Quelle zählt mit
+      s.backfill = d.state === 'none' ? null : d;
+      if (d.state === 'done' && before && before !== 'done') {
+        ui.toast(t('backfill.toast_done', { name: s.name, n: d.added }), 'ok');
+        flash.add(s.id);
+      }
+      if (HC.app.current() !== 'watchlist') return;
+      const tr = $(`#wl-body tr[data-id="${s.id}"]`, el);
+      /* Nur die eine Quelle neu zeichnen (Zeile + Fortschrittszeile): der Fortschritt kommt pro Seite. */
+      const sub = $(`#wl-body tr[data-bf-id="${s.id}"]`, el);
+      const b = bfOf(s);
+      if (sub && b && sub.classList.contains(`bf-${b.state}`) && !b.note) {
+        /* Gleicher Zustand: nur Zahlen und Balken nachziehen – die Knöpfe bleiben stehen (klickbar). */
+        $('.bf-n', sub).textContent = bfCount(b);
+        $('.bf-add', sub).textContent = t('backfill.added', { n: util.fmtNum(b.added) });
+        $('.progress .bar', sub).style.setProperty('--p', bfPct(b)); // nur transform, kein Layout
+        return;
+      }
+      if (tr && !flash.has(s.id)) {
+        if (sub) sub.remove();
+        tr.insertAdjacentHTML('afterend', row(s));
+        tr.remove();
+      } else render();
+    });
     HC.bridge.on('sources_changed', () => refresh());
     /* Eingang geleert/geladen -> «Neu» pro Quelle stimmt nicht mehr. */
     const resync = util.debounce(() => { if (HC.app.current() === 'watchlist' && !busy()) refresh(); }, 400);

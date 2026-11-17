@@ -10,6 +10,8 @@
     "app_update_failed": "ऐप अपडेट विफल: {error}",
     "app_update_rolled_back": " – पिछला संस्करण बहाल किया गया",
     "app_updated": "HCLoader v{version} पर अपडेट हुआ",
+    "backfill_busy": "कोई दूसरी प्रक्रिया अभी एक स्रोत पूरा पढ़ रही है – बाद में जारी रहेगा",
+    "backfill_none": "इस स्रोत के लिए कोई “सब पढ़ें” नहीं",
     "backup_done": "डेटाबेस का बैकअप बना: {path}",
     "backup_failed": "बैकअप विफल: {error}",
     "backup_failed_log": "डेटाबेस बैकअप विफल: {error}",
@@ -78,6 +80,18 @@
     "watchlist_backoff": "बैकऑफ़ {until} तक सक्रिय – जाँच रुकी है",
     "ytdlp_up_to_date": "yt-dlp और प्लग-इन अद्यतन हैं",
     "ytdlp_updated_restart": "yt-dlp अपडेट हुआ – कृपया HCLoader रीस्टार्ट करें"
+  },
+  "backfill": {
+    "done": "सब पढ़ें: {name} पूरा – {n} प्रविष्टियाँ पढ़ी गईं, इनबॉक्स में {added} नई",
+    "failed": "सब पढ़ें विफल: {error}",
+    "note_backoff": "बैकऑफ़ ({platform}) {until} तक – अपने-आप जारी रहेगा",
+    "note_budget": "इस रन का अनुरोध बजट खत्म – अगले रन में जारी रहेगा",
+    "note_error": "त्रुटि: {error}",
+    "note_interrupted": "बाधित – अपने-आप जारी रहेगा",
+    "resumed": "सब पढ़ें: {name} – {n} प्रविष्टियों के बाद जारी",
+    "search_refused": "खोज स्रोत पूरी तरह नहीं पढ़े जा सकते – एक खोज अधिकतम 100 परिणाम देती है",
+    "started": "सब पढ़ें: {name} – पेज-दर-पेज अधिकतम {cap} प्रविष्टियाँ पढ़ रहा है",
+    "stopped": "सब पढ़ें: {name} रुका – {note}"
   },
   "cli": {
     "headless": "GUI के बिना चलाएँ",
@@ -167,6 +181,7 @@
     "unknown": "अज्ञात जॉनर: {genre}"
   },
   "headless": {
+    "backfill": "सब पढ़ें: {n} स्रोत जारी · इनबॉक्स में {added} नई · {done} पूरे",
     "backoff": "बैकऑफ़ {until} तक सक्रिय – कुछ जाँचा नहीं गया",
     "backoff_until": "बैकऑफ़ {until} तक",
     "finished": "हेडलेस रन पूरा: {n} नए, {downloaded} डाउनलोड, {errors} त्रुटियाँ{extra}",

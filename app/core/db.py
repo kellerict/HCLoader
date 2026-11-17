@@ -60,6 +60,7 @@ _SOURCE_FIELDS = (
     "last_checked",
     "platform",
     "name_auto",
+    "item_count",
 )
 
 
@@ -231,6 +232,37 @@ def _m7_festivals(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX idx_editions_series ON editions(series_id, year)")
 
 
+def _m8_backfill(conn: sqlite3.Connection) -> None:
+    """v0.4.0 «Read everything (once)» (docs/decisions.md «Alles einlesen»).
+
+    - `sources.item_count`: size of the listing as yt-dlp reported it on the first page
+      (`playlist_count`, mostly playlists), NULL = unknown. Basis of the request estimate.
+    - `backfills`: one row per source with a backfill. `state` pending (wants to run / was
+      interrupted), running, paused (by the user or after repeated errors), done, cancelled;
+      `position` = entries of the listing already processed (resume cursor), `total` = known
+      size, `added` = hits put into the inbox, `found` = new video rows, `requests` = page
+      requests so far, `failures` = errors in a row, `note` = last interruption.
+    """
+    conn.execute("ALTER TABLE sources ADD COLUMN item_count INTEGER")
+    conn.execute(
+        """CREATE TABLE backfills(
+          source_id INTEGER PRIMARY KEY REFERENCES sources(id) ON DELETE CASCADE,
+          state TEXT NOT NULL DEFAULT 'pending'
+            CHECK(state IN ('pending','running','paused','done','cancelled')),
+          position INTEGER NOT NULL DEFAULT 0,
+          total INTEGER,
+          added INTEGER NOT NULL DEFAULT 0,
+          found INTEGER NOT NULL DEFAULT 0,
+          requests INTEGER NOT NULL DEFAULT 0,
+          failures INTEGER NOT NULL DEFAULT 0,
+          note TEXT,
+          started TEXT,
+          updated TEXT,
+          finished TEXT
+        )"""
+    )
+
+
 # Append new steps at the end; never edit existing ones. Step i upgrades version i -> i+1.
 MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [
     _m1_initial,
@@ -240,6 +272,7 @@ MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [
     _m5_platforms,
     _m6_geo_blocked,
     _m7_festivals,
+    _m8_backfill,
 ]
 # statuses a user may put into the download queue (enqueue / retry)
 ENQUEUEABLE = ("new", "inbox", "failed")
@@ -756,6 +789,7 @@ class Database:
     def delete_source(self, source_id: int) -> None:
         with self.transaction():  # explicit: older DBs may run without foreign keys
             self.execute("DELETE FROM source_videos WHERE source_id=?", (source_id,))
+            self.execute("DELETE FROM backfills WHERE source_id=?", (source_id,))
             self.execute("DELETE FROM sources WHERE id=?", (source_id,))
 
     # -- source <-> video (which source has already seen a video, Review Phase 4 M1)
@@ -781,6 +815,64 @@ class Database:
             "SELECT COUNT(*) AS n FROM source_videos WHERE source_id=?", (source_id,)
         )
         return int((row or {}).get("n") or 0)
+
+    # -- backfills («Read everything (once)», v0.4.0)
+
+    def get_backfill(self, source_id: int) -> dict[str, Any] | None:
+        return self.query_one("SELECT * FROM backfills WHERE source_id=?", (source_id,))
+
+    def list_backfills(self, states: Sequence[str] | None = None) -> list[dict[str, Any]]:
+        if not states:
+            return self.query("SELECT * FROM backfills ORDER BY started, source_id")
+        marks = ",".join("?" for _ in states)
+        return self.query(
+            f"SELECT * FROM backfills WHERE state IN ({marks}) ORDER BY started, source_id",
+            list(states),
+        )
+
+    def reset_backfill(self, source_id: int, *, state: str = "pending") -> None:
+        """(Re)start a backfill from the beginning (new row or reset of an old one)."""
+        now = now_iso()
+        self.execute(
+            "INSERT INTO backfills(source_id,state,position,total,added,found,requests,failures,"
+            "note,started,updated,finished) VALUES (?,?,0,NULL,0,0,0,0,NULL,?,?,NULL) "
+            "ON CONFLICT(source_id) DO UPDATE SET state=excluded.state, position=0, total=NULL, "
+            "added=0, found=0, requests=0, failures=0, note=NULL, started=excluded.started, "
+            "updated=excluded.updated, finished=NULL",
+            (source_id, state, now, now),
+        )
+
+    _BACKFILL_FIELDS = (
+        "state",
+        "position",
+        "total",
+        "added",
+        "found",
+        "requests",
+        "failures",
+        "note",
+        "started",
+        "updated",
+        "finished",
+    )
+
+    def update_backfill(
+        self, source_id: int, *, only_states: Sequence[str] | None = None, **fields: Any
+    ) -> bool:
+        """Update fields of a backfill row; `only_states`: only while it is in one of these
+        states (a pause/cancel of the user is never overwritten). Returns True if a row changed.
+        `updated` is set automatically."""
+        bad = set(fields) - set(self._BACKFILL_FIELDS)
+        if bad:
+            raise ValueError(f"Unknown fields: {', '.join(sorted(bad))}")
+        fields.setdefault("updated", now_iso())
+        sets = ", ".join(f"{k}=?" for k in fields)
+        sql = f"UPDATE backfills SET {sets} WHERE source_id=?"
+        params: list[Any] = [*fields.values(), source_id]
+        if only_states:
+            sql += f" AND state IN ({','.join('?' for _ in only_states)})"
+            params.extend(only_states)
+        return self.execute(sql, params).rowcount > 0
 
     # -- blacklist
 

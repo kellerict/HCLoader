@@ -10,6 +10,8 @@
     "app_update_failed": "Programos naujinimas nepavyko: {error}",
     "app_update_rolled_back": " – atkurta ankstesnė versija",
     "app_updated": "HCLoader atnaujintas iki v{version}",
+    "backfill_busy": "Kitas procesas šiuo metu nuskaito visą šaltinį – bus tęsiama vėliau",
+    "backfill_none": "Šiam šaltiniui nėra „Nuskaityti viską“",
     "backup_done": "Duomenų bazės kopija sukurta: {path}",
     "backup_failed": "Atsarginės kopijos sukurti nepavyko: {error}",
     "backup_failed_log": "Duomenų bazės atsarginė kopija nepavyko: {error}",
@@ -48,9 +50,9 @@
     "settings_rollback_failed": "Nustatymų atkurti nepavyko: {error}",
     "settings_saved": "Nustatymai įrašyti",
     "skipped_unloadable": {
-      "one": "Praleistas {n} neatsisiunčiamas įrašas (Go+/regionas)",
       "few": "Praleistas {n} neatsisiunčiamas įrašas (Go+/regionas)",
       "many": "Praleistas {n} neatsisiunčiamas įrašas (Go+/regionas)",
+      "one": "Praleistas {n} neatsisiunčiamas įrašas (Go+/regionas)",
       "other": "Praleistas {n} neatsisiunčiamas įrašas (Go+/regionas)"
     },
     "source_added": "Šaltinis pridėtas: {name}",
@@ -80,6 +82,18 @@
     "watchlist_backoff": "Pauzė aktyvi iki {until} – tikrinimas užblokuotas",
     "ytdlp_up_to_date": "yt-dlp ir įskiepis yra naujausi",
     "ytdlp_updated_restart": "yt-dlp atnaujintas – paleiskite HCLoader iš naujo"
+  },
+  "backfill": {
+    "done": "Nuskaityti viską: {name} baigta – nuskaityta įrašų: {n}, naujų gautuosiuose: {added}",
+    "failed": "Nuskaityti viską nepavyko: {error}",
+    "note_backoff": "Backoff ({platform}) iki {until} – tęsis automatiškai",
+    "note_budget": "Šio paleidimo užklausų biudžetas išnaudotas – tęsis kitame paleidime",
+    "note_error": "Klaida: {error}",
+    "note_interrupted": "Pertraukta – tęsis automatiškai",
+    "resumed": "Nuskaityti viską: {name} – tęsiama po {n} įrašų",
+    "search_refused": "Paieškos šaltinių negalima nuskaityti visų – paieška grąžina daugiausia 100 rezultatų",
+    "started": "Nuskaityti viską: {name} – nuskaitoma iki {cap} įrašų puslapis po puslapio",
+    "stopped": "Nuskaityti viską: {name} sustabdyta – {note}"
   },
   "cli": {
     "headless": "paleisti be grafinės sąsajos",
@@ -169,6 +183,7 @@
     "unknown": "Nežinomas žanras: {genre}"
   },
   "headless": {
+    "backfill": "Nuskaityti viską: tęsta šaltinių: {n} · naujų gautuosiuose: {added} · baigta: {done}",
     "backoff": "Pauzė aktyvi iki {until} – nieko netikrinta",
     "backoff_until": "Pauzė iki {until}",
     "finished": "Headless paleidimas baigtas: {n} nauji, {downloaded} atsisiųsta, {errors} klaidų{extra}",
@@ -235,9 +250,9 @@
     "migration_backup_deleted": "Sena migracijos atsarginė kopija ištrinta: {path}",
     "no_venv": "HCLoader veikia ne virtualioje aplinkoje (venv), nei pateiktame Python (nešiojamoji versija ar diegimas) – naujinimas nutrauktas",
     "partials_removed": {
-      "one": "Pašalintas {n} senas daliniai failas (senesnis nei {days} d.) iš {path}",
       "few": "Pašalintas {n} senas daliniai failas (senesnis nei {days} d.) iš {path}",
       "many": "Pašalintas {n} senas daliniai failas (senesnis nei {days} d.) iš {path}",
+      "one": "Pašalintas {n} senas daliniai failas (senesnis nei {days} d.) iš {path}",
       "other": "Pašalintas {n} senas daliniai failas (senesnis nei {days} d.) iš {path}"
     },
     "pip_exit": "pip baigė darbą su kodu {code}",
@@ -288,9 +303,9 @@
     "download_blocked": "Atsisiuntimas užblokuotas: {reason}",
     "download_unexpected": "{id} atsisiuntimas: netikėta klaida",
     "enqueued": {
-      "one": "Į eilę pridėtas {n} miksas",
       "few": "Į eilę pridėti {n} miksai",
       "many": "Į eilę pridėta {n} miksų",
+      "one": "Į eilę pridėtas {n} miksas",
       "other": "Į eilę pridėta {n} miksų"
     },
     "finished": "Baigta: {title}",
@@ -321,9 +336,9 @@
     "busy": "Veikia kitas atsisiuntimo paleidimas (grafinė sąsaja arba headless).",
     "cancelled_exit": "Atšaukta (programa uždaryta)",
     "interrupted_reset": {
-      "one": "{n} pertrauktas atsisiuntimas pažymėtas kaip „nepavyko“",
       "few": "{n} pertraukti atsisiuntimai pažymėti kaip „nepavyko“",
       "many": "{n} pertrauktų atsisiuntimų pažymėta kaip „nepavyko“",
+      "one": "{n} pertrauktas atsisiuntimas pažymėtas kaip „nepavyko“",
       "other": "{n} pertrauktų atsisiuntimų pažymėta kaip „nepavyko“"
     }
   },
@@ -471,15 +486,15 @@
     "source_error": "Šaltinis „{name}“: {error}",
     "source_result": "Šaltinis „{name}“: {n} nauji ({inbox} gautuose, {queued} eilėje, {filtered} išfiltruota){extra}",
     "sources_failed": {
-      "one": "Šaltinių su klaidomis: {n}",
       "few": "Šaltinių su klaidomis: {n}",
       "many": "Šaltinių su klaidomis: {n}",
+      "one": "Šaltinių su klaidomis: {n}",
       "other": "Šaltinių su klaidomis: {n}"
     },
     "started": {
-      "one": "Stebimų šaltinių patikra pradėta · šaltinių: {n}",
       "few": "Stebimų šaltinių patikra pradėta · šaltinių: {n}",
       "many": "Stebimų šaltinių patikra pradėta · šaltinių: {n}",
+      "one": "Stebimų šaltinių patikra pradėta · šaltinių: {n}",
       "other": "Stebimų šaltinių patikra pradėta · šaltinių: {n}"
     },
     "until": " iki {until}"

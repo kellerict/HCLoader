@@ -60,7 +60,8 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "chars": "tegn",
     "results": "resultater",
     "entries": "oppføringer",
-    "clock": "24 t"
+    "clock": "24 t",
+    "req_h": "foresp./t"
   },
   "range": {
     "ge_sleep": "≥ minimum",
@@ -656,7 +657,8 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
       "database": "Database",
       "reset": "Tilbakestilling",
       "detection": "Gjenkjenning",
-      "series": "Serier"
+      "series": "Serier",
+      "backfill": "Les inn alt (én gang)"
     },
     "general": {
       "language": {
@@ -1161,6 +1163,16 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
       "variants_help": "Egne utgaver, f.eks. Australia eller at Home.",
       "channels": "Arrangørens kanaler",
       "channels_help": "Kanalnavn, ID eller URL. Øker bare sikkerheten."
+    },
+    "watchlist": {
+      "backfill_max_entries": {
+        "label": "Maks. oppføringer per kilde",
+        "help": "«Les inn alt (én gang)» i overvåkingslisten leser maks. så mange oppføringer fra en kanal eller spilleliste."
+      },
+      "backfill_requests_per_hour": {
+        "label": "Forespørsler per time",
+        "help": "Sideforespørsler fra «Les inn alt» fordeles jevnt (120 = én hvert 30. s); vanlig avstand og backoff gjelder også. En planlagt kjøring (Oppgaveplanlegging) fortsetter med maks. så mange forespørsler."
+      }
     }
   },
   "opt": {
@@ -1471,5 +1483,43 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "p_type": "Sett-type",
     "p_apply": "Bruk",
     "p_auto": "Tilbake til automatisk"
+  },
+  "backfill": {
+    "action": "Les inn alt (én gang)",
+    "action_title": "Les inn hele listen for denne kilden én gang, side for side – nye treff havner i innboksen",
+    "again_title": "Les inn alt på nytt – bare oppføringer som ennå er ukjente legges til",
+    "search_title": "Ikke for lagrede søk – et søk gir maks. 100 treff",
+    "why_open": "Innlesingen har allerede startet – sett den på pause eller avbryt under navnet",
+    "st_pending": "Venter",
+    "st_running": "Leser inn …",
+    "st_paused": "Satt på pause",
+    "progress": "{n} / ~{total}",
+    "progress_cap": "{n} / maks. {cap}",
+    "added": "+{n} i innboksen",
+    "done_short": "Alt innlest {date}",
+    "done_title": "Helt innlest: {date} · {n} oppføringer",
+    "note_title": "Siste avbrudd",
+    "pause": "Pause",
+    "resume": "Fortsett",
+    "cancel": "Avbryt",
+    "keep": "Fortsett å lese",
+    "dlg_title": "Lese inn alt fra «{name}»?",
+    "dlg_text": "Leser inn hele listen for denne kilden én gang, side for side – flatt og billig, gjennom begrensningen; ingenting lastes ned. Treff som består filtrene dine havner i <b>innboksen</b>, også for kilder med automatisk nedlasting. Videoer du allerede kjenner legges aldri til to ganger.",
+    "dlg_requests": "forespørsler",
+    "dlg_time": "varighet",
+    "dlg_entries": "oppføringer",
+    "dlg_known": "Kjent fra siste kontroll: <b>{n}</b> oppføringer.",
+    "dlg_unknown": "Størrelsen er ukjent – forsiktig anslått for maksimum {cap} oppføringer.",
+    "dlg_capped": "Bare de første {cap} oppføringene leses inn (Innstillinger › Tidsplan).",
+    "dlg_resume": "Fortsetter etter {n} allerede leste oppføringer; sidene deres hentes først på nytt.",
+    "dlg_pace": "Maks. {n} forespørsler per time, jevnt fordelt. En backoff (HTTP 429 / botsjekk), at appen lukkes eller en feil avbryter bare – det fortsetter automatisk senere. Du kan sette på pause eller avbryte når som helst.",
+    "dlg_ok": "Start innlesing",
+    "dlg_ok_resume": "Fortsett å lese",
+    "dlg_cancel_title": "Avbryte innlesingen?",
+    "dlg_cancel_text": "Innlesingen av «{name}» stopper og fremdriften forkastes. Treff som allerede er i innboksen blir værende.",
+    "toast_started": "«{name}» leses inn helt – kjører i bakgrunnen",
+    "toast_done": "«{name}» helt innlest – +{n} i innboksen",
+    "toast_paused": "«{name}» satt på pause – fortsett med «Fortsett»",
+    "toast_cancelled": "Innlesingen av «{name}» ble avbrutt"
   }
 });

@@ -1131,3 +1131,44 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
   Katalog pro Block neu und behandelt eine inzwischen gelöschte/ausgeblendete Serie als «keine
   Erkennung». **Grund:** kein Einfrieren durch blosses Umschalten, kein Abbruch durch FK-Fehler, weniger
   fsyncs auf HDD/NAS.
+
+## 2026-11-17 – «Alles einlesen (einmalig)» pro Watchlist-Quelle (v0.4.0)
+- **Entscheid:** Seitenweises Lesen über einen Wrapper um `YoutubeDL.urlopen` (`ytclient._PagedGate`),
+  nicht über mehrere Aufrufe mit `playlist_items`/`playliststart`. Vor **jeder** Anfrage an die Plattform
+  werden die bis dahin empfangenen Einträge an den Kern übergeben (DB + Cursor), dann wartet die Anfrage
+  auf `Throttle.backfill_slot` (Backoff-Prüfung, Tempo pro Stunde, `sleep_requests`) unter dem
+  Metadaten-Lock – **nur für diese eine Anfrage**. Lokale Anfragen (PO-Token-Provider, 127.0.0.1) laufen
+  ungebremst durch. `sleep_interval_requests` ist dafür 0. **Grund:** yt-dlp kennt bei YouTube/SoundCloud
+  nur «nächste Seite»-Tokens; ein Start bei Eintrag N muss alle Seiten davor erneut holen. Mit Aufrufen
+  pro Abschnitt würden die Kosten quadratisch wachsen (2000 Einträge Kanal ≈ 335 statt 67 Anfragen). Der
+  Wrapper drosselt jede einzelne Seitenanfrage (auch Client-ID-Suche von SoundCloud), hält den
+  Metadaten-Lock nie über die ganze (lange) Liste und lässt Suchen/Downloads dazwischen.
+- **Entscheid:** Fortsetzen nach Unterbrechung ab `backfills.position`; die Seiten davor werden erneut
+  (flach) abgefragt und übersprungen. Das ist in der Schätzung enthalten. **Grund:** Fortsetzungs-Tokens
+  von yt-dlp sind intern und nicht stabil speicherbar.
+- **Entscheid:** Tempo statt hartem Stundenbudget: `watchlist.backfill_requests_per_hour` (Standard 120 =
+  alle 30 s, persistiert in `state.backfill_last_request`, prozessübergreifend) verteilt die Anfragen
+  gleichmässig. Im Headless-Lauf gilt derselbe Wert als Budget pro Lauf (`RequestBudgetSpent` → bleibt
+  `pending`). **Grund:** Ein hartes Stundenbudget kleiner als die Seitenzahl bis zum Cursor käme nach
+  einer Unterbrechung nie voran; gleichmässiges Tempo ist für YouTube schonender als Schübe.
+- **Entscheid:** Treffer gehen **immer** in den Eingang (auch bei `auto_download`); gleiche Verarbeitung
+  wie die normale Prüfung über die gemeinsame Klasse `watchlist.Ingest` (Filter, Dedup über
+  `source_videos` und Video-Status, Cross-Plattform-Duplikate, Festival-Erkennung). `last_checked` wird
+  nicht gesetzt. **Grund:** User-Vorgabe; Hunderte Downloads auf einen Schlag wären weder gewollt noch
+  schonend; eine Logik statt zwei.
+- **Entscheid:** Zustände `pending` (wartet/unterbrochen, setzt automatisch fort), `running`, `paused`
+  (vom User – kein automatisches Fortsetzen; oder nach 3 Fehlern in Folge), `done`, `cancelled` (Cursor
+  verworfen, Treffer bleiben). Automatisches Fortsetzen: 90 s nach dem App-Start, nach jeder
+  Watchlist-Prüfung (Intervall oder von Hand, ohne Backoff) und im Headless-Lauf nach den Downloads.
+  Quellen einer Plattform im Backoff werden ohne Anfrage übersprungen, deaktivierte Quellen nur bei
+  ausdrücklichem Start gelesen. **Grund:** Unterbrechungen sollen nichts kosten; eine Pause des Users
+  ist ein bewusster Entscheid und wird nicht übergangen.
+- **Entscheid:** Eigener Thread `hcloader-backfill` (nicht der Watchlist-Thread) und eigener
+  prozessübergreifender Lock `backfill` (GUI vs. Headless), immer nur ein Backfill gleichzeitig.
+  **Grund:** Ein Backfill dauert bis zu einer Stunde und darf Watchlist-Prüfungen nicht blockieren; die
+  Anfragen selbst laufen trotzdem nie parallel (Throttle + Metadaten-Lock pro Anfrage). Während eines
+  Backfills ist das yt-dlp-Update gesperrt (`YtdlpGate.search`).
+- **Entscheid:** Migration 8: Tabelle `backfills` (eine Zeile pro Quelle, `ON DELETE CASCADE`) und
+  `sources.item_count` (Grösse aus `playlist_count` der letzten Prüfung, ohne Zusatzanfrage). Die
+  Schätzung im Bestätigungsdialog braucht so kein Netzwerk; ohne bekannte Grösse wird vorsichtig mit dem
+  Maximum gerechnet.

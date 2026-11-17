@@ -10,6 +10,8 @@
     "app_update_failed": "应用更新失败：{error}",
     "app_update_rolled_back": " – 已恢复到之前的版本",
     "app_updated": "HCLoader 已更新到 v{version}",
+    "backfill_busy": "另一个进程正在完整读取某个来源 – 稍后继续",
+    "backfill_none": "此来源没有“全部读取”",
     "backup_done": "数据库已备份：{path}",
     "backup_failed": "备份失败：{error}",
     "backup_failed_log": "数据库备份失败：{error}",
@@ -77,6 +79,18 @@
     "watchlist_backoff": "退避中，至 {until} – 检查被阻止",
     "ytdlp_up_to_date": "yt-dlp 和插件已是最新",
     "ytdlp_updated_restart": "yt-dlp 已更新 – 请重启 HCLoader"
+  },
+  "backfill": {
+    "done": "全部读取：{name} 完成 – 已读 {n} 个条目，收件箱新增 {added} 个",
+    "failed": "全部读取失败：{error}",
+    "note_backoff": "退避（{platform}）至 {until} – 将自动继续",
+    "note_budget": "本次运行的请求预算已用完 – 下次运行继续",
+    "note_error": "错误：{error}",
+    "note_interrupted": "已中断 – 将自动继续",
+    "resumed": "全部读取：{name} – 从第 {n} 个条目之后继续",
+    "search_refused": "搜索来源无法完整读取 – 搜索最多返回 100 个结果",
+    "started": "全部读取：{name} – 逐页读取最多 {cap} 个条目",
+    "stopped": "全部读取：{name} 已停止 – {note}"
   },
   "cli": {
     "headless": "无界面运行",
@@ -166,6 +180,7 @@
     "unknown": "未知流派：{genre}"
   },
   "headless": {
+    "backfill": "全部读取：继续了 {n} 个来源 · 收件箱新增 {added} 个 · 完成 {done} 个",
     "backoff": "退避中，至 {until} – 未检查任何内容",
     "backoff_until": "退避至 {until}",
     "finished": "无界面运行结束：{n} 个新发现，{downloaded} 个已下载，{errors} 个错误{extra}",

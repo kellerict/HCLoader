@@ -60,7 +60,8 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "chars": "tecken",
     "results": "resultat",
     "entries": "poster",
-    "clock": "24 h"
+    "clock": "24 h",
+    "req_h": "förfr./h"
   },
   "range": {
     "ge_sleep": "≥ minimum",
@@ -656,7 +657,8 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
       "database": "Databas",
       "reset": "Återställning",
       "detection": "Igenkänning",
-      "series": "Serier"
+      "series": "Serier",
+      "backfill": "Läs in allt (en gång)"
     },
     "general": {
       "language": {
@@ -1161,6 +1163,16 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
       "variants_help": "Egna upplagor, t.ex. Australia eller at Home.",
       "channels": "Arrangörens kanaler",
       "channels_help": "Kanalnamn, ID eller URL. Höjer bara säkerheten."
+    },
+    "watchlist": {
+      "backfill_max_entries": {
+        "label": "Max. poster per källa",
+        "help": "”Läs in allt (en gång)” i bevakningslistan läser högst så många poster från en kanal eller spellista."
+      },
+      "backfill_requests_per_hour": {
+        "label": "Förfrågningar per timme",
+        "help": "Sidförfrågningar från ”Läs in allt” fördelas jämnt (120 = en var 30:e s); det vanliga avståndet och backoffen gäller också. En schemalagd körning (Schemaläggaren) fortsätter med högst så många förfrågningar."
+      }
     }
   },
   "opt": {
@@ -1471,5 +1483,43 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "p_type": "Settyp",
     "p_apply": "Verkställ",
     "p_auto": "Återgå till automatiskt"
+  },
+  "backfill": {
+    "action": "Läs in allt (en gång)",
+    "action_title": "Läs in hela listan för den här källan en gång, sida för sida – nya träffar hamnar i inkorgen",
+    "again_title": "Läs in allt igen – bara poster som ännu är okända läggs till",
+    "search_title": "Inte för sparade sökningar – en sökning ger högst 100 träffar",
+    "why_open": "Inläsningen har redan startat – pausa eller avbryt den under namnet",
+    "st_pending": "Väntar",
+    "st_running": "Läser in …",
+    "st_paused": "Pausad",
+    "progress": "{n} / ~{total}",
+    "progress_cap": "{n} / max. {cap}",
+    "added": "+{n} i inkorgen",
+    "done_short": "Allt inläst {date}",
+    "done_title": "Helt inläst: {date} · {n} poster",
+    "note_title": "Senaste avbrott",
+    "pause": "Pausa",
+    "resume": "Fortsätt",
+    "cancel": "Avbryt",
+    "keep": "Fortsätt läsa",
+    "dlg_title": "Läsa in allt från ”{name}”?",
+    "dlg_text": "Läser in hela listan för den här källan en gång, sida för sida – platt och billigt, genom begränsningen; inget laddas ner. Träffar som klarar dina filter hamnar i <b>inkorgen</b>, även för källor med automatisk nedladdning. Videor du redan känner till läggs aldrig till två gånger.",
+    "dlg_requests": "förfrågningar",
+    "dlg_time": "tid",
+    "dlg_entries": "poster",
+    "dlg_known": "Känt från senaste kontrollen: <b>{n}</b> poster.",
+    "dlg_unknown": "Storleken är okänd – försiktigt uppskattat för maximum {cap} poster.",
+    "dlg_capped": "Bara de första {cap} posterna läses in (Inställningar › Schema).",
+    "dlg_resume": "Fortsätter efter {n} redan lästa poster; deras sidor hämtas först igen.",
+    "dlg_pace": "Högst {n} förfrågningar per timme, jämnt fördelade. En backoff (HTTP 429 / botkontroll), att appen stängs eller ett fel avbryter bara – det fortsätter automatiskt senare. Du kan pausa eller avbryta när som helst.",
+    "dlg_ok": "Starta inläsning",
+    "dlg_ok_resume": "Fortsätt läsa",
+    "dlg_cancel_title": "Avbryta inläsningen?",
+    "dlg_cancel_text": "Inläsningen av ”{name}” stoppas och förloppet kastas. Träffar som redan finns i inkorgen ligger kvar.",
+    "toast_started": "”{name}” läses in helt – körs i bakgrunden",
+    "toast_done": "”{name}” helt inläst – +{n} i inkorgen",
+    "toast_paused": "”{name}” pausad – fortsätt med ”Fortsätt”",
+    "toast_cancelled": "Inläsningen av ”{name}” avbröts"
   }
 });

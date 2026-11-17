@@ -38,6 +38,7 @@ Nicht-Ziele: kein Streaming von YouTube/SoundCloud (abgespielt werden nur bereit
 - "Jetzt prüfen" (einzeln / alle). Neue Treffer, die alle Filter bestehen, landen im **Eingang**.
 - Pro Quelle wählbar: Treffer automatisch herunterladen **oder** nur in den Eingang.
 - Prüfung bricht pro Quelle beim ersten Video ab, das **diese Quelle** schon gesehen hat (`break_on_existing`-Logik über DB, Tabelle `source_videos`). Nur aus einer Suche oder einer anderen Quelle bekannte Videos stoppen die Prüfung nicht. Die erste Prüfung einer Quelle bricht nie ab.
+- **Alles einlesen (einmalig)** (v0.4.0) pro Kanal/Playlist/SoundCloud-Nutzer/-Set (nicht Suchen): ganze flache Liste seitenweise durch den Throttle (jede Seitenanfrage, Tempo pro Stunde, Backoff unterbricht), Obergrenze einstellbar (Standard 2000), fortsetzbar (Cursor in der DB), Treffer immer in den Eingang, Bestätigung mit geschätzten Anfragen, Fortschritt an der Quelle. Details: docs/decisions.md «Alles einlesen».
 
 ### 3.3 Downloads (Warteschlange)
 - Sequenziell, genau ein aktiver Download.

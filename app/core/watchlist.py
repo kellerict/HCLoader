@@ -435,6 +435,137 @@ def effective_max_entries(source: Mapping[str, Any], settings: Settings) -> int:
     return max(1, min(n, cap))
 
 
+class Ingest:
+    """Store flat entries of one source (shared by the normal check and the v0.4.0 backfill).
+
+    Per entry: upcoming premieres / running livestreams are skipped (not remembered); an entry
+    this source has already seen stops an incremental walk (`walk(incremental=True)`) or is
+    skipped. New videos are stored with the genre of the source (or keyword detection); those
+    passing the filters go to the inbox, or - `auto` and the source has `auto_download` - into
+    `to_queue`. Rejected ones stay `new`. Known videos (search / other source) that are still
+    `new` and pass now are adopted. Cross-platform duplicates never go to the queue (7a)."""
+
+    def __init__(
+        self,
+        source: Mapping[str, Any],
+        *,
+        db: Database,
+        settings: Settings,
+        res: SourceCheck | None = None,
+        auto: bool = False,
+    ) -> None:
+        self.source = source
+        self.sid = int(source["id"])
+        self.db = db
+        self.settings = settings
+        self.res = res if res is not None else SourceCheck(self.sid)
+        genre_names = {g.name for g in settings.genres.items}
+        default = source.get("default_genre") or None
+        if default not in genre_names or default == UNSORTED:
+            default = None
+        self.default = default
+        self.auto = bool(source.get("auto_download")) and auto
+        self.blacklist = db.blacklist_ids()
+        self.hide_dups = settings.filters.hide_cross_platform_duplicates
+        self.to_queue: list[str] = []
+        self.touched: list[str] = []
+
+    def walk(self, entries: Sequence[Mapping[str, Any]], *, incremental: bool = False) -> None:
+        db, sid, res = self.db, self.sid, self.res
+        for entry in entries:
+            vid = entry.get("id")
+            if not vid:
+                continue
+            res.seen += 1
+            if entry.get("live_status") in SKIP_LIVE_STATUS:
+                # n8: duration unknown before the broadcast - evaluate again at the next check
+                res.skipped_live += 1
+                continue
+            if db.source_has_seen(sid, vid):
+                if incremental:
+                    break  # everything after this one was seen in an earlier check of this source
+                continue
+            self.add(entry)
+
+    def add(self, entry: Mapping[str, Any]) -> None:
+        db, sid, res, settings = self.db, self.sid, self.res, self.settings
+        vid = str(entry["id"])
+        existing = db.get_video(vid)
+        ok, _reason = filters.passes(entry, settings.filters, status=None, blacklist=self.blacklist)
+        # 7a: probably the same mix from the other platform -> never automatically loaded
+        dup = duplicates.find_duplicate(db, entry) if ok else None
+        if dup and self.hide_dups:
+            ok = False
+        if existing is None:
+            genre = detect_genre(
+                entry.get("title"), settings.genres.items, source_default=self.default
+            )
+            # n6: auto-download rows start in the inbox (visible if the process ends before
+            # they are enqueued below); rejected ones stay 'new' (not in the inbox)
+            with db.transaction():
+                db.upsert_video(_entry_row(entry, sid, genre, "inbox" if ok else "new"))
+                db.link_source_video(sid, vid)
+            self.touched.append(vid)
+            res.new += 1
+            if dup:
+                res.duplicates += 1
+                log.info(
+                    tr(
+                        "watchlist.duplicate",
+                        platform=platforms.label(dup["platform"]),
+                        title=entry.get("title"),
+                    ),
+                )
+            if not ok:
+                res.filtered += 1
+            elif self.auto and not dup:
+                self.to_queue.append(vid)
+            else:
+                res.inbox += 1
+            return
+        # M1: known from a search or another source - never a reason to stop
+        promote = ok and existing["status"] == "new"
+        genre = (
+            detect_genre(entry.get("title"), settings.genres.items, source_default=self.default)
+            if promote
+            else None
+        )
+        with db.transaction():
+            db.upsert_video(_entry_row(entry, sid, genre, existing["status"]))
+            db.link_source_video(sid, vid)
+            if promote:
+                db.set_status(vid, "inbox")
+        self.touched.append(vid)
+        if promote:
+            res.adopted += 1
+            if self.auto and not dup:
+                self.to_queue.append(vid)
+            else:
+                res.inbox += 1
+
+    def finish(self, entries: Sequence[Mapping[str, Any]], enqueue: Enqueue | None = None) -> None:
+        """Festival/series detection on the stored rows (offline, v0.3.0), then the queue."""
+        series.detect_and_store(
+            self.db, self.settings, self.touched, descriptions=_descriptions(entries), flat=True
+        )
+        self.touched = []
+        if self.to_queue:
+            res = self.res
+            accepted = enqueue(self.to_queue) if enqueue else []
+            res.queued += len(accepted)
+            res.queued_ids.extend(accepted)
+            res.inbox += len([v for v in self.to_queue if v not in accepted])  # stay in the inbox
+            self.to_queue = []
+
+
+def _store_item_count(source: Mapping[str, Any], entries: Any, db: Database) -> None:
+    """v0.4.0: remember the size of the listing if yt-dlp reported it (no extra request)."""
+    total = getattr(entries, "total", None)
+    if isinstance(total, int) and total >= 0 and source.get("type") != "search":
+        if total != source.get("item_count"):
+            db.update_source(int(source["id"]), item_count=total)
+
+
 def check_source(
     source: Mapping[str, Any],
     *,
@@ -469,87 +600,12 @@ def check_source(
         entries = client.list_source(target, max_entries, **kwargs)
 
     res = SourceCheck(sid)
-    genre_names = {g.name for g in settings.genres.items}
-    default = source.get("default_genre") or None
-    if default not in genre_names or default == UNSORTED:
-        default = None
-    auto = bool(source.get("auto_download")) and enqueue is not None
     incremental = stype != "search" and bool(source.get("last_checked"))
-    blacklist = db.blacklist_ids()
-    hide_dups = settings.filters.hide_cross_platform_duplicates
-    to_queue: list[str] = []
-    touched: list[str] = []
     _maybe_rename(source, entries, db, res)
-    for entry in entries:
-        vid = entry.get("id")
-        if not vid:
-            continue
-        res.seen += 1
-        if entry.get("live_status") in SKIP_LIVE_STATUS:
-            # n8: duration unknown before the broadcast - evaluate again at the next check
-            res.skipped_live += 1
-            continue
-        if db.source_has_seen(sid, vid):
-            if incremental:
-                break  # everything after this one was seen in an earlier check of this source
-            continue
-        existing = db.get_video(vid)
-        ok, _reason = filters.passes(entry, settings.filters, status=None, blacklist=blacklist)
-        # 7a: probably the same mix from the other platform -> never automatically loaded
-        dup = duplicates.find_duplicate(db, entry) if ok else None
-        if dup and hide_dups:
-            ok = False
-        if existing is None:
-            genre = detect_genre(entry.get("title"), settings.genres.items, source_default=default)
-            # n6: auto-download rows start in the inbox (visible if the process ends before
-            # they are enqueued below); rejected ones stay 'new' (not in the inbox)
-            with db.transaction():
-                db.upsert_video(_entry_row(entry, sid, genre, "inbox" if ok else "new"))
-                db.link_source_video(sid, vid)
-            touched.append(vid)
-            res.new += 1
-            if dup:
-                res.duplicates += 1
-                log.info(
-                    tr(
-                        "watchlist.duplicate",
-                        platform=platforms.label(dup["platform"]),
-                        title=entry.get("title"),
-                    ),
-                )
-            if not ok:
-                res.filtered += 1
-            elif auto and not dup:
-                to_queue.append(vid)
-            else:
-                res.inbox += 1
-            continue
-        # M1: known from a search or another source - never a reason to stop
-        promote = ok and existing["status"] == "new"
-        genre = (
-            detect_genre(entry.get("title"), settings.genres.items, source_default=default)
-            if promote
-            else None
-        )
-        with db.transaction():
-            db.upsert_video(_entry_row(entry, sid, genre, existing["status"]))
-            db.link_source_video(sid, vid)
-            if promote:
-                db.set_status(vid, "inbox")
-        touched.append(vid)
-        if promote:
-            res.adopted += 1
-            if auto and not dup:
-                to_queue.append(vid)
-            else:
-                res.inbox += 1
-    # v0.3.0: festival/series detection on the stored flat rows (offline, before queueing)
-    series.detect_and_store(db, settings, touched, descriptions=_descriptions(entries), flat=True)
-    if to_queue:
-        accepted = enqueue(to_queue) if enqueue else []
-        res.queued = len(accepted)
-        res.queued_ids = list(accepted)
-        res.inbox += len([v for v in to_queue if v not in accepted])  # stay in the inbox
+    _store_item_count(source, entries, db)
+    ing = Ingest(source, db=db, settings=settings, res=res, auto=enqueue is not None)
+    ing.walk(entries, incremental=incremental)
+    ing.finish(entries, enqueue)
     db.mark_source_checked(sid)
     log.info(
         tr(

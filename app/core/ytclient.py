@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import yt_dlp
 from yt_dlp.utils import DownloadCancelled
@@ -41,6 +42,7 @@ from .platforms import SOUNDCLOUD, YOUTUBE
 from .redact import redact
 from .throttle import (
     MetadataBusy,
+    RequestBudgetSpent,
     Throttle,
     ThrottleError,
     WaitCancelled,
@@ -787,9 +789,112 @@ class YtClient:
         entries = [
             normalize_entry(e, platform) for e in info.get("entries") or [] if e and e.get("id")
         ]
+        count = info.get("playlist_count")
         return SourceListing(
-            entries[: int(max_entries)], source_name=listing_name(info, url, platform)
+            entries[: int(max_entries)],
+            source_name=listing_name(info, url, platform),
+            total=count if isinstance(count, int) and count >= 0 else None,
         )
+
+    def list_source_paged(
+        self,
+        url: str,
+        *,
+        limit: int,
+        on_entries: Callable[[list[dict[str, Any]], int], None],
+        start: int = 0,
+        requests_per_hour: int = 120,
+        max_requests: int | None = None,
+        on_info: Callable[[PagedListing], None] | None = None,
+        on_request: Callable[[], None] | None = None,
+        cancel_event: threading.Event | None = None,
+    ) -> PagedListing:
+        """v0.4.0 «Read everything (once)»: walk the flat listing of a channel/playlist/user/set
+        page by page, at most `limit` entries, in listing order.
+
+        Every HTTP request yt-dlp makes for the listing (webpage, API pages, SoundCloud
+        client-id discovery …) passes `_PagedGate`: entries received so far are handed to
+        `on_entries(batch, position)` (position = entries of the listing walked, the resume
+        cursor), then the request waits for `Throttle.backfill_slot` (backoff check,
+        `requests_per_hour` pacing, `sleep_requests` spacing) under the metadata lock - held
+        per request only, so searches and downloads interleave. `max_requests` (headless budget)
+        raises RequestBudgetSpent before a further request. A resume (`start` > 0) has to walk
+        the first `start` entries again (YouTube/SoundCloud only know "next page" tokens); they
+        are skipped without processing. `cancel_event` stops before the next entry/request
+        (WaitCancelled). 429/bot check: backoff + YtClientError(rate_limited)."""
+        settings = self.settings
+        platform = platforms.url_platform(url) or YOUTUBE
+        if platform == SOUNDCLOUD and not settings.soundcloud.enabled:
+            raise YtClientError(tr("sc.off_in_settings"))
+        limit = max(1, int(limit))
+        start = max(0, int(start))
+        opts = build_ydl_opts(settings, "list", platform)
+        opts["sleep_interval_requests"] = 0  # the gate spaces every request itself
+        th = self.throttle.platform(platform)
+        th.check_backoff()
+        self._prepare(settings, platform)
+        listing = PagedListing(position=start)
+        gate = _PagedGate(
+            th,
+            listing,
+            on_entries,
+            per_hour=requests_per_hour,
+            max_requests=max_requests,
+            on_request=on_request,
+            cancel_event=cancel_event,
+        )
+        logger = opts.get("logger")
+        try:
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                gate.install(ydl)
+                if platform == SOUNDCLOUD:
+                    _install_sc_flat_extractors(ydl, ("head", limit))
+                ie = ydl.extract_info(normalize_source_url(url), download=False, process=False)
+                if ie is None:
+                    raise YtClientError(tr("yt.no_data"))
+                if ie.get("_type") not in ("playlist", "multi_video"):
+                    # redirected URL: let yt-dlp resolve it (flat, at most `limit` entries)
+                    ydl.params["playlistend"] = limit
+                    ie = ydl.process_ie_result(ie, download=False)
+                    if ie is None:
+                        raise YtClientError(tr("yt.no_data"))
+                count = ie.get("playlist_count")
+                listing.total = count if isinstance(count, int) and count >= 0 else None
+                listing.source_name = listing_name(ie, url, platform)
+                if on_info is not None:
+                    on_info(listing)
+                walked = 0
+                entries = iter(ie.get("entries") or ())
+                while walked < limit:
+                    if cancel_event is not None and cancel_event.is_set():
+                        raise WaitCancelled
+                    try:
+                        entry = next(entries)
+                    except StopIteration:
+                        listing.complete = True
+                        break
+                    walked += 1
+                    if walked <= start:
+                        continue
+                    gate.add(entry, walked, platform)
+                gate.flush()
+                listing.capped = not listing.complete
+                return listing
+        except (DownloadCancelled, MetadataBusy, WaitCancelled, RequestBudgetSpent):
+            gate.flush_quietly()
+            raise
+        except Exception as exc:
+            gate.flush_quietly()
+            if isinstance(exc, YtClientError):
+                raise
+            limited = th.handle_error(exc)
+            if isinstance(exc, (yt_dlp.utils.YoutubeDLError, OSError)) or limited:
+                raise YtClientError(_clean_error(exc), rate_limited=limited) from exc
+            raise
+        finally:
+            hit = getattr(logger, "rate_limit_hit", None)
+            if hit:
+                th.trigger_backoff(hit)
 
     def resolve(self, video_id: str) -> dict[str, Any]:
         settings = self.settings
@@ -1205,9 +1310,102 @@ class SourceListing(list):
     reported it on playlist level (`source_name`, may be ''). Used to replace an automatically
     suggested source name without an extra request (watchlist `name_auto`)."""
 
-    def __init__(self, entries: Any = (), *, source_name: str = "") -> None:
+    def __init__(
+        self, entries: Any = (), *, source_name: str = "", total: int | None = None
+    ) -> None:
         super().__init__(entries)
         self.source_name = source_name
+        # v0.4.0: size of the whole listing if yt-dlp knew it (`playlist_count`), else None
+        self.total = total
+
+
+@dataclass
+class PagedListing:
+    """Result/progress of `list_source_paged` (v0.4.0 backfill)."""
+
+    position: int = 0  # entries of the listing walked so far (resume cursor)
+    total: int | None = None  # size reported on the first page (`playlist_count`), else None
+    source_name: str = ""
+    requests: int = 0  # page requests made (through the throttle)
+    complete: bool = False  # end of the listing reached
+    capped: bool = False  # stopped at `limit`
+
+
+_LOOPBACK = {"127.0.0.1", "localhost", "::1"}
+
+
+class _PagedGate:
+    """Wraps `YoutubeDL.urlopen` of one paged listing (`list_source_paged`): before every
+    request to the platform the entries received so far are flushed to the caller, then the
+    request waits for its throttle slot. Local requests (PO-token provider) pass unchanged."""
+
+    def __init__(
+        self,
+        throttle: Throttle,
+        listing: PagedListing,
+        on_entries: Callable[[list[dict[str, Any]], int], None],
+        *,
+        per_hour: int,
+        max_requests: int | None,
+        on_request: Callable[[], None] | None,
+        cancel_event: threading.Event | None,
+    ) -> None:
+        self.th = throttle
+        self.listing = listing
+        self.on_entries = on_entries
+        self.per_hour = per_hour
+        self.max_requests = max_requests
+        self.on_request = on_request
+        self.cancel = cancel_event
+        self.buf: list[dict[str, Any]] = []
+        self.walked = listing.position
+
+    def install(self, ydl: Any) -> None:
+        orig = ydl.urlopen
+
+        def urlopen(req: Any, *args: Any, **kwargs: Any) -> Any:
+            target = getattr(req, "url", req)
+            try:
+                host = (urlparse(str(target)).hostname or "").lower()
+            except ValueError:
+                host = ""
+            if host in _LOOPBACK:
+                return orig(req, *args, **kwargs)
+            self.flush()
+            if self.cancel is not None and self.cancel.is_set():
+                raise WaitCancelled
+            if self.max_requests is not None and self.listing.requests >= self.max_requests:
+                raise RequestBudgetSpent
+            with self.th.metadata_lock(cancel_event=self.cancel):
+                self.th.backfill_slot(self.per_hour, self.cancel)
+                self.listing.requests += 1
+                if self.on_request is not None:
+                    self.on_request()
+                try:
+                    return orig(req, *args, **kwargs)
+                finally:
+                    self.th.mark_request()
+
+        ydl.urlopen = urlopen
+
+    def add(self, entry: Any, walked: int, platform: str) -> None:
+        self.walked = walked
+        if entry and entry.get("id"):
+            self.buf.append(normalize_entry(entry, platform))
+
+    def flush(self) -> None:
+        """Hand the entries received so far (and the cursor) to the caller."""
+        if self.walked == self.listing.position and not self.buf:
+            return
+        batch, self.buf = self.buf, []
+        self.listing.position = self.walked
+        self.on_entries(batch, self.walked)
+
+    def flush_quietly(self) -> None:
+        try:
+            self.flush()
+        except Exception:
+            log.debug("Backfill entries not stored", exc_info=True)
 
 
 _SC_RESOURCE_SUFFIX = re.compile(

@@ -442,6 +442,13 @@ class ScheduleSettings(_Section):
     entries_per_source: int = Field(30, ge=1, le=200)
 
 
+class WatchlistSettings(_Section):
+    """v0.4.0 «Read everything (once)»: cap per source and pacing of the backfill requests."""
+
+    backfill_max_entries: int = Field(2000, ge=100, le=10000)
+    backfill_requests_per_hour: int = Field(120, ge=10, le=600)
+
+
 class AppearanceSettings(_Section):
     reduce_effects: bool = False
     scanlines: bool = True
@@ -550,6 +557,7 @@ class Settings(BaseModel):
     network: NetworkSettings = Field(default_factory=NetworkSettings)
     soundcloud: SoundCloudSettings = Field(default_factory=SoundCloudSettings)
     schedule: ScheduleSettings = Field(default_factory=ScheduleSettings)
+    watchlist: WatchlistSettings = Field(default_factory=WatchlistSettings)
     appearance: AppearanceSettings = Field(default_factory=AppearanceSettings)
     maintenance: MaintenanceSettings = Field(default_factory=MaintenanceSettings)
     player: PlayerSettings = Field(default_factory=PlayerSettings)
@@ -698,6 +706,7 @@ SECTION_TITLES = {
     "network": "Netzwerk & PO-Token",
     "soundcloud": "SoundCloud",
     "schedule": "Zeitplan",
+    "watchlist": "Watchlist",
     "appearance": "Darstellung",
     "maintenance": "Wartung",
     "player": "Player",
@@ -767,6 +776,8 @@ COMMENTS = {
     "schedule.task_scheduler_enabled": "Windows-Aufgabenplanung nutzen",
     "schedule.task_time": "Uhrzeit der geplanten Aufgabe (HH:MM)",
     "schedule.entries_per_source": "Einträge pro Quelle und Prüfung (1-200)",
+    "watchlist.backfill_max_entries": "«Alles einlesen (einmalig)»: höchstens so viele Einträge pro Quelle (100-10000)",
+    "watchlist.backfill_requests_per_hour": "«Alles einlesen»: höchstens so viele Seiten-Anfragen pro Stunde (10-600, gleichmässig verteilt; Headless-Lauf: Budget pro Lauf)",
     "appearance.reduce_effects": "Effekte reduzieren",
     "appearance.scanlines": "Scanlines-Overlay anzeigen",
     "appearance.pulse_bpm": "Takt des Fortschrittsbalkens in BPM (60-300)",

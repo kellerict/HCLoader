@@ -10,6 +10,8 @@
     "app_update_failed": "Rakenduse uuendamine ebaõnnestus: {error}",
     "app_update_rolled_back": " – eelmine versioon taastati",
     "app_updated": "HCLoader uuendati versioonile v{version}",
+    "backfill_busy": "Teine protsess loeb praegu allikat täielikult sisse – jätkub hiljem",
+    "backfill_none": "Selle allika jaoks pole „Loe kõik sisse” toimingut",
     "backup_done": "Andmebaasi varukoopia loodud: {path}",
     "backup_failed": "Varundamine ebaõnnestus: {error}",
     "backup_failed_log": "Andmebaasi varundamine ebaõnnestus: {error}",
@@ -78,6 +80,18 @@
     "watchlist_backoff": "Paus on aktiivne kuni {until} – kontroll blokeeritud",
     "ytdlp_up_to_date": "yt-dlp ja plugin on ajakohased",
     "ytdlp_updated_restart": "yt-dlp uuendatud – käivita HCLoader uuesti"
+  },
+  "backfill": {
+    "done": "Loe kõik sisse: {name} valmis – loetud {n} kirjet, {added} uut postkastis",
+    "failed": "Loe kõik sisse ebaõnnestus: {error}",
+    "note_backoff": "Backoff ({platform}) kuni {until} – jätkub automaatselt",
+    "note_budget": "Selle käivituse päringueelarve on otsas – jätkub järgmisel käivitusel",
+    "note_error": "Viga: {error}",
+    "note_interrupted": "Katkestatud – jätkub automaatselt",
+    "resumed": "Loe kõik sisse: {name} – jätkab pärast {n} kirjet",
+    "search_refused": "Otsinguallikaid ei saa täielikult sisse lugeda – otsing annab kuni 100 tulemust",
+    "started": "Loe kõik sisse: {name} – loeb kuni {cap} kirjet lehekülghaaval",
+    "stopped": "Loe kõik sisse: {name} peatatud – {note}"
   },
   "cli": {
     "headless": "käivita ilma graafilise liideseta",
@@ -167,6 +181,7 @@
     "unknown": "Tundmatu žanr: {genre}"
   },
   "headless": {
+    "backfill": "Loe kõik sisse: jätkati {n} allikat · {added} uut postkastis · {done} valmis",
     "backoff": "Paus on aktiivne kuni {until} – midagi ei kontrollitud",
     "backoff_until": "Paus kuni {until}",
     "finished": "Headless-käivitus lõppes: {n} uut, {downloaded} allalaaditud, {errors} viga{extra}",

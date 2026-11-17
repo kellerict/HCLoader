@@ -61,7 +61,8 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "chars": "rakstzīmes",
     "results": "rezultāti",
     "entries": "ieraksti",
-    "clock": "st."
+    "clock": "st.",
+    "req_h": "piepr./h"
   },
   "range": {
     "ge_sleep": "≥ minimums",
@@ -676,7 +677,8 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
       "database": "Datubāze",
       "reset": "Atiestatīšana",
       "detection": "Atpazīšana",
-      "series": "Sērijas"
+      "series": "Sērijas",
+      "backfill": "Ielasīt visu (vienreiz)"
     },
     "general": {
       "language": {
@@ -1182,6 +1184,16 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
       "variants_help": "Atsevišķi izdevumi, piem., Australia vai at Home.",
       "channels": "Rīkotāja kanāli",
       "channels_help": "Kanāla nosaukums, ID vai URL. Tikai palielina drošību."
+    },
+    "watchlist": {
+      "backfill_max_entries": {
+        "label": "Maks. ieraksti vienam avotam",
+        "help": "“Ielasīt visu (vienreiz)” novērošanas sarakstā ielasa ne vairāk kā tik daudz kanāla vai atskaņošanas saraksta ierakstu."
+      },
+      "backfill_requests_per_hour": {
+        "label": "Pieprasījumi stundā",
+        "help": "“Ielasīt visu” lapu pieprasījumi tiek sadalīti vienmērīgi (120 = viens ik pēc 30 s); spēkā ir arī parastais intervāls un backoff. Ieplānota palaišana (Uzdevumu plānotājs) turpina ne vairāk kā ar tik daudz pieprasījumiem."
+      }
     }
   },
   "opt": {
@@ -1505,5 +1517,43 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "p_type": "Seta veids",
     "p_apply": "Lietot",
     "p_auto": "Atpakaļ uz automātisko"
+  },
+  "backfill": {
+    "action": "Ielasīt visu (vienreiz)",
+    "action_title": "Vienreiz ielasīt visu šī avota sarakstu lapu pa lapai – jaunie trāpījumi nonāk iesūtnē",
+    "again_title": "Ielasīt visu vēlreiz – tiek pievienoti tikai vēl nezināmie ieraksti",
+    "search_title": "Nav saglabātajiem meklējumiem – meklēšana atgriež ne vairāk kā 100 rezultātus",
+    "why_open": "Ielasīšana jau sākta – apturiet vai atceliet to zem nosaukuma",
+    "st_pending": "Gaida",
+    "st_running": "Ielasa …",
+    "st_paused": "Apturēts",
+    "progress": "{n} / ~{total}",
+    "progress_cap": "{n} / maks. {cap}",
+    "added": "+{n} iesūtnē",
+    "done_short": "Viss ielasīts {date}",
+    "done_title": "Pilnībā ielasīts: {date} · ieraksti: {n}",
+    "note_title": "Pēdējais pārtraukums",
+    "pause": "Apturēt",
+    "resume": "Turpināt",
+    "cancel": "Atcelt",
+    "keep": "Turpināt ielasīt",
+    "dlg_title": "Ielasīt visu no “{name}”?",
+    "dlg_text": "Vienreiz ielasa visu šī avota sarakstu lapu pa lapai – plakani un lēti, caur ierobežotāju; nekas netiek lejupielādēts. Trāpījumi, kas iztur jūsu filtrus, nonāk <b>iesūtnē</b>, arī avotiem ar automātisku lejupielādi. Jau zināmi video nekad netiek pievienoti divreiz.",
+    "dlg_requests": "pieprasījumi",
+    "dlg_time": "ilgums",
+    "dlg_entries": "ieraksti",
+    "dlg_known": "Zināms no pēdējās pārbaudes: ieraksti – <b>{n}</b>.",
+    "dlg_unknown": "Izmērs nav zināms – piesardzīgs novērtējums maksimumam {cap} ierakstu.",
+    "dlg_capped": "Tiek ielasīti tikai pirmie {cap} ieraksti (Iestatījumi › Grafiks).",
+    "dlg_resume": "Turpina pēc {n} jau ielasītiem ierakstiem; to lapas vispirms tiek pieprasītas vēlreiz.",
+    "dlg_pace": "Ne vairāk kā {n} pieprasījumi stundā, vienmērīgi sadalīti. Backoff (HTTP 429 / botu pārbaude), lietotnes aizvēršana vai kļūda tikai pārtrauc – vēlāk tiek turpināts automātiski. Apturēt vai atcelt varat jebkurā laikā.",
+    "dlg_ok": "Sākt ielasīšanu",
+    "dlg_ok_resume": "Turpināt ielasīt",
+    "dlg_cancel_title": "Atcelt ielasīšanu?",
+    "dlg_cancel_text": "“{name}” ielasīšana apstājas, un progress tiek atmests. Iesūtnē jau esošie trāpījumi paliek.",
+    "toast_started": "“{name}” tiek ielasīts pilnībā – darbojas fonā",
+    "toast_done": "“{name}” ielasīts pilnībā – +{n} iesūtnē",
+    "toast_paused": "“{name}” apturēts – turpiniet ar “Turpināt”",
+    "toast_cancelled": "“{name}” ielasīšana atcelta"
   }
 });

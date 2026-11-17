@@ -40,6 +40,8 @@ K_DL_TODAY = "downloads_today"
 K_DL_RUN = "downloads_run"
 K_LAST_DL_END = "last_download_end"
 K_LAST_REQUEST = "last_request"
+# v0.4.0 «Read everything (once)»: time of the last backfill page request (pacing per hour)
+K_BACKFILL_LAST = "backfill_last_request"
 
 _RATE_LIMIT_PATTERNS = [
     re.compile(r"http error 429", re.I),
@@ -91,6 +93,11 @@ class MetadataBusy(Exception):
 
     def __init__(self) -> None:
         super().__init__(tr("throttle.download_query_busy"))
+
+
+class RequestBudgetSpent(Exception):
+    """v0.4.0: a backfill used up the request budget of this run (headless: one hour's worth).
+    Not an error: the backfill stays pending and continues in the next run."""
 
 
 class LimitReached(ThrottleError):
@@ -436,6 +443,32 @@ class Throttle:
             self._local.slot = stamp
             if count_attempt:
                 self.register_download()
+
+    def backfill_slot(self, per_hour: int, cancel_event: threading.Event | None = None) -> None:
+        """v0.4.0: before every page request of a «Read everything (once)» backfill.
+
+        Paces backfill requests evenly at most `per_hour` per hour (3600 / per_hour seconds
+        apart, persisted in `state`, so a restart never bursts), then takes a normal request
+        slot (backoff check, `sleep_requests` spacing to *any* other request). The pacing wait
+        runs outside the throttle lock: searches and downloads are not held up by it. Raises
+        BackoffActive; `cancel_event` aborts the wait (WaitCancelled)."""
+        interval = 3600.0 / max(1, int(per_hour))
+        with self._xlock(cancel_event):
+            self.check_backoff()
+            raw = self._get(K_BACKFILL_LAST)
+            wait = 0.0
+            if raw:
+                try:
+                    since = (self._now() - datetime.fromisoformat(raw)).total_seconds()
+                    # a clock set back must not produce an endless wait
+                    wait = min(interval - since, interval)
+                except ValueError:
+                    wait = 0.0
+        if wait > 0:
+            self._wait(wait, cancel_event)
+        self._request_slot("list", cancel_event, False, limits=False)
+        with self._xlock(cancel_event):
+            self._set(K_BACKFILL_LAST, self._now().isoformat())
 
     def request_spacing(self, cancel_event: threading.Event | None = None) -> None:
         """Re-enforce `sleep_requests` after waiting for the metadata lock (R2-m1), without

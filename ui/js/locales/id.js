@@ -59,7 +59,8 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
   "chars": "karakter",
   "results": "hasil",
   "entries": "entri",
-  "clock": "pukul"
+  "clock": "pukul",
+  "req_h": "perm./jam"
  },
  "range": {
   "ge_sleep": "≥ minimum",
@@ -636,7 +637,8 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
    "database": "Basis data",
    "reset": "Setel ulang",
    "detection": "Deteksi",
-   "series": "Seri"
+   "series": "Seri",
+   "backfill": "Baca semua (sekali)"
   },
   "general": {
    "language": {
@@ -1140,6 +1142,16 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
    "variants_help": "Edisi tersendiri, mis. Australia atau at Home.",
    "channels": "Kanal penyelenggara",
    "channels_help": "Nama, ID, atau URL kanal. Hanya menaikkan keyakinan."
+  },
+  "watchlist": {
+   "backfill_max_entries": {
+    "label": "Entri maks. per sumber",
+    "help": "“Baca semua (sekali)” di daftar pantauan membaca paling banyak sejumlah ini entri dari kanal atau playlist."
+   },
+   "backfill_requests_per_hour": {
+    "label": "Permintaan per jam",
+    "help": "Permintaan halaman “Baca semua” disebar merata (120 = satu tiap 30 d); jeda normal dan backoff juga berlaku. Jalankan terjadwal (Task Scheduler) melanjutkan paling banyak sejumlah ini permintaan."
+   }
   }
  },
  "opt": {
@@ -1437,5 +1449,43 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
   "p_type": "Jenis set",
   "p_apply": "Terapkan",
   "p_auto": "Kembali ke otomatis"
+ },
+ "backfill": {
+  "action": "Baca semua (sekali)",
+  "action_title": "Baca seluruh daftar sumber ini sekali, halaman demi halaman – temuan baru masuk ke kotak masuk",
+  "again_title": "Baca semua lagi – hanya entri yang belum dikenal yang ditambahkan",
+  "search_title": "Bukan untuk pencarian tersimpan – pencarian memberi paling banyak 100 hasil",
+  "why_open": "Pembacaan sudah dimulai – jeda atau batalkan di bawah nama",
+  "st_pending": "Menunggu",
+  "st_running": "Membaca …",
+  "st_paused": "Dijeda",
+  "progress": "{n} / ~{total}",
+  "progress_cap": "{n} / maks. {cap}",
+  "added": "+{n} di kotak masuk",
+  "done_short": "Semua dibaca {date}",
+  "done_title": "Dibaca lengkap: {date} · {n} entri",
+  "note_title": "Gangguan terakhir",
+  "pause": "Jeda",
+  "resume": "Lanjutkan",
+  "cancel": "Batal",
+  "keep": "Lanjut membaca",
+  "dlg_title": "Baca semua dari “{name}”?",
+  "dlg_text": "Membaca seluruh daftar sumber ini sekali, halaman demi halaman – datar dan murah, lewat pembatas; tidak ada yang diunduh. Temuan yang lolos filter Anda masuk ke <b>kotak masuk</b>, juga untuk sumber dengan unduhan otomatis. Video yang sudah dikenal tidak pernah ditambahkan dua kali.",
+  "dlg_requests": "permintaan",
+  "dlg_time": "durasi",
+  "dlg_entries": "entri",
+  "dlg_known": "Diketahui dari pemeriksaan terakhir: <b>{n}</b> entri.",
+  "dlg_unknown": "Ukuran tidak diketahui – perkiraan hati-hati untuk maksimum {cap} entri.",
+  "dlg_capped": "Hanya {cap} entri pertama yang dibaca (Pengaturan › Jadwal).",
+  "dlg_resume": "Melanjutkan setelah {n} entri yang sudah dibaca; halamannya diminta ulang terlebih dahulu.",
+  "dlg_pace": "Paling banyak {n} permintaan per jam, tersebar merata. Backoff (HTTP 429 / pemeriksaan bot), menutup aplikasi, atau galat hanya menyela – nanti berlanjut otomatis. Anda bisa menjeda atau membatalkan kapan saja.",
+  "dlg_ok": "Mulai membaca",
+  "dlg_ok_resume": "Lanjut membaca",
+  "dlg_cancel_title": "Batalkan pembacaan?",
+  "dlg_cancel_text": "Pembacaan “{name}” berhenti dan kemajuannya dibuang. Temuan di kotak masuk tetap ada.",
+  "toast_started": "“{name}” dibaca lengkap – berjalan di latar belakang",
+  "toast_done": "“{name}” dibaca lengkap – +{n} di kotak masuk",
+  "toast_paused": "“{name}” dijeda – lanjutkan dengan “Lanjutkan”",
+  "toast_cancelled": "Pembacaan “{name}” dibatalkan"
  }
 });

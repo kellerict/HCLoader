@@ -60,7 +60,8 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
     "chars": "caracteres",
     "results": "resultados",
     "entries": "entradas",
-    "clock": "h"
+    "clock": "h",
+    "req_h": "pet./h"
   },
   "range": {
     "ge_sleep": "≥ mínimo",
@@ -656,7 +657,8 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
       "database": "Base de datos",
       "reset": "Restablecer",
       "detection": "Detección",
-      "series": "Series"
+      "series": "Series",
+      "backfill": "Leer todo (una vez)"
     },
     "general": {
       "language": {
@@ -1161,6 +1163,16 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
       "variants_help": "Ediciones propias, p. ej. Australia o at Home.",
       "channels": "Canales del organizador",
       "channels_help": "Nombre, ID o URL del canal. Solo aumenta la certeza."
+    },
+    "watchlist": {
+      "backfill_max_entries": {
+        "label": "Máx. entradas por fuente",
+        "help": "«Leer todo (una vez)» en la lista de seguimiento lee como máximo esta cantidad de entradas de un canal o una playlist."
+      },
+      "backfill_requests_per_hour": {
+        "label": "Peticiones por hora",
+        "help": "Las peticiones de páginas de «Leer todo» se reparten de forma uniforme (120 = una cada 30 s); también rigen el intervalo normal y el backoff. Una ejecución programada (Programador de tareas) continúa como máximo con esta cantidad de peticiones."
+      }
     }
   },
   "opt": {
@@ -1471,5 +1483,43 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
     "p_type": "Tipo de set",
     "p_apply": "Aplicar",
     "p_auto": "Volver a automático"
+  },
+  "backfill": {
+    "action": "Leer todo (una vez)",
+    "action_title": "Leer una vez la lista completa de esta fuente, página a página – los resultados nuevos van a la bandeja de entrada",
+    "again_title": "Volver a leer todo – solo se añaden las entradas aún desconocidas",
+    "search_title": "No para búsquedas guardadas – una búsqueda devuelve como máximo 100 resultados",
+    "why_open": "La lectura ya ha empezado – páusala o cancélala debajo del nombre",
+    "st_pending": "En espera",
+    "st_running": "Leyendo …",
+    "st_paused": "En pausa",
+    "progress": "{n} / ~{total}",
+    "progress_cap": "{n} / máx. {cap}",
+    "added": "+{n} en la bandeja",
+    "done_short": "Todo leído {date}",
+    "done_title": "Leído por completo: {date} · {n} entradas",
+    "note_title": "Última interrupción",
+    "pause": "Pausar",
+    "resume": "Reanudar",
+    "cancel": "Cancelar",
+    "keep": "Seguir leyendo",
+    "dlg_title": "¿Leer todo de «{name}»?",
+    "dlg_text": "Lee una vez la lista completa de esta fuente, página a página – peticiones planas y baratas, a través del limitador; no se descarga nada. Los resultados que pasan tus filtros van a la <b>bandeja de entrada</b>, también en fuentes con descarga automática. Los vídeos que ya conoces nunca se añaden dos veces.",
+    "dlg_requests": "peticiones",
+    "dlg_time": "duración",
+    "dlg_entries": "entradas",
+    "dlg_known": "Conocido por la última comprobación: <b>{n}</b> entradas.",
+    "dlg_unknown": "El tamaño es desconocido – estimación prudente para el máximo de {cap} entradas.",
+    "dlg_capped": "Solo se leen las primeras {cap} entradas (Ajustes › Programación).",
+    "dlg_resume": "Continúa tras {n} entradas ya leídas; primero se vuelven a pedir sus páginas.",
+    "dlg_pace": "Como máximo {n} peticiones por hora, repartidas de forma uniforme. Un backoff (HTTP 429 / comprobación anti-bot), cerrar la app o un error solo lo interrumpen – continúa automáticamente más tarde. Puedes pausarlo o cancelarlo en cualquier momento.",
+    "dlg_ok": "Empezar a leer",
+    "dlg_ok_resume": "Seguir leyendo",
+    "dlg_cancel_title": "¿Cancelar la lectura?",
+    "dlg_cancel_text": "La lectura de «{name}» se detiene y su progreso se descarta. Los resultados ya en la bandeja se quedan.",
+    "toast_started": "Leyendo «{name}» por completo – en segundo plano",
+    "toast_done": "«{name}» leído por completo – +{n} en la bandeja",
+    "toast_paused": "«{name}» en pausa – continúa con «Reanudar»",
+    "toast_cancelled": "Lectura de «{name}» cancelada"
   }
 });

@@ -60,7 +60,8 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "chars": "märki",
     "results": "tulemust",
     "entries": "kirjet",
-    "clock": "kell"
+    "clock": "kell",
+    "req_h": "päring./h"
   },
   "range": {
     "ge_sleep": "≥ miinimum",
@@ -656,7 +657,8 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
       "database": "Andmebaas",
       "reset": "Lähtestamine",
       "detection": "Tuvastamine",
-      "series": "Sarjad"
+      "series": "Sarjad",
+      "backfill": "Loe kõik sisse (üks kord)"
     },
     "general": {
       "language": {
@@ -1161,6 +1163,16 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
       "variants_help": "Omaette väljaanded, nt Australia või at Home.",
       "channels": "Korraldaja kanalid",
       "channels_help": "Kanali nimi, ID või URL. Suurendab ainult kindlust."
+    },
+    "watchlist": {
+      "backfill_max_entries": {
+        "label": "Kirjeid kuni allika kohta",
+        "help": "„Loe kõik sisse (üks kord)” jälgimisloendis loeb kanalist või esitusloendist kuni nii palju kirjeid."
+      },
+      "backfill_requests_per_hour": {
+        "label": "Päringuid tunnis",
+        "help": "„Loe kõik sisse” lehekülje päringud jaotatakse ühtlaselt (120 = üks iga 30 s järel); kehtivad ka tavaline vahe ja backoff. Ajastatud käivitus (Tööplaanur) jätkab kuni nii mitme päringuga."
+      }
     }
   },
   "opt": {
@@ -1471,5 +1483,43 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "p_type": "Seti liik",
     "p_apply": "Rakenda",
     "p_auto": "Tagasi automaatsele"
+  },
+  "backfill": {
+    "action": "Loe kõik sisse (üks kord)",
+    "action_title": "Loe selle allika kogu nimekiri üks kord lehekülghaaval sisse – uued tabamused lähevad postkasti",
+    "again_title": "Loe kõik uuesti – lisatakse ainult veel tundmatud kirjed",
+    "search_title": "Mitte salvestatud otsingutele – otsing annab kuni 100 tulemust",
+    "why_open": "Sisselugemine on juba alanud – peata või tühista see nime all",
+    "st_pending": "Ootab",
+    "st_running": "Loeb sisse …",
+    "st_paused": "Peatatud",
+    "progress": "{n} / ~{total}",
+    "progress_cap": "{n} / max {cap}",
+    "added": "+{n} postkastis",
+    "done_short": "Kõik loetud {date}",
+    "done_title": "Täielikult sisse loetud: {date} · {n} kirjet",
+    "note_title": "Viimane katkestus",
+    "pause": "Peata",
+    "resume": "Jätka",
+    "cancel": "Tühista",
+    "keep": "Loe edasi",
+    "dlg_title": "Kas lugeda kõik allikast „{name}”?",
+    "dlg_text": "Loeb selle allika kogu nimekirja üks kord lehekülghaaval sisse – lame ja odav, piiraja kaudu; midagi ei laadita alla. Tabamused, mis läbivad sinu filtrid, lähevad <b>postkasti</b>, ka automaatse allalaadimisega allikate puhul. Juba tuntud videoid ei lisata kunagi kaks korda.",
+    "dlg_requests": "päringut",
+    "dlg_time": "kestus",
+    "dlg_entries": "kirjet",
+    "dlg_known": "Teada viimasest kontrollist: <b>{n}</b> kirjet.",
+    "dlg_unknown": "Suurus pole teada – ettevaatlik hinnang maksimumile {cap} kirjet.",
+    "dlg_capped": "Sisse loetakse ainult esimesed {cap} kirjet (Seaded › Ajakava).",
+    "dlg_resume": "Jätkab pärast {n} juba loetud kirjet; nende leheküljed küsitakse kõigepealt uuesti.",
+    "dlg_pace": "Kuni {n} päringut tunnis, ühtlaselt jaotatud. Backoff (HTTP 429 / robotikontroll), rakenduse sulgemine või viga ainult katkestavad – hiljem jätkub automaatselt. Peatada või tühistada saad igal ajal.",
+    "dlg_ok": "Alusta sisselugemist",
+    "dlg_ok_resume": "Loe edasi",
+    "dlg_cancel_title": "Kas tühistada sisselugemine?",
+    "dlg_cancel_text": "Allika „{name}” sisselugemine peatub ja edenemine visatakse ära. Postkastis olevad tabamused jäävad alles.",
+    "toast_started": "„{name}” loetakse täielikult sisse – töötab taustal",
+    "toast_done": "„{name}” täielikult sisse loetud – +{n} postkastis",
+    "toast_paused": "„{name}” peatatud – jätka nupuga „Jätka”",
+    "toast_cancelled": "Allika „{name}” sisselugemine tühistati"
   }
 });

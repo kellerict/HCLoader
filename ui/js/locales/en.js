@@ -60,7 +60,8 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "chars": "characters",
     "results": "results",
     "entries": "entries",
-    "clock": "o’clock"
+    "clock": "o’clock",
+    "req_h": "req./h"
   },
   "range": {
     "ge_sleep": "≥ minimum",
@@ -656,7 +657,8 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
       "database": "Database",
       "reset": "Reset",
       "detection": "Detection",
-      "series": "Series"
+      "series": "Series",
+      "backfill": "Read everything (once)"
     },
     "general": {
       "language": {
@@ -1161,6 +1163,16 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
       "variants_help": "Editions of their own, e.g. Australia or at Home.",
       "channels": "Organiser channels",
       "channels_help": "Channel name, ID or URL. Raises the confidence only."
+    },
+    "watchlist": {
+      "backfill_max_entries": {
+        "label": "Maximum entries per source",
+        "help": "“Read everything (once)” in the watchlist reads at most this many entries of a channel or playlist."
+      },
+      "backfill_requests_per_hour": {
+        "label": "Requests per hour",
+        "help": "Page requests of “Read everything” are spread evenly (120 = one every 30 s); the normal spacing and the backoff apply as well. A scheduled run (Task Scheduler) continues for at most this many requests."
+      }
     }
   },
   "opt": {
@@ -1471,5 +1483,43 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "p_type": "Set type",
     "p_apply": "Apply",
     "p_auto": "Reset to automatic"
+  },
+  "backfill": {
+    "action": "Read everything (once)",
+    "action_title": "Read the complete list of this source once, page by page – new hits go to the inbox",
+    "again_title": "Read everything again – only entries that are not known yet are added",
+    "search_title": "Not for saved searches – a search returns at most 100 results",
+    "why_open": "Reading has already started – pause or cancel it below the name",
+    "st_pending": "Waiting",
+    "st_running": "Reading …",
+    "st_paused": "Paused",
+    "progress": "{n} / ~{total}",
+    "progress_cap": "{n} / max. {cap}",
+    "added": "+{n} in the inbox",
+    "done_short": "All read {date}",
+    "done_title": "Read completely: {date} · {n} entries",
+    "note_title": "Last interruption",
+    "pause": "Pause",
+    "resume": "Resume",
+    "cancel": "Cancel",
+    "keep": "Keep reading",
+    "dlg_title": "Read everything from “{name}”?",
+    "dlg_text": "Reads the complete list of this source once, page by page – flat and cheap, through the throttle; nothing is downloaded. Hits that pass your filters go to the <b>inbox</b>, also for sources with automatic download. Videos you already know are never added twice.",
+    "dlg_requests": "requests",
+    "dlg_time": "duration",
+    "dlg_entries": "entries",
+    "dlg_known": "Known from the last check: <b>{n}</b> entries.",
+    "dlg_unknown": "The size is unknown – estimated conservatively for the maximum of {cap} entries.",
+    "dlg_capped": "Only the first {cap} entries are read (Settings › Schedule).",
+    "dlg_resume": "Continues after {n} entries already read; their pages are requested again first.",
+    "dlg_pace": "At most {n} requests per hour, evenly spread. A backoff (HTTP 429 / bot check), closing the app or an error only interrupts it – it continues automatically later. You can pause or cancel it at any time.",
+    "dlg_ok": "Start reading",
+    "dlg_ok_resume": "Continue reading",
+    "dlg_cancel_title": "Cancel reading?",
+    "dlg_cancel_text": "Reading “{name}” stops and its progress is discarded. Hits already in the inbox stay.",
+    "toast_started": "Reading “{name}” completely – runs in the background",
+    "toast_done": "“{name}” read completely – +{n} in the inbox",
+    "toast_paused": "“{name}” paused – continue with “Resume”",
+    "toast_cancelled": "Reading “{name}” cancelled"
   }
 });

@@ -87,8 +87,26 @@ Leitfaden `docs/TRANSLATING.md`, Entscheide `docs/decisions.md` «Mehrsprachigke
 - [ ] 3 QA + Review
 - [ ] 4 Release v0.3.0 (Version, CHANGELOG `[0.3.0]`, Merge nach `main` → Release-Automatik)
 
-## Geplant für v0.3.0 (weitere Punkte)
-- **Watchlist: «Alles einlesen (einmalig)» pro Quelle** (User-Wunsch): Kanal/Playlist/SoundCloud-Künstler seitenweise vollständig lesen (Throttle, Pausen), Obergrenze einstellbar (~2000), fortsetzbar nach Backoff/Neustart/Abbruch (Cursor in state), Ziel immer Eingang (auch bei Auto-Download), Fortschritt an der Quelle («Liest ein … 240 / ~500»), Bestätigungsdialog mit geschätzter Anzahl Anfragen. Suchquellen bleiben bei 100.
+## v0.4.0 – «Alles einlesen (einmalig)» pro Watchlist-Quelle (User-Wunsch)
+Kanal/Playlist/SoundCloud-Nutzer/-Set einmal seitenweise vollständig lesen; Suchquellen bleiben bei 100.
+Entscheide: docs/decisions.md «Alles einlesen», Vertrag docs/bridge-api.md «Alles einlesen (einmalig)».
+- [x] 1 Backend + UI (`integrator`): Migration 8 (`backfills`, `sources.item_count`),
+  `YtClient.list_source_paged` (jede Seitenanfrage über `Throttle.backfill_slot`: Backoff, Tempo
+  `watchlist.backfill_requests_per_hour` = Standard 120/h, `sleep_requests`; Metadaten-Lock pro Anfrage),
+  Kern `app/core/backfill.py` (Cursor nach jeder Seite, Obergrenze `watchlist.backfill_max_entries` =
+  Standard 2000, immer Eingang, Dedup/Filter/Festivals über gemeinsames `watchlist.Ingest`, Zustände
+  pending/running/paused/done/cancelled, 3 Fehler → pausiert), eigener Thread `hcloader-backfill` + Lock
+  `backfill`, automatisches Fortsetzen (App-Start +90 s, nach jeder Prüfung, Headless mit Budget pro
+  Lauf), 4 Bridge-Methoden + Event `backfill`, UI: Knopf pro Quelle, Bestätigungsdialog mit Schätzung,
+  Fortschrittszeile mit Anhalten/Fortsetzen/Abbrechen, «Alles eingelesen <Datum> · +N», Einstellungen im
+  Tab «Zeitplan», Texte in allen 19 Sprachen, Mock + Screenshots (`watchlist-backfill-*`), Tests
+  `tests/test_backfill.py`, `tests/test_backfill_ui.py`, Wiki «Watchlist and Inbox», CHANGELOG
+  [Unreleased]
+- [ ] 2 QA + Review (u.a. echter Backfill unter Windows: YouTube-Kanal, Playlist, SoundCloud-Set;
+  Prüfen, dass yt-dlp jede Seite über `YoutubeDL.urlopen` holt – yt-dlp 2026.10.26 geprüft)
+- [ ] 3 Release v0.4.0 (Version, CHANGELOG `[0.4.0]`, Merge nach `main` → Release-Automatik)
+
+## Geplant für spätere Versionen
 - Phase 7b: Mixcloud + hearthis.at (Watchlist); 7c: archive.org (optional)
 
 ## Blockiert
@@ -124,3 +142,4 @@ Leitfaden `docs/TRANSLATING.md`, Entscheide `docs/decisions.md` «Mehrsprachigke
 - 2026-11-17 – v0.2.1 vorbereitet: Release-Notizen mit übersprungenen Versionen (`releases`, `published`; eine Zusatzanfrage an die Release-Liste, Fallback CHANGELOG), Bridge-Methode `open_url` (Links im System-Browser, nur github.com), Version 0.2.1 + CHANGELOG (englisch), Versionshinweise im Wartung-Tab (`get_release_notes`, aus der mitgelieferten CHANGELOG.md, blätterbar)
 - 2026-11-17 – v0.3.0 Schritt 1 Backend Festivals & Serien fertig (Migration 7, Erkennung, Zuordnen, Tags, Bridge-Vertrag); UI als Nächstes
 - 2026-11-18 – v0.3.0 Festivals & Serien: Backend, UI, Review (M1 behoben), QA BESTANDEN → Release vorbereitet.
+- 2026-11-18 – v0.4.0 «Alles einlesen (einmalig)» gebaut (Backend, UI, 19 Sprachen, Tests, Screenshots, Doku); offen: QA, Review, echter Test unter Windows, Release (ca. 1–2 Std.)

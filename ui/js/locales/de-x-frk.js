@@ -60,7 +60,8 @@ HC.i18n.register({"code": "de-x-frk", "name": "Fränggisch", "dir": "ltr", "intl
     "chars": "Zeichn",
     "results": "Treffer",
     "entries": "Einträch",
-    "clock": "Uhr"
+    "clock": "Uhr",
+    "req_h": "Anfr./h"
   },
   "range": {
     "ge_sleep": "≥ Minimum",
@@ -656,7 +657,8 @@ HC.i18n.register({"code": "de-x-frk", "name": "Fränggisch", "dir": "ltr", "intl
       "database": "Dadenbank",
       "reset": "Zurücksetzn",
       "detection": "Erkennung",
-      "series": "Serien"
+      "series": "Serien",
+      "backfill": "Alles eilesn (aamol)"
     },
     "general": {
       "start_view": {
@@ -1161,6 +1163,16 @@ HC.i18n.register({"code": "de-x-frk", "name": "Fränggisch", "dir": "ltr", "intl
       "variants_help": "Eigne Ausgabn, z.B. Australia oder at Home.",
       "channels": "Kanäle vom Veranstalder",
       "channels_help": "Kanalnama, ID oder URL. Machd bloss die Sicherheid höher."
+    },
+    "watchlist": {
+      "backfill_max_entries": {
+        "label": "Maximal Eiträch pro Quelln",
+        "help": "«Alles eilesn (aamol)» in der Watchlist liesd höchsdns su vill Eiträch vo am Kanal oder ner Playlist."
+      },
+      "backfill_requests_per_hour": {
+        "label": "Anfrogn pro Stund",
+        "help": "Seitn-Anfrogn vo «Alles eilesn» wern schee verdeild (120 = alle 30 s); der normale Abschdand und der Backoff gelln aa. A planda Lauf (Aufgabenplanung) machd höchsdns su vill Anfrogn weider."
+      }
     }
   },
   "opt": {
@@ -1471,5 +1483,43 @@ HC.i18n.register({"code": "de-x-frk", "name": "Fränggisch", "dir": "ltr", "intl
     "p_type": "Set-Ard",
     "p_apply": "Übernehma",
     "p_auto": "Zurück auf automadisch"
+  },
+  "backfill": {
+    "action": "Alles eilesn (aamol)",
+    "action_title": "Die ganze Lisdn vo derer Quelln aamol Seitn fier Seitn eilesn – neue Treffer kumma in den Eingang",
+    "again_title": "Nochamol alles eilesn – bloß des Unbekannde kummd dazu",
+    "search_title": "Ned fier gschbeicherde Suchn – a Suche liefert höchsdns 100 Treffer",
+    "why_open": "Des Eilesn laafd scho – unterm Nama ohaldn oder abbrechn",
+    "st_pending": "Waard",
+    "st_running": "Liesd ei …",
+    "st_paused": "Ogholdn",
+    "progress": "{n} / ~{total}",
+    "progress_cap": "{n} / max. {cap}",
+    "added": "+{n} im Eingang",
+    "done_short": "Alles eiglesn {date}",
+    "done_title": "Ganz eiglesn: {date} · {n} Eiträch",
+    "note_title": "Ledsde Underbrechung",
+    "pause": "Ohaldn",
+    "resume": "Weidermachn",
+    "cancel": "Abbrechn",
+    "keep": "Weider eilesn",
+    "dlg_title": "Alles vo «{name}» eilesn?",
+    "dlg_text": "Liesd die ganze Lisdn vo derer Quelln aamol Seitn fier Seitn ei – flach und billich, durch die Drosslung; glodn werd nix. Treffer, die durch deine Filder kumma, landn im <b>Eingang</b>, aa bei Quelln mid automadischm Download. Bekannde Videos kumma nie doppld.",
+    "dlg_requests": "Anfrogn",
+    "dlg_time": "Dauer",
+    "dlg_entries": "Eiträch",
+    "dlg_known": "Bekannd vo der ledsdn Brüfung: <b>{n}</b> Eiträch.",
+    "dlg_unknown": "Wie grouß des is, wass ma ned – vorsichdich gschätzd fier des Maximum vo {cap} Eiträch.",
+    "dlg_capped": "Eiglesn wern bloß die erschdn {cap} Eiträch (Einstellungen › Zeitplan).",
+    "dlg_resume": "Machd nach {n} scho glesne Eiträch weider; deren Seitn wern erschd nochamol abgfrochd.",
+    "dlg_pace": "Höchsdns {n} Anfrogn pro Stund, schee verdeild. A Backoff (HTTP 429 / Bot-Brüfung), Zumachn vo der App oder a Fehler underbrechn bloß – nachert gehd's vo selber weider. Ohaldn oder abbrechn kannsd allaweil.",
+    "dlg_ok": "Eilesn ofanga",
+    "dlg_ok_resume": "Weider eilesn",
+    "dlg_cancel_title": "Eilesn abbrechn?",
+    "dlg_cancel_text": "Des Eilesn vo «{name}» hörd auf, der Fordschridd is weg. Treffer im Eingang bleibm.",
+    "toast_started": "«{name}» werd ganz eiglesn – laafd im Hintergrund",
+    "toast_done": "«{name}» ganz eiglesn – +{n} im Eingang",
+    "toast_paused": "«{name}» ogholdn – weider mid «Weidermachn»",
+    "toast_cancelled": "Eilesn vo «{name}» abbrochn"
   }
 });
