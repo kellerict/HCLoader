@@ -302,10 +302,10 @@ def test_no_hardcoded_german_in_ui(path):
 
 def test_lint_detects_german(tmp_path):
     bad = tmp_path / "x.js"
-    bad.write_text("const a = 'Datei fehlt'; /* Kommentar für alle */\nconst b = `Grösse`;\n")
+    bad.write_text("const a = 'Datei fehlt'; /* Kommentar für alle */\nconst b = `Grösse`;\n", encoding="utf-8")
     assert len(_german_hits(bad)) == 2
     ok = tmp_path / "y.js"
-    ok.write_text("const a = t('file.missing'); // Datei fehlt\nconst b = 'Hardfloor Zürich';\n")
+    ok.write_text("const a = t('file.missing'); // Datei fehlt\nconst b = 'Hardfloor Zürich';\n", encoding="utf-8")
     assert _german_hits(ok) == []
 
 
