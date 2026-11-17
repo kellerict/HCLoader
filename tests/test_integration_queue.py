@@ -507,9 +507,13 @@ def test_search_limit_message_with_reopening_time(world):
     assert w.api.search("hardcore")["ok"]
     res = w.api.search("gabber", {"genre": None, "year": 2026})
     assert res["ok"] is False
-    reopen = (w.time.now + timedelta(hours=1)).astimezone()
+    from app.core.discover import format_until
+
+    # format_until compares with the real date (adds "dd.mm." on another day): the fake clock
+    # of this test may lie on another day than the machine running it
+    reopen = w.time.now + timedelta(hours=1)
     assert res["error"] == (
-        f"Limit «Suchen pro Stunde» erreicht (1/1) – wieder möglich ab {reopen:%H:%M}"
+        f"Limit «Suchen pro Stunde» erreicht (1/1) – wieder möglich ab {format_until(reopen)}"
     )
 
 

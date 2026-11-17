@@ -36,7 +36,67 @@ $FfmpegUrl = 'https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip'
 $FfmpegShaUrl = "$FfmpegUrl.sha256"
 $ProviderRepo = 'https://github.com/Brainicism/bgutil-ytdlp-pot-provider'
 
-function Write-Step([string]$Text) { Write-Host "==> $Text" -ForegroundColor Cyan }
+function Write-Step([string]$Text) {
+    # elapsed time since the first step, so long runs visibly progress
+    if (-not $script:HclClock) { $script:HclClock = [Diagnostics.Stopwatch]::StartNew() }
+    $t = $script:HclClock.Elapsed
+    Write-Host ('==> [{0:00}:{1:00}] {2}' -f [int][math]::Floor($t.TotalMinutes), $t.Seconds, $Text) -ForegroundColor Cyan
+}
+
+function Save-Download([string]$Url, [string]$OutFile) {
+    # Download with a live progress line ("  12.3 / 98.0 MB (13%) - 6.1 MB/s"), so long downloads
+    # visibly move. Streams to disk; no module dependency (works in PS 5.1 and 7).
+    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+    $req = [Net.HttpWebRequest]::Create($Url)
+    $req.UserAgent = 'HCLoader-Setup'
+    $req.AllowAutoRedirect = $true
+    $req.Timeout = 60000
+    $req.ReadWriteTimeout = 60000
+    $resp = $req.GetResponse()
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    $done = [long]0
+    $total = [long]$resp.ContentLength
+    $in = $null
+    $out = $null
+    try {
+        $in = $resp.GetResponseStream()
+        $out = [IO.File]::Create($OutFile)
+        $buf = New-Object byte[] 262144
+        $lastMs = [long]-1000
+        while ($true) {
+            $n = $in.Read($buf, 0, $buf.Length)
+            if ($n -le 0) { break }
+            $out.Write($buf, 0, $n)
+            $done += $n
+            if ($sw.ElapsedMilliseconds - $lastMs -ge 500) {
+                $lastMs = $sw.ElapsedMilliseconds
+                Write-DownloadProgress $done $total $sw.Elapsed.TotalSeconds
+            }
+        }
+        Write-DownloadProgress $done $total $sw.Elapsed.TotalSeconds
+        Write-Host ''
+    }
+    finally {
+        if ($out) { $out.Dispose() }
+        if ($in) { $in.Dispose() }
+        $resp.Close()
+    }
+}
+
+function Write-DownloadProgress([long]$Done, [long]$Total, [double]$Seconds) {
+    $mb = $Done / 1MB
+    $speed = 0
+    if ($Seconds -gt 0) { $speed = $mb / $Seconds }
+    if ($Total -gt 0) {
+        $pct = [int](100 * $Done / $Total)
+        $bar = ('#' * [int]($pct / 5)).PadRight(20, '.')
+        $line = '    [{0}] {1,6:N1} / {2:N1} MB ({3,3}%)  {4:N1} MB/s' -f $bar, $mb, ($Total / 1MB), $pct, $speed
+    }
+    else {
+        $line = '    {0:N1} MB  {1:N1} MB/s' -f $mb, $speed
+    }
+    Write-Host ("`r" + $line + '   ') -NoNewline -ForegroundColor DarkGray
+}
 
 function Remove-Tree([string]$Path) {
     # Remove-Item fails on paths > 260 characters (deep node_modules). rmdir with the
@@ -105,7 +165,7 @@ function Get-ExpectedSha256([string]$Url) {
 
 function Get-Zip([string]$Url, [string]$TempDir, [string]$ShaUrl) {
     $zip = Join-Path $TempDir 'download.zip'
-    Invoke-WebRequest -Uri $Url -OutFile $zip -UseBasicParsing
+    Save-Download $Url $zip
     if ($ShaUrl) {
         $expected = Get-ExpectedSha256 $ShaUrl
         if ($expected) {

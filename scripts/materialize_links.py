@@ -69,6 +69,8 @@ def materialize(root: Path) -> int:
                     _remove_link(path)
                     shutil.copy2(target, path)
                 count += 1
+                if count % 50 == 0:
+                    print(f"    {count} Links aufgeloest ...", flush=True)
             elif entry.is_dir(follow_symlinks=False):
                 stack.append(path)
     return count
@@ -95,7 +97,7 @@ def main(argv: list[str]) -> int:
     if not folder.is_dir():
         print(f"Ordner fehlt: {folder}", file=sys.stderr)
         return 2
-    print(materialize(folder))
+    print(f"    {materialize(folder)} Links aufgeloest (fertig)")
     return 0
 
 

@@ -50,6 +50,8 @@ def make_zip(root: Path, target: Path) -> int:
             arc = f"{top}/{path.relative_to(root).as_posix()}"
             zf.write(path, arc)
             count += 1
+            if count % 1000 == 0:
+                print(f"    {count} Dateien gepackt ...", flush=True)
     return count
 
 
@@ -58,7 +60,7 @@ def main(argv: list[str]) -> int:
         print(longest(Path(argv[1])))
         return 0
     if len(argv) == 3 and argv[0] == "zip":
-        print(make_zip(Path(argv[1]), Path(argv[2])))
+        print(f"    {make_zip(Path(argv[1]), Path(argv[2]))} Dateien gepackt (fertig)")
         return 0
     print(__doc__, file=sys.stderr)
     return 2

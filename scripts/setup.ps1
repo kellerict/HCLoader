@@ -22,7 +22,12 @@ if ($PSVersionTable.PSVersion.Major -lt 6) {
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $RepoRoot
 
-function Write-Step([string]$Text) { Write-Host "==> $Text" -ForegroundColor Cyan }
+function Write-Step([string]$Text) {
+    # elapsed time since the first step, so long runs visibly progress
+    if (-not $script:HclClock) { $script:HclClock = [Diagnostics.Stopwatch]::StartNew() }
+    $t = $script:HclClock.Elapsed
+    Write-Host ('==> [{0:00}:{1:00}] {2}' -f [int][math]::Floor($t.TotalMinutes), $t.Seconds, $Text) -ForegroundColor Cyan
+}
 
 $VenvDir = Join-Path $RepoRoot '.venv'
 $VenvPython = Join-Path $VenvDir 'Scripts\python.exe'
