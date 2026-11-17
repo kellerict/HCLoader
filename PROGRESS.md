@@ -51,9 +51,10 @@ Phase 6 – Portable (User-Wunsch, Variante 2: komplett portable)
 - Aufgabenplanung: Pfad ändert sich beim Verschieben → App erkennt veränderten Pfad und bietet an, die Aufgabe neu anzulegen.
 - `scripts/build_portable.ps1` + GitHub-Actions-Job (windows-latest), der ein fertiges Portable-ZIP als Artefakt baut (deno, ffmpeg, bgutil inklusive; Lizenzen beilegen).
 
-## v0.2.0 – Mehrsprachigkeit (User-Wunsch: «in allen 10 Top-Weltsprachen erstmal»)
-Sprachen (18): en (Referenz + Standard), de (de-CH), zh-CN, hi, es, fr, bn, pt (pt-BR), ru, id, nl, sv, nb,
-fi, lt, lv, et, de-x-frk (Fränggisch, Spass-Dialekt: nie per `auto`, Rückfall de → en). ar durch nl ersetzt.
+## v0.2.0 – Mehrsprachigkeit (User-Wunsch: «in allen 10 Top-Weltsprachen erstmal») – BEREIT FÜR RELEASE
+Sprachen (19): en (Referenz + Standard), de (de-CH), zh-CN, hi, es, fr, bn, pt (pt-BR), ru, id, nl,
+nl-BE (Vlaams, Teil-Katalog, Rückfall nl → en), sv, nb, fi, lt, lv, et, de-x-frk (Fränggisch,
+Spass-Dialekt: nie per `auto`, Rückfall de → en). ar durch nl ersetzt.
 Leitfaden `docs/TRANSLATING.md`, Entscheide `docs/decisions.md` «Mehrsprachigkeit».
 - [x] 1 Architektur + Extraktion + de/en (`integrator`): UI-Engine `ui/js/i18n.js`, Kataloge
   `ui/js/locales/<code>.js` (912 Schlüssel), Backend `app/core/i18n.py` + `app/locales/<code>.json`
@@ -65,7 +66,9 @@ Leitfaden `docs/TRANSLATING.md`, Entscheide `docs/decisions.md` «Mehrsprachigke
 - [x] Installer: Datenschutz-Seite mit Abwahl der Update-Prüfung (SignPath-Bedingung),
   `installer-defaults.json` nur für neue `config.yaml`
 - [x] Release-Automatik: Push auf `main` mit neuer Version + CHANGELOG-Abschnitt → Tag + Release (`portable.yml`, `docs/RELEASING.md`)
-- [ ] 4 QA + Review, dann CHANGELOG/Tag v0.2.0
+- [x] 4 QA BESTANDEN (`docs/qa/v0.2.0.md`), Review FREIGEGEBEN (`docs/reviews/v0.2.0.md`); Minor 1/2/4 behoben,
+  Rest akzeptiert (Nachtrag im Review); nl-BE ergänzt; `__version__` 0.2.0, CHANGELOG `[0.2.0]`
+- [ ] Release: Merge nach `main` → Release-Automatik erstellt Tag `v0.2.0` + Release (nicht manuell taggen)
 
 ## Geplant für v0.3.0
 - **Watchlist: «Alles einlesen (einmalig)» pro Quelle** (User-Wunsch): Kanal/Playlist/SoundCloud-Künstler seitenweise vollständig lesen (Throttle, Pausen), Obergrenze einstellbar (~2000), fortsetzbar nach Backoff/Neustart/Abbruch (Cursor in state), Ziel immer Eingang (auch bei Auto-Download), Fortschritt an der Quelle («Liest ein … 240 / ~500»), Bestätigungsdialog mit geschätzter Anzahl Anfragen. Suchquellen bleiben bei 100.
@@ -99,3 +102,4 @@ Leitfaden `docs/TRANSLATING.md`, Entscheide `docs/decisions.md` «Mehrsprachigke
 - 2026-11-17 – Windows-CI erstmals komplett grün (85c1b27; Ursachen: modale MessageBox, rekursive Windows-Mutexe, Lock-Schlüssel ohne Datenordner). QA 7a/8/Update BESTANDEN, Review-Funde behoben. → main angelegt, Tag v0.1.0.
 - 2026-11-17 – v0.2.0 Mehrsprachigkeit Schritt 1 (Architektur, de/en) fertig; Backfill/7b/7c → v0.3.0
 - 2026-11-17 – v0.2.0: 18 Sprachen registriert (inkl. sv/nb/fi/lt/lv/et/de-x-frk), Installer-Datenschutzseite, Release-Automatik; offen: QA + Review, Windows-CI (Inno-Compile, Release-Job)
+- 2026-11-17 – v0.2.0: QA BESTANDEN, Review FREIGEGEBEN; Review-Minors 1/2/4 behoben, nl-BE (Vlaams) als 19. Sprache, Version 0.2.0 + CHANGELOG → bereit für Release (Merge nach main)

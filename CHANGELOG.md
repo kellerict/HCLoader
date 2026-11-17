@@ -5,22 +5,36 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-17
+
+Mehrsprachige Version. / Multilingual release.
+
+**Highlights**
+- 19 Sprachen, Englisch als Standard: Englisch, Deutsch (Schweizer Schreibweise), Chinesisch (vereinfacht), Hindi, Spanisch, Französisch, Bengali, Portugiesisch (Brasilien), Russisch, Indonesisch, Niederländisch, Flämisch (Belgien), Schwedisch, Norwegisch (Bokmål), Finnisch, Litauisch, Lettisch, Estnisch und Fränggisch (Spass-Dialekt). Wechsel sofort, ohne Neustart. / 19 languages, English default, live switching.
+- Schriften je Schriftsystem (Devanagari, Bengalisch, Chinesisch, Kyrillisch …) und Layout für lange Texte. / Script-specific fonts.
+- Installer: Seite «Datenschutz und Netzwerkzugriffe» mit abwählbarer Update-Prüfung beim Start. / Installer privacy page with an opt-out update-check checkbox.
+- Automatische Releases: neue Version + CHANGELOG-Abschnitt auf `main` → Tag, Release und Assets. / Automatic releases from `main`.
+- Öffentliche Roadmap (v0.2.0 – v0.10.0) im Wiki und als GitHub-Milestones; Wiki im App-Look. / Public roadmap and redesigned wiki.
+
 ### Added
-- Mehrsprachige Oberfläche (Schritt 1 von v0.2.0): Sprache unter Einstellungen › Allgemein
-  (`general.language`, Standard Englisch, «Automatisch» = Windows-Anzeigesprache). Englisch und
-  18 Sprachen: Englisch, Deutsch (Schweizer Schreibweise), Chinesisch (vereinfacht), Hindi,
+- Mehrsprachige Oberfläche: Sprache unter Einstellungen › Allgemein
+  (`general.language`, Standard Englisch, «Automatisch» = Windows-Anzeigesprache).
+  19 Sprachen: Englisch, Deutsch (Schweizer Schreibweise), Chinesisch (vereinfacht), Hindi,
   Spanisch, Französisch, Bengali, Portugiesisch (Brasilien), Russisch, Indonesisch, Niederländisch,
-  Schwedisch, Norwegisch (Bokmål), Finnisch, Litauisch, Lettisch, Estnisch und Fränggisch
-  (Spass-Dialekt; wird von «Automatisch» nie gewählt, fehlende Texte fallen auf Deutsch zurück).
-  Der Wechsel wirkt sofort, ohne App-Neustart. / Multilingual UI: language picker in Settings ›
-  General, English default, 18 languages incl. the Fränggisch fun dialect.
+  Flämisch (`nl-BE`, «Vlaams (België)»), Schwedisch, Norwegisch (Bokmål), Finnisch, Litauisch,
+  Lettisch, Estnisch und Fränggisch (Spass-Dialekt; wird von «Automatisch» nie gewählt, fehlende
+  Texte fallen auf Deutsch zurück). Der Wechsel wirkt sofort, ohne App-Neustart. / Multilingual UI:
+  language picker in Settings › General, English default, 19 languages incl. Flemish and the
+  Fränggisch fun dialect.
 - Sprachkataloge können eine Rückfallsprache angeben (`_meta.fallback`, z. B. `de-x-frk` → `de`
-  → `en`).
+  → `en`). Regionale Varianten wie `nl-BE` enthalten nur die abweichenden Texte (Rest aus `nl`);
+  «Automatisch» wählt `nl-BE` bei belgisch-niederländischer Systemsprache.
 - Installer: Seite «Datenschutz und Netzwerkzugriffe» nach der Ordnerwahl – beschreibt, welche
   Dienste HCLoader kontaktiert (GitHub/PyPI für Update-Prüfungen beim Start, YouTube/SoundCloud nur
   auf Aktion, keine Telemetrie) und bietet «Beim Start nach Updates suchen» zum Abwählen an
   (still: `/UPDATECHECK=0`). Die Wahl gilt für eine neue Konfiguration (`installer-defaults.json`),
-  eine bestehende bleibt unverändert. Weitere Installer-Sprachen: es, fr, pt-BR, ru, nl, fi, nb (sv,
+  eine bestehende bleibt unverändert – bei einem Upgrade zeigt die Seite deshalb einen Hinweis statt
+  der Checkbox. Weitere Installer-Sprachen: es, fr, pt-BR, ru, nl, fi, nb (sv,
   falls Inno Setup sie mitbringt).
 - Release-Automatik: Ein Push auf `main` mit neuer Version (`__version__` ohne Tag) und
   CHANGELOG-Abschnitt `## [X.Y.Z]` erstellt nach erfolgreichem Build und Smoke-Test Tag, Release
@@ -35,6 +49,9 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
   Daten bleiben sprachneutral (Genre «Unsortiert», Ordner, Tags, Datenbank).
 
 ### Fixed
+- Plural-Formen richten sich nach der Sprache, aus der ein Text tatsächlich stammt (fehlt eine
+  Übersetzung, gelten die Regeln der Rückfallsprache, z. B. Englisch statt Russisch).
+- Headless-Lauf: der Backoff-Hinweis erscheint in jeder Sprache nur einmal in der Lauf-Notiz.
 - Portable-Version: der bgutil-PO-Token-Provider lief nach dem Verschieben bzw. Entpacken an einem
   anderen Ort nicht mehr (`Could not find package 'lru-cache'`). Der Provider wird jetzt mit dem
   hoisted Linker von Deno ohne Links installiert (`deno install --node-modules-linker=hoisted`, Deno ≥ 2.8) und
