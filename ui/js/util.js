@@ -97,12 +97,12 @@
       const days = { '7d': 7, '30d': 30, '1y': 365 }[p.period];
       return days ? util.daysAgo(v.upload_date) <= days : true;
     },
-    /** Thumbnails nur vom YouTube-Bild-CDN (https://i.ytimg.com, https://*.ytimg.com) – sonst Platzhalter. */
+    /** Thumbnails nur von den Bild-CDNs von YouTube (https://*.ytimg.com) und SoundCloud (https://*.sndcdn.com) – sonst Platzhalter. */
     safeThumb(url) {
       if (typeof url !== 'string' || !url) return null;
       try {
         const u = new URL(url);
-        return u.protocol === 'https:' && !u.username && !u.port && /(^|\.)ytimg\.com$/i.test(u.hostname) ? u.href : null;
+        return u.protocol === 'https:' && !u.username && !u.port && /(^|\.)(ytimg|sndcdn)\.com$/i.test(u.hostname) ? u.href : null;
       } catch (e) {
         return null;
       }
@@ -236,7 +236,42 @@
     table: svg('<path d="M3 5h18v14H3z"/><path d="M3 10h18M3 15h18M9 5v14"/>'),
     timeline: svg('<path d="M6 3v18"/><circle cx="6" cy="7" r="2"/><circle cx="6" cy="16" r="2"/><path d="M12 7h8M12 16h6"/>'),
     copy: svg('<path d="M9 9h11v11H9z"/><path d="M5 15H4V4h11v1"/>'),
+    wave: svg('<path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 10v4"/>'),
+    skip_prev: svg('<path d="M6 5v14"/><path d="M19 5l-10 7 10 7z"/>'),
+    skip_next: svg('<path d="M18 5v14"/><path d="M5 5l10 7-10 7z"/>'),
+    volume: svg('<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 010 7"/><path d="M19.2 6a8.5 8.5 0 010 12"/>'),
+    mute: svg('<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9.5l5 5M22 9.5l-5 5"/>'),
     file_x: svg('<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9.5 12.5l5 5M14.5 12.5l-5 5"/>'),
+  };
+
+  /* ---------- Plattformen (Phase 7a): YouTube | SoundCloud ---------- */
+  const PLATFORMS = ['youtube', 'soundcloud'];
+  HC.platform = {
+    all: PLATFORMS,
+    of: (x) => (x && x.platform === 'soundcloud' ? 'soundcloud' : 'youtube'),
+    label: (p) => HC.t(`platform.${p === 'soundcloud' ? 'soundcloud' : 'youtube'}`),
+    /** SoundCloud eingeschaltet? (gespeicherte Einstellung, sonst der Status) */
+    scEnabled() {
+      const s = HC.settings && HC.settings.values && HC.settings.values.soundcloud;
+      if (s) return s.enabled !== false;
+      const st = HC.status && HC.status.platforms && HC.status.platforms.soundcloud;
+      return !!(st && st.enabled);
+    },
+    enabled: (p) => p !== 'soundcloud' || HC.platform.scEnabled(),
+    /** -> {enabled, backoff, counters, limits} – Status.platforms, für YouTube ersatzweise die alten Felder. */
+    state(p) {
+      const st = HC.status || {}, v = (HC.settings && HC.settings.values) || {};
+      const x = st.platforms && st.platforms[p];
+      const th = (p === 'soundcloud' ? v.soundcloud : v.throttle) || {};
+      const limits = { downloads_run: th.max_downloads_per_run, downloads_day: th.max_downloads_per_day, searches_hour: th.max_searches_per_hour };
+      if (x) return { enabled: x.enabled !== false, backoff: x.backoff || {}, counters: x.counters || {}, limits: Object.assign(limits, x.limits) };
+      if (p === 'youtube') return { enabled: true, backoff: st.backoff || {}, counters: st.counters || {}, limits };
+      return { enabled: false, backoff: {}, counters: {}, limits };
+    },
+    /** Aktiver Backoff der Plattform oder null. */
+    backoff(p) { const b = HC.platform.state(p).backoff; return b && b.active ? b : null; },
+    /** Plattformen mit aktivem Backoff: [[platform, backoff], …] */
+    backoffs: () => PLATFORMS.map((p) => [p, HC.platform.backoff(p)]).filter((x) => x[1]),
   };
 
   /* ---------- Effekte ---------- */

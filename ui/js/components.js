@@ -83,19 +83,20 @@
   ui.notice = (kind, html) => `<div class="notice ${kind}">${kind === 'ok' ? I.check : kind === 'info' ? I.info : I.warn}<div>${html}</div></div>`;
 
   /* ---------- Kontextmenü ---------- */
-  /** items: [{label, icon, onClick, danger, current}] | {head} | 'sep' */
-  ui.menu = function (anchor, items) {
+  /** items: [{label, icon, onClick, danger, current, key (data-k), disabled}] | {head} | 'sep' */
+  ui.menu = function (anchor, items, o) {
     ui.closeMenu();
     const el = document.createElement('div');
     el.className = 'menu';
     el.innerHTML = items.map((it, i) => {
       if (it === 'sep') return '<hr>';
       if (it.head) return `<div class="mhead">${esc(it.head)}</div>`;
-      return `<button data-i="${i}" class="${it.danger ? 'danger' : ''}">${it.icon || ''}${it.dot ? `<span class="dot" style="background:${esc(it.dot)}"></span>` : ''}<span>${esc(it.label)}</span>${it.current ? `<span class="cur">${t('common.current')}</span>` : ''}</button>`;
+      return `<button data-i="${i}"${it.key ? ` data-k="${esc(it.key)}"` : ''} class="${it.danger ? 'danger' : ''}"${it.disabled ? ' disabled' : ''}>${it.icon || ''}${it.dot ? `<span class="dot" style="background:${esc(it.dot)}"></span>` : ''}<span>${esc(it.label)}</span>${it.current ? `<span class="cur">${t('common.current')}</span>` : ''}</button>`;
     }).join('');
     HC.$('#overlays').appendChild(el);
     const r = anchor.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight;
-    const left = Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8));
+    const left = Math.max(8, Math.min(o && o.align === 'left' ? r.left : r.right - w, window.innerWidth - w - 8));
+    if (o && o.align === 'left') el.classList.add('from-left');
     const top = r.bottom + 4 + h > window.innerHeight - 40 ? Math.max(8, r.top - h - 4) : r.bottom + 4;
     el.style.left = `${left}px`;
     el.style.top = `${top}px`;
@@ -203,7 +204,7 @@
     const h = HC.util.hash(v.id);
     const bars = Array.from({ length: 34 }, (_, i) => `<i style="height:${Math.round((Math.abs(Math.sin(i * 0.7 + h)) * 0.8 + 0.15) * 100)}%;--n:${(i * 7 + h) % 11}"></i>`).join('');
     const art = `<div class="art" style="background:linear-gradient(${h % 360}deg,#000 15%,${g}55 60%,#000),radial-gradient(circle at ${h % 100}% 30%,${g}aa,transparent 45%)"></div><div class="wave">${bars}</div>`;
-    /* Bild nur vom YouTube-Bild-CDN (m10); alles andere zeigt den generierten Platzhalter. */
+    /* Bild nur von den Bild-CDNs von YouTube/SoundCloud (m10); alles andere zeigt den generierten Platzhalter. */
     const src = HC.util.safeThumb(v.thumbnail);
     const img = src ? `<img src="${esc(src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">` : '';
     return `<div class="thumb ${cls || ''}">${art}${img}`;
@@ -213,30 +214,58 @@
     const n = e.target;
     if (n && n.tagName === 'IMG' && n.parentElement && n.parentElement.classList.contains('thumb')) n.remove();
   }, true);
-  ui.gtag = (genre) => `<span class="gtag" style="background:${HC.genres.color(genre)};color:${HC.genres.ink(genre)}">${esc(genre)}</span>`;
+  /** Genre-Badge. o: {edit: klickbar (data-act="genre"), manual: von Hand gesetzt, busy: wird gerade neu getaggt} */
+  ui.gtag = (genre, o) => {
+    const opt = o || {}, style = `background:${HC.genres.color(genre)};color:${HC.genres.ink(genre)}`;
+    const mark = opt.manual ? `<i class="gm" title="${esc(t('genre.manual'))}"></i>` : '';
+    if (!opt.edit) return `<span class="gtag" style="${style}">${esc(genre)}${mark}</span>`;
+    return `<button type="button" class="gtag edit${opt.busy ? ' busy' : ''}" data-act="genre" style="${style}" title="${esc(t(opt.manual ? 'genre.change_manual' : 'genre.change'))}" aria-haspopup="menu"${opt.busy ? ' disabled' : ''}>${opt.busy ? '<span class="spinner"></span>' : ''}${esc(genre)}${opt.manual && !opt.busy ? '<i class="gm"></i>' : ''}</button>`;
+  };
+  /** Auswahl aller Genres aus den Einstellungen (Farbpunkt + Name, aktuelles markiert). */
+  ui.genreMenu = (anchor, current, onPick) => ui.menu(anchor, [{ head: t('card.set_genre') }]
+    .concat(HC.genres.list().map((g) => ({ label: g.name, dot: g.color, current: g.name === current, key: `genre-${g.name}`, onClick: () => { if (g.name !== current) onPick(g.name); } }))), { align: 'left' });
+  /** Kleines Plattform-Badge. YouTube nur, solange SoundCloud eingeschaltet ist (sonst wäre es überall dasselbe). */
+  ui.pbadge = (x, force) => {
+    const p = typeof x === 'string' ? x : HC.platform.of(x);
+    if (p === 'youtube' && !force && !HC.platform.scEnabled()) return '';
+    return `<span class="pbadge ${p === 'soundcloud' ? 'sc' : 'yt'}" title="${esc(HC.platform.label(p))}">${p === 'soundcloud' ? `${I.wave}SC` : 'YT'}</span>`;
+  };
+  /** Kleine Equalizer-Balken (laufende Wiedergabe). */
+  ui.eq = (cls) => `<span class="eqb ${cls || ''}" aria-hidden="true"><i></i><i></i><i></i></span>`;
   ui.genreDot = (genre) => `<span class="okline"><span class="dot" style="background:${HC.genres.color(genre)}"></span>${esc(genre)}</span>`;
 
   /* ---------- Mix-Karte ---------- */
   const CAN_LOAD = ['new', 'inbox', 'failed'];
+  /** Ladbar: passender Status und keine SoundCloud-Go+-Vorschau (die ist nie ladbar). */
+  ui.canLoad = (v) => !!v && CAN_LOAD.includes(v.status) && !v.preview;
+  /** Hinweiszeile einer Karte: Go+-Vorschau bzw. vermutlich schon von der anderen Plattform geladen. */
+  function cardNote(v) {
+    if (v.preview) return `<div class="cnote prev" title="${esc(t('card.preview_title'))}">${I.ban}<span>${esc(t('card.preview'))}</span></div>`;
+    const d = v.duplicate_of;
+    if (d) return `<div class="cnote dup" title="${esc(t('card.duplicate_title', { title: d.title || '', p: HC.platform.label(d.platform) }))}">${I.copy}<span>${esc(t('card.duplicate', { p: HC.platform.label(d.platform) }))}</span></div>`;
+    return '';
+  }
   /** o: {selected, source: Name der Watchlist-Quelle (Badge im Eingang)} */
   ui.card = function (v, o) {
     const opt = o || {};
-    const can = CAN_LOAD.includes(v.status);
+    const can = ui.canLoad(v);
+    const plat = HC.platform.of(v);
     const up = HC.util.uploadLabel(v);
     const upTitle = up.approx ? t('card.date_approx') : up.known ? HC.util.fmtDate(v.upload_date) : t('card.date_unknown');
-    return `<div class="card is-${esc(v.status)}${opt.selected ? ' sel' : ''}" data-id="${esc(v.id)}">
+    return `<div class="card is-${esc(v.status)}${v.preview ? ' is-preview' : ''}${opt.selected ? ' sel' : ''}" data-id="${esc(v.id)}">
       ${ui.thumb(v)}
-        ${ui.gtag(v.genre)}
+        <span class="tl">${ui.gtag(v.genre, { edit: true, manual: v.genre_manual })}${ui.pbadge(v)}</span>
         ${can ? `<span class="selbox" data-act="sel" title="${esc(t('card.select'))}"></span>` : ''}
         ${opt.source ? `<span class="src" title="${esc(t('card.source', { name: opt.source }))}">${I.eye}<span>${esc(opt.source)}</span></span>` : ''}
         <span class="dur">${HC.util.fmtDur(v.duration)}</span></div>
       <div class="cbody">
         <div class="ctitle" title="${esc(v.title)}">${esc(v.title)}</div>
         <div class="cmeta"><span class="ch" title="${esc(v.channel_name)}">${esc(v.channel_name)}</span><span>·</span><span class="${up.approx ? 'approx' : up.known ? '' : 'nodate'}" title="${esc(upTitle)}">${esc(up.text)}</span><span>·</span><span>${HC.util.fmtViews(v.view_count)}</span></div>
+        ${cardNote(v)}
         <div class="cfoot">
           <span class="status st-${esc(v.status)}">${esc(t('status.' + v.status))}</span><span class="spacer"></span>
-          <button class="iconbtn" data-act="yt" title="${esc(t('card.open'))}">${I.external}</button>
-          <button class="iconbtn" data-act="ign" title="${esc(t(v.status === 'ignored' ? 'card.unignore' : 'card.ignore'))}" ${can || v.status === 'ignored' ? '' : 'disabled'}>${v.status === 'ignored' ? I.retry : I.ban}</button>
+          <button class="iconbtn" data-act="yt" title="${esc(t('card.open', { p: HC.platform.label(plat) }))}">${I.external}</button>
+          <button class="iconbtn" data-act="ign" title="${esc(t(v.status === 'ignored' ? 'card.unignore' : 'card.ignore'))}" ${(can || v.status === 'ignored') && !v.preview ? '' : 'disabled'}>${v.status === 'ignored' ? I.retry : I.ban}</button>
           <button class="iconbtn" data-act="more" title="${esc(t('card.more'))}">${I.more}</button>
           <button class="iconbtn dl" data-act="dl" title="${esc(t('card.download'))}" ${can ? '' : 'disabled'}>${I.download}</button>
         </div>
@@ -260,6 +289,7 @@
       else if (act === 'ign') HC.actions.ignore(v, v.status !== 'ignored');
       else if (act === 'yt') HC.actions.open(v);
       else if (act === 'more') HC.actions.menu(v, a);
+      else if (act === 'genre') ui.genreMenu(a, v.genre, (name) => HC.actions.genre(v, name));
     });
   };
 
@@ -276,7 +306,7 @@
       /* Sofort sichtbar machen, auch wenn das Backend kein «video»-Event pro Eintrag sendet. */
       done.forEach((id) => {
         const v = HC.store.get(id);
-        if (v && CAN_LOAD.includes(v.status)) HC.bridge.emit('video', { id, status: 'queued' });
+        if (ui.canLoad(v)) HC.bridge.emit('video', { id, status: 'queued' });
       });
       if (!done.length) ui.toast(t('toast.enqueued_none'), 'info');
       else ui.toast(t(done.length === 1 ? 'toast.enqueued_one' : 'toast.enqueued', { n: done.length }) + (skipped > 0 ? ` · ${t('toast.enqueued_skipped', { n: skipped })}` : ''));
@@ -288,7 +318,7 @@
     },
     async open(v) {
       const r = await HC.bridge.safe('open_video', v.id);
-      if (r && r.ok) ui.toast(t('toast.opening'), 'info', 1800);
+      if (r && r.ok) ui.toast(t('toast.opening', { p: HC.platform.label(HC.platform.of(v)) }), 'info', 1800);
       else fail(r);
     },
     async watch(v) {
@@ -305,8 +335,12 @@
     },
     async genre(v, name) {
       const r = await HC.bridge.safe('set_genre', v.id, name);
-      if (r && r.ok) ui.toast(t('toast.genre_set', { genre: name }), 'info', 1800);
-      else fail(r);
+      if (r && r.ok) {
+        /* Sofort sichtbar, auch wenn das Backend kein «video»-Event schickt. */
+        HC.store.patch(v.id, { genre: name, genre_manual: true });
+        HC.bridge.emit('video', { id: v.id, status: v.status, genre: name });
+        ui.toast(t('toast.genre_set', { genre: name }), 'info', 1800);
+      } else fail(r);
     },
     menu(v, anchor) {
       ui.menu(anchor, [
