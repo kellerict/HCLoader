@@ -27,6 +27,7 @@
 
 **🧩 Project**
 - [Roadmap](Roadmap)
+- [Code signing policy](Code-Signing-Policy)
 - [Architecture](Architecture)
 - [Development](Development)
 

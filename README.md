@@ -224,6 +224,10 @@ decisions, in German).
 
 Next up: multilingual UI (v0.2.0), festivals & series (v0.3.0), full back-catalogue import (v0.4.0), festival collector (v0.5.0) and more – see the [Roadmap](https://github.com/kellerict/HCLoader/wiki/Roadmap).
 
+## Code signing
+
+See the [code signing policy](CODE_SIGNING.md) (team roles, what is signed, privacy policy).
+
 ## Contributing
 
 Issues (bug reports and feature requests) are welcome. Pull requests are limited to repository
