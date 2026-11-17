@@ -13,24 +13,28 @@
   const I = HC.icons;
   const FALLBACK_GENRE = 'Unsortiert';
   const PALETTE = ['#00e5ff', '#ff7a00', '#ff3bd4', '#ffe600', '#3bff9d', '#7a8cff'];
-  const PLACEHOLDERS = ['genre', 'artist', 'channel', 'year', 'date', 'title', 'id'];
+  const PLACEHOLDERS = ['genre', 'artist', 'channel', 'year', 'date', 'title', 'id', 'platform'];
   const MIN_YEAR = 2005; // wie core/config.MIN_UPLOAD_YEAR
   const thisYear = () => new Date().getFullYear();
 
   /* ---------- Schema der Tabs ----------
-     type: bool | int | float | select | text | time | date | chips
+     type: bool | int | float | select | seg (Segment-Schalter) | text | time | date | chips
      scale: Anzeige = Wert / scale (z.B. Sekunden -> Minuten)
      enabled(w): Feld nur bedienbar, wenn die Funktion true liefert
      visible(w): Feld nur sichtbar, wenn die Funktion true liefert (Fehler zeigen es trotzdem)
      zeroEmpty: 0 bedeutet «nicht gesetzt» (leeres Feld)
      max: Zahl oder Funktion
      after(w): nach einer Änderung abhängige Werte nachziehen -> Liste der neu zu zeichnenden Schlüssel
-     {h: key} = Zwischenüberschrift, {custom: name} = Sonderblock          */
+     {h: key} = Zwischenüberschrift, {custom: name, arg} = Sonderblock
+     Felder, die das Backend (noch) nicht kennt (kein Standardwert), werden nicht gezeigt.          */
+  const SC_ON = (w) => !!(w.soundcloud && w.soundcloud.enabled);
   const TABS = [
     { id: 'general', fields: [
       { k: 'general.start_view', type: 'select', options: ['discover', 'inbox', 'watchlist', 'downloads', 'library', 'log'], optLabel: (v) => t('nav.' + v) },
       { k: 'general.log_level', type: 'select', options: ['DEBUG', 'INFO', 'WARNING', 'ERROR'] },
       { k: 'general.confirm_delete', type: 'bool' },
+      { h: 'set.h.playback' },
+      { k: 'player.mode', type: 'seg', options: ['internal', 'external'] },
     ] },
     { id: 'filters', fields: [
       { h: 'set.h.search' },
@@ -53,6 +57,7 @@
       { k: 'filters.hide_done_ignored', type: 'bool' },
       { k: 'filters.apply_channel_blacklist', type: 'bool' },
       { custom: 'blacklist' },
+      { k: 'filters.hide_cross_platform_duplicates', type: 'bool' },
     ] },
     { id: 'genres', fields: [{ custom: 'genres' }], keys: ['genres.items'] },
     { id: 'download', fields: [
@@ -64,6 +69,8 @@
       { h: 'set.h.chapters' },
       { k: 'download.write_cue', type: 'bool' },
       { k: 'download.write_id3_chapters', type: 'bool', enabled: (w) => w.download.audio_format === 'mp3' },
+      { h: 'set.h.soundcloud' },
+      { k: 'download.keep_original_soundcloud', type: 'bool' },
     ] },
     { id: 'storage', fields: [
       { k: 'storage.target_dir', type: 'text', mono: true, wide: true, browse: true },
@@ -76,7 +83,7 @@
       { k: 'storage.title_cleanup_patterns', type: 'chips', lower: false, commaSplits: false, placeholder: 'set.storage.title_cleanup_patterns.ph' },
     ] },
     { id: 'throttle', fields: [
-      { custom: 'backoff' },
+      { custom: 'backoff', arg: 'youtube' },
       { h: 'set.h.pauses' },
       { k: 'throttle.sleep_requests', type: 'float', min: 0, max: 60, unit: 'unit.s' },
       { k: 'throttle.sleep_interval', type: 'int', min: 0, max: 3600, unit: 'unit.s' },
@@ -89,7 +96,24 @@
       { h: 'set.h.backoff' },
       { k: 'throttle.backoff_initial_hours', type: 'float', min: 0.5, max: 168, unit: 'unit.h' },
       { k: 'throttle.backoff_max_hours', type: 'float', min: 0.5, unit: 'unit.h', rangeKey: 'range.ge_initial' },
-      { custom: 'ladder' },
+      { custom: 'ladder', arg: 'throttle' },
+    ] },
+    { id: 'soundcloud', fields: [
+      { custom: 'backoff', arg: 'soundcloud' },
+      { k: 'soundcloud.enabled', type: 'bool' },
+      { h: 'set.h.pauses' },
+      { k: 'soundcloud.sleep_requests', type: 'float', min: 0, max: 60, unit: 'unit.s', enabled: SC_ON },
+      { k: 'soundcloud.sleep_interval', type: 'int', min: 0, max: 3600, unit: 'unit.s', enabled: SC_ON },
+      { k: 'soundcloud.max_sleep_interval', type: 'int', min: 0, unit: 'unit.s', rangeKey: 'range.ge_sleep', enabled: SC_ON },
+      { k: 'soundcloud.limit_rate_mb', type: 'float', min: 0, unit: 'unit.mbs', enabled: SC_ON },
+      { h: 'set.h.limits' },
+      { k: 'soundcloud.max_downloads_per_run', type: 'int', min: 1, max: 100, enabled: SC_ON },
+      { k: 'soundcloud.max_downloads_per_day', type: 'int', min: 1, max: 500, enabled: SC_ON },
+      { k: 'soundcloud.max_searches_per_hour', type: 'int', min: 1, max: 200, enabled: SC_ON },
+      { h: 'set.h.backoff' },
+      { k: 'soundcloud.backoff_initial_hours', type: 'float', min: 0.5, max: 168, unit: 'unit.h', enabled: SC_ON },
+      { k: 'soundcloud.backoff_max_hours', type: 'float', min: 0.5, unit: 'unit.h', rangeKey: 'range.ge_initial', enabled: SC_ON },
+      { custom: 'ladder', arg: 'soundcloud' },
     ] },
     { id: 'network', fields: [
       { custom: 'poStatus' },
@@ -148,7 +172,7 @@
   const optLabel = (def, v) => (def.optLabel ? def.optLabel(v) : t(`opt.${def.k}.${v === '' ? 'none' : v}`));
   function fmtValue(def, v) {
     if (def.type === 'bool') return t(v ? 'common.on' : 'common.off');
-    if (def.type === 'select') return optLabel(def, v);
+    if (def.type === 'select' || def.type === 'seg') return optLabel(def, v);
     if (def.type === 'chips') return v.length ? (v.length > 5 ? `${v.slice(0, 5).join(', ')} … (+${v.length - 5})` : v.join(', ')) : t('common.empty_list');
     if ((def.type === 'int' || def.type === 'float') && def.zeroEmpty && !v) return t('set.not_set');
     if (def.type === 'int' || def.type === 'float') return `${util.trimNum(v / (def.scale || 1))}${def.unit ? ' ' + t(def.unit) : ''}`;
@@ -172,6 +196,8 @@
         return `${ui.toggle(v, 'data-c')}<span class="toggle-label" data-tl>${t(v ? 'common.on' : 'common.off')}</span>`;
       case 'select':
         return `<select class="select" data-c>${def.options.map((o) => `<option value="${esc(o)}"${o === v ? ' selected' : ''}>${esc(optLabel(def, o))}</option>`).join('')}</select>`;
+      case 'seg':
+        return `<div class="seg wide optseg" data-c role="radiogroup">${def.options.map((o) => `<button type="button" role="radio" data-v="${esc(o)}" class="${o === v ? 'on' : ''}" aria-checked="${o === v}">${esc(optLabel(def, o))}</button>`).join('')}</div>`;
       case 'int':
       case 'float':
         return `${def.stepper ? `<button type="button" class="iconbtn" data-step="-1" title="${esc(t('discover.f_year_prev'))}">${I.left}</button>` : ''}<input class="input mono num" data-c type="number" inputmode="decimal" step="${def.type === 'int' && !def.scale ? 1 : 'any'}" value="${v == null || (def.zeroEmpty && !v) ? '' : util.trimNum(v / (def.scale || 1))}"${def.zeroEmpty ? ` placeholder="${esc(t('set.not_set'))}"` : ''}>${def.stepper ? `<button type="button" class="iconbtn" data-step="1" title="${esc(t('discover.f_year_next'))}">${I.right}</button>` : ''}${def.unit ? `<span class="unit">${t(def.unit)}</span>` : ''}`;
@@ -219,6 +245,13 @@
       });
     } else if (def.type === 'select') {
       c.addEventListener('change', () => commit(c.value));
+    } else if (def.type === 'seg') {
+      c.addEventListener('click', (e) => {
+        const b = e.target.closest('button[data-v]');
+        if (!b || b.disabled || b.dataset.v === get(work, def.k)) return;
+        $$('button', c).forEach((x) => { x.classList.toggle('on', x === b); x.setAttribute('aria-checked', x === b); });
+        commit(b.dataset.v);
+      });
     } else if (def.type === 'int' || def.type === 'float') {
       c.addEventListener('input', () => {
         if (c.value.trim() === '') return commit(def.zeroEmpty ? 0 : null);
@@ -268,7 +301,7 @@
     $('[data-reset]', d).disabled = eq(get(work, def.k), get(defaults, def.k));
     d.hidden = !!def.visible && !def.visible(work) && !err;
     const on = !def.enabled || def.enabled(work);
-    $$('[data-c],[data-step]', d).forEach((c) => { c.disabled = !on; });
+    $$('[data-c],[data-step],.optseg button', d).forEach((c) => { c.disabled = !on; });
     const chips = $('[data-chips]', d);
     if (chips) chips.classList.toggle('disabled', !on);
   }
@@ -350,7 +383,7 @@
 
     /* Vorschau des Ablagepfads */
     pathPreview(host) {
-      const sample = { genre: 'Hardcore', artist: 'Gabber Vault', channel: 'Gabber Vault', year: '2026', date: '2026-10-03', title: 'Millennium Hardcore Continuous Mix (Official Video) [HQ]', id: 'gMill3nnium' };
+      const sample = { genre: 'Hardcore', artist: 'Gabber Vault', channel: 'Gabber Vault', year: '2026', date: '2026-10-03', title: 'Millennium Hardcore Continuous Mix (Official Video) [HQ]', id: 'gMill3nnium', platform: 'YouTube' };
       host.innerHTML = `<div class="field plain"><div class="fl"><b>${t('set.path_preview.label')}</b><span class="help">${t('set.path_preview.help')}</span></div>
         <div class="fc"><div class="fc-main"><div class="ph-list">${PLACEHOLDERS.map((p) => `<button type="button" class="ph" data-ph="{${p}}">{${p}}</button>`).join('')}</div><div class="preview" data-out></div></div></div></div>`;
       host.addEventListener('click', (e) => {
@@ -374,34 +407,41 @@
       host._update();
     },
 
-    /* Backoff-Zustand + manuelles Aufheben */
-    backoff(host) {
+    /* Backoff-Zustand + manuelles Aufheben, pro Plattform (clear_backoff(platform)) */
+    backoff(host, platform) {
+      const p = platform || 'youtube', name = HC.platform.label(p);
       host._update = () => {
-        const bo = (HC.status && HC.status.backoff) || {};
-        host.innerHTML = bo.active
-          ? box('warn', t('set.backoff.active'), t('set.backoff.active_detail', { t: `<b>${esc(util.fmtWhen(bo.until))}</b>`, rest: `<b>${esc(util.fmtSpan(bo.remaining_s))}</b>`, level: `<b>${bo.level}</b>` }),
-            `<button class="btn sm danger" data-clear>${I.bolt}${t('set.backoff.clear')}</button>`, ui.notice('warn', t('set.backoff.blocked')), 'warn blink')
-          : box('ok', t('set.backoff.none'), t('set.backoff.none_detail'), `<button class="btn sm" disabled>${I.bolt}${t('set.backoff.clear')}</button>`, '', '');
+        const bo = HC.platform.backoff(p);
+        const html = p === 'soundcloud' && !HC.platform.scEnabled()
+          ? box('off', t('set.backoff.sc_off'), t('set.backoff.sc_off_detail'), '', '', 'off')
+          : bo
+            ? box('warn', t('set.backoff.active', { p: name }), t('set.backoff.active_detail', { t: `<b>${esc(util.fmtWhen(bo.until))}</b>`, rest: `<b>${esc(util.fmtSpan(bo.remaining_s))}</b>`, level: `<b>${esc(bo.level)}</b>` }) + (bo.reason ? ` · ${esc(bo.reason)}` : ''),
+              `<button class="btn sm danger" data-clear>${I.bolt}${t('set.backoff.clear')}</button>`, ui.notice('warn', t('set.backoff.blocked', { p: name })), 'warn blink')
+            : box('ok', t('set.backoff.none', { p: name }), t('set.backoff.none_detail', { p: name }), `<button class="btn sm" disabled>${I.bolt}${t('set.backoff.clear')}</button>`, '', '');
+        if (host._html !== html) { host.innerHTML = html; host._html = html; }
       };
       host.addEventListener('click', async (e) => {
         if (!e.target.closest('[data-clear]')) return;
         const yes = await ui.modal({
           title: t('dlg.backoff.title'), kind: 'warn', okLabel: t('dlg.backoff.ok'), danger: true,
-          body: `<p>${t('dlg.backoff.text')}</p>${ui.notice('warn', t('dlg.backoff.warn'))}`,
+          body: `<p>${t('dlg.backoff.text', { p: name })}</p>${ui.notice('warn', t('dlg.backoff.warn', { p: name }))}`,
         });
         if (!yes) return;
-        const r = await HC.bridge.safe('clear_backoff');
-        if (r && r.ok) ui.toast(t('toast.backoff_cleared'), 'warn');
+        const r = await HC.bridge.safe('clear_backoff', p);
+        if (r && r.ok) { ui.toast(t('toast.backoff_cleared', { p: name }), 'warn'); HC.app.refreshStatus(); }
+        else if (r) ui.toast(r.error || t('err.generic'), 'err');
       });
       host._update();
     },
-    /* Backoff-Stufen als Leiter */
-    ladder(host) {
+    /* Backoff-Stufen als Leiter (section: "throttle" = YouTube | "soundcloud") */
+    ladder(host, section) {
+      const sec = section || 'throttle', p = sec === 'soundcloud' ? 'soundcloud' : 'youtube';
       host._update = () => {
-        const a = +work.throttle.backoff_initial_hours, m = +work.throttle.backoff_max_hours;
+        const a = +work[sec].backoff_initial_hours, m = +work[sec].backoff_max_hours;
         const steps = [];
         if (a > 0 && m >= a) { for (let h = a; steps.length < 8; h *= 2) { steps.push(Math.min(h, m)); if (h >= m) break; } }
-        const level = (HC.status && HC.status.backoff && HC.status.backoff.active && HC.status.backoff.level) || 0;
+        const bo = HC.platform.backoff(p);
+        const level = (bo && bo.level) || 0;
         host.innerHTML = row('set.ladder', steps.length
           ? `<div class="ph-list" style="align-items:center">${steps.map((h, i) => `${i ? `<span class="unit">›</span>` : ''}<span class="tag" style="padding:1px 8px;${i + 1 === level ? 'border-color:var(--warn);color:var(--warn);background:var(--warn-soft)' : ''}"><span>${util.trimNum(h)} h</span></span>`).join('')}<span class="unit">· ${t('set.ladder.reset')}</span></div>`
           : `<span class="unit">${t('set.ladder.invalid')}</span>`);
@@ -734,7 +774,7 @@
     paintChrome();
   }
   function paintChrome() {
-    $('#stabs', el).innerHTML = TABS.map((tab) => {
+    $('#stabs', el).innerHTML = TABS.filter((tab) => !tab.hidden).map((tab) => {
       const nErr = errorsOf(tab).length, dirty = tabKeys(tab).some(isDirtyKey);
       return `<div class="stab${tab.id === cur ? ' active' : ''}" data-tab="${tab.id}" tabindex="0" role="tab" aria-selected="${tab.id === cur}">${t('tabs.' + tab.id)}${nErr ? `<span class="mark err">${nErr}</span>` : dirty ? '<span class="mark dirty"></span>' : ''}</div>`;
     }).join('');
@@ -760,7 +800,7 @@
         const host = document.createElement('div');
         host.dataset.custom = def.custom;
         body.appendChild(host);
-        CUSTOM[def.custom](host);
+        CUSTOM[def.custom](host, def.arg);
         return;
       }
       body.appendChild(fieldEl(def));
@@ -778,6 +818,13 @@
     defaults = HC.settings.defaults;
     errors = {};
     genreKeys = [];
+    /* Felder ohne Standardwert kennt dieses Backend nicht -> weglassen; ein Tab ohne eigene Felder verschwindet. */
+    TABS.forEach((tab) => {
+      tab.all = tab.all || tab.fields;
+      tab.fields = tab.all.filter((f) => !f.k || get(defaults, f.k) !== undefined);
+      tab.hidden = !tab.keys && tab.all.some((f) => f.k) && !tab.fields.some((f) => f.k);
+    });
+    if (TABS.find((x) => x.id === cur).hidden) cur = 'general';
   }
 
   async function save() {
@@ -848,7 +895,7 @@
 
   function show(arg) {
     if (!saved || (!dirtyKeys().length && !eq(saved, HC.settings.values))) adopt(HC.settings.values);
-    if (arg && TABS.some((x) => x.id === arg)) cur = arg;
+    if (arg && TABS.some((x) => x.id === arg && !x.hidden)) cur = arg;
     render();
   }
 
