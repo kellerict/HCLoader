@@ -41,7 +41,7 @@ such as Plex or Jellyfin.
 - **Everything configurable in the GUI**, every setting with help text, default and reset.
 - **Portable or venv install**, a one-click yt-dlp/plugin update, SQLite state, DB backups.
 - **Sources**: YouTube today; SoundCloud is in development. See
-  [Supported sources](docs/wiki/Supported-Sources.md).
+  [Supported sources](https://github.com/kellerict/HCLoader/wiki/Supported-Sources).
 
 <p align="center">
   <img src="docs/screenshots/downloads.png" alt="Downloads view" width="48%">
@@ -74,7 +74,7 @@ Build it yourself with Windows PowerShell 5.1 (internet required, no admin right
 powershell -ExecutionPolicy Bypass -File scripts\build_portable.ps1 -OutDir C:\hcl -Zip
 ```
 
-Details, the other launchers and moving the folder: [Portable build](docs/wiki/Portable-Build.md).
+Details, the other launchers and moving the folder: [Portable build](https://github.com/kellerict/HCLoader/wiki/Portable-Build).
 
 ### Option B: venv install from source
 
@@ -92,7 +92,7 @@ PO-token provider into `bin\` and creates a desktop shortcut. It is idempotent
 .\.venv\Scripts\python -m app.main
 ```
 
-More: [Installation](docs/wiki/Installation.md), [Getting started](docs/wiki/Getting-Started.md).
+More: [Installation](https://github.com/kellerict/HCLoader/wiki/Installation), [Getting started](https://github.com/kellerict/HCLoader/wiki/Getting-Started).
 
 > On recent Windows 11 builds VBScript may be disabled. Use `HCLoader.cmd`
 > (not `HCLoader.vbs`) in that case.
@@ -110,11 +110,11 @@ More: [Installation](docs/wiki/Installation.md), [Getting started](docs/wiki/Get
 | **Einstellungen** (Settings) | All options in tabs: general, filters, genres, download, storage, throttle, SoundCloud, network and PO token, schedule, appearance, maintenance. |
 
 The navigation labels are German; the English names above are used throughout the documentation.
-See the wiki pages [Discover and search](docs/wiki/Discover-and-Search.md),
-[Watchlist and Inbox](docs/wiki/Watchlist-and-Inbox.md),
-[Downloads and queue](docs/wiki/Downloads-and-Queue.md),
-[Library and player](docs/wiki/Library-and-Player.md) and the
-[Settings reference](docs/wiki/Settings-Reference.md).
+See the wiki pages [Discover and search](https://github.com/kellerict/HCLoader/wiki/Discover-and-Search),
+[Watchlist and Inbox](https://github.com/kellerict/HCLoader/wiki/Watchlist-and-Inbox),
+[Downloads and queue](https://github.com/kellerict/HCLoader/wiki/Downloads-and-Queue),
+[Library and player](https://github.com/kellerict/HCLoader/wiki/Library-and-Player) and the
+[Settings reference](https://github.com/kellerict/HCLoader/wiki/Settings-Reference).
 
 ## Being nice to YouTube
 
@@ -138,7 +138,7 @@ Cheap before expensive: results come from flat metadata queries, are filtered, a
 individual videos resolved and downloaded. A video is never downloaded twice (SQLite state plus
 yt-dlp download archive). While a backoff is active, search, watchlist and downloads are blocked
 and the status bar shows the remaining time. SoundCloud has its own limits, counters and backoff.
-More in [Throttling and backoff](docs/wiki/Throttling-and-Backoff.md).
+More in [Throttling and backoff](https://github.com/kellerict/HCLoader/wiki/Throttling-and-Backoff).
 
 ## Folder structure and tags
 
@@ -153,7 +153,7 @@ Example: `D:\Music\HCLoader\Hardcore\Partyraiser\2026\2026-10-03 - Masters of Ha
 The default target folder is `%USERPROFILE%\Music\HCLoader`. Genre folders use the names from your
 genre list (default: Uptempo, Hardcore, Hardstyle and the fallback `Unsortiert`). The video id is
 always part of the file name so that files stay unique. Details on naming, tags, cover and CUE:
-[File naming and tags](docs/wiki/File-Naming-and-Tags.md).
+[File naming and tags](https://github.com/kellerict/HCLoader/wiki/File-Naming-and-Tags).
 
 ## Data locations
 
@@ -171,7 +171,7 @@ you configure, not in the data folder.
   changes often, so keep yt-dlp current.
 - **The app itself**: HCLoader checks GitHub releases at start and can download a new version in
   the background and apply it on the next restart; your data folder is left untouched and the
-  database is backed up before migrations. See [App updates](docs/wiki/App-Updates.md).
+  database is backed up before migrations. See [App updates](https://github.com/kellerict/HCLoader/wiki/App-Updates).
   For a venv install, `git pull` and re-run `.\scripts\setup.ps1` also works.
 
 ## Troubleshooting
@@ -186,7 +186,7 @@ you configure, not in the data folder.
 5. **Many mixes land in "Unsortiert"**: add keywords for the genre, for example `dominator`
    under Settings, Genres.
 
-More in [Troubleshooting](docs/wiki/Troubleshooting.md) and the [FAQ](docs/wiki/FAQ.md).
+More in [Troubleshooting](https://github.com/kellerict/HCLoader/wiki/Troubleshooting) and the [FAQ](https://github.com/kellerict/HCLoader/wiki/FAQ).
 Logs are in `data\logs\hcloader.log` (portable) or `%APPDATA%\HCLoader\logs\hcloader.log`.
 
 ## Development
@@ -202,7 +202,7 @@ Tests never touch the network: non-loopback connections are blocked in `tests/co
 Tests that really need a network (PyPI only, never YouTube) carry the marker `network` and are run
 separately (`pytest -m network`). CI runs `ruff` and `pytest` on `windows-latest`. The project uses
 automated QA and review steps in addition to the tests. See
-[Development](docs/wiki/Development.md), [Architecture](docs/wiki/Architecture.md),
+[Development](https://github.com/kellerict/HCLoader/wiki/Development), [Architecture](https://github.com/kellerict/HCLoader/wiki/Architecture),
 [SPEC.md](SPEC.md) (requirements, in German) and [docs/decisions.md](docs/decisions.md) (design
 decisions, in German).
 
@@ -221,33 +221,34 @@ not work around them.
 
 ## License
 
-**TODO (owner): License: not yet chosen - all rights reserved until a LICENSE file is added.**
+HCLoader is licensed under the **GNU General Public License v3.0 or later** (GPL-3.0-or-later),
+see [LICENSE](LICENSE).
 
 Bundled third-party components keep their own licenses (listed in `THIRD_PARTY_LICENSES.txt`
 inside the portable ZIP).
 
 ## Wiki
 
-[Home](docs/wiki/Home.md) ·
-[Installation](docs/wiki/Installation.md) ·
-[Portable build](docs/wiki/Portable-Build.md) ·
-[Getting started](docs/wiki/Getting-Started.md) ·
-[Discover and search](docs/wiki/Discover-and-Search.md) ·
-[Watchlist and Inbox](docs/wiki/Watchlist-and-Inbox.md) ·
-[Downloads and queue](docs/wiki/Downloads-and-Queue.md) ·
-[Library and player](docs/wiki/Library-and-Player.md) ·
-[Settings reference](docs/wiki/Settings-Reference.md) ·
-[Throttling and backoff](docs/wiki/Throttling-and-Backoff.md) ·
-[File naming and tags](docs/wiki/File-Naming-and-Tags.md) ·
-[Scheduled checks](docs/wiki/Scheduled-Checks.md) ·
-[App updates](docs/wiki/App-Updates.md) ·
-[Troubleshooting](docs/wiki/Troubleshooting.md) ·
-[FAQ](docs/wiki/FAQ.md) ·
-[Architecture](docs/wiki/Architecture.md) ·
-[Development](docs/wiki/Development.md) ·
-[Supported sources](docs/wiki/Supported-Sources.md)
+[Home](https://github.com/kellerict/HCLoader/wiki/) ·
+[Installation](https://github.com/kellerict/HCLoader/wiki/Installation) ·
+[Portable build](https://github.com/kellerict/HCLoader/wiki/Portable-Build) ·
+[Getting started](https://github.com/kellerict/HCLoader/wiki/Getting-Started) ·
+[Discover and search](https://github.com/kellerict/HCLoader/wiki/Discover-and-Search) ·
+[Watchlist and Inbox](https://github.com/kellerict/HCLoader/wiki/Watchlist-and-Inbox) ·
+[Downloads and queue](https://github.com/kellerict/HCLoader/wiki/Downloads-and-Queue) ·
+[Library and player](https://github.com/kellerict/HCLoader/wiki/Library-and-Player) ·
+[Settings reference](https://github.com/kellerict/HCLoader/wiki/Settings-Reference) ·
+[Throttling and backoff](https://github.com/kellerict/HCLoader/wiki/Throttling-and-Backoff) ·
+[File naming and tags](https://github.com/kellerict/HCLoader/wiki/File-Naming-and-Tags) ·
+[Scheduled checks](https://github.com/kellerict/HCLoader/wiki/Scheduled-Checks) ·
+[App updates](https://github.com/kellerict/HCLoader/wiki/App-Updates) ·
+[Troubleshooting](https://github.com/kellerict/HCLoader/wiki/Troubleshooting) ·
+[FAQ](https://github.com/kellerict/HCLoader/wiki/FAQ) ·
+[Architecture](https://github.com/kellerict/HCLoader/wiki/Architecture) ·
+[Development](https://github.com/kellerict/HCLoader/wiki/Development) ·
+[Supported sources](https://github.com/kellerict/HCLoader/wiki/Supported-Sources)
 
-The same pages are published in the GitHub Wiki (see [docs/wiki/README.md](docs/wiki/README.md)).
+The wiki sources live in [`docs/wiki/`](docs/wiki/) (see [docs/wiki/README.md](docs/wiki/README.md) for publishing).
 
 ---
 
