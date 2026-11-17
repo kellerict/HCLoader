@@ -183,6 +183,17 @@ def is_git_checkout(root: Path) -> bool:
     return (root / ".git").exists()
 
 
+def is_installed_copy(root: Path) -> bool:
+    """App folder of the installer (installer/HCLoader.iss): the embedded Python of the
+    portable build (`python/python3xx._pth`), but no `portable.txt` and no `.git`."""
+    if config.is_portable(root) or is_git_checkout(root):
+        return False
+    try:
+        return any(p.is_file() for p in (root / "python").glob("python*._pth"))
+    except OSError:
+        return False
+
+
 # --------------------------------------------------------------------------- GitHub
 
 
@@ -487,13 +498,20 @@ def _crlf_ascii(src: Path, dst: Path) -> None:
 class Runtime:
     """How this installation runs: decides pip and the restart command of the updater."""
 
-    mode: str  # "portable" | "venv" | "other"
+    mode: str  # "portable" | "installed" | "venv" | "other" (see BUNDLED_MODES)
     python: str  # console interpreter (pip)
     pythonw: str  # windowless interpreter (restart)
     site_packages: str
 
 
+# Modes with HCLoader's own embedded Python in `<app>/python/` (portable ZIP, installer): pip
+# needs the portable flags, starters and links are handled like in build_portable.ps1.
+BUNDLED_MODES = ("portable", "installed")
+
+
 def detect_runtime(root: Path, executable: str | None = None) -> Runtime:
+    """`portable` = embedded Python + `portable.txt`; `installed` = embedded Python without the
+    marker (Inno Setup installer, data in %APPDATA%); `venv`; `other` (no pip)."""
     from . import maintenance
 
     exe = Path(executable or sys.executable)
@@ -501,10 +519,10 @@ def detect_runtime(root: Path, executable: str | None = None) -> Runtime:
     w = exe.with_name("pythonw" + exe.suffix)
     pyw = w if w.exists() else exe
     purelib = sysconfig.get_paths().get("purelib", "")
-    if maintenance.is_portable_python(exe, root):
+    if maintenance.is_embedded_python(exe, root):
         pydir = root / maintenance.PORTABLE_PYTHON_DIR
         return Runtime(
-            "portable",
+            "portable" if config.is_portable(root) else "installed",
             str(pydir / "python.exe"),
             str(pydir / "pythonw.exe"),
             str(pydir / "Lib" / "site-packages"),
@@ -517,7 +535,7 @@ def detect_runtime(root: Path, executable: str | None = None) -> Runtime:
 def pip_args(runtime: Runtime, root: Path) -> list[str]:
     from . import maintenance
 
-    flags = list(maintenance.PORTABLE_PIP_FLAGS) if runtime.mode == "portable" else []
+    flags = list(maintenance.PORTABLE_PIP_FLAGS) if runtime.mode in BUNDLED_MODES else []
     return [
         "-m",
         "pip",
@@ -582,6 +600,12 @@ def prepare_staging(
                 f"Version {expected} braucht Python {want}. Bitte das Portable-ZIP neu "
                 "herunterladen und den Ordner data\\ übernehmen."
             )
+        if runtime.mode == "installed":
+            raise UpdateError(
+                f"Version {expected} braucht Python {want}. Bitte das Setup "
+                f"(HCLoader-Setup-{expected}.exe) der neuen Version herunterladen und "
+                "installieren – die Daten in %APPDATA%\\HCLoader bleiben erhalten."
+            )
         raise UpdateError(
             f"Version {expected} braucht Python {want}. Bitte Python {want} installieren, "
             "das venv neu anlegen und scripts\\setup.ps1 ausführen."
@@ -597,7 +621,7 @@ def prepare_staging(
     fetch = Path("scripts") / "fetch_binaries.ps1"
     bin_changed = req_changed or _file_hash(root / fetch) != _file_hash(staging / fetch)
     items = [i for i in (*PROGRAM_DIRS, *PROGRAM_FILES) if (staging / i).exists()]
-    if runtime.mode == "portable":
+    if runtime.mode in BUNDLED_MODES:
         for name in PORTABLE_STARTERS:
             src = staging / "scripts" / "portable" / name
             if src.is_file():
@@ -624,7 +648,7 @@ def prepare_staging(
         "pip_args": pip_args(runtime, root),
         "binaries_changed": bin_changed,
         "bin_dir": str(root / "bin"),
-        "materialize_links": runtime.mode == "portable",
+        "materialize_links": runtime.mode in BUNDLED_MODES,
         "log": str(logs_dir / "update.log"),
         "result": str(update_dir / "result.json"),
         "lock": str(update_dir / "update.lock"),
@@ -763,6 +787,11 @@ class SelfUpdater:
     def portable(self) -> bool:
         return config.is_portable(self.root)
 
+    @property
+    def installed(self) -> bool:
+        """Installed copy (Inno Setup installer): embedded Python, no `portable.txt`."""
+        return is_installed_copy(self.root)
+
     def blocked(self) -> str | None:
         """Why this installation cannot update itself (None = it can)."""
         if self.git_checkout:
@@ -790,6 +819,7 @@ class SelfUpdater:
                 "checked": s.checked,
                 "portable": self.portable,
                 "git_checkout": self.git_checkout,
+                "installed": self.installed,
                 "blocked": self.blocked(),
                 # m6: True = SHA256SUMS matched, False = release without SHA256SUMS (only the
                 # ZIP integrity was checked; banner «ohne Prüfsumme»), None = not downloaded

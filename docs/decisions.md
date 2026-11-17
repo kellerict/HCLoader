@@ -925,3 +925,40 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
   isolated + materialisiert: derselbe `lru-cache`-Fehler wie in der Windows-CI.
 - **Offen:** `deno install --prod` (ohne devDependencies, ZIP deutlich kleiner) wirkte mit `--frozen` +
   hoisted in Deno 2.9.6 nicht (alle 315 Pakete installiert); später erneut prüfen.
+
+## 2026-11-17 – Installer (Inno Setup 6) neben dem Portable-ZIP
+
+- **Entscheid – Inhalt = Portable-Build ohne Marker:** `installer/HCLoader.iss` packt die Dateien des
+  Portable-ZIPs (CI entpackt das ZIP in einen sauberen Ordner, damit keine Testartefakte wie
+  `__pycache__`, `data\` oder pytest hineinkommen), aber ohne `portable.txt` und `data\`. Ergebnis: dasselbe
+  eingebettete Python, `app_home()` fällt auf `%APPDATA%\HCLoader` zurück (wie beim venv-Install).
+  **Grund:** ein Build, zwei Verpackungen; keine zweite Python-Umgebung, die eigens gepflegt werden muss.
+  Daten im Roaming-Profil überleben Deinstallation und Neuinstallation.
+- **Entscheid – pro Benutzer:** `PrivilegesRequired=lowest`, Standardordner
+  `{localappdata}\Programs\HCLoader`, fester `AppId` `{363DD978-CFF7-4D2A-B9B1-F9D6073903A4}`.
+  **Grund:** kein UAC; der Ordner muss für Selbst-Update und den yt-dlp-Knopf (pip) beschreibbar sein.
+- **Entscheid – Selbst-Update erkennt installierte Kopien:** `maintenance.is_embedded_python()` = Interpreter
+  direkt in `<App>\python\` und dort `python3xx._pth` (oder Portable-Modus); `is_portable_python()` bleibt
+  «eingebettet + `portable.txt`». `selfupdate.detect_runtime()` liefert den Modus `installed`, der wie
+  `portable` behandelt wird (`BUNDLED_MODES`: pip mit `--no-build-isolation --prefer-binary`, Starter,
+  Links auflösen); der yt-dlp-Update-Knopf akzeptiert das eingebettete Python. `get_update_status()`
+  meldet `installed`. **Grund:** ohne Marker fiel die installierte Kopie bisher in den Modus `other` –
+  pip ohne die nötigen Flags bzw. «weder venv noch Portable» beim yt-dlp-Update und Abbruch bei
+  geänderter `requirements.txt`.
+- **Entscheid – Upgrade ersetzt die Programmordner:** `[InstallDelete]` löscht `python\`, `app\`, `ui\`,
+  `scripts\`, `bin\`, `licenses\`, `_previous*` vor dem Kopieren; `CloseApplications` (Restart Manager,
+  Filter inkl. `*.pyd`) schliesst eine laufende App. **Grund:** keine veralteten Module/Pakete-Metadaten
+  der alten Version neben den neuen.
+- **Entscheid – Deinstallation:** `[UninstallDelete] {app}` komplett (auch `_previous*`, `__pycache__`, per
+  pip aktualisierte Pakete). Vorher beendet ein verstecktes PowerShell HCLoader-Prozesse aus `{app}` und
+  löscht die Aufgabe `HCLoader-Watchlist` nur, wenn ihr Programm bzw. Arbeitsordner in `{app}` liegt (eine
+  Portable-Kopie kann eine gleichnamige Aufgabe besitzen). `%APPDATA%\HCLoader` und die Musik werden nie
+  angefasst. Damit das Löschen von `{app}` sicher ist, verweigert das Setup Zielordner, die nicht leer sind
+  und keine HCLoader-Installation enthalten, sowie Ordner mit `portable.txt`/`data\`.
+- **Entscheid – MAX_PATH:** CI misst den längsten relativen Pfad (`portable_tools.py longest`), bricht ab,
+  wenn `%LOCALAPPDATA%\Programs\HCLoader` + Pfad > 259 Zeichen, und warnt, wenn Benutzernamen mit 20
+  Zeichen nicht mehr passen. Der Wert geht als `/DMaxRelPath` ins Setup, das zu lange Zielordner ablehnt
+  (auch bei `/DIR=` im Silent-Modus). **Grund:** Inno Setup und Teile von Windows sind nicht durchgehend
+  long-path-fähig; tiefe `node_modules`-Pfade des bgutil-Providers.
+- **Offen:** nicht signiert (SmartScreen «Weitere Informationen › Trotzdem ausführen»); nach einem
+  Selbst-Update zeigt «Apps & Features» weiter die Version des letzten Setups (kosmetisch).

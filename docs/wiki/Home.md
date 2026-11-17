@@ -12,7 +12,7 @@ and with copyright law in your country. See [FAQ](FAQ).
 
 ## Start here
 
-1. [Installation](Installation) (or the [Portable build](Portable-Build))
+1. [Installation](Installation) (installer recommended, or the [Portable build](Portable-Build))
 2. [Getting started](Getting-Started)
 3. [Troubleshooting](Troubleshooting) if something does not work
 

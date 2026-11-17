@@ -208,7 +208,8 @@
                   danach retag(id) (verschiebt die Datei in den Ordner des Genres); bei missing/unknown nur set_genre.
                   ▶: player.mode "internal" -> get_media(id) + Mini-Player (js/player.js), "external" -> play_external(id).
      UpdateStatus {current, latest, available, state, notes, url, progress, error, checked, portable, git_checkout,
-                  blocked, apply_on_exit}
+                  installed, blocked, apply_on_exit}
+                  installed = Kopie aus dem Setup (mitgeliefertes Python, Daten in %APPDATA%\HCLoader)
                   state: "idle"|"checking"|"downloading"|"ready"|"applying"|"error"; available = latest > current;
                   notes = Änderungen (Markdown als Text, escapen!); progress = {phase, pct, bytes, total} | null;
                   blocked = Text, warum sich diese Installation nicht selbst aktualisiert (Git-Checkout, kein Windows) | null;

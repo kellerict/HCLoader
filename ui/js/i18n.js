@@ -530,7 +530,7 @@
       current: 'Installiert', latest: 'Neueste', checked: 'Letzte Prüfung', check_now: 'Jetzt prüfen', checking: 'Prüft …',
       st_idle: 'Aktuell', st_available: 'Neue Version verfügbar', st_checking: 'Prüfung läuft …', st_downloading: 'Wird geladen …',
       st_ready: 'Bereit zum Einspielen', st_applying: 'Wird eingespielt …', st_error: 'Fehler', st_unknown: 'Noch nicht geprüft',
-      up_to_date: 'HCLoader ist aktuell (v{v})', portable: 'Portable-Version', git: 'Git-Checkout',
+      up_to_date: 'HCLoader ist aktuell (v{v})', portable: 'Portable-Version', installed: 'Installiert (Setup)', git: 'Git-Checkout',
       from_repo: 'aus {repo} (nicht die offizielle Quelle)', unverified: 'ohne Prüfsumme (nur ZIP-Integrität geprüft)',
     },
 

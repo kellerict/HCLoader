@@ -211,7 +211,7 @@
     const s = st || {};
     const state = !st ? 'unknown' : s.state === 'idle' ? (s.available ? 'available' : s.checked ? 'idle' : 'unknown') : s.state;
     const led = state === 'error' ? 'err' : state === 'available' || state === 'ready' ? 'warn' : state === 'unknown' ? 'off' : '';
-    const kind = s.portable ? t('upd.portable') : s.git_checkout ? t('upd.git') : '';
+    const kind = s.portable ? t('upd.portable') : s.installed ? t('upd.installed') : s.git_checkout ? t('upd.git') : '';
     const btn = (act, label, cls, icon, dis) => `<button type="button" class="btn ${cls || ''}" data-upd="${act}"${dis ? ' disabled' : ''}>${icon || ''}${esc(label)}</button>`;
     const busy = s.state === 'checking' || s.state === 'downloading' || s.state === 'applying';
     let actions = btn('check', t(s.state === 'checking' ? 'upd.checking' : 'upd.check_now'), '', I.refresh, busy);

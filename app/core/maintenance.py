@@ -73,8 +73,10 @@ PORTABLE_PIP_FLAGS = ("--no-warn-script-location", "--prefer-binary", "--no-buil
 
 
 def update_command(executable: str | None = None, *, portable: bool | None = None) -> list[str]:
+    """`portable` = the bundled embedded Python (portable build or installer), not only
+    portable mode: both need the same pip flags."""
     if portable is None:
-        portable = is_portable_python(executable)
+        portable = is_embedded_python(executable)
     flags = PORTABLE_PIP_FLAGS if portable else ()
     return [str(venv_python(executable)), "-m", "pip", "install", "-U", *flags, *PIP_SPECS]
 
@@ -117,6 +119,31 @@ def is_portable_python(executable: str | Path | None = None, root: Path | None =
         return False
     exe = Path(executable or sys.executable)
     return _same_dir(exe.parent, root / PORTABLE_PYTHON_DIR)
+
+
+def is_embedded_python(executable: str | Path | None = None, root: Path | None = None) -> bool:
+    """True for the embedded Python that HCLoader ships itself: the interpreter lies directly
+    in `<app folder>/python/` and that folder holds the `python3xx._pth` written by
+    build_portable.ps1 (or the app runs in portable mode). Covers the portable ZIP and the
+    installed copy (Inno Setup installer, no `portable.txt`, data in %APPDATA%). Like a venv it
+    belongs to HCLoader alone, so pip may update it (with `PORTABLE_PIP_FLAGS`)."""
+    root = root or config.app_root()
+    exe = Path(executable or sys.executable)
+    pydir = root / PORTABLE_PYTHON_DIR
+    if not _same_dir(exe.parent, pydir):
+        return False
+    if config.is_portable(root):
+        return True
+    try:
+        return any(p.is_file() for p in pydir.glob("python*._pth"))
+    except OSError:
+        return False
+
+
+def is_installed_python(executable: str | Path | None = None, root: Path | None = None) -> bool:
+    """Embedded Python of an installed copy (installer): embedded, but no `portable.txt`."""
+    root = root or config.app_root()
+    return not config.is_portable(root) and is_embedded_python(executable, root)
 
 
 _PROBE = (
@@ -169,7 +196,7 @@ def run_update(
     `executable`: Python of another venv to update (default: the running one). Then versions and
     the venv check refer to that interpreter (acceptance test with a throw-away venv).
     Refuses to run outside a venv (pip would modify the global Python), except for the embedded
-    Python of the portable version (`is_portable_python`). A timer kills a hanging
+    Python of the portable version or the installer (`is_embedded_python`). A timer kills a hanging
     pip after `timeout_s` (the reader loop blocks on the pipe, so a plain `wait(timeout)` after
     it would never trigger).
     """
@@ -177,14 +204,14 @@ def run_update(
         if executable is not None:
 
             def venv_check() -> bool:
-                if is_portable_python(executable):
+                if is_embedded_python(executable):
                     return True
                 return bool((probe_python(venv_python(executable)) or {}).get("venv"))
 
         else:
 
             def venv_check() -> bool:
-                return in_venv() or is_portable_python()
+                return in_venv() or is_embedded_python()
 
     if versions is None:
         versions = (
@@ -194,8 +221,8 @@ def run_update(
         )
     if not venv_check():
         msg = (
-            "HCLoader läuft weder in einer virtuellen Umgebung (venv) noch im Python der "
-            "Portable-Version – Update abgebrochen"
+            "HCLoader läuft weder in einer virtuellen Umgebung (venv) noch im mitgelieferten "
+            "Python (Portable-Version oder Installation) – Update abgebrochen"
         )
         log.error(msg)
         return {"ok": False, "error": msg, "output": ""}

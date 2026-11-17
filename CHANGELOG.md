@@ -23,10 +23,21 @@ Erste öffentliche Version. / First public release.
 - MP3 320 bzw. Original, ID3v2.4-Tags, quadratisches Cover, CUE und ID3-Kapitel; Ordnerstruktur für Plex/Jellyfin.
 - Bibliothek mit eingebautem Mini-Player (Kapitel-Sprungmarken, Trackliste) oder Standardplayer, Genre per Klick ändern (Datei wird verschoben), Neu taggen, Löschen.
 - Protokoll mit Lauf-Historie, Wartung (yt-dlp-Update, DB-Backups), Selbst-Update mit Rollback.
+- Windows-Installer `HCLoader-Setup-0.1.0.exe` (pro Benutzer, ohne Admin-Rechte, Startmenü, Deinstallation) – empfohlen; Portable-ZIP als Alternative. / Windows installer (per user, no admin rights) – recommended; portable ZIP as alternative.
 - Portable-Build mit eingebettetem Python, Setup per `setup.ps1`, Dark-Hardcore-UI mit App-Icon.
 
 
 ### Added
+- Windows-Installer (Inno Setup 6, `installer/HCLoader.iss`): `HCLoader-Setup-<version>.exe` installiert
+  pro Benutzer nach `%LOCALAPPDATA%\Programs\HCLoader` (ohne Admin-Rechte), mit Startmenü-Eintrag,
+  optionaler Desktop-Verknüpfung, «HCLoader starten» am Ende und Deinstallation. Inhalt = Portable-Build
+  ohne `portable.txt`, Daten daher in `%APPDATA%\HCLoader`. Ein neueres Setup installiert über die
+  bestehende Version (schliesst HCLoader, ersetzt die Programmordner). Die Deinstallation entfernt den
+  ganzen Programmordner (auch `_previous*`, Caches) und die geplante Aufgabe dieser Kopie, nie
+  `%APPDATA%\HCLoader` oder die Musik. Das Selbst-Update erkennt installierte Kopien (Modus `installed`,
+  pip im mitgelieferten Python wie bei der Portable-Version). `portable.yml` baut das Setup aus dem
+  Portable-ZIP, prüft die Pfadlänge (MAX_PATH), testet Installation, Upgrade und Deinstallation und
+  hängt das Setup bei Tags an das Release (inkl. `SHA256SUMS`).
 - Selbst-Update von HCLoader über GitHub-Releases: Prüfung einmal pro Start (abschaltbar,
   `maintenance.check_app_updates_on_start`), Banner «Version x verfügbar – Herunterladen / Änderungen /
   Später», Download und Vorbereitung im Hintergrund erst nach Klick (Fortschritt), «Jetzt neu starten» bzw.

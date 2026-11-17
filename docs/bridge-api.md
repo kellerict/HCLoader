@@ -400,7 +400,7 @@ Status). Ergänzungen der Python-Seite:
 
 ```
 {current, latest, available, state, notes, url, progress, error, checked, portable, git_checkout,
- blocked, apply_on_exit, verified, repo, foreign_repo}
+ installed, blocked, apply_on_exit, verified, repo, foreign_repo}
 ```
 - `current`: installierte Version (`app.__version__`); `latest`: neueste gefundene (null = noch nicht
   geprüft); `available` = `latest` > `current` (SemVer, numerisch).
@@ -412,6 +412,9 @@ Status). Ergänzungen der Python-Seite:
 - `error`: deutscher Text (nur bei `state: "error"` oder nach manueller Prüfung); `checked`: ISO der
   letzten erfolgreichen Prüfung.
 - `portable`: Portable-Version; `git_checkout`: App-Ordner enthält `.git` → kein Selbst-Update.
+- `installed`: Kopie aus dem Setup (`HCLoader-Setup-<version>.exe`): mitgeliefertes Python unter
+  `<App>\python\`, kein `portable.txt`, Daten in `%APPDATA%\HCLoader`. Aktualisiert sich selbst wie die
+  Portable-Version (pip mit denselben Flags, Starter-Dateien).
 - `blocked`: Grund, warum sich diese Installation nicht selbst aktualisiert (Git-Checkout, nicht
   Windows) oder null.
 - `apply_on_exit`: Setting `maintenance.apply_update_on_exit` (Beschriftung «Beim Beenden» / «Später»).

@@ -55,12 +55,26 @@ such as Plex or Jellyfin.
   otherwise install the Evergreen runtime from Microsoft)
 - Internet access
 - For the venv install only: **Python 3.12+** (and optionally git)
+- No admin rights for any of the three ways
 
 Everything else (Deno, ffmpeg, ffprobe, the PO-token provider) is fetched or bundled for you.
 
 ## Quick start
 
-### Option A: portable build (no Python needed)
+### Option A: installer (recommended)
+
+1. Download `HCLoader-Setup-<version>.exe` from the
+   [latest release](https://github.com/kellerict/HCLoader/releases/latest).
+2. Run it. The installer is not code-signed, so Windows SmartScreen may say "Windows protected your
+   PC": click **More info** ("Weitere Informationen"), then **Run anyway** ("Trotzdem ausführen").
+3. Keep the default folder (`%LOCALAPPDATA%\Programs\HCLoader`, per user, no admin rights), optionally
+   tick the desktop shortcut, finish. Start HCLoader from the Start menu.
+
+Your data lives in `%APPDATA%\HCLoader\`; the app updates itself (or install a newer setup over it).
+Uninstall via Windows Settings › Apps: it removes the program folder and its scheduled task, but
+never your data or music. Details: [Installation](https://github.com/kellerict/HCLoader/wiki/Installation).
+
+### Option B: portable build (no install, movable)
 
 1. Get the ZIP `HCLoader-portable-<version>-win64.zip` (see [Updating](#updating) for where
    releases are published) or build it yourself (below).
@@ -76,7 +90,7 @@ powershell -ExecutionPolicy Bypass -File scripts\build_portable.ps1 -OutDir C:\h
 
 Details, the other launchers and moving the folder: [Portable build](https://github.com/kellerict/HCLoader/wiki/Portable-Build).
 
-### Option B: venv install from source
+### Option C: venv install from source
 
 ```powershell
 git clone https://github.com/kellerict/HCLoader.git
@@ -159,7 +173,7 @@ always part of the file name so that files stay unique. Details on naming, tags,
 
 | Install type | Settings, database, archive, logs, backups |
 |---|---|
-| venv install | `%APPDATA%\HCLoader\` (`config.yaml`, `hcloader.db`, `archive.txt`, `logs\`, `backups\`) |
+| Installer, venv install | `%APPDATA%\HCLoader\` (`config.yaml`, `hcloader.db`, `archive.txt`, `logs\`, `backups\`) |
 | Portable build | `HCLoader\data\` (as long as `portable.txt` is next to the app) |
 
 The environment variable `HCLOADER_HOME` overrides both. Your music lives in the target folder

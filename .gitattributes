@@ -8,3 +8,6 @@ scripts/portable/*.txt text eol=crlf
 # screenshots and previews are only for README/wiki and stay in the repository.
 docs/screenshots/** export-ignore
 docs/icon-preview.png export-ignore
+
+# Inno Setup script: CRLF like the Windows starters (ISCC reads it as ANSI, keep it ASCII)
+installer/*.iss text eol=crlf
