@@ -38,6 +38,12 @@ $DenoShaUrl = "$DenoUrl.sha256sum"
 $FfmpegUrl = 'https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip'
 $FfmpegShaUrl = "$FfmpegUrl.sha256"
 $ProviderRepo = 'https://github.com/Brainicism/bgutil-ytdlp-pot-provider'
+# Deno 2.8+: `deno install --node-modules-linker=hoisted` (real files, no links -> the provider
+# folder can be moved/zipped; docs/decisions.md "bgutil-Provider: hoisted node_modules")
+$DenoMinVersion = [version]'2.8.0'
+# bump the layout tag when the way node_modules is built changes: forces a reinstall
+$ProviderLayout = 'hoisted-1'
+$HoistTool = Join-Path $PSScriptRoot 'hoisted_node_modules.py'
 
 function Write-Step([string]$Text) {
     # elapsed time since the first step, so long runs visibly progress
@@ -152,6 +158,19 @@ function Invoke-Native([string]$Exe, [string[]]$Arguments, [string]$What) {
     if ($code -ne 0) { throw "$What fehlgeschlagen (Exitcode $code)" }
 }
 
+function Get-DenoVersion([string]$Exe) {
+    # [version] of 'deno x.y.z (...)' or $null (missing/broken binary)
+    $old = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        $out = & $Exe --version 2>$null | Select-Object -First 1
+        if ($out -match '^deno\s+(\d+\.\d+\.\d+)') { return [version]$Matches[1] }
+    }
+    catch { }
+    finally { $ErrorActionPreference = $old }
+    return $null
+}
+
 function New-TempDir {
     $path = Join-Path ([IO.Path]::GetTempPath()) ('hcloader_' + [Guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $path | Out-Null
@@ -195,11 +214,14 @@ New-Item -ItemType Directory -Path $BinDir -Force | Out-Null
 
 # --- deno ------------------------------------------------------------------
 $DenoExe = Join-Path $BinDir 'deno.exe'
-if ((Test-Path $DenoExe) -and -not $Force) {
-    Write-Step 'deno.exe vorhanden - uebersprungen'
+$denoHave = $null
+if (Test-Path $DenoExe) { $denoHave = Get-DenoVersion $DenoExe }
+if ($denoHave -and ($denoHave -ge $DenoMinVersion) -and -not $Force) {
+    Write-Step "deno.exe $denoHave vorhanden - uebersprungen"
 }
 else {
-    Write-Step 'Lade deno ...'
+    if ($denoHave) { Write-Step "deno $denoHave ist aelter als $DenoMinVersion (hoisted node_modules) - lade neu ..." }
+    else { Write-Step 'Lade deno ...' }
     $tmp = New-TempDir
     try {
         $dir = Get-Zip $DenoUrl $tmp $DenoShaUrl
@@ -248,10 +270,12 @@ if (-not $Version) { throw 'Plugin-Version konnte nicht ermittelt werden' }
 $ProviderDir = Join-Path $BinDir 'bgutil-pot-provider'
 $ServerDir = Join-Path $ProviderDir 'server'
 $VersionFile = Join-Path $ProviderDir '.hcloader-version'
+$Marker = "$Version $ProviderLayout"
 $installed = ''
 if (Test-Path $VersionFile) { $installed = (Get-Content -Path $VersionFile -Raw).Trim() }
 
-$ready = (Test-Path (Join-Path $ServerDir 'node_modules')) -and ($installed -eq $Version)
+# an older install (isolated layout with links, marker without layout tag) is rebuilt
+$ready = (Test-Path (Join-Path $ServerDir 'node_modules')) -and ($installed -eq $Marker)
 if ($ready -and -not $Force) {
     Write-Step "bgutil-Provider $Version vorhanden - uebersprungen"
 }
@@ -273,13 +297,21 @@ else {
         }
         finally { Remove-Item -Path $tmp -Recurse -Force -ErrorAction SilentlyContinue }
     }
-    Write-Step 'deno install (Provider-Abhaengigkeiten) ...'
+    if (-not (Test-Path $HoistTool)) { throw "Hilfsskript fehlt: $HoistTool" }
+    # deno.json: nodeModulesDir=manual + nodeModulesLinker=hoisted, so `deno run` resolves like
+    # Node from the real folders (no .deno\ links that point to an absolute old location)
+    Invoke-Native $VenvPython @($HoistTool, 'configure', $ServerDir) 'deno.json anpassen'
+    Write-Step 'deno install (Provider-Abhaengigkeiten, hoisted ohne Links) ...'
     Push-Location $ServerDir
     try {
-        Invoke-Native $DenoExe @('install', '--allow-scripts=npm:canvas', '--frozen') 'deno install'
+        Invoke-Native $DenoExe @('install', '--allow-scripts=npm:canvas', '--frozen', '--node-modules-dir=manual', '--node-modules-linker=hoisted') 'deno install'
     }
     finally { Pop-Location }
-    Set-Content -Path $VersionFile -Value $Version -Encoding ASCII
+    # .bin holds CLI shims of dev tools (eslint, tsc ...); the provider never needs them
+    Remove-Tree (Join-Path $ServerDir 'node_modules\.bin')
+    Write-Step 'Pruefe node_modules (Aufloesung wie Node, keine Links, canvas gebaut) ...'
+    Invoke-Native $VenvPython @($HoistTool, 'check', $ServerDir, '--native', 'canvas') 'node_modules pruefen'
+    Set-Content -Path $VersionFile -Value $Marker -Encoding ASCII
 }
 
 Write-Step 'Fertig.'

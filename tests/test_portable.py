@@ -553,3 +553,208 @@ def test_portable_workflow_contract():
     steps = "\n".join(s.get("run", "") for s in rel["steps"])
     assert "gh release upload" in steps and "SHA256SUMS" in steps and "git archive" in steps
     assert "-source.zip" in steps and "__version__" in steps
+
+
+# --------------------------------------------------------------------------- hoisted node_modules
+# bgutil provider (docs/decisions.md "bgutil-Provider: hoisted node_modules"): real folders in
+# npm's hoisted layout, checked against deno.lock with Node's walk-up algorithm.
+
+# lock like bgutil 2.0.2: proxy-agent needs lru-cache 7, everything else lru-cache 11
+_LOCK = {
+    "version": "5",
+    "specifiers": {
+        "npm:proxy-agent@^8.0.2": "8.0.2",
+        "npm:jsdom@^29.1.1": "29.1.1",
+        "npm:canvas@^3.2.3": "3.2.3",
+        "npm:@eslint/js@^10.0.1": "10.0.1_eslint@10.11.0",
+        "npm:eslint@^10.11.0": "10.11.0",
+    },
+    "npm": {
+        "proxy-agent@8.0.2": {"dependencies": ["agent-base", "lru-cache@7.18.3"]},
+        "agent-base@9.0.0": {},
+        "lru-cache@7.18.3": {},
+        "lru-cache@11.5.3": {},
+        "jsdom@29.1.1": {
+            "dependencies": ["lru-cache@11.5.3", "@asamuzakjp/css-color"],
+            "optionalDependencies": ["fsevents"],
+        },
+        "@asamuzakjp/css-color@5.1.11": {"dependencies": ["lru-cache@11.5.3"]},
+        "canvas@3.2.3": {},
+        "fsevents@2.3.3": {"os": ["darwin"]},
+        "@eslint/js@10.0.1_eslint@10.11.0": {
+            "dependencies": ["eslint"],
+            "optionalPeers": ["eslint"],
+        },
+        "eslint@10.11.0": {},
+    },
+    "workspace": {
+        "packageJson": {
+            "dependencies": [
+                "npm:proxy-agent@^8.0.2",
+                "npm:jsdom@^29.1.1",
+                "npm:canvas@^3.2.3",
+                "npm:@eslint/js@^10.0.1",
+                "npm:eslint@^10.11.0",
+            ]
+        }
+    },
+}
+
+# hoisted: the most used lru-cache (11) on top, 7 nested under proxy-agent
+_HOISTED = {
+    "proxy-agent": "8.0.2",
+    "proxy-agent/node_modules/lru-cache": "7.18.3",
+    "agent-base": "9.0.0",
+    "lru-cache": "11.5.3",
+    "jsdom": "29.1.1",
+    "@asamuzakjp/css-color": "5.1.11",
+    "canvas": "3.2.3",
+    "@eslint/js": "10.0.1",
+    "eslint": "10.11.0",
+}
+
+
+def _pkg(folder: Path, name: str, version: str) -> None:
+    import json
+
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "package.json").write_text(json.dumps({"name": name, "version": version}))
+    (folder / "index.js").write_text(f"// {name}@{version}")
+
+
+def _server(tmp_path, layout=_HOISTED, native=True):
+    import json
+
+    server = tmp_path / "bin" / "bgutil-pot-provider" / "server"
+    nm = server / "node_modules"
+    for rel, version in layout.items():
+        _pkg(nm / rel, rel.rsplit("node_modules/", 1)[-1], version)
+    if native and (nm / "canvas").is_dir():
+        (nm / "canvas" / "build" / "Release").mkdir(parents=True)
+        (nm / "canvas" / "build" / "Release" / "canvas.node").write_bytes(b"MZ")
+    (server / "deno.lock").write_text(json.dumps(_LOCK))
+    (server / "deno.json").write_text('{\n  "allowScripts": ["npm:canvas@3.2.3"]\n}\n')
+    return server
+
+
+def test_hoisted_check_accepts_layout_with_nested_version_conflict_after_move(tmp_path):
+    hn = _load_script("hoisted_node_modules")
+    server = _server(tmp_path)
+    problems, count = hn.check(server, ("canvas",))
+    assert problems == [] and count == len(_HOISTED)
+    # resolution like Node: proxy-agent gets its nested 7.x, jsdom the hoisted 11.x
+    nm = server / "node_modules"
+    assert hn.resolve("lru-cache", nm / "proxy-agent", server) == nm / "proxy-agent" / (
+        "node_modules/lru-cache"
+    )
+    assert hn.resolve("lru-cache", nm / "jsdom", server) == nm / "lru-cache"
+    assert hn.resolve("lru-cache", nm / "@asamuzakjp" / "css-color", server) == nm / "lru-cache"
+    # move the whole folder (old place gone): nothing points back, still fine
+    moved = tmp_path / "elsewhere" / "HCLoader-bin"
+    moved.parent.mkdir()
+    (tmp_path / "bin").rename(moved)
+    assert hn.check(moved / "bgutil-pot-provider" / "server", ("canvas",))[0] == []
+    assert hn.main(["check", str(moved / "bgutil-pot-provider" / "server")]) == 0
+
+
+def test_hoisted_check_rejects_wrongly_hoisted_conflict(tmp_path):
+    hn = _load_script("hoisted_node_modules")
+    layout = {k: v for k, v in _HOISTED.items() if "/node_modules/" not in k}
+    problems, _ = hn.check(_server(tmp_path, layout), ())
+    assert problems == ["node_modules/proxy-agent: lru-cache 11.5.3 statt 7.18.3"]
+
+
+def test_hoisted_check_rejects_materialized_isolated_layout(tmp_path):
+    """The CI bug: deno's isolated layout with the top-level links replaced by copies. The copy
+    of proxy-agent sits outside .deno, its sibling dependencies are no longer reachable."""
+    hn = _load_script("hoisted_node_modules")
+    isolated = {}
+    for rel, version in _HOISTED.items():
+        if "/node_modules/" in rel:
+            continue
+        isolated[rel] = version  # materialized top-level copy
+        key = f"{rel.replace('/', '+')}@{version}"
+        isolated[f".deno/{key}/node_modules/{rel}"] = version
+    isolated[".deno/proxy-agent@8.0.2/node_modules/lru-cache"] = "7.18.3"  # sibling copy
+    isolated[".deno/proxy-agent@8.0.2/node_modules/agent-base"] = "9.0.0"
+    isolated.pop("lru-cache")  # not a direct dependency -> not on top
+    isolated.pop("agent-base")
+    isolated.pop("@asamuzakjp/css-color")
+    problems, _ = hn.check(_server(tmp_path, isolated), ())
+    assert "node_modules/proxy-agent: findet lru-cache nicht" in problems
+    assert "node_modules/proxy-agent: findet agent-base nicht" in problems
+    assert "node_modules/jsdom: findet @asamuzakjp/css-color nicht" in problems
+    assert hn.main(["check", str(tmp_path / "bin" / "bgutil-pot-provider" / "server")]) == 1
+
+
+def test_hoisted_check_root_deps_optional_and_native(tmp_path):
+    hn = _load_script("hoisted_node_modules")
+    layout = dict(_HOISTED)
+    layout["eslint"] = "9.0.0"  # wrong direct version; also wrong for @eslint/js (optional peer)
+    layout.pop("jsdom")
+    problems, _ = hn.check(_server(tmp_path, layout, native=False), ("canvas",))
+    assert problems == [
+        "eslint: Version 9.0.0 statt 10.11.0",
+        "Direkte Abhaengigkeit fehlt: jsdom",
+        "node_modules/@eslint/js: eslint 9.0.0 statt 10.11.0",
+        "Native Erweiterung fehlt: canvas/build/Release/*.node",
+    ]
+    # fsevents (optional, other OS) is not installed: no problem
+    assert "fsevents" not in " ".join(problems)
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="symlinks need privileges on Windows")
+def test_hoisted_check_reports_links(tmp_path):
+    hn = _load_script("hoisted_node_modules")
+    server = _server(tmp_path)
+    nm = server / "node_modules"
+    (nm / ".bin").mkdir()
+    (nm / ".bin" / "tool").symlink_to(nm / "jsdom" / "index.js")
+    problems, _ = hn.check(server, ("canvas",))
+    assert problems == [f"Link (nicht verschiebbar): {nm / '.bin' / 'tool'}"]
+
+
+def test_hoisted_configure_sets_manual_and_hoisted(tmp_path):
+    import json
+
+    hn = _load_script("hoisted_node_modules")
+    server = _server(tmp_path)
+    assert hn.configure(server) is True
+    data = json.loads((server / "deno.json").read_text())
+    assert data == {
+        "allowScripts": ["npm:canvas@3.2.3"],
+        "nodeModulesDir": "manual",
+        "nodeModulesLinker": "hoisted",
+    }
+    assert hn.configure(server) is False  # idempotent
+    (server / "deno.json").unlink()
+    assert hn.main(["configure", str(server)]) == 0
+    assert json.loads((server / "deno.json").read_text())["nodeModulesLinker"] == "hoisted"
+    assert hn.main(["check", str(tmp_path / "missing")]) == 2
+    assert hn.main([]) == 2
+
+
+def test_hoisted_lock_keys():
+    hn = _load_script("hoisted_node_modules")
+    assert hn.split_key("@scope/name@1.2.3_peer@4.0.0") == ("@scope/name", "1.2.3")
+    assert hn.split_key("lru-cache@7.18.3") == ("lru-cache", "7.18.3")
+    assert hn.split_key("debug") == ("debug", None)
+    assert hn.split_key("@types/node") == ("@types/node", None)
+    lock = hn.Lock(_LOCK)
+    assert lock.roots["@eslint/js"] == {"10.0.1"}
+    assert lock.deps[("jsdom", "29.1.1")]["fsevents"] == ({"2.3.3"}, True)
+    assert lock.deps[("@eslint/js", "10.0.1")]["eslint"] == ({"10.11.0"}, True)
+    assert lock.deps[("proxy-agent", "8.0.2")]["lru-cache"] == ({"7.18.3"}, False)
+
+
+def test_fetch_binaries_installs_provider_hoisted_and_checks_it():
+    ps = _text("scripts/fetch_binaries.ps1")
+    assert "'--node-modules-dir=manual', '--node-modules-linker=hoisted'" in ps
+    assert "$DenoMinVersion = [version]'2.8.0'" in ps  # hoisted linker: Deno 2.8+
+    assert "'configure', $ServerDir" in ps and "'check', $ServerDir, '--native', 'canvas'" in ps
+    # old installs (marker = plain plugin version, isolated layout) are rebuilt
+    assert '$Marker = "$Version $ProviderLayout"' in ps and "($installed -eq $Marker)" in ps
+    build = _text("scripts/build_portable.ps1")
+    assert "'hoisted_node_modules.py'" in build
+    smoke = _text(".github/workflows/portable.yml")
+    assert "scripts\\hoisted_node_modules.py') check $server --native canvas" in smoke

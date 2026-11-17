@@ -293,7 +293,7 @@ try {
     $scriptsOut = Join-Path $Dist 'scripts'
     New-Item -ItemType Directory -Path $scriptsOut -Force | Out-Null
     # self-update (docs/decisions.md): the updater and the binary fetcher must be on board
-    foreach ($f in @('run_watchlist.pyw', 'apply_update.ps1', 'fetch_binaries.ps1', 'materialize_links.py')) {
+    foreach ($f in @('run_watchlist.pyw', 'apply_update.ps1', 'fetch_binaries.ps1', 'materialize_links.py', 'hoisted_node_modules.py')) {
         Copy-Item -Path (Join-Path $PSScriptRoot $f) -Destination $scriptsOut -Force
     }
     foreach ($f in @('config.example.yaml', 'README.md', 'LICENSE', 'CHANGELOG.md', 'pyproject.toml', 'requirements.txt')) {
@@ -309,9 +309,11 @@ try {
     & (Join-Path $PSScriptRoot 'fetch_binaries.ps1') -BinDir $BinDir -Python $Py -LicenseDir (Join-Path $LicDir 'ffmpeg')
     $providerGit = Join-Path $BinDir 'bgutil-pot-provider\.git'
     if (Test-Path $providerGit) { Remove-Item -Path $providerGit -Recurse -Force }
-    # deno links npm packages with symlinks/junctions holding absolute paths -> real copies
-    Write-Step 'Loese Links in node_modules auf (verschiebbar machen) ...'
+    # fetch_binaries.ps1 installs the provider hoisted (real files, checked). Safety net: any link
+    # left below bin\ would hold an absolute path -> replace it by a copy (expected: 0 links)
+    Write-Step 'Loese verbliebene Links unter bin\ auf (verschiebbar machen) ...'
     Invoke-Native -Exe $Py -Arguments @((Join-Path $PSScriptRoot 'materialize_links.py'), $BinDir) -What 'Links aufloesen'
+    Invoke-Native -Exe $Py -Arguments @((Join-Path $PSScriptRoot 'hoisted_node_modules.py'), 'check', (Join-Path $BinDir 'bgutil-pot-provider\server'), '--native', 'canvas') -What 'node_modules pruefen'
 
     # --- Lizenzen -------------------------------------------------------------
     Write-Step 'Lege Lizenztexte bei ...'

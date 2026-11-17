@@ -5,6 +5,13 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
 
 ## [Unreleased]
 
+### Fixed
+- Portable-Version: der bgutil-PO-Token-Provider lief nach dem Verschieben bzw. Entpacken an einem
+  anderen Ort nicht mehr (`Could not find package 'lru-cache'`). Der Provider wird jetzt mit dem
+  hoisted Linker von Deno ohne Links installiert (`deno install --node-modules-linker=hoisted`, Deno ≥ 2.8) und
+  nach jeder Installation geprüft (`scripts/hoisted_node_modules.py`). Bestehende Installationen werden
+  bei `fetch_binaries.ps1` bzw. beim Selbst-Update neu aufgebaut; ein `deno.exe` älter als 2.8 wird ersetzt.
+
 ## [0.1.0] - 2026-11-17
 
 Erste öffentliche Version. / First public release.

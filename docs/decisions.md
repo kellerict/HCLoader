@@ -545,7 +545,8 @@ Kurze Notizen zu Architekturentscheiden (Datum, Entscheid, Grund).
   `.deno\<pkg>@<v>\...`). Unter Windows sind das Symlinks/Junctions mit **absoluten** Zielen, die nach
   dem Verschieben ins Leere zeigen würden (und in ZIPs nicht vorkommen). `scripts/materialize_links.py`
   ersetzt jeden Link durch eine Kopie des Ziels. Das kostet Platz (Pakete mehrfach), dafür ist der
-  Ordner verschiebbar. bgutil 2.0.2 hat nur npm-Abhängigkeiten (`package.json`, `deno.json` nur
+  Ordner verschiebbar. **Überholt (2026-11-17):** Kopien der oberen Links brechen die Auflösung
+  transitiver Abhängigkeiten, siehe «bgutil-Provider: hoisted `node_modules`» unten. bgutil 2.0.2 hat nur npm-Abhängigkeiten (`package.json`, `deno.json` nur
   `allowScripts`), also braucht `deno run` keinen globalen `DENO_DIR`-Cache. CI prüft das nach dem
   Verschieben mit leerem `DENO_DIR`.
 - **Recherche pywebview + embeddable Python** (PyPI-Metadaten, pywebview-Doku
@@ -874,3 +875,53 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
   Tag-Ruleset `v*`, immutable releases) in `docs/RELEASING.md`.
 - **Update-Banner:** Leiste als erstes Kind von `<main>` statt `position:fixed` oben rechts (QA: verdeckte
   «Suchen»/Sortierung).
+
+## 2026-11-17 – bgutil-Provider: hoisted `node_modules` (Portable verschiebbar, offline)
+
+- **Fehler:** Portable-CI Smoke (e), nach dem Verschieben mit leerem `DENO_DIR`: `Could not find package
+  'lru-cache' from referrer '…/server/node_modules/proxy-agent/dist/index.js'`. Lokal unter Linux
+  reproduziert (Deno 2.9.6, bgutil 2.0.2): alle Links per `materialize_links.py` kopiert, Ordner verschoben.
+- **Ursache:** Mit `package.json` läuft `deno run` im Modus `manual` (BYONM, Deno-Doku «Manual mode is the
+  default mode for projects using a package.json») und löst npm-Pakete wie Node auf: vom echten Pfad des
+  importierenden Moduls aufwärts `…/node_modules/<name>`. `deno install` legt standardmässig das
+  pnpm-artige «isolated»-Layout an: `node_modules/<pkg>` → `.deno/<pkg>@<v>/node_modules/<pkg>`, die
+  Abhängigkeiten sind Geschwister-Links in `.deno/<pkg>@<v>/node_modules/`. Über den Link liegt der echte
+  Pfad in `.deno`, die Geschwister werden gefunden. Als Kopie liegt `node_modules/proxy-agent` ausserhalb
+  von `.deno`, und oben liegen nur direkte Abhängigkeiten (`lru-cache` gibt es in 7 und 11).
+- **Entscheid – Option C: Deno-eigener hoisted Linker** (Deno ≥ 2.8, denoland/deno#32788; Doku
+  `runtime/fundamentals/node.md` «Pick a layout: isolated vs hoisted»; Quelltext v2.9.6
+  `libs/npm_installer/hoisted.rs`): `deno install --frozen --allow-scripts=npm:canvas
+  --node-modules-dir=manual --node-modules-linker=hoisted`, dazu in `server/deno.json`
+  `"nodeModulesDir": "manual", "nodeModulesLinker": "hoisted"` (`scripts/hoisted_node_modules.py configure`).
+  Ergebnis wie npm: echte Ordner (Klon/Hardlink/Kopie aus dem Cache, keine Symlinks/Junctions ausser für
+  Workspace-Pakete, die bgutil nicht hat), die meistgebrauchte Version oben, Konflikte verschachtelt unter
+  dem abhängigen Paket (`proxy-agent/node_modules/lru-cache` 7.x), Lifecycle-Skripte (canvas) laufen im
+  endgültigen Ordner. `.bin` (Shims der Dev-Werkzeuge) wird gelöscht. `deno.lock` bleibt unverändert
+  (`--frozen`).
+- **Verworfen – A (eigener Hoister aus `.deno`):** wäre derselbe Algorithmus, nur selbst gepflegt
+  (Peer-Varianten, optionale/OS-spezifische Pakete, Zyklen, verschachtelte Konflikte). Deno macht genau das
+  seit 2.8 selbst und testet es.
+- **Verworfen – B (Junctions beim Start neu anlegen):** Junctions/Symlinks gehen auf FAT32/exFAT nicht –
+  genau dort liegt eine Portable-Version oft (USB-Stick). Ausserdem Schreibzugriff und ein Start-Schritt bei
+  jedem Ortswechsel, Marker-Logik, und Deno könnte bei abweichendem `.deno`-Zustand neu installieren wollen
+  (Netz).
+- **Prüfung statt Hoffnung:** `scripts/hoisted_node_modules.py check <server> --native canvas` (nur
+  Standardbibliothek, läuft im eingebetteten Python) prüft nach jeder Installation: kein Link unter
+  `node_modules`, jede direkte Abhängigkeit oben in der gesperrten Version, für jedes installierte Paket
+  jede Abhängigkeit aus `deno.lock` per Node-Walk-up in genau der gesperrten Version auffindbar (optionale
+  und optionale Peers dürfen fehlen), `canvas/build/Release/*.node` vorhanden. Am materialisierten
+  isolated-Layout meldet die Prüfung genau den CI-Fehler (`node_modules/proxy-agent: findet lru-cache
+  nicht`). Läuft in `fetch_binaries.ps1`, in `build_portable.ps1` und in Smoke (e) am neuen Ort, dort
+  zusätzlich ein echter `require('canvas')` aus `jsdom` heraus (jsdom lädt canvas erst bei Bedarf,
+  `--version` deckt es nicht ab).
+- **Bestehende Installationen:** `.hcloader-version` enthält jetzt `<Plugin-Version> hoisted-1`; alte
+  Marker (nur Version) → `fetch_binaries.ps1` installiert den Provider neu. Die Portable-Version bekommt das
+  über das Selbst-Update (geändertes `fetch_binaries.ps1` ⇒ `binaries_changed`). Ein `deno.exe` älter als
+  2.8 wird neu geladen. `materialize_links.py` bleibt als Sicherheitsnetz im Build/Updater (erwartet: 0 Links).
+- **Linux-Nachweis (Scratch, Deno 2.9.6 aus npm `deno`):** frischer Klon bgutil 2.0.2 → `configure` →
+  hoisted `deno install` → `check` (315 Pakete ok) → `materialize_links` (0 Links) → Build-`DENO_DIR`
+  gelöscht, Ordner verschoben → `generate_once.ts --version` mit leerem `DENO_DIR` und toter Proxy-Adresse
+  (kein Netz) = `2.0.2`, `require('canvas')` ok, HTTP-Modus `main.ts` antwortet auf `/ping`. Gegenprobe
+  isolated + materialisiert: derselbe `lru-cache`-Fehler wie in der Windows-CI.
+- **Offen:** `deno install --prod` (ohne devDependencies, ZIP deutlich kleiner) wirkte mit `--frozen` +
+  hoisted in Deno 2.9.6 nicht (alle 315 Pakete installiert); später erneut prüfen.

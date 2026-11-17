@@ -125,7 +125,21 @@ jobs:
           # same check as app/core/potoken.py (and the plugin itself): generate_once.ts --version
           & $deno run --allow-env --allow-net "--allow-ffi=$nm" "--allow-write=$cache" "--allow-read=$cache,$nm" (Join-Path $server 'src\generate_once.ts') --version
           if ($LASTEXITCODE -ne 0) { exit 1 }
+          # the native addon jsdom loads lazily (not part of --version): require it like jsdom does
+          $probe = Join-Path $env:RUNNER_TEMP 'canvas_probe.mjs'
+          Set-Content -Path $probe -Encoding ASCII -Value @(
+            "import { createRequire } from 'node:module';",
+            "import { pathToFileURL } from 'node:url';",
+            "const req = createRequire(pathToFileURL(Deno.args[0]));",
+            "const c = req('canvas').createCanvas(8, 8);",
+            "console.log('canvas ok', c.width);"
+          )
+          & $deno run --allow-env "--allow-ffi=$nm" "--allow-read=$nm" $probe (Join-Path $nm 'jsdom\package.json')
+          if ($LASTEXITCODE -ne 0) { exit 1 }
           $py = Join-Path $root 'python\python.exe'
+          # static check at the new place: no links, every locked dependency resolvable (Node walk-up)
+          & $py (Join-Path $root 'scripts\hoisted_node_modules.py') check $server --native canvas
+          if ($LASTEXITCODE -ne 0) { exit 1 }
           & $py -c "import sys; from app.core import binaries, potoken; s = binaries.status(); print(s); r = potoken.probe('script', 4416); print(r); sys.exit(0 if (r['ok'] and s['deno_ok'] and s['ffmpeg_ok'] and s['provider_dir_ok']) else 1)"
           if ($LASTEXITCODE -ne 0) { exit 1 }
 
