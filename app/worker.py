@@ -1417,7 +1417,7 @@ class WatchlistScheduler:
             due = max(due, running + timedelta(seconds=self._grace))
         if self._deferred is not None:
             due = max(due, self._deferred)
-        until = watchlist.blocked_until(self._db, self._throttle)  # 7a: all platforms
+        until = watchlist.blocked_until(self._db, self._throttle, self._settings())  # 7a
         return max(due, until) if until else due
 
     @staticmethod

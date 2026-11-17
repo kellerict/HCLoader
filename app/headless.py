@@ -223,7 +223,7 @@ def _run(
     client: Any = None
     try:
         # 7a: blocked only if every platform with an enabled source is in backoff
-        until = watchlist.blocked_until(db, throttle)
+        until = watchlist.blocked_until(db, throttle, settings)
         if until:
             notes.append(f"Backoff aktiv bis {format_until(until)} – nichts geprüft")
             log.warning(notes[-1])
@@ -283,13 +283,24 @@ def _run(
                     notes.append(session["note"])
                 elif db.next_queued() is not None and queue.blocked()[1]:
                     notes.append(queue.blocked()[1])
-        # SPEC §5: a successful run resets the backoff escalation (never lifts an active backoff)
-        throttle.finish_run(res.checked > 0 and not res.backoff)
-        until_now = throttle.backoff_until()
-        if until_now is None and hasattr(throttle, "platforms"):  # 7a: e.g. SoundCloud
-            until_now = next(
-                (u for u in (t.backoff_until() for t in throttle.platforms()) if u), None
-            )
+        # SPEC §5: a successful run resets the backoff escalation (never lifts an active
+        # backoff). Review m5: per platform - every platform whose sources were checked
+        # without a 429/bot check (SoundCloud's level was never reset by watchlist checks)
+        ok_platforms = res.ok_platforms()
+        if ok_platforms and hasattr(throttle, "platform"):
+            throttle.finish_run(True, platforms=ok_platforms)
+        else:
+            throttle.finish_run(res.checked > 0 and not res.backoff)
+        # Review m5: only active platforms count for the exit code (a SoundCloud backoff with
+        # `soundcloud.enabled = false` or without SoundCloud sources is not «blocked»)
+        until_now = None
+        if hasattr(throttle, "platform"):
+            for name in sorted(watchlist.active_platforms(db, settings)):
+                until_now = throttle.platform(name).backoff_until()
+                if until_now is not None:
+                    break
+        else:
+            until_now = throttle.backoff_until()
         if until_now is not None or res.backoff:
             code = EXIT_BLOCKED
             if until_now is not None and not any(n.startswith("Backoff") for n in notes):

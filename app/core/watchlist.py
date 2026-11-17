@@ -390,6 +390,13 @@ class WatchlistResult:
     run_id: int | None = None
     sources: list[SourceCheck] = field(default_factory=list)
     queued_ids: list[str] = field(default_factory=list)
+    # Review m5: platforms with at least one successfully checked source / with a backoff
+    checked_platforms: set[str] = field(default_factory=set)
+    backoff_platforms: set[str] = field(default_factory=set)
+
+    def ok_platforms(self) -> list[str]:
+        """Platforms checked successfully without a backoff in this run (backoff reset)."""
+        return sorted(self.checked_platforms - self.backoff_platforms)
 
 
 # --------------------------------------------------------------------------- check
@@ -564,12 +571,24 @@ def _maybe_rename(source: Mapping[str, Any], entries: Any, db: Database, res: So
         log.info("Quelle «%s» heisst jetzt «%s»", source.get("name"), name)
 
 
-def blocked_until(db: Database, throttle: Any) -> datetime | None:
-    """Phase 7a: a watchlist check is blocked only if *every* platform with an enabled source
-    is in backoff; then the earliest end, else None. Without sources: the YouTube backoff."""
+def active_platforms(db: Database, settings: Settings | None = None) -> set[str]:
+    """Platforms with an enabled source; SoundCloud only while `soundcloud.enabled` (its
+    sources are skipped otherwise, Review m5). Without sources: {YouTube}."""
+    names = set(db.source_platforms())
+    if settings is not None and not settings.soundcloud.enabled:
+        names.discard(platforms.SOUNDCLOUD)
+    return names or {platforms.YOUTUBE}
+
+
+def blocked_until(
+    db: Database, throttle: Any, settings: Settings | None = None
+) -> datetime | None:
+    """Phase 7a: a watchlist check is blocked only if *every* active platform with an enabled
+    source is in backoff (`active_platforms`); then the earliest end, else None. Without
+    sources: the YouTube backoff."""
     if throttle is None:
         return None
-    names = db.source_platforms() or {platforms.YOUTUBE}
+    names = active_platforms(db, settings)
     untils = []
     for name in sorted(names):
         th = throttle.platform(name) if hasattr(throttle, "platform") else throttle
@@ -675,6 +694,7 @@ def check_all(
                     label = platforms.label(platform)
                     check.error = f"{label} blockiert gerade (429/Bot-Prüfung)"
                     result.backoff = True
+                    result.backoff_platforms.add(platform)
                     blocked.add(platform)
                     note = _backoff_note(pth, exc)
                     result.note = result.note or note
@@ -703,6 +723,7 @@ def check_all(
                 )
                 continue
             result.checked += 1
+            result.checked_platforms.add(platform)
             result.found += check.new
             result.inbox += check.inbox
             result.queued += check.queued

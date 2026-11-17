@@ -636,3 +636,178 @@ def test_watchlist_soundcloud_backoff_skips_only_soundcloud(db):
     assert watchlist.blocked_until(db, th) is None
     th.trigger_backoff("x")
     assert watchlist.blocked_until(db, th) is not None
+
+
+# --------------------------------------------------------------------------- Review 7a/8: M1, M2
+
+
+@pytest.fixture
+def sc_geo(monkeypatch):
+    """Like `sc_api`, but one track of every answer has `policy: BLOCK` (geo-blocked)."""
+    calls: list[str] = []
+
+    def fake_json(self, url, video_id, *a, **kw):
+        q = dict(kw.get("query") or {})
+        calls.append(url.split("?")[0])
+        if "search/tracks" in url:
+            return {"collection": [_track(1, policy="BLOCK"), _track(2)], "next_href": None}
+        if "resolve" in url and url.endswith("/dj-x"):
+            return {"id": 77, "username": "DJ X", "kind": "user"}
+        if "resolve" in url and "/sets/" in url:
+            return {
+                "id": 9,
+                "kind": "playlist",
+                "title": "Hardcore Sessions",
+                "user": {"id": 77, "username": "DJ X"},
+                "tracks": [_track(1, policy="BLOCK"), _track(2), {"id": 3, "kind": "track"}],
+            }
+        if url.endswith("/tracks") and "users" not in url:
+            return [_track(int(x), policy="BLOCK") for x in q["ids"].split(",")]
+        if "users/77/tracks" in url:
+            return {"collection": [_track(5, policy="BLOCK"), _track(6)], "next_href": None}
+        raise AssertionError(url)
+
+    def no_request(self, *a, **kw):
+        raise AssertionError(f"unerwarteter Request: {a[:1]}")
+
+    monkeypatch.setattr(sc.SoundcloudBaseIE, "_download_json", fake_json)
+    monkeypatch.setattr(sc.SoundcloudBaseIE, "_request_webpage", no_request)
+    monkeypatch.setattr(
+        sc.SoundcloudBaseIE, "_initialize_pre_login", lambda self: setattr(self, "_CLIENT_ID", "x")
+    )
+    return calls
+
+
+@pytest.mark.parametrize(
+    ("url", "purpose", "window", "blocked", "ok"),
+    [
+        ("scsearch5:hardcore", "search", ("head", 5), {"sc:1"}, {"sc:2"}),
+        ("https://soundcloud.com/dj-x/tracks", "list", ("head", 5), {"sc:5"}, {"sc:6"}),
+        (
+            "https://soundcloud.com/dj-x/sets/hardcore-sessions",
+            "list",
+            ("head", 5),
+            {"sc:1", "sc:3"},
+            {"sc:2"},
+        ),
+    ],
+)
+def test_geo_blocked_track_does_not_abort_flat_listing(sc_geo, url, purpose, window, blocked, ok):
+    """Review M1, real yt-dlp offline: with `policy: BLOCK` yt-dlp raised GeoRestrictedError
+    for every flat entry (no formats in flat mode) and aborted the whole search/listing."""
+    info = _flat(url, purpose, window, playlistend=5 if purpose == "list" else None)
+    entries = {
+        e["id"]: e for e in (ytclient.normalize_entry(x, "soundcloud") for x in info["entries"])
+    }
+    assert set(entries) == blocked | ok
+    f = config.defaults().filters
+    for vid in blocked:
+        assert entries[vid]["geo_blocked"] is True and entries[vid]["duration"] == 3600
+        assert filters.passes(entries[vid], f) == (False, "Nicht verfügbar (Region)")
+    for vid in ok:
+        assert entries[vid]["geo_blocked"] is False
+        assert filters.passes(entries[vid], f)[0] is True
+
+
+def test_geo_blocked_merge_error_keeps_entry(sc_geo, monkeypatch):
+    """Review M1: an ExtractorError while merging one remembered track (here: the stock
+    `_extract_info_dict` raising for this track) never aborts the listing; the entry stays
+    (without merged metadata, but with its policy)."""
+    from yt_dlp.utils import ExtractorError
+
+    stock = sc.SoundcloudBaseIE._extract_info_dict
+
+    def picky(self, info, full_title=None, secret_token=None, extract_flat=False):
+        if str(info.get("id")) == "5":
+            raise ExtractorError("kaputt", expected=True)
+        return stock(self, info, full_title, secret_token, extract_flat)
+
+    monkeypatch.setattr(sc.SoundcloudBaseIE, "_extract_info_dict", picky)
+    info = _flat("https://soundcloud.com/dj-x/tracks", "list", ("head", 5), playlistend=5)
+    entries = {e["id"]: e for e in info["entries"]}
+    assert set(entries) == {"5", "6"}
+    assert entries["5"]["sc_policy"] == "BLOCK" and "duration" not in entries["5"]
+    assert entries["6"]["duration"] == 3600.0
+
+
+def test_geo_blocked_column_migration_and_upsert(tmp_path):
+    path = tmp_path / "v5.db"
+    conn = sqlite3.connect(path, isolation_level=None)
+    dbmod.migrate(conn, dbmod.MIGRATIONS[:5])
+    conn.execute("INSERT INTO videos(id, title, status) VALUES ('sc:1', 'Alt', 'new')")
+    conn.close()
+    with Database(path) as d:
+        assert d.schema_version() == 6 and d.get_video("sc:1")["geo_blocked"] == 0
+        d.upsert_video({"id": "sc:1", "geo_blocked": True})
+        assert d.get_video("sc:1")["geo_blocked"] == 1
+        d.upsert_video({"id": "sc:1", "title": "Neu"})  # no flag in the dict: unchanged
+        assert d.get_video("sc:1")["geo_blocked"] == 1
+
+
+@pytest.fixture
+def fresh_sc_classes(monkeypatch):
+    monkeypatch.setattr(ytclient, "_SC_FLAT_CLASSES", None)
+    monkeypatch.setattr(ytclient, "_SC_WARNED", set())
+
+
+def test_capability_check_passes_for_installed_ytdlp():
+    assert ytclient._sc_check_capabilities(sc) == []
+
+
+@pytest.mark.parametrize("what", ["info_dict", "extract_set", "headers", "class"])
+def test_changed_ytdlp_internals_keep_stock_extractors(fresh_sc_classes, monkeypatch, caplog, what):
+    """Review M2: a changed signature/attribute is detected before the classes are built;
+    the stock extractors stay in use and the log gets one warning."""
+    if what == "info_dict":
+
+        def changed(self, info, full_title=None, secret_token=None):  # no extract_flat
+            return {}
+
+        monkeypatch.setattr(sc.SoundcloudBaseIE, "_extract_info_dict", changed)
+    elif what == "extract_set":
+
+        def changed_set(self, playlist):  # token dropped
+            return {}
+
+        monkeypatch.setattr(sc.SoundcloudPlaylistBaseIE, "_extract_set", changed_set)
+    elif what == "headers":
+        monkeypatch.setattr(sc.SoundcloudBaseIE, "_HEADERS", None)
+    else:
+        monkeypatch.delattr(sc, "SoundcloudSetIE")
+    assert ytclient._sc_check_capabilities(sc)
+    with pytest.raises(ytclient.ScIncompatible):
+        ytclient._sc_flat_extractor_classes()
+
+    added: list = []
+
+    class Ydl:
+        def add_info_extractor(self, ie):
+            added.append(ie)
+
+    caplog.set_level("WARNING", logger="app.core.ytclient")
+    ytclient._install_sc_flat_extractors(Ydl(), ("head", 5))
+    ytclient._install_sc_flat_extractors(Ydl(), ("head", 5))
+    assert added == []
+    warnings = [r for r in caplog.records if "SoundCloud-Erweiterung nicht aktiv" in r.message]
+    assert len(warnings) == 1
+
+
+def test_runtime_drift_in_override_falls_back_to_stock(sc_api, fresh_sc_classes, monkeypatch, caplog):
+    """Review M2: a TypeError inside an override (here: `_call_api` no longer takes the
+    keyword `query` for the stub batch) falls back to the stock `_extract_set` instead of
+    failing the whole listing; one warning in the log."""
+    stock = sc.SoundcloudBaseIE._call_api
+
+    def changed(self, *args, **kwargs):
+        if "ids" in (kwargs.get("query") or {}):
+            raise TypeError("_call_api() got an unexpected keyword argument 'query'")
+        return stock(self, *args, **kwargs)
+
+    monkeypatch.setattr(sc.SoundcloudBaseIE, "_call_api", changed)
+    caplog.set_level("WARNING", logger="app.core.ytclient")
+    info = _flat("https://soundcloud.com/dj-x/sets/hardcore-sessions", "list", ("tail", 3))
+    entries = [ytclient.normalize_entry(e, "soundcloud") for e in info["entries"]]
+    assert [e["id"] for e in entries] == ["sc:1", "sc:2", "sc:3", "sc:4"]
+    assert [e["duration"] for e in entries] == [3600, 3600, None, None]  # stock: stubs stay
+    assert len(sc_api) == 1  # only the resolve, the stub batch was never sent
+    assert any("passt nicht zu dieser yt-dlp-Version" in r.message for r in caplog.records)

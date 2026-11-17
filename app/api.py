@@ -1057,7 +1057,7 @@ class Api:
             return "Neustart nötig – yt-dlp wurde aktualisiert"
         if self._ytdlp_gate.updating:
             return _UPDATE_BUSY
-        until = watchlist.blocked_until(self._db, self._throttle)
+        until = watchlist.blocked_until(self._db, self._throttle, self._cfg)
         if until:
             return f"Backoff aktiv bis {discover.format_until(until)} – Prüfung gesperrt"
         return None
