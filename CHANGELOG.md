@@ -10,6 +10,15 @@ appears after «Show all changes» (`docs/RELEASING.md`).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-18
+
+### Highlights
+- Festivals & series: HCLoader recognises festival, year, stage and set type (Defqon.1, Qlimax, Dominator, Q-dance Radio …) – offline, no extra requests
+- Library «Group by» festival, genre, artist or year – festival tiles with a year timeline and sets per stage
+- Click the festival badge to correct or confirm an assignment; the file is retagged right away
+- Album tag = edition (e.g. «Defqon.1 2024») so Plex/Jellyfin group sets as albums (switchable)
+- New settings tab «Festivals & series» with an editable list of 35 festivals and shows and a one-click pass for your existing library
+
 ### Added
 - Festivals & series (backend): built-in, editable list of 35 hard dance festivals, radio shows and
   podcasts (`app/data/series.yaml`: Defqon.1 incl. Australia/Chile/at Home, Qlimax, Dominator,
