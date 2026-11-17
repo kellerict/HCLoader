@@ -46,8 +46,11 @@ USB-Stick). Die Installation mit `setup.ps1` (oben) bleibt der zweite Weg.
    bei den .NET-DLLs beim Start selbst, entsperren ist trotzdem der sichere Weg).
 3. **Entpacken** an einen kurzen Pfad, z.B. `C:\Tools\` oder `E:\` (der Explorer scheitert an Pfaden
    über 260 Zeichen, `node_modules` ist tief verschachtelt).
-4. **Starten:** `HCLoader\HCLoader.vbs` doppelklicken. `HCLoader-Konsole.cmd` startet mit sichtbarer
-   Ausgabe (Fehlersuche). `Verknuepfung-erstellen.cmd` legt «HCLoader (Portable)» auf den Desktop.
+4. **Starten:** `HCLoader\HCLoader.cmd` doppelklicken (relative Pfade, die Konsole schliesst sich sofort
+   wieder; funktioniert auch nach dem Verschieben des Ordners). `HCLoader.vbs` ist die Variante ganz ohne
+   Konsolen-Aufblitzen, sofern VBScript auf dem PC noch aktiv ist (bei neuem Windows 11 oft entfernt).
+   `HCLoader-Konsole.cmd` startet mit sichtbarer Ausgabe (Fehlersuche). `Verknuepfung-erstellen.cmd`
+   legt «HCLoader (Portable)» auf den Desktop (absoluter Pfad – nach dem Verschieben erneut ausführen).
 
 - **Daten** (Einstellungen, Datenbank, Archiv, Protokolle, Backups) liegen in `HCLoader\data\`, solange
   `portable.txt` im Ordner liegt. Ist `HCLOADER_HOME` gesetzt, gilt diese Variable zuerst.

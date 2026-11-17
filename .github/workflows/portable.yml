@@ -87,7 +87,7 @@ jobs:
           $root = Join-Path $moved 'HCLoader'
           "HCL_MOVED=$root" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           if (Test-Path (Join-Path $root 'data')) { throw 'data\ darf nicht im ZIP liegen' }
-          foreach ($f in @('HCLoader.vbs', 'HCLoader-Konsole.cmd', 'Verknuepfung-erstellen.cmd', 'portable.txt', 'THIRD_PARTY_LICENSES.txt', 'licenses\ffmpeg\BUILDINFO.txt', 'licenses\python\LICENSE.txt', 'licenses\deno\LICENSE.md', 'scripts\run_watchlist.pyw', 'bin\deno.exe', 'bin\ffmpeg.exe', 'bin\ffprobe.exe')) {
+          foreach ($f in @('HCLoader.cmd', 'HCLoader.vbs', 'HCLoader-Konsole.cmd', 'Verknuepfung-erstellen.cmd', 'portable.txt', 'THIRD_PARTY_LICENSES.txt', 'licenses\ffmpeg\BUILDINFO.txt', 'licenses\python\LICENSE.txt', 'licenses\deno\LICENSE.md', 'scripts\run_watchlist.pyw', 'bin\deno.exe', 'bin\ffmpeg.exe', 'bin\ffprobe.exe')) {
             if (-not (Test-Path (Join-Path $root $f))) { throw "fehlt im ZIP: $f" }
           }
           $py = Join-Path $root 'python\python.exe'

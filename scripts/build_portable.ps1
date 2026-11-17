@@ -9,7 +9,7 @@
       app\ ui\ scripts\run_watchlist.pyw
       bin\                    deno.exe, ffmpeg.exe, ffprobe.exe, bgutil-pot-provider\ (via fetch_binaries.ps1)
       licenses\ THIRD_PARTY_LICENSES.txt
-      HCLoader.vbs  HCLoader-Konsole.cmd  Verknuepfung-erstellen.cmd  portable.txt
+      HCLoader.cmd  HCLoader.vbs  HCLoader-Konsole.cmd  Verknuepfung-erstellen.cmd  portable.txt
   Benutzerdaten landen beim ersten Start in HCLoader\data\ (portable.txt, docs/decisions.md).
   Braucht Internet (python.org, bootstrap.pypa.io, PyPI, GitHub, gyan.dev). Kein Admin noetig.
 .PARAMETER PythonVersion
@@ -231,7 +231,7 @@ try {
     foreach ($f in @('config.example.yaml', 'README.md', 'CHANGELOG.md', 'pyproject.toml', 'requirements.txt')) {
         Copy-Item -Path (Join-Path $RepoRoot $f) -Destination (Join-Path $Dist $f) -Force
     }
-    foreach ($f in @('HCLoader.vbs', 'HCLoader-Konsole.cmd', 'Verknuepfung-erstellen.cmd', 'portable.txt')) {
+    foreach ($f in @('HCLoader.cmd', 'HCLoader.vbs', 'HCLoader-Konsole.cmd', 'Verknuepfung-erstellen.cmd', 'portable.txt')) {
         Copy-TextFile (Join-Path $Templates $f) (Join-Path $Dist $f)
     }
 
@@ -338,4 +338,4 @@ if ($Zip) {
     }
 }
 
-Write-Step "Fertig: $Dist (Start: HCLoader.vbs)"
+Write-Step "Fertig: $Dist (Start: HCLoader.cmd)"
