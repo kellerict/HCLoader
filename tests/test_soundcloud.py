@@ -792,7 +792,9 @@ def test_changed_ytdlp_internals_keep_stock_extractors(fresh_sc_classes, monkeyp
     assert len(warnings) == 1
 
 
-def test_runtime_drift_in_override_falls_back_to_stock(sc_api, fresh_sc_classes, monkeypatch, caplog):
+def test_runtime_drift_in_override_falls_back_to_stock(
+    sc_api, fresh_sc_classes, monkeypatch, caplog
+):
     """Review M2: a TypeError inside an override (here: `_call_api` no longer takes the
     keyword `query` for the stub batch) falls back to the stock `_extract_set` instead of
     failing the whole listing; one warning in the log."""
@@ -827,8 +829,16 @@ def test_runtime_drift_in_override_falls_back_to_stock(sc_api, fresh_sc_classes,
         ),
         ("ERROR: [soundcloud] Unable to download webpage: HTTP Error 403: Forbidden", True, False),
         ("[soundcloud:search] x: blocked by https://geo.captcha-delivery.com/captcha", True, False),
-        ("[soundcloud] 1: Unable to download JSON metadata: HTTP Error 404: Not Found", False, False),
-        ("[soundcloud] 1: Unable to download JSON metadata: HTTP Error 401: Unauthorized", False, False),
+        (
+            "[soundcloud] 1: Unable to download JSON metadata: HTTP Error 404: Not Found",
+            False,
+            False,
+        ),
+        (
+            "[soundcloud] 1: Unable to download JSON metadata: HTTP Error 401: Unauthorized",
+            False,
+            False,
+        ),
         ("ERROR: unable to download video data: HTTP Error 403: Forbidden", False, False),
         ("[youtube] abc: HTTP Error 403: Forbidden", False, False),
         ("ERROR: [soundcloud] 1: HTTP Error 429: Too Many Requests", True, True),

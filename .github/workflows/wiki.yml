@@ -1,9 +1,10 @@
 name: Publish wiki
 # Mirrors docs/wiki/*.md (except README.md) into the GitHub wiki of this repository.
 # The wiki must have been initialised once in the web UI (create the Home page).
+# Only `main` (and a manual run) may write to the live wiki - never unmerged work branches.
 on:
   push:
-    branches: [main, "claude/**"]
+    branches: [main]
     paths: ["docs/wiki/**", ".github/workflows/wiki.yml"]
   workflow_dispatch:
 permissions:

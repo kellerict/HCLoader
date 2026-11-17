@@ -9,10 +9,12 @@ import io
 import json
 import os
 import re
+import shutil
 import sqlite3
 import time
 import types
 import urllib.error
+import urllib.request
 import zipfile
 from datetime import datetime
 from pathlib import Path
@@ -25,7 +27,7 @@ from test_api import (
 
 from app import __version__
 from app import main as app_main
-from app.core import config, maintenance, selfupdate
+from app.core import config, locks, maintenance, selfupdate
 from app.core import db as dbmod
 from app.core.db import Database, SchemaTooNewError
 from app.core.selfupdate import Runtime, SelfUpdater, UpdateError
@@ -232,13 +234,25 @@ def test_find_latest_uses_release_and_codeload_zip():
 
 def test_find_latest_prefers_source_asset_and_sums():
     assets = [
-        {"name": "SHA256SUMS", "browser_download_url": "https://x/SHA256SUMS"},
-        {"name": "HCLoader-0.2.0-source.zip", "browser_download_url": "https://x/src.zip"},
-        {"name": "HCLoader-portable-0.2.0-win64.zip", "browser_download_url": "https://x/p.zip"},
+        {
+            "name": "SHA256SUMS",
+            "browser_download_url": "https://github.com/o/r/releases/download/v0.2.0/SHA256SUMS",
+        },
+        {
+            "name": "HCLoader-0.2.0-source.zip",
+            "browser_download_url": "https://github.com/o/r/releases/download/v0.2.0/src.zip",
+        },
+        {
+            "name": "HCLoader-portable-0.2.0-win64.zip",
+            "browser_download_url": "https://github.com/o/r/releases/download/v0.2.0/p.zip",
+        },
     ]
     rel = selfupdate.find_latest(REPO, opener=FakeGitHub({LATEST: release(assets=assets)}))
-    assert rel.zip_url == "https://x/src.zip" and rel.zip_name == "HCLoader-0.2.0-source.zip"
-    assert rel.sums_url == "https://x/SHA256SUMS"
+    assert (
+        rel.zip_url == "https://github.com/o/r/releases/download/v0.2.0/src.zip"
+        and rel.zip_name == "HCLoader-0.2.0-source.zip"
+    )
+    assert rel.sums_url == "https://github.com/o/r/releases/download/v0.2.0/SHA256SUMS"
 
 
 def test_find_latest_falls_back_to_tags_without_prereleases():
@@ -320,10 +334,10 @@ def test_new_maintenance_defaults():
 
 def test_download_with_progress(tmp_path):
     body = os.urandom(300_000)
-    gh = FakeGitHub({"https://x/a.zip": body})
+    gh = FakeGitHub({"https://github.com/o/r/releases/download/v0.2.0/a.zip": body})
     seen = []
     out = selfupdate.download(
-        "https://x/a.zip",
+        "https://github.com/o/r/releases/download/v0.2.0/a.zip",
         tmp_path / "a.zip",
         opener=gh,
         on_progress=lambda d, t: seen.append((d, t)),
@@ -336,16 +350,26 @@ def test_download_with_progress(tmp_path):
 def test_download_without_length_and_cancel(tmp_path):
     import threading
 
-    gh = FakeGitHub({"https://x/a.zip": b"x" * 200_000}, length=False)
+    gh = FakeGitHub(
+        {"https://github.com/o/r/releases/download/v0.2.0/a.zip": b"x" * 200_000}, length=False
+    )
     seen = []
     selfupdate.download(
-        "https://x/a.zip", tmp_path / "a.zip", opener=gh, on_progress=lambda d, t: seen.append(t)
+        "https://github.com/o/r/releases/download/v0.2.0/a.zip",
+        tmp_path / "a.zip",
+        opener=gh,
+        on_progress=lambda d, t: seen.append(t),
     )
     assert set(seen) == {0}  # total unknown (codeload)
     stop = threading.Event()
     stop.set()
     with pytest.raises(selfupdate.UpdateCancelled):
-        selfupdate.download("https://x/a.zip", tmp_path / "b.zip", opener=gh, cancel=stop)
+        selfupdate.download(
+            "https://github.com/o/r/releases/download/v0.2.0/a.zip",
+            tmp_path / "b.zip",
+            opener=gh,
+            cancel=stop,
+        )
     assert not (tmp_path / "b.zip").exists() and not (tmp_path / "b.zip.part").exists()
 
 
@@ -355,7 +379,11 @@ def test_download_truncated_is_an_error(tmp_path):
             return FakeResp(b"abc", {"Content-Length": "10"})
 
     with pytest.raises(UpdateError, match="unvollständig"):
-        selfupdate.download("https://x/a.zip", tmp_path / "a.zip", opener=Short({}))
+        selfupdate.download(
+            "https://github.com/o/r/releases/download/v0.2.0/a.zip",
+            tmp_path / "a.zip",
+            opener=Short({}),
+        )
 
 
 def test_full_download_prepares_staging_only_program_folders(root):
@@ -441,12 +469,23 @@ def test_portable_staging_brings_starters_but_never_the_marker(root):
 
 def test_sha256sums_mismatch_is_refused(root):
     zbytes = source_zip()
-    assets = [{"name": "SHA256SUMS", "browser_download_url": "https://x/SHA256SUMS"}]
+    assets = [
+        {
+            "name": "SHA256SUMS",
+            "browser_download_url": "https://github.com/o/r/releases/download/v0.2.0/SHA256SUMS",
+        }
+    ]
     zurl = f"https://codeload.github.com/{REPO}/zip/refs/tags/v0.2.0"
     bad = f"{'0' * 64}  HCLoader-0.2.0.zip\n".encode()
     up = make_updater(
         root,
-        FakeGitHub({LATEST: release(assets=assets), zurl: zbytes, "https://x/SHA256SUMS": bad}),
+        FakeGitHub(
+            {
+                LATEST: release(assets=assets),
+                zurl: zbytes,
+                "https://github.com/o/r/releases/download/v0.2.0/SHA256SUMS": bad,
+            }
+        ),
     )
     up.check()
     res = up.download()
@@ -454,7 +493,11 @@ def test_sha256sums_mismatch_is_refused(root):
     assert not (root / "data" / "update" / "staging").exists()
     good = f"{hashlib.sha256(zbytes).hexdigest()} *HCLoader-0.2.0.zip\n".encode()
     up._open = FakeGitHub(
-        {LATEST: release(assets=assets), zurl: zbytes, "https://x/SHA256SUMS": good}
+        {
+            LATEST: release(assets=assets),
+            zurl: zbytes,
+            "https://github.com/o/r/releases/download/v0.2.0/SHA256SUMS": good,
+        }
     )
     up.check()
     assert up.download()["ok"]
@@ -895,3 +938,250 @@ def test_portable_build_ships_the_updater():
     text = (ROOT / "scripts" / "build_portable.ps1").read_text()
     assert "'apply_update.ps1'" in text and "'fetch_binaries.ps1'" in text
     assert "'materialize_links.py'" in text
+
+
+# --------------------------------------------------------------------------- Review 7a/8 (update)
+
+
+@pytest.mark.parametrize(
+    "url,ok",
+    [
+        ("https://api.github.com/repos/o/r/releases/latest", True),
+        ("https://github.com/o/r/releases/download/v1/x.zip", True),
+        ("https://objects.githubusercontent.com/github-production-release-asset/x", True),
+        ("https://release-assets.githubusercontent.com/github-production-release-asset/x", True),
+        ("https://codeload.github.com/o/r/zip/refs/tags/v1", True),
+        ("http://github.com/o/r/releases/download/v1/x.zip", False),
+        ("file:///C:/Windows/System32/x.zip", False),
+        ("https://evil.example/x.zip", False),
+        ("https://github.com.evil.example/x.zip", False),
+        ("https://user:pw@github.com/x.zip", False),
+        ("ftp://github.com/x.zip", False),
+    ],
+)
+def test_download_urls_only_https_github(url, ok):
+    """Review m6: `browser_download_url` comes from the API answer and goes to urlopen."""
+    if ok:
+        assert selfupdate.check_url(url) == url
+    else:
+        with pytest.raises(UpdateError, match="Unzulässige Download-Adresse"):
+            selfupdate.check_url(url)
+
+
+def test_foreign_asset_url_is_refused_before_any_request(root):
+    assets = [{"name": "HCLoader-0.2.0-source.zip", "browser_download_url": "file:///C:/evil.zip"}]
+    gh = FakeGitHub({LATEST: release(assets=assets)})
+    up = make_updater(root, gh)
+    up.check()
+    res = up.download()
+    assert res["ok"] is False and "Unzulässige Download-Adresse" in res["error"]
+    assert [c[0] for c in gh.calls] == [LATEST]
+
+
+def test_redirects_are_checked_too():
+    handler = selfupdate._CheckedRedirects()
+    req = urllib.request.Request("https://github.com/o/r/releases/download/v1/x.zip")
+    with pytest.raises(UpdateError):
+        handler.redirect_request(req, None, 302, "Found", {}, "http://evil.example/x.zip")
+    new = handler.redirect_request(
+        req, None, 302, "Found", {}, "https://release-assets.githubusercontent.com/a/b"
+    )
+    assert new.full_url == "https://release-assets.githubusercontent.com/a/b"
+
+
+SUMS = "https://github.com/o/r/releases/download/v0.2.0/SHA256SUMS"
+
+
+def test_sha256sums_without_entry_is_refused(root):
+    """Review m6: a release WITH SHA256SUMS must list the file (fail-closed)."""
+    zurl = f"https://codeload.github.com/{REPO}/zip/refs/tags/v0.2.0"
+    assets = [{"name": "SHA256SUMS", "browser_download_url": SUMS}]
+    other = f"{'1' * 64}  HCLoader-portable-0.2.0-win64.zip\n".encode()
+    up = make_updater(
+        root, FakeGitHub({LATEST: release(assets=assets), zurl: source_zip(), SUMS: other})
+    )
+    up.check()
+    res = up.download()
+    assert res["ok"] is False and "keinen Eintrag" in res["error"]
+    assert not (root / "data" / "update" / "staging").exists()
+    # unreadable SHA256SUMS: refused as well
+    up2 = make_updater(
+        root,
+        FakeGitHub({LATEST: release(assets=assets), zurl: source_zip(), SUMS: OSError("reset")}),
+    )
+    up2.check()
+    res = up2.download()
+    assert res["ok"] is False and "SHA256SUMS nicht lesbar" in res["error"]
+
+
+def test_verified_flag_and_foreign_repo_in_status(root):
+    """Review m6/m7: banner shows «ohne Prüfsumme» and «aus <repo>»."""
+    zurl = f"https://codeload.github.com/{REPO}/zip/refs/tags/v0.2.0"
+    up = make_updater(root, FakeGitHub({LATEST: release(), zurl: source_zip()}))
+    st = up.status()
+    assert st["verified"] is None and st["repo"] == REPO and st["foreign_repo"] is False
+    up.check()
+    assert up.download()["verified"] is False  # release without SHA256SUMS
+    again = make_updater(root, FakeGitHub({}))
+    assert again.restore()["verified"] is False  # kept in the manifest
+    zbytes = source_zip()
+    good = f"{hashlib.sha256(zbytes).hexdigest()}  HCLoader-0.2.0.zip\n".encode()
+    other_root = root.parent / "other"
+    shutil.copytree(root, other_root)
+    shutil.rmtree(other_root / "data" / "update")
+    up2 = make_updater(
+        other_root,
+        FakeGitHub(
+            {
+                LATEST: release(assets=[{"name": "SHA256SUMS", "browser_download_url": SUMS}]),
+                zurl: zbytes,
+                SUMS: good,
+            }
+        ),
+    )
+    up2.check()
+    assert up2.download()["verified"] is True
+    fork = SelfUpdater(
+        current="0.1.0",
+        repo=lambda: "someone/fork",
+        update_dir=root / "u",
+        root=root,
+        data_dir=root,
+        logs_dir=root,
+    )
+    assert fork.status()["foreign_repo"] is True and fork.status()["repo"] == "someone/fork"
+
+
+def test_unchanged_result_keeps_the_update_ready(root):
+    """Review M4/m3: locked file or running headless run -> nothing changed, still ready."""
+    popen = FakePopen()
+    ready_updater(root, popen)
+    upd = root / "data" / "update"
+    (upd / "result.json").write_text(
+        json.dumps({"ok": False, "unchanged": True, "rolled_back": False, "error": "gesperrt"})
+    )
+    again = make_updater(root, FakeGitHub({}))
+    assert again.take_result()["unchanged"] is True
+    assert again.restore()["state"] == "ready"
+    assert (upd / "staging" / "app" / "__init__.py").is_file()
+
+
+def test_launch_waits_for_running_headless_run(root):
+    """Review m3: the run lock is held by a headless watchlist run -> no updater start, the
+    update lock is removed again and the update stays ready."""
+    popen = FakePopen()
+    up = ready_updater(root, popen, run_lock_free=lambda: False)
+    res = up.launch(restart=False)
+    assert res["ok"] is False and res["deferred"] is True and "Download-Lauf" in res["error"]
+    assert not popen.calls and up.state == "ready"
+    assert not (root / "data" / "update" / "update.lock").exists()
+
+
+def test_manifest_carries_run_mutex_names_and_journal(root):
+    popen = FakePopen()
+    ready_updater(root, popen)
+    m = json.loads((root / "data" / "update" / "manifest.json").read_text())
+    assert m["run_lock_mutexes"] == locks.mutex_names(locks.RUN_LOCK)
+    assert m["run_lock_mutexes"][0].startswith("Global\\HCLoader.")
+    assert m["run_lock_mutexes"][0].endswith(".run")
+    assert m["journal"].endswith("in_progress.json")
+
+
+def test_no_updater_while_windows_session_ends(env, root, monkeypatch):
+    """Review m1: logoff/shutdown -> the update stays ready for the next start."""
+    popen = FakePopen()
+    a, up = make_api(env, root, popen)
+    monkeypatch.setattr(selfupdate, "session_ending", lambda platform=None: True)
+    a.shutdown()
+    assert a.finish_update() is None
+    assert not popen.calls and up.state == "ready"
+
+
+def test_session_ending_only_on_windows():
+    assert selfupdate.session_ending("linux") is False
+
+
+def test_interrupted_update_starts_recovery(monkeypatch, capsys):
+    """Review m2: a journal left by apply_update.ps1 -> `-Recover` before anything else."""
+    upd = config.app_home() / "update"
+    upd.mkdir(parents=True)
+    (upd / selfupdate.JOURNAL).write_text('{"pid": 1, "moved": ["app"], "placed": ["app"]}')
+    (upd / "manifest.json").write_text("{}")
+    (upd / "apply_update.ps1").write_text("# x")
+    popen = FakePopen()
+    shown: list[str] = []
+    monkeypatch.setattr(app_main.sys, "platform", "win32")
+    monkeypatch.setattr(app_main, "show_fatal", shown.append)
+    monkeypatch.setattr(app_main, "run_gui", lambda: pytest.fail("GUI must not start"))
+    real = selfupdate.start_recovery
+    monkeypatch.setattr(
+        selfupdate, "start_recovery", lambda *a, **kw: real(*a, **{**kw, "popen": popen})
+    )
+    assert app_main.main([]) == app_main.EXIT_BUSY
+    assert "wiederhergestellt" in shown[0]
+    args = popen.calls[0][0]
+    assert "-Recover" in args and "-Restart" in args
+    assert args[args.index("-File") + 1] == str(upd / "apply_update.ps1")
+    assert app_main.main(["--headless", "--run-watchlist"]) == app_main.EXIT_BUSY
+    assert "-Restart" not in popen.calls[1][0] and "-Recover" in popen.calls[1][0]
+    assert "unterbrochen" in capsys.readouterr().err
+
+
+def test_remove_tree_long_path_noop_elsewhere(tmp_path):
+    assert selfupdate.long_path(tmp_path) == tmp_path
+    (tmp_path / "a" / "b").mkdir(parents=True)
+    selfupdate.remove_tree(tmp_path / "a")
+    assert not (tmp_path / "a").exists()
+
+
+def test_apply_update_script_review_fixes():
+    """Static checks of the PowerShell updater (no PowerShell in the container)."""
+    text = SCRIPT.read_text()
+    swap = text[text.index("# --- 6. swap") :]
+    # M4: rename probe before the swap; registered in $moved BEFORE the rename
+    assert text.index("Test-Renamable $dst") < text.index("# --- 6. swap")
+    assert swap.index("[void]$moved.Add($name)") < swap.index(
+        "Rename-Entry $dst (Join-Path $Prev $name)"
+    )
+    assert (
+        "Copy-Tree $From $To\n        Remove-Tree $From" not in text
+    )  # no copy+delete in the swap
+    # m2: journal before every change, recovery, _previous only removed after an ok run
+    assert swap.index("Save-Journal $journal") < swap.index("Rename-Entry $dst")
+    assert "[switch]$Recover" in text and "in_progress.json" in text
+    assert "$last.ok -or $last.rolled_back" in text
+    assert "$Prev + '-' + (Get-Date -Format 'yyyyMMdd-HHmmss')" in text
+    # m3: run mutex from the manifest; m8: -X utf8; n7: manifest parsed inside try; n10
+    assert "run_lock_mutexes" in text and "WaitOne(" in text
+    assert "@('-X', 'utf8', '-m', 'app.main')" in text
+    head, body = text.split("\ntry {", 1)
+    assert "ConvertFrom-Json" not in head.split("function ")[0]
+    assert "ConvertFrom-Json" in body.split("\ncatch {")[0]
+    assert "SetLastWriteTime($LockFile" in text
+    assert "GetUnresolvedProviderPathFromPSPath" in text
+
+
+def test_portable_starters_recover_and_use_utf8_mode():
+    cmd = (ROOT / "scripts" / "portable" / "HCLoader.cmd").read_text()
+    vbs = (ROOT / "scripts" / "portable" / "HCLoader.vbs").read_text()
+    for text in (cmd, vbs):
+        assert "in_progress.json" in text and "-Recover -Restart" in text
+        assert "-X utf8 -m app.main" in text
+        assert all(ord(c) < 128 for c in text)
+
+
+@pytest.mark.parametrize("name", ["fetch_binaries.ps1", "build_portable.ps1"])
+def test_download_scripts_check_length_and_resolve_paths(name):
+    """Review m9: Save-Download compares with Content-Length; Remove-Tree resolves relative
+    paths against $PWD (not the process working directory)."""
+    text = (ROOT / "scripts" / name).read_text()
+    save = text[text.index("function Save-Download") :]
+    save = save[: save.index("\nfunction ")]
+    assert "$total -gt 0 -and $done -ne $total" in save
+    tree = text[text.index("function Remove-Tree") :]
+    tree = tree[: tree.index("\n}\n")]
+    assert "GetUnresolvedProviderPathFromPSPath" in tree
+    assert "[IO.Path]::GetFullPath($Path)" not in tree
+    if name == "fetch_binaries.ps1":
+        get_zip = text[text.index("function Get-Zip") :]
+        assert 'throw "SHA256 stimmt nicht' in get_zip  # mismatch aborts (fail-closed)

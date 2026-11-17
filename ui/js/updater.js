@@ -86,7 +86,7 @@
     const canDownload = st.available && !st.blocked && (st.state === 'idle' || st.state === 'error');
     ui.modal({
       title: t('upd.notes_title', { v }),
-      body: `<div class="upd-notes">${st.notes ? notesHtml(st.notes) : `<p>${esc(t('upd.notes_empty'))}</p>`}${link}</div>`,
+      body: `${trustHtml(st)}<div class="upd-notes">${st.notes ? notesHtml(st.notes) : `<p>${esc(t('upd.notes_empty'))}</p>`}${link}</div>`,
       okLabel: canDownload ? t('upd.download') : t('upd.close'),
       cancelLabel: t('upd.close'),
     }).then((ok) => { if (ok && canDownload) download(); });
@@ -128,6 +128,14 @@
   }
   const key = () => (st ? `${st.state}:${st.latest}:${st.available}` : '');
 
+  /* ---------- Hinweise: fremde Quelle (m7), ohne Prüfsumme (m6) ---------- */
+  function trustHtml(s) {
+    const notes = [];
+    if (s && s.foreign_repo && s.repo) notes.push(t('upd.from_repo', { repo: s.repo }));
+    if (s && s.verified === false) notes.push(t('upd.unverified'));
+    return notes.length ? `<div class="upd-sub upd-trust">${I.warn}${esc(notes.join(' · '))}</div>` : '';
+  }
+
   /* ---------- Banner ---------- */
   function bannerHtml() {
     if (!st) return '';
@@ -145,7 +153,7 @@
         <div class="upd-actions">${btn('cancel', t('upd.cancel'), 'ghost')}</div>`;
     }
     if (st.state === 'ready') {
-      return `${x}<div class="upd-title">${I.check}${esc(t('upd.ready', { v }))}</div><div class="upd-sub">${esc(t('upd.ready_sub'))}</div>
+      return `${x}<div class="upd-title">${I.check}${esc(t('upd.ready', { v }))}</div><div class="upd-sub">${esc(t('upd.ready_sub'))}</div>${trustHtml(st)}
         <div class="upd-actions">${btn('restart', t('upd.restart_now'), 'primary', I.refresh)}${btn('later', t(st.apply_on_exit ? 'upd.on_exit' : 'upd.later'), 'ghost')}${btn('notes', t('upd.notes'), 'ghost')}</div>`;
     }
     if (st.state === 'applying') {
@@ -160,7 +168,7 @@
         return `${x}<div class="upd-title">${I.info}${esc(t('upd.available', { v }))}</div><div class="upd-sub">${esc(st.blocked)}</div>
           <div class="upd-actions">${btn('notes', t('upd.notes'), 'ghost')}${btn('later', t('upd.later'), 'ghost')}</div>`;
       }
-      return `${x}<div class="upd-title">${I.download}${esc(t('upd.available', { v }))}</div><div class="upd-sub">${esc(t('upd.available_sub', { cur: st.current }))}</div>
+      return `${x}<div class="upd-title">${I.download}${esc(t('upd.available', { v }))}</div><div class="upd-sub">${esc(t('upd.available_sub', { cur: st.current }))}</div>${trustHtml(st)}
         <div class="upd-actions">${btn('download', t('upd.download'), 'primary', I.download)}${btn('notes', t('upd.notes'), 'ghost')}${btn('later', t('upd.later'), 'ghost')}</div>`;
     }
     return '';

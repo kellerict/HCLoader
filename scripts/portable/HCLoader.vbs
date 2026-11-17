@@ -1,5 +1,5 @@
 ' HCLoader starten (Portable-Version), ohne Konsolenfenster.
-' Startet python\pythonw.exe -m app.main relativ zum Ort dieser Datei;
+' Startet python\pythonw.exe -X utf8 -m app.main relativ zum Ort dieser Datei;
 ' Arbeitsverzeichnis = App-Ordner. Zusaetzliche Argumente werden durchgereicht.
 Option Explicit
 Dim fso, sh, root, pyw, args, i
@@ -13,6 +13,16 @@ If Not fso.FileExists(pyw) Then
     vbCritical, "HCLoader"
   WScript.Quit 1
 End If
+' Unterbrochenes App-Update (Journal des Updaters): erst die alte Version aus _previous
+' wiederherstellen; das Skript startet HCLoader danach selbst neu.
+Dim upd
+upd = fso.BuildPath(root, "data\update")
+If fso.FileExists(fso.BuildPath(upd, "in_progress.json")) And fso.FileExists(fso.BuildPath(upd, "apply_update.ps1")) Then
+  sh.Run "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File """ & _
+    fso.BuildPath(upd, "apply_update.ps1") & """ -Manifest """ & fso.BuildPath(upd, "manifest.json") & _
+    """ -Recover -Restart", 0, False
+  WScript.Quit 0
+End If
 If Not fso.FileExists(fso.BuildPath(root, "app\main.py")) Then
   MsgBox "Programmdateien fehlen: " & fso.BuildPath(root, "app"), vbCritical, "HCLoader"
   WScript.Quit 1
@@ -22,4 +32,4 @@ args = ""
 For i = 0 To WScript.Arguments.Count - 1
   args = args & " """ & WScript.Arguments(i) & """"
 Next
-sh.Run """" & pyw & """ -m app.main" & args, 1, False
+sh.Run """" & pyw & """ -X utf8 -m app.main" & args, 1, False

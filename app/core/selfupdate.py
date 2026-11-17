@@ -29,6 +29,7 @@ import sysconfig
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import zipfile
 from collections.abc import Callable
@@ -37,7 +38,7 @@ from datetime import datetime
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from . import config
+from . import config, locks
 
 log = logging.getLogger(__name__)
 
@@ -54,6 +55,18 @@ MAX_UNPACKED_BYTES = 400 * 1024 * 1024
 SUMS_ASSETS = ("SHA256SUMS", "SHA256SUMS.txt")
 SOURCE_ASSET = "HCLoader-{version}-source.zip"  # optional release asset (portable.yml)
 LOCK_STALE_S = 30 * 60
+JOURNAL = "in_progress.json"  # written by apply_update.ps1 before the first change (m2)
+# Review m6: every URL the updater opens (also after redirects) - https and GitHub only
+ALLOWED_HOSTS = frozenset(
+    {
+        "api.github.com",
+        "github.com",
+        "codeload.github.com",
+        "objects.githubusercontent.com",
+        "release-assets.githubusercontent.com",
+        "raw.githubusercontent.com",  # CHANGELOG.md of a tag (notes without a release)
+    }
+)
 PROGRESS_INTERVAL_S = 0.25
 
 # What the update replaces: program folders and top-level files. Everything else stays.
@@ -87,6 +100,10 @@ PROTECTED = (
 )
 STATES = ("idle", "checking", "downloading", "ready", "applying", "error")
 
+RUN_ACTIVE = (
+    "Ein Download-Lauf (z.B. die geplante Watchlist-Prüfung) ist aktiv – das Update bleibt "
+    "bereit und wird beim nächsten Beenden eingespielt."
+)
 GIT_HINT = "Git-Checkout – bitte «git pull» und danach «scripts\\setup.ps1» ausführen."
 WINDOWS_ONLY = "Das Selbst-Update gibt es nur unter Windows."
 
@@ -169,14 +186,38 @@ def is_git_checkout(root: Path) -> bool:
 # --------------------------------------------------------------------------- GitHub
 
 
+def check_url(url: str) -> str:
+    """Review m6: only `https://` on a GitHub host (ALLOWED_HOSTS). `browser_download_url`
+    comes from the API answer; urllib would also open `file:` or `ftp:` URLs."""
+    parts = urllib.parse.urlsplit(str(url or ""))
+    host = (parts.hostname or "").lower()
+    if parts.scheme != "https" or host not in ALLOWED_HOSTS or parts.username or parts.password:
+        raise UpdateError(f"Unzulässige Download-Adresse: {str(url)[:120]}")
+    return url
+
+
+class _CheckedRedirects(urllib.request.HTTPRedirectHandler):
+    """GitHub answers asset downloads with a redirect (objects/release-assets host); every
+    hop must pass `check_url` as well."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # type: ignore[no-untyped-def]
+        check_url(newurl)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_OPENER = urllib.request.build_opener(_CheckedRedirects())
+
+
 def _default_open(req: urllib.request.Request, timeout: float) -> Any:
-    return urllib.request.urlopen(req, timeout=timeout)  # noqa: S310 (fixed https URLs)
+    check_url(req.full_url)
+    return _OPENER.open(req, timeout=timeout)
 
 
 Opener = Callable[[urllib.request.Request, float], Any]
 
 
 def _request(url: str, accept: str = "application/vnd.github+json") -> urllib.request.Request:
+    check_url(url)
     return urllib.request.Request(
         url,
         headers={
@@ -587,17 +628,32 @@ def prepare_staging(
         "log": str(logs_dir / "update.log"),
         "result": str(update_dir / "result.json"),
         "lock": str(update_dir / "update.lock"),
+        "journal": str(update_dir / JOURNAL),
+        "run_lock_mutexes": locks.mutex_names(locks.RUN_LOCK),
         "created": datetime.now().astimezone().isoformat(timespec="seconds"),
     }
-    tmp = update_dir / "manifest.json.tmp"
-    tmp.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
-    tmp.replace(update_dir / "manifest.json")
+    _write_manifest(update_dir, manifest)
     return manifest
+
+
+def long_path(path: Path) -> Path:
+    """Windows extended-length form (no MAX_PATH limit, Review n5: `_previous` holds
+    site-packages and node_modules of the provider); no-op elsewhere."""
+    if os.name != "nt":
+        return path
+    text = os.path.abspath(str(path))
+    if text.startswith("\\\\?\\"):
+        return Path(text)
+    if text.startswith("\\\\"):
+        return Path("\\\\?\\UNC\\" + text[2:])
+    return Path("\\\\?\\" + text)
 
 
 def remove_tree(path: Path) -> None:
     if path.is_dir() and not path.is_symlink():
-        shutil.rmtree(path, ignore_errors=True)
+        shutil.rmtree(long_path(path), ignore_errors=True)
+        if path.exists():
+            log.warning("Ordner nicht vollständig gelöscht: %s", path)
     elif path.exists() or path.is_symlink():
         path.unlink(missing_ok=True)
 
@@ -642,6 +698,7 @@ class _State:
     release: Release | None = None
     manifest: dict[str, Any] | None = None
     result: dict[str, Any] | None = field(default=None)
+    verified: bool | None = None  # m6: SHA256SUMS checked (False = release without sums)
 
 
 class SelfUpdater:
@@ -665,6 +722,7 @@ class SelfUpdater:
         popen: Callable[..., Any] = subprocess.Popen,
         pid: Callable[[], int] = os.getpid,
         python_version: tuple[int, int] = sys.version_info[:2],
+        run_lock_free: Callable[[], bool] | None = None,
     ) -> None:
         self.current = current
         self._repo = repo
@@ -680,6 +738,7 @@ class SelfUpdater:
         self._popen = popen
         self._pid = pid
         self._python_version = python_version
+        self._run_lock_free = run_lock_free or _probe_run_lock
         self._lock = threading.RLock()
         self._cancel = threading.Event()
         self._s = _State()
@@ -732,7 +791,19 @@ class SelfUpdater:
                 "portable": self.portable,
                 "git_checkout": self.git_checkout,
                 "blocked": self.blocked(),
+                # m6: True = SHA256SUMS matched, False = release without SHA256SUMS (only the
+                # ZIP integrity was checked; banner «ohne Prüfsumme»), None = not downloaded
+                "verified": s.verified,
+                # m7: the configured repo; `foreign_repo` = not the official one (banner)
+                "repo": self.repo(),
+                "foreign_repo": self.repo().lower() != DEFAULT_REPO.lower(),
             }
+
+    def repo(self) -> str:
+        try:
+            return str(self._repo() or DEFAULT_REPO)
+        except Exception:
+            return DEFAULT_REPO
 
     def _set(self, **fields: Any) -> dict[str, Any]:
         with self._lock:
@@ -787,6 +858,7 @@ class SelfUpdater:
                 url=m.get("url") or None,
                 manifest=m,
                 error=None,
+                verified=m.get("verified"),
             )
         self.discard()
         return self.status()
@@ -807,10 +879,14 @@ class SelfUpdater:
             return None
         if res.get("ok"):
             remove_tree(self.root / "_previous")
-        # also after a failure: the same staging would fail again; the next check offers the
-        # release anew and a fresh download is prepared (`_previous` stays for inspection and is
-        # cleared by the next updater run)
-        self.discard()
+        if res.get("unchanged"):
+            # M4/m3: nothing was changed (locked file, a headless run, an interrupted earlier
+            # run repaired first): the prepared update stays ready for the next exit
+            log.info("App-Update nicht eingespielt (%s) – bleibt bereit", res.get("error") or "?")
+        else:
+            # after a failure: the same staging would fail again; the next check offers the
+            # release anew. `_previous` stays (the updater keeps it unless the last run was ok)
+            self.discard()
         with self._lock:
             self._s.result = res
         return res
@@ -832,7 +908,7 @@ class SelfUpdater:
             if self._s.state in ("checking", "downloading", "applying"):
                 return {**self.status(), "ok": False, "error": "Update läuft bereits"}
             before = self._s.state
-        repo = self._repo() or DEFAULT_REPO
+        repo = self.repo()
         self._set(state="checking", error=None if manual else self._s.error)
         try:
             rel = find_latest(repo, opener=self._open)
@@ -924,7 +1000,7 @@ class SelfUpdater:
             size = zip_path.stat().st_size
             self._progress("download", size, size, force=True)
             self._progress("verify", 0, 0, force=True)
-            self._verify_sums(rel, zip_path)
+            verified = self._verify_sums(rel, zip_path)
             if self._cancel.is_set():
                 raise UpdateCancelled()
             self._progress("prepare", 0, 0, force=True)
@@ -955,6 +1031,8 @@ class SelfUpdater:
             st = self._set(state="error", error=msg, progress=None)
             return {**st, "ok": False, "error": msg}
         zip_path.unlink(missing_ok=True)
+        manifest["verified"] = verified
+        _write_manifest(self.update_dir, manifest)
         log.info(
             "HCLoader %s ist bereit (Pakete neu: %s, Binaries prüfen: %s)",
             rel.version,
@@ -968,20 +1046,31 @@ class SelfUpdater:
             manifest["notes"] = notes
             with self._lock:
                 self._s.notes = notes
-        st = self._set(state="ready", manifest=manifest, progress=None, error=None)
+        st = self._set(
+            state="ready", manifest=manifest, progress=None, error=None, verified=verified
+        )
         return {**st, "ok": True}
 
-    def _verify_sums(self, rel: Release, zip_path: Path) -> None:
-        """SHA256SUMS asset of the release: if it lists the downloaded file, it must match.
-        Without it only the ZIP integrity is checked (GitHub publishes no hash for zipballs)."""
+    def _verify_sums(self, rel: Release, zip_path: Path) -> bool:
+        """SHA256SUMS asset of the release (m6, fail-closed): if the release has one, it must
+        be readable, list the downloaded file and match - otherwise the update is refused (the
+        release job always attaches it; a gap means an incomplete or tampered release).
+        Without SHA256SUMS (tags without a release, older releases) only the ZIP integrity is
+        checked; returns False then (banner «ohne Prüfsumme»), True after a matching hash."""
         if not rel.sums_url:
-            log.info("Keine SHA256SUMS im Release – geprüft wird nur die ZIP-Integrität")
-            return
-        sums = parse_sums(_get_text(rel.sums_url, self._open, DOWNLOAD_TIMEOUT_S))
+            log.warning("Keine SHA256SUMS im Release – geprüft wird nur die ZIP-Integrität")
+            return False
+        try:
+            sums = parse_sums(_get_text(rel.sums_url, self._open, DOWNLOAD_TIMEOUT_S))
+        except UpdateError:
+            raise
+        except Exception as exc:
+            raise UpdateError(f"SHA256SUMS nicht lesbar: {_reason(exc)}") from exc
         expected = sums.get(rel.zip_name)
         if not expected:
-            log.warning("SHA256SUMS ohne Eintrag für %s – nur ZIP-Integrität geprüft", rel.zip_name)
-            return
+            raise UpdateError(
+                f"SHA256SUMS enthält keinen Eintrag für {rel.zip_name} – Update abgebrochen"
+            )
         actual = sha256_file(zip_path)
         if actual != expected:
             raise UpdateError(
@@ -989,6 +1078,7 @@ class SelfUpdater:
                 f"erhalten {actual[:12]}…"
             )
         log.info("SHA256 geprüft (%s)", rel.zip_name)
+        return True
 
     def cancel(self) -> dict[str, Any]:
         """Stop a running download, or drop a prepared update (it is then not applied)."""
@@ -1036,6 +1126,14 @@ class SelfUpdater:
             log.error("%s", msg)
             self._set(state="error", error=msg)
             return {"ok": False, "error": msg}
+        # m3: a headless watchlist run (task scheduler) holds the download-run lock. The update
+        # lock above already keeps new runs from starting; a running one is not disturbed: the
+        # update stays ready for the next exit (apply_update.ps1 waits for the lock as well).
+        if not self._run_lock_free():
+            lock_path(self.update_dir).unlink(missing_ok=True)
+            msg = RUN_ACTIVE
+            log.warning("%s", msg)
+            return {"ok": False, "error": msg, "deferred": True}
         args = updater_command(script, manifest, self._pid(), restart=restart)
         try:
             _start_detached(self._popen, args, cwd=self.update_dir)
@@ -1052,6 +1150,73 @@ class SelfUpdater:
         )
         self._set(state="applying")
         return {"ok": True, "args": args}
+
+
+def _probe_run_lock() -> bool:
+    """True if no download run (GUI queue, headless, smoke) holds the run lock right now."""
+    lock = locks.acquire_run_lock()
+    if lock is None:
+        return False
+    lock.release()
+    return True
+
+
+SM_SHUTTINGDOWN = 0x2000
+
+
+def session_ending(platform: str = sys.platform) -> bool:
+    """Review m1: Windows is logging off / shutting down (`GetSystemMetrics(SM_SHUTTINGDOWN)`,
+    set once WM_QUERYENDSESSION has been sent). The updater must not start then: Windows
+    kills it after a few seconds, possibly between the swap and pip."""
+    if platform != "win32":
+        return False
+    try:
+        import ctypes
+
+        return bool(ctypes.windll.user32.GetSystemMetrics(SM_SHUTTINGDOWN))  # type: ignore[attr-defined]
+    except Exception:
+        log.debug("GetSystemMetrics nicht verfügbar", exc_info=True)
+        return False
+
+
+def interrupted(update_dir: Path) -> bool:
+    """Review m2: apply_update.ps1 left its journal (crash or kill in the middle of the swap,
+    or a failed rollback): the next start must restore from `_previous` first."""
+    return (update_dir / JOURNAL).is_file()
+
+
+def start_recovery(
+    update_dir: Path,
+    root: Path,
+    *,
+    restart: bool,
+    pid: int = 0,
+    popen: Callable[..., Any] = subprocess.Popen,
+) -> bool:
+    """Start `apply_update.ps1 -Recover` (hidden, detached): it restores the old version from
+    `_previous` (or does nothing while the updater that wrote the journal still runs) and,
+    with `restart`, starts the app again. True if started."""
+    script = update_dir / "apply_update.ps1"
+    if not script.is_file():
+        script = root / "scripts" / "apply_update.ps1"
+    manifest = update_dir / "manifest.json"
+    if not script.is_file() or not manifest.is_file():
+        log.error("Wiederherstellung nicht möglich: %s oder %s fehlt", script, manifest)
+        return False
+    args = [*updater_command(script, manifest, pid, restart=restart), "-Recover"]
+    try:
+        _start_detached(popen, args, cwd=update_dir)
+    except OSError as exc:
+        log.error("Wiederherstellung konnte nicht gestartet werden: %s", exc)
+        return False
+    log.warning("Unterbrochenes App-Update: Wiederherstellung gestartet (%s)", script)
+    return True
+
+
+def _write_manifest(update_dir: Path, manifest: dict[str, Any]) -> None:
+    tmp = update_dir / "manifest.json.tmp"
+    tmp.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(update_dir / "manifest.json")
 
 
 def powershell_exe() -> str:

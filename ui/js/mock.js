@@ -742,6 +742,8 @@
     current: upd.current, latest: upd.latest, available: !!upd.latest && upd.latest !== upd.current, state: upd.state,
     notes: upd.notes, url: upd.url, progress: upd.progress ? clone(upd.progress) : null, error: upd.error, checked: upd.checked,
     portable: false, git_checkout: false, blocked: null, apply_on_exit: !!settings.maintenance.apply_update_on_exit,
+    verified: upd.state === 'ready' ? true : null, repo: settings.maintenance.update_repo,
+    foreign_repo: settings.maintenance.update_repo.toLowerCase() !== 'kellerict/hcloader',
   });
   const updSet = (fields) => { Object.assign(upd, fields); emit('update', updStatus()); return updStatus(); };
   const updCheck = () => {

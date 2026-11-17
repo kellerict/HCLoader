@@ -136,6 +136,14 @@ UPDATE_RUNNING = (
     "HCLoader wird gerade aktualisiert – bitte einen Moment warten. Die App startet danach "
     "von selbst neu."
 )
+UPDATE_RECOVERING = (
+    "Ein App-Update wurde unterbrochen. Die vorherige Version wird wiederhergestellt – "
+    "HCLoader startet danach von selbst neu."
+)
+UPDATE_RECOVER_FAILED = (
+    "Ein App-Update wurde unterbrochen und die Wiederherstellung konnte nicht gestartet werden. "
+    "Die alte Version liegt im App-Ordner unter «_previous» (siehe Wiki, Fehlerbehebung)."
+)
 
 
 def update_dir() -> Path:
@@ -292,10 +300,29 @@ def run_smoke(url: str) -> int:
     return EXIT_OK if result.ok else EXIT_FAILED
 
 
+def _recover_interrupted_update(args: argparse.Namespace) -> bool:
+    """Review m2: apply_update.ps1 left its journal (killed mid-swap, failed rollback). Start
+    the updater with `-Recover` (it does nothing while that updater is still alive) and exit;
+    the GUI is restarted by the script, a headless run simply ends (next scheduled run)."""
+    if sys.platform != "win32" or not selfupdate.interrupted(update_dir()):
+        return False
+    started = selfupdate.start_recovery(
+        update_dir(), config.app_root(), restart=not args.run_watchlist
+    )
+    text = UPDATE_RECOVERING if started else UPDATE_RECOVER_FAILED
+    if args.run_watchlist:
+        print(text, file=sys.stderr)
+    else:
+        show_fatal(text)
+    return True
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.smoke:
         return run_smoke(args.smoke)
+    if (args.run_watchlist or not args.headless) and _recover_interrupted_update(args):
+        return EXIT_BUSY
     if (args.run_watchlist or not args.headless) and selfupdate.update_in_progress(update_dir()):
         # apply_update.ps1 swaps the program files right now (lock file, docs/decisions.md)
         if args.run_watchlist:

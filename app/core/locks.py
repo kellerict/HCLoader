@@ -53,6 +53,12 @@ def _user_tag() -> str:
     return re.sub(r"[^0-9A-Za-z_.-]", "_", raw)[:40]
 
 
+def mutex_names(name: str) -> list[str]:
+    """Names of the Windows mutex of lock `name`, in the order they are tried (the updater
+    script waits for the run lock with the same names, Review m3)."""
+    return [f"{prefix}HCLoader.{_user_tag()}.{name}" for prefix in MUTEX_NAMESPACES]
+
+
 def _kernel32() -> Any:
     import ctypes
     from ctypes import wintypes

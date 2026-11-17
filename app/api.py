@@ -656,6 +656,10 @@ class Api:
         «Jetzt neu starten» (restart) or an update is ready and `apply_update_on_exit` is on."""
         if self._updater.state != "ready":
             return None
+        if selfupdate.session_ending():
+            # m1: Windows logs off / shuts down - the updater would be killed mid-way
+            log.info("Windows wird beendet – App-Update bleibt für den nächsten Start bereit")
+            return None
         if self._apply_requested:
             return self._updater.launch(restart=True)
         if self._cfg.maintenance.apply_update_on_exit:

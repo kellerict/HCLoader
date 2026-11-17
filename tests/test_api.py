@@ -820,6 +820,7 @@ def test_db_backed_reads_and_simple_actions(env):
         "platform",
         "url",
         "preview",
+        "geo_blocked",
         "duplicate_of",
     }
     assert inbox[0]["platform"] == "youtube" and inbox[0]["duplicate_of"] is None

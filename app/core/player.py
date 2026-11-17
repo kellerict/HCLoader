@@ -2,9 +2,11 @@
 player. **No network, nothing through the throttle**: only the local file, its tags, the
 sidecar and a cover cache below `<app_home>/cache/covers/`.
 
-Path rule: the DB row must be `done` and the file must lie inside the target folder
-(`library.within`, symlinks and `..` resolved); anything else is refused, so a manipulated DB
-path can never make the player serve an arbitrary file.
+Path rule (docs/decisions.md «Player», orchestrator decision): the DB row must be `done` and the
+file must be an audio file (`.mp3/.m4a/.opus/...`). Earlier target folders are allowed on
+purpose (playing is read-only; mixes stay playable after the target folder changed). The path
+only ever comes from our own DB, and the extension check keeps `play_external`/`os.startfile`
+from starting anything but audio.
 
 `file:` URLs are built with `Path.as_uri()` (percent-encoding of space, `#`, `%`, `[`, `]`,
 umlauts): .NET's `System.Uri` (pywebview/WebView2) treats a raw `?` or `#` as query/fragment.

@@ -580,9 +580,7 @@ def active_platforms(db: Database, settings: Settings | None = None) -> set[str]
     return names or {platforms.YOUTUBE}
 
 
-def blocked_until(
-    db: Database, throttle: Any, settings: Settings | None = None
-) -> datetime | None:
+def blocked_until(db: Database, throttle: Any, settings: Settings | None = None) -> datetime | None:
     """Phase 7a: a watchlist check is blocked only if *every* active platform with an enabled
     source is in backoff (`active_platforms`); then the earliest end, else None. Without
     sources: the YouTube backoff."""

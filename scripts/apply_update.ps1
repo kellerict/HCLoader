@@ -71,7 +71,7 @@ function Write-Log([string]$Text) {
 
 function Get-LongPath([string]$Path) {
     # extended-length prefix: no 260-character limit (deep node_modules, site-packages)
-    $full = [IO.Path]::GetFullPath($Path)
+    $full = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path)
     if ($full.StartsWith('\\')) { return $full }
     return '\\?\' + $full
 }
@@ -277,6 +277,7 @@ $appStopped = $true
 $keepLock = $false
 $unchanged = $true   # until the first change (journal written): a failure changes nothing
 $recovered = $false
+$recovering = $false
 $moved = New-Object System.Collections.ArrayList     # items renamed to _previous (registered first)
 $placed = New-Object System.Collections.ArrayList    # items copied from staging (registered first)
 $siteBackup = ''
@@ -328,7 +329,10 @@ try {
         }
     }
     elseif ($Recover) {
+        # an updater may be just before its first change (no journal yet): leave it alone
         Write-Log 'Kein unterbrochenes Update gefunden'
+        $keepLock = $true
+        $Restart = $false
         $writeResult = $false
         $result['ok'] = $true
         throw 'nichts zu tun'
@@ -351,8 +355,15 @@ try {
     if (Test-Path -LiteralPath $JournalFile) {
         $j = Get-Content -LiteralPath $JournalFile -Raw -Encoding UTF8 | ConvertFrom-Json
         Write-Log 'Unterbrochenes Update gefunden - stelle die alte Version aus _previous wieder her ...'
-        $unchanged = $false
-        Invoke-Rollback ([string[]]@($j.moved)) ([string[]]@($j.placed)) ([string]$j.site_backup) ([string]$j.provider_backup)
+        $recovering = $true
+        try {
+            Invoke-Rollback ([string[]]@($j.moved)) ([string[]]@($j.placed)) ([string]$j.site_backup) ([string]$j.provider_backup)
+        }
+        catch {
+            # the journal stays for the next attempt; never start a half-swapped installation
+            $Restart = $false
+            throw ('Wiederherstellung fehlgeschlagen: ' + $_.Exception.Message + " - Sicherung liegt in $Prev")
+        }
         Remove-Item -LiteralPath $JournalFile -Force
         $recovered = $true
         $result['rolled_back'] = $true
@@ -372,10 +383,15 @@ try {
         if (-not $name -or $name.Contains('\') -or $name.Contains('/') -or $name.Contains('..') -or $name.Contains(':')) { throw "Ungueltiger Eintrag im Manifest: $name" }
         if ($protected -contains $name) { throw "Geschuetzter Eintrag im Manifest: $name" }
     }
-    # Review M4: rename probe of every entry before anything is touched
+    # Review M4: rename probe of every entry before anything is touched (a probe left over
+    # by a crash between the two renames is renamed back first)
     foreach ($i in @($m.items)) {
         $name = [string]$i
         $dst = Join-Path $Root $name
+        if ((-not (Test-Path -LiteralPath $dst)) -and (Test-Path -LiteralPath ($dst + '.hcprobe'))) {
+            Write-Log "  Probe-Rest zurueckbenannt: $name"
+            Rename-Entry ($dst + '.hcprobe') $dst
+        }
         if (-not (Test-Path -LiteralPath (Join-Path $Staging $name))) { continue }
         if ((Test-Path -LiteralPath $dst) -and -not (Test-Renamable $dst)) {
             throw "Datei gesperrt ($name, z.B. Virenscanner oder Explorer) - Update nicht eingespielt, naechster Versuch beim naechsten Beenden"
@@ -451,7 +467,7 @@ catch {
         $result['error'] = $err
         $result['unchanged'] = $unchanged
         if ($writeResult) { Write-Log "FEHLER: $err" }
-        if ($unchanged -and -not $recovered -and $writeResult) { Write-Log 'Nichts geaendert - die installierte Version bleibt' }
+        if ($unchanged -and -not $recovering -and $writeResult) { Write-Log 'Nichts geaendert - die installierte Version bleibt' }
     }
     if ($appStopped -and -not $unchanged -and $m) {
         Write-Log 'Rollback ...'

@@ -27,6 +27,9 @@ $ProgressPreference = 'SilentlyContinue'
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 if (-not $BinDir) { $BinDir = Join-Path $RepoRoot 'bin' }
+# Review m9: relative paths (-BinDir .\bin) against $PWD, once, for every .NET/cmd call below
+$BinDir = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($BinDir)
+if ($LicenseDir) { $LicenseDir = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($LicenseDir) }
 $VenvPython = $Python
 if (-not $VenvPython) { $VenvPython = Join-Path $RepoRoot '.venv\Scripts\python.exe' }
 
@@ -75,6 +78,8 @@ function Save-Download([string]$Url, [string]$OutFile) {
         }
         Write-DownloadProgress $done $total $sw.Elapsed.TotalSeconds
         Write-Host ''
+        # Review m9: a connection that ends early is no complete download
+        if ($total -gt 0 -and $done -ne $total) { throw "Download unvollstaendig ($Url): $done von $total Bytes" }
     }
     finally {
         if ($out) { $out.Dispose() }
@@ -102,7 +107,9 @@ function Remove-Tree([string]$Path) {
     # Remove-Item fails on paths > 260 characters (deep node_modules). rmdir with the
     # extended-length prefix \\?\ has no such limit.
     if (-not (Test-Path -LiteralPath $Path)) { return }
-    $full = [IO.Path]::GetFullPath($Path)
+    # Review m9: resolve against the PowerShell location ($PWD), not the process working
+    # directory that [IO.Path]::GetFullPath uses (they differ after a cd in the console)
+    $full = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path)
     if (-not $full.StartsWith('\\')) { $full = '\\?\' + $full }
     cmd.exe /d /c "rmdir /s /q `"$full`"" | Out-Null
     if (Test-Path -LiteralPath $Path) { throw "Ordner konnte nicht entfernt werden: $Path" }
@@ -112,8 +119,8 @@ function Expand-ZipFile([string]$Path, [string]$Destination) {
     # .NET instead of Expand-Archive: no module dependency, works in PS 5.1 and 7.
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     New-Item -ItemType Directory -Path $Destination -Force | Out-Null
-    $root = [IO.Path]::GetFullPath($Destination).TrimEnd('\') + '\'
-    $zip = [IO.Compression.ZipFile]::OpenRead($Path)
+    $root = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Destination).TrimEnd('\') + '\'
+    $zip = [IO.Compression.ZipFile]::OpenRead($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path))
     try {
         foreach ($entry in $zip.Entries) {
             $target = [IO.Path]::GetFullPath([IO.Path]::Combine($root, $entry.FullName))
@@ -153,6 +160,8 @@ function New-TempDir {
 
 function Get-ExpectedSha256([string]$Url) {
     # Returns the 64 hex chars of the published checksum, or $null if it cannot be fetched.
+    # No checksum = warning only (gyan.dev publishes it, but not always reachable); a checksum
+    # that does not match always aborts (Get-Zip, Review m9: fail-closed).
     try {
         $content = (Invoke-WebRequest -Uri $Url -UseBasicParsing).Content
         if ($content -is [byte[]]) { $content = [Text.Encoding]::ASCII.GetString($content) }

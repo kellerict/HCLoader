@@ -156,7 +156,9 @@
     $('#pl-artist', el).textContent = chapters.length ? media.artist || '' : '';
     $('#pl-artist2', el).textContent = chapters.length ? '' : media.artist || '';
     $('#pl-artist', el).title = media.artist || '';
-    /* Cover: echtes Bild (file:-URL vom Backend), sonst der generierte Platzhalter aus id + Genre-Farbe. */
+    /* Cover: echtes Bild (file:-URL vom Backend), sonst der generierte Platzhalter aus id + Genre-Farbe.
+       ui.thumb() lässt sein <div class="thumb"> offen (wie bei allen Aufrufern); das </div> schliesst es,
+       der Equalizer liegt danach direkt in #pl-cover. */
     const cover = typeof media.cover === 'string' && /^file:\/\//i.test(media.cover) ? media.cover : null;
     $('#pl-cover', el).innerHTML = `${ui.thumb({ id: media.id, genre: media.genre, thumbnail: null }, 'pl-art')}${cover ? `<img src="${esc(cover)}" alt="" decoding="async">` : ''}</div>${ui.eq('on-cover')}`;
     $('#pl-pbadge', el).innerHTML = ui.pbadge(media);

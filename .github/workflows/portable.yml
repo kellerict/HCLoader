@@ -6,7 +6,8 @@ name: Portable
 on:
   push:
     tags: ["v*"]
-    branches: ["claude/compassionate-thompson-zgetlu"]  # working branch: test the build
+    branches: [main]
+  pull_request:
   workflow_dispatch:
 permissions:
   contents: read
@@ -147,6 +148,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false  # gh uses GH_TOKEN; git only reads (git archive)
 
       - uses: actions/download-artifact@v4
         with:

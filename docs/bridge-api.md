@@ -400,7 +400,7 @@ Status). Ergänzungen der Python-Seite:
 
 ```
 {current, latest, available, state, notes, url, progress, error, checked, portable, git_checkout,
- blocked, apply_on_exit}
+ blocked, apply_on_exit, verified, repo, foreign_repo}
 ```
 - `current`: installierte Version (`app.__version__`); `latest`: neueste gefundene (null = noch nicht
   geprüft); `available` = `latest` > `current` (SemVer, numerisch).
@@ -415,6 +415,11 @@ Status). Ergänzungen der Python-Seite:
 - `blocked`: Grund, warum sich diese Installation nicht selbst aktualisiert (Git-Checkout, nicht
   Windows) oder null.
 - `apply_on_exit`: Setting `maintenance.apply_update_on_exit` (Beschriftung «Beim Beenden» / «Später»).
+- `verified` (Review m6): `true` = `SHA256SUMS` des Releases geprüft, `false` = Release ohne
+  `SHA256SUMS` (nur ZIP-Integrität; Banner «ohne Prüfsumme»), `null` = noch nichts geladen. Hat ein
+  Release `SHA256SUMS`, fehlt aber der Eintrag oder passt der Hash nicht, bricht der Download ab.
+- `repo` / `foreign_repo` (Review m7): konfiguriertes `maintenance.update_repo`; `foreign_repo` =
+  nicht das offizielle Repo → Banner und Notizen-Dialog zeigen «aus <repo>».
 
 `get_versions().backups[]` hat zusätzlich `kind`: `"manual"` (Knopf/`backup_db`) oder `"premigrate"`
 (automatisch vor einer DB-Migration, `hcloader-premigrate-v<alt>-to-v<neu>-<ts>.db`).
