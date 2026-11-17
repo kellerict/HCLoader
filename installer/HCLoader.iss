@@ -11,6 +11,8 @@
 ;   AppVersion   required, = app\__init__.py __version__
 ;   SourceDir    the built app folder (default ..\dist\HCLoader)
 ;   OutputDir    where HCLoader-Setup-<AppVersion>.exe goes (default ..\dist\installer)
+;   Command line: /UPDATECHECK=0 unticks "Check for updates at startup" (also for /VERYSILENT).
+;
 ;   MaxRelPath   longest relative path in SourceDir (scripts\portable_tools.py longest); the
 ;                installer refuses target folders where folder + 1 + MaxRelPath > 259 (MAX_PATH)
 ;
@@ -38,6 +40,9 @@
 ; = app\core\scheduler.py TASK_NAME
 #define TaskName "HCLoader-Watchlist"
 #define AppRepoUrl "https://github.com/kellerict/HCLoader"
+#define PrivacyUrl AppRepoUrl + "/blob/main/CODE_SIGNING.md#privacy-policy"
+; = app\core\config.py INSTALLER_DEFAULTS: read by the app only while no config.yaml exists
+#define InstallerDefaults "installer-defaults.json"
 
 [Setup]
 ; fixed forever: identifies the installation for upgrades and the uninstaller
@@ -77,18 +82,42 @@ RestartApplications=no
 SetupLogging=yes
 
 [Languages]
+; English and German texts below; the other languages get the translated Inno wizard and the
+; English custom texts (this file stays ASCII). Only languages HCLoader itself speaks.
 Name: "en"; MessagesFile: "compiler:Default.isl"
 Name: "de"; MessagesFile: "compiler:Languages\German.isl"
+Name: "es"; MessagesFile: "compiler:Languages\Spanish.isl"
+Name: "fr"; MessagesFile: "compiler:Languages\French.isl"
+Name: "pt"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
+Name: "ru"; MessagesFile: "compiler:Languages\Russian.isl"
+Name: "nl"; MessagesFile: "compiler:Languages\Dutch.isl"
+Name: "fi"; MessagesFile: "compiler:Languages\Finnish.isl"
+Name: "nb"; MessagesFile: "compiler:Languages\Norwegian.isl"
+; not shipped by every Inno Setup 6 release
+#if FileExists(AddBackslash(CompilerPath) + "Languages/Swedish.isl")
+Name: "sv"; MessagesFile: "compiler:Languages\Swedish.isl"
+#endif
 
 [CustomMessages]
-en.PathTooLong=The folder%n%n%1%n%nis too long: some files of HCLoader would exceed the Windows path limit of 260 characters. Please choose a folder with at most %2 characters, e.g. the default folder.
+; without prefix = every language (English); de. overrides it for German
+PathTooLong=The folder%n%n%1%n%nis too long: some files of HCLoader would exceed the Windows path limit of 260 characters. Please choose a folder with at most %2 characters, e.g. the default folder.
+PortableDir=The folder%n%n%1%n%ncontains a portable copy of HCLoader (portable.txt or data). Install into another folder; the portable copy and its data stay as they are.
+DirNotEmpty=The folder%n%n%1%n%nis not empty and does not contain an earlier HCLoader installation. Please choose an empty or new folder (the uninstaller removes the whole folder).
+AppComment=Find, filter and save hardstyle, hardcore and uptempo mixes
+PrivacyCaption=Privacy and network access
+PrivacyDescription=Which systems HCLoader contacts and how to switch it off.
+PrivacyText=HCLoader sends no telemetry, has no analytics and needs no account.%n%nYouTube and SoundCloud are only contacted when you search, download or run a watchlist check (manually or on a schedule you set up).%n%nAt each start HCLoader can check GitHub for a new HCLoader version and PyPI for yt-dlp updates (at most once a day). These requests contain only the usual connection data (IP address, program version). You can change this later in Settings > Maintenance.
+PrivacyUpdateCheck=Check for updates at startup (GitHub, PyPI)
+PrivacyLink=Privacy policy (CODE_SIGNING.md)
 de.PathTooLong=Der Ordner%n%n%1%n%nist zu lang: einige Dateien von HCLoader wuerden die Windows-Pfadgrenze von 260 Zeichen ueberschreiten. Bitte einen Ordner mit hoechstens %2 Zeichen waehlen, z.B. den vorgeschlagenen.
-en.PortableDir=The folder%n%n%1%n%ncontains a portable copy of HCLoader (portable.txt or data). Install into another folder; the portable copy and its data stay as they are.
 de.PortableDir=Der Ordner%n%n%1%n%nenthaelt eine Portable-Version von HCLoader (portable.txt oder data). Bitte in einen anderen Ordner installieren; die Portable-Version und ihre Daten bleiben unveraendert.
-en.DirNotEmpty=The folder%n%n%1%n%nis not empty and does not contain an earlier HCLoader installation. Please choose an empty or new folder (the uninstaller removes the whole folder).
 de.DirNotEmpty=Der Ordner%n%n%1%n%nist nicht leer und enthaelt keine fruehere HCLoader-Installation. Bitte einen leeren oder neuen Ordner waehlen (die Deinstallation entfernt den ganzen Ordner).
-en.AppComment=Find, filter and save hardstyle, hardcore and uptempo mixes
 de.AppComment=Hardstyle-, Hardcore- und Uptempo-Mixes finden, filtern und speichern
+de.PrivacyCaption=Datenschutz und Netzwerkzugriffe
+de.PrivacyDescription=Welche Dienste HCLoader kontaktiert und wie man es abschaltet.
+de.PrivacyText=HCLoader sendet keine Telemetrie, hat keine Analyse und braucht kein Konto.%n%nYouTube und SoundCloud werden nur kontaktiert, wenn Sie suchen, herunterladen oder eine Watchlist-Pruefung starten (von Hand oder nach einem von Ihnen eingerichteten Zeitplan).%n%nBei jedem Start kann HCLoader auf GitHub nach einer neuen HCLoader-Version und auf PyPI nach yt-dlp-Updates suchen (hoechstens einmal pro Tag). Diese Anfragen enthalten nur die ueblichen Verbindungsdaten (IP-Adresse, Programmversion). Spaeter aenderbar unter Einstellungen > Wartung.
+de.PrivacyUpdateCheck=Beim Start nach Updates suchen (GitHub, PyPI)
+de.PrivacyLink=Datenschutzerklaerung (CODE_SIGNING.md)
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -125,6 +154,77 @@ Type: filesandordirs; Name: "{app}"
 const
   MaxRelPath = {#MaxRelPath};
   MaxPathLen = 259;
+
+var
+  PrivacyPage: TInputOptionWizardPage;
+
+// '1' = check for updates at startup. Order: /UPDATECHECK=0|1, the choice of an earlier
+// install, default on.
+function DefaultUpdateCheck(): String;
+begin
+  Result := ExpandConstant('{param:UPDATECHECK|}');
+  if Result = '' then
+    Result := GetPreviousData('UpdateCheck', '1');
+end;
+
+procedure PrivacyLinkClick(Sender: TObject);
+var
+  ErrorCode: Integer;
+begin
+  ShellExecAsOriginalUser('open', '{#PrivacyUrl}', '', '', SW_SHOWNORMAL, ewNoWait, ErrorCode);
+end;
+
+// Privacy page after the folder page (SignPath Foundation: describe network access, show it
+// during installation, offer to disable it).
+procedure InitializeWizard();
+var
+  Link: TNewStaticText;
+begin
+  PrivacyPage := CreateInputOptionPage(wpSelectDir, CustomMessage('PrivacyCaption'),
+    CustomMessage('PrivacyDescription'), CustomMessage('PrivacyText'), False, False);
+  PrivacyPage.Add(CustomMessage('PrivacyUpdateCheck'));
+  PrivacyPage.Values[0] := DefaultUpdateCheck() <> '0';
+  PrivacyPage.CheckListBox.Height := ScaleY(28);
+  Link := TNewStaticText.Create(PrivacyPage);
+  Link.Parent := PrivacyPage.Surface;
+  Link.Caption := CustomMessage('PrivacyLink');
+  Link.Cursor := crHand;
+  Link.Font.Color := clBlue;
+  Link.Font.Style := [fsUnderline];
+  Link.OnClick := @PrivacyLinkClick;
+  Link.Left := PrivacyPage.CheckListBox.Left;
+  Link.Top := PrivacyPage.CheckListBox.Top + PrivacyPage.CheckListBox.Height + ScaleY(8);
+end;
+
+procedure RegisterPreviousData(PreviousDataKey: Integer);
+begin
+  if PrivacyPage.Values[0] then
+    SetPreviousData(PreviousDataKey, 'UpdateCheck', '1')
+  else
+    SetPreviousData(PreviousDataKey, 'UpdateCheck', '0');
+end;
+
+// {app}\installer-defaults.json: the app applies it only when it creates a new config.yaml
+// (app\core\config.py load_with_warnings); an existing user config always wins.
+procedure WriteInstallerDefaults();
+var
+  Value: String;
+begin
+  if PrivacyPage.Values[0] then
+    Value := 'true'
+  else
+    Value := 'false';
+  if not SaveStringToFile(ExpandConstant('{app}\{#InstallerDefaults}'),
+    '{"maintenance": {"check_app_updates_on_start": ' + Value +
+    ', "check_updates_on_start": ' + Value + '}}' + #13#10, False) then
+    Log('Could not write {#InstallerDefaults}');
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssPostInstall then
+    WriteInstallerDefaults();
+end;
 
 function IsHCLoaderDir(const Dir: String): Boolean;
 begin

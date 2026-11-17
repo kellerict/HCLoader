@@ -37,8 +37,12 @@ on PATH); git is optional. `setup.ps1` fetches Deno, ffmpeg and the PO-token pro
    "Windows protected your PC" ("Der Computer wurde durch Windows geschützt"). Click
    **More info** ("Weitere Informationen"), then **Run anyway** ("Trotzdem ausführen").
 3. Choose the language, keep the default folder `%LOCALAPPDATA%\Programs\HCLoader` (no admin rights,
-   no UAC prompt), optionally tick "Create a desktop shortcut", and finish. "Launch HCLoader" starts the
-   app right away.
+   no UAC prompt). The next page, **Privacy and network access**, lists what HCLoader contacts:
+   YouTube/SoundCloud only when you search or download, GitHub and PyPI for update checks at
+   start; no telemetry. Untick "Check for updates at startup" to switch the update checks off (also
+   later in Settings › Maintenance; silent installs: `/UPDATECHECK=0`). The choice applies to a new
+   configuration only – an existing one in `%APPDATA%\HCLoader` stays as it is. Optionally tick
+   "Create a desktop shortcut", and finish. "Launch HCLoader" starts the app right away.
 
 Afterwards HCLoader is in the Start menu. Settings, database, download archive and logs live in
 `%APPDATA%\HCLoader\` - the same place as a venv install, so switching from a venv install keeps

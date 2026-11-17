@@ -37,9 +37,18 @@ by the user:
 | Feature | Destination | When | Setting |
 |---|---|---|---|
 | Search, watchlist checks, downloads | YouTube, SoundCloud | when the user searches, downloads, or runs a watchlist check (manually, by the in-app interval or a scheduled task the user created) | Watchlist / schedule settings, `soundcloud.enabled` |
-| App update check | GitHub (`api.github.com`, release downloads) | once per start | `maintenance.check_app_updates_on_start` |
-| yt-dlp / plugin update check | PyPI (`pypi.org`) | at most once per day at start | `maintenance.check_updates_on_start` |
+| App update check | GitHub (`api.github.com`, release downloads) | once per start | installer privacy page; `maintenance.check_app_updates_on_start` |
+| yt-dlp / plugin update check | PyPI (`pypi.org`) | at most once per day at start | installer privacy page; `maintenance.check_updates_on_start` |
 | Proxy | the proxy configured by the user | for the above requests | `network.proxy` |
+
+The two update checks are the only connections HCLoader makes on its own. They are **shown during
+installation and can be disabled there**: the installer has a page «Privacy and network access»
+(after the folder page) that describes these connections and offers the checkbox «Check for updates
+at startup» (default on; silent installs: `/UPDATECHECK=0`). The choice is written to
+`installer-defaults.json` in the program folder and becomes the setting when HCLoader creates its
+configuration on first start; an existing configuration is never changed. Both checks can be switched
+off at any time in Settings › Maintenance. The portable ZIP has no installer: there the checks are on by
+default and can be switched off in the same place.
 
 No telemetry, no analytics, no accounts. The services HCLoader talks to have their own privacy
 policies: [YouTube/Google](https://policies.google.com/privacy),

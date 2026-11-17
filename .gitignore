@@ -52,3 +52,4 @@ docs/screenshots/*/
 /data/
 /python/
 pytest-report.xml
+installer-defaults.json

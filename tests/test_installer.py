@@ -366,3 +366,47 @@ def test_workflow_builds_smokes_and_releases_the_installer():
     assert "sha256sum *.zip *.exe > SHA256SUMS" in rel
     assert 'gh release upload "$TAG" out/*.zip out/*.exe out/SHA256SUMS --clobber' in rel
     assert "HCLoader-Setup-$ver.exe" in rel
+
+
+def test_iss_privacy_page_offers_to_disable_update_checks():
+    """SignPath Foundation: network access is described during installation and can be
+    switched off; the choice reaches the app via installer-defaults.json (new config only)."""
+    text = _iss()
+    code = _section(text, "Code")
+    assert "CreateInputOptionPage(wpSelectDir" in code
+    assert "PrivacyPage.Add(CustomMessage('PrivacyUpdateCheck'))" in code
+    assert "DefaultUpdateCheck() <> '0'" in code  # default: checked
+    assert "{param:UPDATECHECK|}" in code and "GetPreviousData('UpdateCheck', '1')" in code
+    assert "SetPreviousData(PreviousDataKey, 'UpdateCheck'" in code
+    assert "ssPostInstall" in code and "{app}\\{#InstallerDefaults}" in code
+    assert f'#define InstallerDefaults "{config.INSTALLER_DEFAULTS}"' in text
+    assert "ShellExecAsOriginalUser('open', '{#PrivacyUrl}'" in code
+    assert "/blob/main/CODE_SIGNING.md#privacy-policy" in text
+    # the JSON keys the installer writes are real settings
+    fields = config.MaintenanceSettings.model_fields
+    for key in ("check_app_updates_on_start", "check_updates_on_start"):
+        assert f'"{key}": ' in code and key in fields
+    msgs = _section(text, "CustomMessages")
+    for name in (
+        "PrivacyCaption",
+        "PrivacyDescription",
+        "PrivacyText",
+        "PrivacyUpdateCheck",
+        "PrivacyLink",
+    ):
+        assert re.search(rf"^{name}=\S", msgs, re.M), name  # all languages (English)
+        assert re.search(rf"^de\.{name}=\S", msgs, re.M), name
+    for word in ("GitHub", "PyPI", "YouTube", "SoundCloud", "telemetry"):
+        assert word in msgs
+    # every [CustomMessages] entry has an unprefixed (all languages) version
+    names = set(re.findall(r"^(?:\w+\.)?(\w+)=", msgs, re.M))
+    assert names == set(re.findall(r"^(\w+)=", msgs, re.M))
+
+
+def test_iss_languages_exist_in_inno_setup():
+    langs = _section(_iss(), "Languages")
+    files = re.findall(r'MessagesFile: "compiler:(?:Languages\\)?([\w.]+)"', langs)
+    assert files[:2] == ["Default.isl", "German.isl"]
+    assert len(set(files)) == len(files)
+    # optional ones are guarded so the compile works with every Inno Setup 6 release
+    assert '#if FileExists(AddBackslash(CompilerPath) + "Languages/Swedish.isl")' in langs

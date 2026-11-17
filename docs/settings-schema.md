@@ -76,6 +76,8 @@ Leitfaden `docs/TRANSLATING.md`); Validierungsmeldungen aus `app/locales/<code>.
 | | `apply_update_on_exit` | bool | true | bereitgelegtes App-Update beim Beenden einspielen |
 | | `update_repo` | str | `kellerict/HCLoader` | `besitzer/repo` (auch `https://github.com/…` wird angenommen) |
 
+Installer-Vorgaben: Die Datenschutzseite des Installers schreibt `installer-defaults.json` in den Programmordner (`maintenance.check_app_updates_on_start`, `maintenance.check_updates_on_start`). Diese Werte gelten nur, solange keine `config.yaml` existiert (erster Start), und landen mit dem ersten Speichern darin. Vorrang: vorhandene `config.yaml` > `installer-defaults.json` > Standardwerte.
+
 Bridge (`ui/js/bridge.js`): `get_settings()` → `{values, defaults}`; `save_settings(values)` → `{ok: true}` oder `{ok: false, errors: {"section.key": "Meldung"}}`; `reset_settings(section?)`.
 
 ## Phase 3 – Jahr-/Zeitraum-Filter (Entscheid)

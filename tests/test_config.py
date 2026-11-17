@@ -220,3 +220,78 @@ def test_new_defaults():
     assert s.search.append_year is True
     f = s.filters
     assert (f.upload_year, f.upload_from, f.upload_to) == (0, "", "")
+
+
+# --------------------------------------------------------------------------- installer defaults
+
+INSTALLER_OFF = (
+    '{"maintenance": {"check_app_updates_on_start": false, "check_updates_on_start": false}}'
+)
+
+
+def test_installer_defaults_apply_only_without_config(tmp_path):
+    """Privacy page of the installer: its choice is used for a new config only."""
+    preset = tmp_path / "installer-defaults.json"
+    preset.write_text(INSTALLER_OFF, encoding="utf-8")
+    cfg = tmp_path / "config.yaml"
+
+    s, warnings = config.load_with_warnings(cfg, installer_file=preset)
+    assert warnings == []
+    assert s.maintenance.check_app_updates_on_start is False
+    assert s.maintenance.check_updates_on_start is False
+    assert s.general.start_view == "discover"  # everything else: built-in defaults
+    assert not cfg.exists()  # load never writes
+
+    # the first save persists the choice; from then on config.yaml wins
+    config.save(s, cfg)
+    preset.write_text('{"maintenance": {"check_app_updates_on_start": true}}', encoding="utf-8")
+    assert config.load(cfg).maintenance.check_app_updates_on_start is False
+
+
+def test_installer_defaults_never_override_existing_config(tmp_path):
+    preset = tmp_path / "installer-defaults.json"
+    preset.write_text(INSTALLER_OFF, encoding="utf-8")
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text("general:\n  start_view: library\n", encoding="utf-8")
+    s = config.load_with_warnings(cfg, installer_file=preset)[0]
+    assert s.maintenance.check_app_updates_on_start is True
+    assert s.maintenance.check_updates_on_start is True
+    cfg.write_text("", encoding="utf-8")  # empty file is still an existing config
+    assert config.load_with_warnings(cfg, installer_file=preset)[
+        0
+    ].maintenance.check_updates_on_start
+
+
+@pytest.mark.parametrize(
+    "content",
+    [None, "", "not json", "[1, 2]", '{"maintenance": 5}', '{"nosuchsection": {"x": 1}}'],
+)
+def test_installer_defaults_missing_or_invalid(tmp_path, content):
+    preset = tmp_path / "installer-defaults.json"
+    if content is not None:
+        preset.write_text(content, encoding="utf-8")
+    s, warnings = config.load_with_warnings(tmp_path / "config.yaml", installer_file=preset)
+    assert warnings == []
+    assert s.model_dump() == config.defaults().model_dump()
+
+
+def test_installer_defaults_invalid_value_falls_back(tmp_path):
+    preset = tmp_path / "installer-defaults.json"
+    # BOM as written by some Windows tools; a bad value keeps the built-in default
+    preset.write_text(
+        '﻿{"maintenance": {"check_app_updates_on_start": "maybe", "check_updates_on_start": false}}',
+        encoding="utf-8",
+    )
+    s, warnings = config.load_with_warnings(tmp_path / "config.yaml", installer_file=preset)
+    assert warnings == []
+    assert s.maintenance.check_app_updates_on_start is True
+    assert s.maintenance.check_updates_on_start is False
+
+
+def test_installer_defaults_default_location(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "app_root", lambda: tmp_path)
+    (tmp_path / config.INSTALLER_DEFAULTS).write_text(INSTALLER_OFF, encoding="utf-8")
+    assert config.installer_defaults() == {
+        "maintenance": {"check_app_updates_on_start": False, "check_updates_on_start": False}
+    }
+    assert config.load(tmp_path / "config.yaml").maintenance.check_app_updates_on_start is False

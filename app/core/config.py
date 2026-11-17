@@ -5,6 +5,7 @@ Contract: docs/settings-schema.md. Keys are English snake_case, user-facing mess
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import re
@@ -72,6 +73,9 @@ VIEWS = ("discover", "inbox", "watchlist", "downloads", "library", "log")
 
 PORTABLE_MARKER = "portable.txt"
 PORTABLE_DATA_DIR = "data"
+# Written by the installer (installer/HCLoader.iss, privacy page) into the app folder. Applied only
+# while no config.yaml exists yet - docs/decisions.md "Installer-Vorgaben".
+INSTALLER_DEFAULTS = "installer-defaults.json"
 
 
 def app_root() -> Path:
@@ -843,12 +847,54 @@ def _normalize(settings: Settings) -> None:
             t.backoff_max_hours = t.backoff_initial_hours
 
 
-def load_with_warnings(path: Path | None = None) -> tuple[Settings, list[str]]:
-    """Load config; missing values -> defaults, invalid file/values -> defaults + warnings."""
+def installer_defaults(file: Path | None = None) -> dict[str, Any]:
+    """Choices made in the installer (`<app folder>/installer-defaults.json`, e.g.
+    `{"maintenance": {"check_app_updates_on_start": false}}`). Only known sections that are
+    objects; missing or unreadable file -> {} (DEBUG log, the installer is optional)."""
+    file = file or app_root() / INSTALLER_DEFAULTS
+    try:
+        data = json.loads(file.read_text(encoding="utf-8-sig"))
+    except FileNotFoundError:
+        return {}
+    except (OSError, ValueError) as exc:
+        log.debug("Installer defaults %s not readable: %s", file, exc)
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {k: v for k, v in data.items() if k in SECTION_MODELS and isinstance(v, dict)}
+
+
+def _from_raw(raw: dict[str, Any], warnings: list[str]) -> Settings:
+    sections = {
+        name: _repair_section(model, raw.get(name), name, warnings)
+        for name, model in SECTION_MODELS.items()
+    }
+    settings = Settings.model_construct(**sections)
+    _normalize(settings)
+    return settings
+
+
+def load_with_warnings(
+    path: Path | None = None, *, installer_file: Path | None = None
+) -> tuple[Settings, list[str]]:
+    """Load config; missing values -> defaults, invalid file/values -> defaults + warnings.
+
+    Precedence: an existing config.yaml (also one that is empty or broken) always wins. Only when
+    there is no config.yaml yet (first start) the installer's choices
+    (`installer-defaults.json`, see `installer_defaults`) are laid over the built-in defaults;
+    they end up in config.yaml with the first save. A later install never changes a config.
+    """
     path = path or config_path()
     warnings: list[str] = []
     if not path.exists():
-        return defaults(), warnings
+        preset = installer_defaults(installer_file)
+        if not preset:
+            return defaults(), warnings
+        ignored: list[str] = []  # invalid installer values: built-in default, DEBUG only
+        settings = _from_raw(preset, ignored)
+        for w in ignored:
+            log.debug("Installer defaults: %s", w)
+        return settings, warnings
     try:
         raw = _plain(_yaml().load(path.read_text(encoding="utf-8")))
     except Exception as exc:
@@ -859,13 +905,7 @@ def load_with_warnings(path: Path | None = None) -> tuple[Settings, list[str]]:
     if not isinstance(raw, dict):
         warnings.append(tr("config.file_bad_format"))
         return defaults(), warnings
-    sections = {
-        name: _repair_section(model, raw.get(name), name, warnings)
-        for name, model in SECTION_MODELS.items()
-    }
-    settings = Settings.model_construct(**sections)
-    _normalize(settings)
-    return settings, warnings
+    return _from_raw(raw, warnings), warnings
 
 
 def load(path: Path | None = None) -> Settings:

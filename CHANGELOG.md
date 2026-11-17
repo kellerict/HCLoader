@@ -16,6 +16,12 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
   General, English default, 18 languages incl. the Fränggisch fun dialect.
 - Sprachkataloge können eine Rückfallsprache angeben (`_meta.fallback`, z. B. `de-x-frk` → `de`
   → `en`).
+- Installer: Seite «Datenschutz und Netzwerkzugriffe» nach der Ordnerwahl – beschreibt, welche
+  Dienste HCLoader kontaktiert (GitHub/PyPI für Update-Prüfungen beim Start, YouTube/SoundCloud nur
+  auf Aktion, keine Telemetrie) und bietet «Beim Start nach Updates suchen» zum Abwählen an
+  (still: `/UPDATECHECK=0`). Die Wahl gilt für eine neue Konfiguration (`installer-defaults.json`),
+  eine bestehende bleibt unverändert. Weitere Installer-Sprachen: es, fr, pt-BR, ru, nl, fi, nb (sv,
+  falls Inno Setup sie mitbringt).
 - Datum, Zahlen, Dauer und Dateigrössen im Format der gewählten Sprache (Intl).
 - Meldungen des Backends (Validierung, Fehler, Toasts, Protokoll, Kommandozeile) in der gewählten
   Sprache. Leitfaden für Übersetzungen: `docs/TRANSLATING.md`.

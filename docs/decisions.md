@@ -1021,3 +1021,17 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
   eine Stufe vor Englisch ein: Dialekt → `de` → `en` → Schlüssel; gleich in `ui/js/i18n.js` und
   `app/core/i18n.py`. **Grund:** ein Spass-Dialekt darf niemandem ungefragt erscheinen; fehlende
   Dialekt-Texte sollen deutsch statt englisch erscheinen.
+
+## 2026-11-17 – Installer-Vorgaben (Datenschutzseite, SignPath)
+
+- **Entscheid:** Der Installer zeigt nach der Ordnerwahl eine Seite «Privacy and network access» mit
+  der Checkbox «Check for updates at startup» (Standard an; still: `/UPDATECHECK=0`; bei Upgrades
+  gilt die frühere Wahl). Er schreibt `{app}\installer-defaults.json`
+  (`{"maintenance": {"check_app_updates_on_start": …, "check_updates_on_start": …}}`).
+  `config.load_with_warnings` legt diese Werte nur über die eingebauten Standards, **solange keine
+  `config.yaml` existiert**; mit dem ersten Speichern landen sie in `config.yaml`. Vorrang:
+  vorhandene `config.yaml` (auch leer/defekt) > `installer-defaults.json` > Standardwerte. Ungültige
+  Werte in der Datei fallen still (DEBUG) auf den Standard zurück.
+  **Grund:** SignPath-Foundation-Bedingung (Netzwerkzugriffe ohne User-Auftrag beschreiben, bei der
+  Installation zeigen, abschaltbar); ein Upgrade oder eine Neuinstallation darf eine bestehende
+  User-Konfiguration nie überschreiben. Keine Registry, damit `core/` plattformneutral bleibt.

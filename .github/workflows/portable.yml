@@ -209,8 +209,8 @@ jobs:
           $taskName = 'HCLoader-Watchlist'   # app/core/scheduler.py TASK_NAME
           Remove-Item Env:HCLOADER_HOME -ErrorAction SilentlyContinue   # app_home must resolve itself
           if (Test-Path $dir) { cmd.exe /d /c "rmdir /s /q `"\\?\$dir`"" }
-          function Invoke-Setup([string]$Log) {
-            $p = Start-Process -FilePath $exe -Wait -PassThru -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CURRENTUSER', "/DIR=`"$dir`"", "/LOG=`"$Log`"")
+          function Invoke-Setup([string]$Log, [string[]]$Extra = @()) {
+            $p = Start-Process -FilePath $exe -Wait -PassThru -ArgumentList (@('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CURRENTUSER', "/DIR=`"$dir`"", "/LOG=`"$Log`"") + $Extra)
             if (Test-Path $Log) { Get-Content -Path $Log -Tail 25 | ForEach-Object { Write-Host "    $_" } }
             if ($p.ExitCode -ne 0) { throw "Setup fehlgeschlagen (Exitcode $($p.ExitCode))" }
           }
@@ -220,6 +220,12 @@ jobs:
           }
           if (Test-Path (Join-Path $dir 'portable.txt')) { throw 'portable.txt darf nicht installiert werden' }
           if (Test-Path (Join-Path $dir 'data')) { throw 'data\ darf nicht installiert werden' }
+          # privacy page: update check on by default, written to installer-defaults.json
+          $preset = Join-Path $dir 'installer-defaults.json'
+          if (-not (Test-Path $preset)) { throw 'installer-defaults.json fehlt' }
+          $pj = Get-Content -Raw -Path $preset | ConvertFrom-Json
+          Write-Host "installer-defaults.json: $(Get-Content -Raw -Path $preset)"
+          if (-not $pj.maintenance.check_app_updates_on_start -or -not $pj.maintenance.check_updates_on_start) { throw 'Update-Pruefung muss standardmaessig an sein' }
           $lnk = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\HCLoader.lnk'
           if (-not (Test-Path $lnk)) { throw "Startmenue-Verknuepfung fehlt: $lnk" }
           $sc = (New-Object -ComObject WScript.Shell).CreateShortcut($lnk)
@@ -249,7 +255,15 @@ jobs:
           New-Item -ItemType Directory -Path (Join-Path $dir '_previous') -Force | Out-Null
           Set-Content -Path (Join-Path $dir '_previous\marker.txt') -Value 'x'
           Set-Content -Path (Join-Path $dir 'app\stale_module.py') -Value '# old'
-          Invoke-Setup (Join-Path $env:RUNNER_TEMP 'hcl-setup-2.log')
+          Invoke-Setup (Join-Path $env:RUNNER_TEMP 'hcl-setup-2.log') @('/UPDATECHECK=0')
+          $pj = Get-Content -Raw -Path $preset | ConvertFrom-Json
+          if ($pj.maintenance.check_app_updates_on_start -or $pj.maintenance.check_updates_on_start) { throw '/UPDATECHECK=0 nicht in installer-defaults.json' }
+          # the app applies it to a new config only (no config.yaml in the temp home)
+          $env:HCLOADER_HOME = Join-Path $env:RUNNER_TEMP 'hcl-preset-home'
+          & $py -c "from app.core import config; s = config.load(); m = s.maintenance; assert not config.config_path().exists(); assert not m.check_app_updates_on_start and not m.check_updates_on_start, m; print('installer defaults ok')"
+          $rc = $LASTEXITCODE
+          Remove-Item Env:HCLOADER_HOME -ErrorAction SilentlyContinue
+          if ($rc -ne 0) { exit 1 }
           if (Test-Path (Join-Path $dir '_previous')) { throw 'Upgrade: _previous nicht entfernt' }
           if (Test-Path (Join-Path $dir 'app\stale_module.py')) { throw 'Upgrade: alte Programmdatei liegt noch da' }
           if (-not (Test-Path (Join-Path $dir 'app\main.py'))) { throw 'Upgrade: app\main.py fehlt' }
