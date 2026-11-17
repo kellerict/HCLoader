@@ -21,7 +21,8 @@ certificate by [SignPath Foundation](https://signpath.org/).
 | Committers and reviewers | [@kellerict](https://github.com/kellerict) |
 | Approvers | [@kellerict](https://github.com/kellerict) |
 
-Pull requests are limited to collaborators. All members with write access use multi-factor
+Authors may commit without additional review; every change proposed by anyone else (pull request)
+is reviewed by a committer before it is merged. Pull requests are limited to collaborators. All members with write access use multi-factor
 authentication on GitHub and SignPath.
 
 ## Privacy policy
@@ -38,7 +39,10 @@ by the user:
 | yt-dlp / plugin update check | PyPI (`pypi.org`) | at most once per day at start | `maintenance.check_updates_on_start` |
 | Proxy | the proxy configured by the user | for the above requests | `network.proxy` |
 
-No telemetry, no analytics, no accounts. Settings, the database and logs stay on the local
+No telemetry, no analytics, no accounts. The services HCLoader talks to have their own privacy
+policies: [YouTube/Google](https://policies.google.com/privacy),
+[SoundCloud](https://soundcloud.com/pages/privacy), [GitHub](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement),
+[PyPI](https://policies.python.org/pypi.org/Privacy-Notice/). Settings, the database and logs stay on the local
 computer (`%APPDATA%\HCLoader` or the portable folder). Browser cookies are only read if the user
 explicitly enables `network.cookies_from_browser`, and are never stored in logs.
 

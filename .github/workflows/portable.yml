@@ -344,6 +344,7 @@ jobs:
               rest = text[m.end():]
               n = re.search(r"^##\s", rest, re.M)
               print(rest[: n.start() if n else len(rest)].strip())
+          print("\n---\n[Code signing policy](https://github.com/kellerict/HCLoader/blob/main/CODE_SIGNING.md)")
           PY
           echo "version=$ver" >> "$GITHUB_OUTPUT"
 
