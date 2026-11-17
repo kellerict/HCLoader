@@ -1,6 +1,6 @@
 [project]
 name = "hcloader"
-version = "0.1.0"
+dynamic = ["version"]  # app/__init__.py __version__ (single source of truth)
 description = "Finden, Filtern und lokales Speichern von Hardstyle-/Hardcore-/Uptempo-Mixes als MP3"
 requires-python = ">=3.12"
 dependencies = [
@@ -17,6 +17,9 @@ dev = ["pytest", "ruff", "playwright"]
 
 [tool.setuptools]
 packages = ["app", "app.core"]
+
+[tool.setuptools.dynamic]
+version = {attr = "app.__version__"}
 
 [tool.ruff]
 line-length = 100

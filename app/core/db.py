@@ -185,17 +185,49 @@ def _current_version(conn: sqlite3.Connection) -> int:
     return int(row[0] or 0)
 
 
-def migrate(conn: sqlite3.Connection, migrations: Sequence[Callable] | None = None) -> int:
-    """Apply pending migrations. Returns the resulting schema version."""
+class SchemaTooNewError(RuntimeError):
+    """The DB was written by a newer HCLoader (higher schema version than this code knows).
+    Nothing is changed; `main.py` shows `message` instead of a traceback (self-update)."""
+
+    def __init__(self, found: int, supported: int) -> None:
+        self.found = found
+        self.supported = supported
+        super().__init__(
+            f"Datenbank-Schema v{found} ist neuer als unterstützt (v{supported}); "
+            "bitte HCLoader aktualisieren"
+        )
+
+
+class MigrationBackupError(RuntimeError):
+    """The automatic backup before a migration failed: the migration is not started."""
+
+
+def migrate(
+    conn: sqlite3.Connection,
+    migrations: Sequence[Callable] | None = None,
+    *,
+    before: Callable[[int, int], Any] | None = None,
+) -> int:
+    """Apply pending migrations. Returns the resulting schema version.
+
+    `before(old, new)` runs once before the first pending step of an existing DB (old >= 1),
+    never for a fresh one; the self-update uses it for the pre-migration backup. If it raises,
+    nothing is migrated (MigrationBackupError)."""
     steps = MIGRATIONS if migrations is None else migrations
     conn.execute("CREATE TABLE IF NOT EXISTS schema_version(version INTEGER)")
     conn.commit()
     version = _current_version(conn)
     if version > len(steps):
-        raise RuntimeError(
-            f"Datenbank-Schema v{version} ist neuer als unterstützt (v{len(steps)}); "
-            "bitte HCLoader aktualisieren"
-        )
+        raise SchemaTooNewError(version, len(steps))
+    if before is not None and 0 < version < len(steps):
+        try:
+            before(version, len(steps))
+        except Exception as exc:
+            raise MigrationBackupError(
+                f"Sicherung vor der Datenbank-Migration v{version} → v{len(steps)} "
+                f"fehlgeschlagen ({exc}). Die Migration wurde nicht gestartet, die Daten sind "
+                "unverändert."
+            ) from exc
     for target in range(version + 1, len(steps) + 1):
         # Migration steps must use conn.execute() only (never executescript(), which commits).
         try:
@@ -229,7 +261,17 @@ class Database:
                 self._conn.execute("PRAGMA journal_mode=WAL")
             self._conn.execute("PRAGMA foreign_keys=ON")
             self._conn.execute("PRAGMA busy_timeout=30000")
-            migrate(self._conn)
+            migrate(
+                self._conn,
+                before=self._backup_before_migration if self.path != ":memory:" else None,
+            )
+
+    def _backup_before_migration(self, old: int, new: int) -> Path:
+        """Self-update: copy of the DB before it is migrated to a higher schema version,
+        `<db folder>/backups/hcloader-premigrate-v<old>-to-v<new>-<ts>.db` (own retention)."""
+        from .maintenance import backup_before_migration  # lazy: maintenance imports more
+
+        return backup_before_migration(Path(self.path), old, new)
 
     def close(self) -> None:
         with self._lock:

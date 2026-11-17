@@ -434,8 +434,31 @@ class PlayerSettings(_Section):
     mode: Literal["internal", "external"] = "internal"
 
 
+DEFAULT_UPDATE_REPO = "kellerict/HCLoader"
+_REPO_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/[A-Za-z0-9._-]{1,100}$")
+
+
 class MaintenanceSettings(_Section):
     check_updates_on_start: bool = True
+    # self-update of HCLoader itself (GitHub releases, docs/decisions.md "Selbst-Update")
+    check_app_updates_on_start: bool = True
+    apply_update_on_exit: bool = True
+    update_repo: str = DEFAULT_UPDATE_REPO
+
+    @field_validator("update_repo", mode="before")
+    @classmethod
+    def _repo(cls, v: Any) -> Any:
+        if v is None or (isinstance(v, str) and not v.strip()):
+            return DEFAULT_UPDATE_REPO
+        if isinstance(v, str):
+            v = v.strip().strip("/")
+            if v.lower().startswith("https://github.com/"):
+                v = v[len("https://github.com/") :].strip("/")
+            if v.endswith(".git"):
+                v = v[:-4]
+            if not _REPO_RE.match(v) or ".." in v:
+                raise ValueError("Format «besitzer/repo», z.B. kellerict/HCLoader")
+        return v
 
 
 class Settings(BaseModel):
@@ -664,6 +687,9 @@ COMMENTS = {
     "appearance.pulse_bpm": "Takt des Fortschrittsbalkens in BPM (60-300)",
     "player.mode": "Abspielen: internal (eingebauter Player) oder external (Standardplayer von Windows)",
     "maintenance.check_updates_on_start": "Beim Start auf yt-dlp-Updates prüfen (max. 1x pro Tag)",
+    "maintenance.check_app_updates_on_start": "Beim Start prüfen, ob eine neue HCLoader-Version da ist (GitHub)",
+    "maintenance.apply_update_on_exit": "Ein heruntergeladenes App-Update beim Beenden automatisch einspielen",
+    "maintenance.update_repo": "GitHub-Repo für App-Updates (besitzer/repo), für Forks änderbar",
 }
 
 _HEADER = (

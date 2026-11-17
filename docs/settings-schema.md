@@ -70,6 +70,9 @@ Schlüssel = Englisch, snake_case. UI-Labels kommen aus `ui/js/i18n.js`. Änderu
 | | `pulse_bpm` | int | 200 | 60–300 |
 | `player` (Tab «Allgemein», Phase 8) | `mode` | str | `internal` | internal (eingebauter Player), external (Standardplayer des Systems) |
 | `maintenance` (Wartung) | `check_updates_on_start` | bool | true | max. 1×/Tag |
+| | `check_app_updates_on_start` | bool | true | HCLoader-Update (GitHub-Release) einmal pro Start prüfen |
+| | `apply_update_on_exit` | bool | true | bereitgelegtes App-Update beim Beenden einspielen |
+| | `update_repo` | str | `kellerict/HCLoader` | `besitzer/repo` (auch `https://github.com/…` wird angenommen) |
 
 Bridge (`ui/js/bridge.js`): `get_settings()` → `{values, defaults}`; `save_settings(values)` → `{ok: true}` oder `{ok: false, errors: {"section.key": "Meldung"}}`; `reset_settings(section?)`.
 

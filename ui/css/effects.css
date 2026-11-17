@@ -191,6 +191,29 @@ tr.leave td{transition:opacity 180ms;opacity:0}
 .stab:focus-visible{box-shadow:inset 2px 0 0 var(--accent)}
 .card:focus-within{border-color:var(--accent-2)}
 
+/* ---------- Phase 7a/8: Plattform-Schalter, Genre-Badge, Mini-Player ---------- */
+/* Dauerschleifen nur während der Wiedergabe: Equalizer-Balken und der Kick-Puls am Play-Knopf (festes Glow, nur Deckkraft). */
+@keyframes eqBar{from{transform:scaleY(.25)}to{transform:scaleY(1)}}
+@keyframes playerIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes listUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.player.enter{animation:playerIn 260ms var(--ease-out) backwards}
+.player.leave{transition:opacity 180ms ease-in,transform 180ms ease-in;opacity:0;transform:translateY(12px);pointer-events:none}
+.pl-list{animation:listUp 200ms var(--ease-out)}
+.pl-track.swap span{animation:fadeIn 320ms ease-out}
+.player.playing .pl-play::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;box-shadow:0 0 14px var(--accent-glow);animation:kickGlow var(--beat) linear infinite}
+.player.playing .eqb i,tr.now:not(.paused) .eqb i,.lib-card.now:not(.paused) .eqb i{animation:eqBar calc(var(--beat) * 2) ease-in-out infinite alternate}
+.eqb i:nth-child(2){animation-delay:-190ms!important}
+.eqb i:nth-child(3){animation-delay:-90ms!important}
+.pl-tracks li:not(.cur) .eqb i{animation:none}
+.nowplay{animation:fadeIn 200ms ease-out}
+.gtag.edit:active:not(:disabled){transform:scale(.95)}
+.cnote{animation:fadeIn 240ms ease-out}
+.sugg-tag,.detected{animation:popIn 160ms var(--ease-out)}
+.pseg button{transition:color var(--t-fast),background var(--t-med),box-shadow var(--t-med)}
+.menu.from-left{transform-origin:top left}
+.pl-track:focus-visible,.pl-tracks li:focus-visible{box-shadow:0 0 0 1px var(--accent)}
+.pl-play:focus-visible{box-shadow:0 0 0 2px var(--bg),0 0 0 3px var(--accent),0 0 14px var(--accent-glow)}
+
 /* =====================================================================
    Effekte reduzieren (Setting appearance.reduce_effects → body.reduced)
    ===================================================================== */
@@ -202,6 +225,8 @@ body.reduced .skel{background:var(--panel-2)}
 body.reduced .progress.indet .bar{width:100%!important;opacity:.45}
 body.reduced tbody tr.checking td{background-image:none}
 body.reduced .card.leave,body.reduced .qitem.leave,body.reduced tr.leave td{opacity:1;transform:none}
+body.reduced .player.leave{opacity:1;transform:none}
+body.reduced .player.playing .pl-play::after{display:none}
 body.reduced .qitem.active::after,body.reduced .led.live::after,body.reduced .log-line.new::before,body.reduced .progress .bar.kick::before{display:none}
 
 @media (prefers-reduced-motion:reduce){
@@ -212,5 +237,7 @@ body.reduced .qitem.active::after,body.reduced .led.live::after,body.reduced .lo
   .progress.indet .bar{width:100%!important;opacity:.45}
   tbody tr.checking td,tbody tr.checking:hover td{background-image:none}
   .card.leave,.qitem.leave,tr.leave td{opacity:1;transform:none}
+  .player.leave{opacity:1;transform:none}
+  .player.playing .pl-play::after{display:none}
   .qitem.active::after,.led.live::after,.log-line.new::before,.progress .bar.kick::before{display:none}
 }

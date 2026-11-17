@@ -361,14 +361,14 @@
       id, title, artist, channel_id: CH[ch][0], genre, duration, upload_date: date, year: +date.slice(0, 4),
       downloaded_at: isoAt(dlDays, dlDays % 3 ? 3 : 20, 10 + (id.charCodeAt(2) % 40)),
       file_path: libPath(genre, artist, date, title, id), size_mb: sizeOf(duration), missing: false, has_cue: id.charCodeAt(3) % 3 !== 0,
-      platform: 'youtube',
+      platform: 'youtube', thumbnail: null, genre_manual: false,
     }, extra);
   };
   let LIBRARY = [
     L('eEuph0ric26', 'Euphoric Hardstyle Yearmix 2026', 'euph', 'Hardstyle', 95, 40, 2),
     L('gGabbClassM', 'Gabber Classics Marathon – 3 Hours Oldschool', 'vault', 'Hardcore', 180, 31, 2),
     L('tTerrNight1', 'Terror Night Live Recording', 'terror', 'Uptempo', 66, 20, 3),
-    L('kRawNation4', 'Raw Nation Podcast #4', 'kick', 'Hardstyle', 61, 26, 3),
+    L('kRawNation4', 'Raw Nation Podcast #4', 'kick', 'Hardstyle', 61, 26, 3, { genre_manual: true }),
     L('rIndoorCls2', 'Indoor Closing Set – Frenchcore Special', 'rave', 'Hardcore', 74, 44, 4),
     L('dOverdrive1', 'Overdrive – 1 Hour Uptempo Mix', 'dist', 'Uptempo', 60, 52, 4),
     L('cIndVol016', 'Industrial Hardcore Mix Vol. 16', 'concrete', 'Hardcore', 63, 70, 5),
@@ -409,7 +409,7 @@
   /* SoundCloud-Downloads: Original behalten (download.keep_original_soundcloud) -> .m4a, Dateiname mit [sc-<id>]. */
   const scLib = (v, dlDays, kbps) => ({
     id: v.id, title: v.title, artist: v.channel_name, channel_id: v.channel_id, genre: v.genre, duration: v.duration, upload_date: v.upload_date, year: +v.upload_date.slice(0, 4),
-    downloaded_at: isoAt(dlDays, 20, 26), size_mb: +((v.duration * kbps) / 8 / 1024).toFixed(1), missing: false, has_cue: true, platform: 'soundcloud',
+    downloaded_at: isoAt(dlDays, 20, 26), size_mb: +((v.duration * kbps) / 8 / 1024).toFixed(1), missing: false, has_cue: true, platform: 'soundcloud', thumbnail: null, genre_manual: false,
     file_path: `${TARGET}\\${v.genre}\\${v.channel_name}\\${v.upload_date.slice(0, 4)}\\${v.upload_date} - ${v.title} [${v.id.replace(':', '-')}].m4a`,
   });
   LIBRARY.splice(2, 0, scLib(byId('sc:880114208'), 2, 160));
@@ -651,7 +651,7 @@
         id: v.id, title: v.title, artist, channel_id: v.channel_id, genre: v.genre, duration: v.duration, upload_date: v.upload_date, year: +v.upload_date.slice(0, 4),
         downloaded_at: new Date().toISOString(),
         file_path: libPath(v.genre, artist, v.upload_date, v.title, v.id), size_mb: sizeOf(v.duration), missing: false, has_cue: true,
-        platform: v.platform || 'youtube',
+        platform: v.platform || 'youtube', thumbnail: v.thumbnail || null, genre_manual: !!v.genre_manual,
       });
       if (openRun()) openRun().downloaded++;
       setStatus(v, 'done');
@@ -906,7 +906,11 @@
     set_genre(id, genre) {
       return later(40, () => {
         const v = byId(id);
+        const l = LIBRARY.find((x) => x.id === id);
+        if (!v && !l) return { ok: false, error: 'Ungültige Video-ID' };
+        if (!settings.genres.items.some((g) => g.name === genre)) return { ok: false, error: 'Dieses Genre gibt es nicht (mehr).' };
         if (v) { v.genre = genre; v.genre_manual = true; emit('video', { id, status: v.status, genre }); }
+        if (l) { l.genre = genre; l.genre_manual = true; } // die Datei zieht erst mit retag() in den Ordner des Genres um
         return { ok: true };
       });
     },
@@ -1115,10 +1119,13 @@
         const l = LIBRARY.find((x) => x.id === id);
         if (!l) return { ok: false, error: 'Eintrag nicht gefunden' };
         if (l.missing) return { ok: false, error: `Datei fehlt: ${l.file_path}` };
-        const moved = !!STALE[id];
+        /* Zielpfad nach dem aktuellen Genre: ein geändertes Genre (set_genre) verschiebt die Datei. */
+        const parts = l.file_path.split('\\');
+        const want = STALE[id] ? libPath(l.genre, l.artist, l.upload_date, l.title, l.id) : parts.map((x, i) => (i === parts.length - 4 ? l.genre : x)).join('\\');
+        const moved = want !== l.file_path;
         if (moved) {
           delete STALE[id];
-          l.file_path = libPath(l.genre, l.artist, l.upload_date, l.title, l.id);
+          l.file_path = want;
           pushLog('info', `Verschoben (Ablage-Muster): ${l.file_path}`);
         }
         pushLog('ok', `Neu getaggt: ${l.title}`);

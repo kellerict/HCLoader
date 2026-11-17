@@ -33,6 +33,7 @@
   --warn:#ffb000; --warn-soft:rgba(255,176,0,.12);
   --error:#ff3b5c; --error-soft:rgba(255,59,92,.12);
   --info:#7fb7ff;
+  --sc:#ff7a1a; --sc-soft:rgba(255,122,26,.13); /* SoundCloud: dezenter Zweitakzent, nur für Plattform-Kennzeichen */
 
   /* Genres (Defaults; zur Laufzeit kommen die Farben aus den Einstellungen) */
   --g-hardstyle:#a43bff; --g-hardcore:#ff1f1f; --g-uptempo:#b6ff00; --g-unsorted:#6b6b78;
@@ -53,7 +54,7 @@
   --f-mono:"JetBrains Mono","Consolas",monospace;
 
   /* Layout */
-  --nav-w:232px; --status-h:30px;
+  --nav-w:232px; --status-h:30px; --player-h:72px;
 }
 
 *,*::before,*::after{box-sizing:border-box}
@@ -62,8 +63,8 @@ html,body{height:100%}
 body{
   background:var(--bg);color:var(--text);font:14px/1.45 var(--f-body);overflow:hidden;
   -webkit-font-smoothing:antialiased;
-  display:grid;grid-template-columns:var(--nav-w) minmax(0,1fr);grid-template-rows:minmax(0,1fr) var(--status-h);
-  grid-template-areas:"nav main" "status status";
+  display:grid;grid-template-columns:var(--nav-w) minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto var(--status-h);
+  grid-template-areas:"nav main" "player player" "status status"; /* player: Mini-Player, Höhe 0 solange nichts geladen ist */
 }
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}

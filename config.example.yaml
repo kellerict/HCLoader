@@ -229,6 +229,12 @@ appearance:
 maintenance:
   # Beim Start auf yt-dlp-Updates prüfen (max. 1x pro Tag)
   check_updates_on_start: true
+  # Beim Start prüfen, ob eine neue HCLoader-Version da ist (GitHub)
+  check_app_updates_on_start: true
+  # Ein heruntergeladenes App-Update beim Beenden automatisch einspielen
+  apply_update_on_exit: true
+  # GitHub-Repo für App-Updates (besitzer/repo), für Forks änderbar
+  update_repo: kellerict/HCLoader
 
 # --- Player ---
 player:

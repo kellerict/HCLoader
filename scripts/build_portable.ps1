@@ -208,9 +208,10 @@ function Copy-TextFile([string]$Source, [string]$Destination) {
 }
 
 # --- Version / Ausgabeordner ------------------------------------------------
-$verLine = Select-String -Path (Join-Path $RepoRoot 'pyproject.toml') -Pattern '^version\s*=\s*"([^"]+)"' |
+# single source of truth: app\__init__.py __version__ (pyproject.toml reads it dynamically)
+$verLine = Select-String -Path (Join-Path $RepoRoot 'app\__init__.py') -Pattern '^__version__\s*=\s*"([^"]+)"' |
     Select-Object -First 1
-if (-not $verLine) { throw 'Version in pyproject.toml nicht gefunden' }
+if (-not $verLine) { throw 'Version in app\__init__.py nicht gefunden' }
 $AppVersion = $verLine.Matches[0].Groups[1].Value
 Write-Step "HCLoader $AppVersion - Portable-Build nach $Dist"
 
@@ -287,8 +288,12 @@ try {
         Remove-Item -Recurse -Force
     $scriptsOut = Join-Path $Dist 'scripts'
     New-Item -ItemType Directory -Path $scriptsOut -Force | Out-Null
-    Copy-Item -Path (Join-Path $PSScriptRoot 'run_watchlist.pyw') -Destination $scriptsOut -Force
-    foreach ($f in @('config.example.yaml', 'README.md', 'CHANGELOG.md', 'pyproject.toml', 'requirements.txt')) {
+    # self-update (docs/decisions.md): the updater and the binary fetcher must be on board
+    foreach ($f in @('run_watchlist.pyw', 'apply_update.ps1', 'fetch_binaries.ps1', 'materialize_links.py')) {
+        Copy-Item -Path (Join-Path $PSScriptRoot $f) -Destination $scriptsOut -Force
+    }
+    foreach ($f in @('config.example.yaml', 'README.md', 'LICENSE', 'CHANGELOG.md', 'pyproject.toml', 'requirements.txt')) {
+        if (-not (Test-Path (Join-Path $RepoRoot $f))) { continue }
         Copy-Item -Path (Join-Path $RepoRoot $f) -Destination (Join-Path $Dist $f) -Force
     }
     foreach ($f in @('HCLoader.cmd', 'HCLoader.vbs', 'HCLoader-Konsole.cmd', 'Verknuepfung-erstellen.cmd', 'portable.txt')) {

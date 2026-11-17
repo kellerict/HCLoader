@@ -42,16 +42,10 @@ _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 
 def app_version() -> str:
-    return binaries.package_version("hcloader") or _pyproject_version() or "0.0.0"
+    """`app.__version__` - the single source of truth (pyproject reads it, docs/RELEASING.md)."""
+    from .. import __version__
 
-
-def _pyproject_version() -> str | None:
-    try:
-        text = (binaries.repo_root() / "pyproject.toml").read_text(encoding="utf-8")
-    except OSError:
-        return None
-    m = re.search(r'^version\s*=\s*"([^"]+)"', text, re.M)
-    return m.group(1) if m else None
+    return __version__
 
 
 def installed_versions() -> dict[str, str | None]:
@@ -332,13 +326,19 @@ def backups_dir() -> Path:
 
 
 _BACKUP_RE = re.compile(r"^hcloader-\d{8}-\d{6}(-\d+)?\.db$")
+# self-update: automatic copy before a schema migration; own retention, never hit by the
+# rotation of the normal backups (`_BACKUP_RE` does not match these names)
+_PREMIGRATE_RE = re.compile(r"^hcloader-premigrate-v\d+-to-v\d+-\d{8}-\d{6}(-\d+)?\.db$")
+PREMIGRATE_KEEP = 5
 
 
-def _backup_files(dest_dir: Path) -> list[tuple[Path, os.stat_result]]:
+def _backup_files(
+    dest_dir: Path, pattern: re.Pattern[str] = _BACKUP_RE
+) -> list[tuple[Path, os.stat_result]]:
     """Backups made by `backup_database` (strict name pattern; other files are never touched),
     with their stat; files that vanish meanwhile are skipped."""
     try:
-        candidates = [p for p in dest_dir.glob("hcloader-*.db") if _BACKUP_RE.match(p.name)]
+        candidates = [p for p in dest_dir.glob("hcloader-*.db") if pattern.match(p.name)]
     except OSError:
         return []
     out = []
@@ -352,15 +352,24 @@ def _backup_files(dest_dir: Path) -> list[tuple[Path, os.stat_result]]:
     return out
 
 
-def prune_backups(dest_dir: Path, keep: int, *, protect: Path | None = None) -> list[Path]:
+def prune_backups(
+    dest_dir: Path,
+    keep: int,
+    *,
+    protect: Path | None = None,
+    pattern: re.Pattern[str] = _BACKUP_RE,
+) -> list[Path]:
     """Delete all but the newest `keep` `hcloader-*.db` files (by modification time, then name).
-    `protect` (the backup just made) is always kept. `keep <= 0` disables pruning."""
+    `protect` (the backup just made) is always kept. `keep <= 0` disables pruning.
+    `pattern` selects the family (normal backups by default, never the pre-migration ones)."""
     if keep <= 0:
         return []
     others = [
         p
         for p, _st in sorted(
-            _backup_files(dest_dir), key=lambda x: (x[1].st_mtime_ns, x[0].name), reverse=True
+            _backup_files(dest_dir, pattern),
+            key=lambda x: (x[1].st_mtime_ns, x[0].name),
+            reverse=True,
         )
         if protect is None or p != protect
     ]
@@ -385,12 +394,42 @@ def backup_database(
     """Consistent copy via the sqlite3 backup API -> `<dest>/hcloader-<YYYYmmdd-HHMMSS>.db`.
     Afterwards only the newest `keep` backups stay (default `BACKUP_KEEP`)."""
     dest_dir = dest_dir or backups_dir()
+    target = _copy_db(db_path, dest_dir, "hcloader", now)
+    for old in prune_backups(dest_dir, keep, protect=target):
+        log.info("Altes Backup gelöscht: %s", old.name)
+    return target
+
+
+def backup_before_migration(
+    db_path: Path,
+    old: int,
+    new: int,
+    dest_dir: Path | None = None,
+    *,
+    now: datetime | None = None,
+    keep: int = PREMIGRATE_KEEP,
+) -> Path:
+    """Copy taken automatically before the DB is migrated to a higher schema version:
+    `<dest>/hcloader-premigrate-v<old>-to-v<new>-<YYYYmmdd-HHMMSS>.db`. Default folder is
+    `backups/` next to the DB (= `<app_home>/backups`). Own retention: the newest `keep` (5)."""
+    dest_dir = dest_dir or Path(db_path).parent / "backups"
+    target = _copy_db(db_path, dest_dir, f"hcloader-premigrate-v{old}-to-v{new}", now)
+    for gone in prune_backups(dest_dir, keep, protect=target, pattern=_PREMIGRATE_RE):
+        log.info("Altes Migrations-Backup gelöscht: %s", gone.name)
+    log.warning(
+        "Datenbank wird von Schema v%d auf v%d migriert – Sicherung: %s", old, new, target
+    )
+    return target
+
+
+def _copy_db(db_path: Path, dest_dir: Path, stem: str, now: datetime | None) -> Path:
+    """Consistent copy via the sqlite3 backup API -> `<dest>/<stem>-<YYYYmmdd-HHMMSS>.db`."""
     dest_dir.mkdir(parents=True, exist_ok=True)
     stamp = (now or datetime.now()).strftime("%Y%m%d-%H%M%S")
-    target = dest_dir / f"hcloader-{stamp}.db"
+    target = dest_dir / f"{stem}-{stamp}.db"
     n = 1
     while target.exists():
-        target = dest_dir / f"hcloader-{stamp}-{n}.db"
+        target = dest_dir / f"{stem}-{stamp}-{n}.db"
         n += 1
     tmp = target.with_suffix(".db.tmp")
     src = sqlite3.connect(str(db_path))
@@ -403,8 +442,6 @@ def backup_database(
     finally:
         src.close()
     tmp.replace(target)
-    for old in prune_backups(dest_dir, keep, protect=target):
-        log.info("Altes Backup gelöscht: %s", old.name)
     return target
 
 
@@ -418,12 +455,16 @@ def last_backup(dest_dir: Path | None = None) -> str | None:
 
 
 def list_backups(dest_dir: Path | None = None) -> list[dict[str, Any]]:
-    """Backups for the maintenance tab, newest first: {name, path, size_mb, created (ISO)}."""
+    """Backups for the maintenance tab, newest first:
+    {name, path, size_mb, created (ISO), kind: "manual" | "premigrate"}."""
     dest_dir = dest_dir or backups_dir()
+    files = [(p, st, "manual") for p, st in _backup_files(dest_dir)]
+    files += [(p, st, "premigrate") for p, st in _backup_files(dest_dir, _PREMIGRATE_RE)]
     out = []
-    for p, st in sorted(_backup_files(dest_dir), key=lambda x: x[1].st_mtime, reverse=True):
+    for p, st, kind in sorted(files, key=lambda x: x[1].st_mtime, reverse=True):
         out.append(
             {
+                "kind": kind,
                 "name": p.name,
                 "path": str(p),
                 "size_mb": round(st.st_size / 1_048_576, 2),

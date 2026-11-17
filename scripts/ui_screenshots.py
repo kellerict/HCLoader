@@ -52,6 +52,7 @@ SETTINGS_TABS = [
     "download",
     "storage",
     "throttle",
+    "soundcloud",
     "network",
     "schedule",
     "appearance",
@@ -142,6 +143,102 @@ class Shooter:
             self.shot(f"{name}-{part}")
         page.evaluate("(sel) => { document.querySelector(sel).scrollTop = 0; }", scroller)
 
+    def row_menu(self, row: str, key: str) -> None:
+        """Bibliothek: Menü (⋯) eines Eintrags öffnen und einen Punkt wählen."""
+        self.page.click(f'{row} [data-act="more"]')
+        self.page.click(f'.menu [data-k="{key}"]')
+
+    def soundcloud_scenes(self) -> None:
+        """Phase 7a: Suche auf SoundCloud, Namensvorschlag im Quellen-Dialog, Backoff pro Plattform."""
+        page = self.page
+        page.evaluate("HC.mock.api.clear_backoff(); HC.mock.demo.local(null)")
+        self.go("discover")
+        page.click("#f-reset")
+        page.click('#plat [data-p="soundcloud"]')
+        self.settle()
+        self.shot("discover-soundcloud-empty")
+        page.fill("#q", "hardcore mix")
+        page.click("#btn-search")
+        page.wait_for_selector("#grid .card:not(.skeleton)")
+        self.settle()
+        self.shot("discover-soundcloud")
+        # ohne «Geladene & ignorierte ausblenden»: auch Go+-Vorschauen und Geladenes, mit Hinweis
+        page.uncheck("#f-hide")
+        self.settle()
+        self.shot("discover-soundcloud-all")
+        page.check("#f-hide")
+        page.click('#plat [data-p="youtube"]')
+
+        # Quelle anlegen: URL tippen -> Typ, Plattform und Name kommen als Vorschlag
+        self.go("watchlist")
+        page.click("#wl-add")
+        page.wait_for_selector(".modal")
+        page.fill(".modal [data-f=url_or_query]", "https://soundcloud.com/kernschmelze")
+        page.wait_for_function(
+            "document.querySelector('.modal [data-f=name]').value === 'Kernschmelze'"
+        )
+        self.settle()
+        self.shot("watchlist-suggest")
+        # kein guter Name aus der URL -> «Name kommt bei der ersten Prüfung»
+        page.fill(".modal [data-f=url_or_query]", "https://www.youtube.com/channel/UCkick0001")
+        page.wait_for_selector(".modal [data-h=name]:not([hidden])")
+        page.wait_for_function("document.querySelector('.modal [data-f=name]').value === ''")
+        self.settle()
+        self.shot("watchlist-suggest-later")
+        page.keyboard.press("Escape")
+
+        # SoundCloud im Backoff: seine Einträge stehen, YouTube lädt weiter
+        page.evaluate("HC.mock.demo.scQueue(); HC.mock.demo.backoff(6, 'soundcloud')")
+        self.go("downloads")
+        self.settle(300)
+        self.shot("downloads-soundcloud-backoff")
+        self.go("watchlist")
+        self.shot("watchlist-soundcloud-backoff")
+        self.go("settings")
+        self.tab("soundcloud")
+        self.shot("settings-soundcloud-backoff")
+        page.evaluate("HC.mock.api.clear_backoff('soundcloud')")
+        self.settle()
+
+    def player_scenes(self) -> None:
+        """Phase 8: Mini-Player mit Kapiteln, Markierung in der Bibliothek, Genre per Klick."""
+        page = self.page
+        self.go("library")
+        page.click('#lib-body tr[data-id="eEuph0ric26"] [data-act="play"]')
+        page.wait_for_selector("#player:not([hidden])")
+        page.wait_for_function("HC.player.state().playing")
+        # Wiedergabe anhalten, ohne zu pausieren: feste Position für ein stabiles Bild
+        page.evaluate("HC.player.audio.playbackRate = 0; HC.player.seek(7.9)")
+        self.settle()
+        self.shot("library-player")
+        page.click("#player [data-p=list]")
+        self.settle()
+        self.shot("player-chapters-open")
+        page.hover("#pl-seek", position={"x": 150, "y": 8})
+        self.settle()
+        if not self.only or "player-seek-tooltip" in self.only:
+            path = self.out / "player-seek-tooltip.png"
+            page.screenshot(path=str(path), animations="disabled")
+            self.written.append(path)
+            print(f"  {path.relative_to(ROOT) if path.is_relative_to(ROOT) else path}")
+        page.click("#player [data-p=list]")
+        page.click('#lib-view [data-v="grid"]')
+        self.settle()
+        self.shot("library-player-grid")
+        page.click('#lib-view [data-v="list"]')
+        self.settle()
+        # Genre per Klick auf das Badge: Auswahl, danach set_genre + retag (Datei wird verschoben)
+        page.click('#lib-body tr[data-id="gGabbClassM"] [data-act="genre"]')
+        page.wait_for_selector(".menu")
+        self.settle()
+        self.shot("library-genre-popover")
+        page.click('.menu [data-k="genre-Uptempo"]')
+        page.wait_for_selector("#toasts .toast.ok")
+        self.settle()
+        self.shot("library-genre-moved")
+        page.evaluate("HC.player.close()")
+        self.go("discover")
+
     def watchlist_scenes(self) -> None:
         """Phase 4: laufende Prüfung, Backoff-Sperre, Eingang mit Auswahl, Zeitplan mit Aufgabe.
 
@@ -214,7 +311,7 @@ class Shooter:
         page.click("#lib-missing")
         self.settle()
         self.shot("library-missing")
-        page.click('#lib-body tr.missing [data-act="del"]')
+        self.row_menu("#lib-body tr.missing", "del")
         page.wait_for_selector(".modal")
         self.settle()
         self.shot("library-remove-dialog")
@@ -226,13 +323,13 @@ class Shooter:
         page.fill("#lib-q", "")
         page.dispatch_event("#lib-q", "input")
         self.settle()
-        page.click('#lib-body tr[data-id="gGabbClassM"] [data-act="del"]')
+        self.row_menu('#lib-body tr[data-id="gGabbClassM"]', "del")
         page.wait_for_selector(".modal")
         self.settle()
         self.shot("library-delete-dialog")
         page.keyboard.press("Escape")
         # neu taggen: das Ablage-Muster verschiebt die Datei -> Hinweis mit dem neuen Ort
-        page.click('#lib-body tr[data-id="cIndVol016"] [data-act="retag"]')
+        self.row_menu('#lib-body tr[data-id="cIndVol016"]', "retag")
         page.wait_for_selector("#lib-body tr.working")
         self.shot("library-retag-running")
         page.wait_for_selector("#toasts .toast.info")
@@ -475,6 +572,8 @@ class Shooter:
         page.evaluate("HC.mock.demo.taskUnknown(false)")
 
         self.maintenance_scenes()
+        self.soundcloud_scenes()
+        self.player_scenes()
 
         # m9: in pywebview gestartet, Backend antwortet nicht -> Fehlerzustand statt Mock
         page.clock.install(time=FIXED_NOW)
