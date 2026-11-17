@@ -3,7 +3,7 @@
 HCLoader speaks 11 languages from v0.2.0 on. **English (`en`) is the reference catalog**: every key
 exists there first, and a missing translation falls back to English, then to the key itself.
 German (`de`, de-CH spelling) is the second complete catalog. The other nine are filled in by
-translators: `zh-CN`, `hi`, `es`, `ar`, `fr`, `bn`, `pt` (Brazil), `ru`, `id`.
+translators: `zh-CN`, `hi`, `es`, `fr`, `bn`, `pt` (Brazil), `ru`, `id`, `nl`.
 
 ## File layout
 
@@ -22,12 +22,12 @@ under `file://` in WebView2 and in the browser mock). Both arguments of `registe
 Meta object (UI and backend `_meta`):
 
 ```json
-{"code": "ar", "name": "العربية", "dir": "rtl", "intl": "ar"}
+{"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-NL"}
 ```
 
 - `name` – native name, shown in Settings › General › Language.
-- `dir` – `rtl` only for Arabic; the UI sets `<html dir>` from it.
-- `intl` – locale for `Intl` (dates, numbers, relative times, units). Use e.g. `ar-u-nu-latn` if
+- `dir` – `rtl` for right-to-left languages (none shipped at the moment); the UI sets `<html dir>` from it.
+- `intl` – locale for `Intl` (dates, numbers, relative times, units). Use e.g. `ar-u-nu-latn` for an RTL language if
   Latin digits are wanted, `bn` / `hi-IN` for native conventions.
 
 ## What the backend translates
@@ -76,17 +76,16 @@ A plural key is an object with CLDR categories instead of a string:
 
 | Language | Categories |
 |---|---|
-| en, de, hi, bn | `one`, `other` |
+| en, de, nl, hi, bn | `one`, `other` |
 | es, fr, pt | `one`, `other` (`many` optional, only for millions) |
 | ru | `one`, `few`, `many`, `other` |
-| ar | `zero`, `one`, `two`, `few`, `many`, `other` |
 | zh-CN, id | `other` |
 
 - A key that is a plain string in English stays a string (no plural needed).
 
-## Right-to-left (Arabic)
+## Right-to-left (no language shipped)
 
-The engine sets `<html lang="ar" dir="rtl">`. Layout mirroring is done in CSS (logical properties,
+If a catalog declares `"dir": "rtl"`, the engine sets `<html dir="rtl">`. Layout mirroring is done in CSS (logical properties,
 `[dir=rtl]` overrides) – that is UI work, not translation work. In texts: keep Latin product names
 (YouTube, SoundCloud, yt-dlp, PO token) as they are; the browser handles bidi runs.
 

@@ -6,7 +6,7 @@ Leitfaden `docs/TRANSLATING.md`); Validierungsmeldungen aus `app/locales/<code>.
 
 | Abschnitt (Tab) | Schlüssel | Typ | Default | Grenzen / Werte |
 |---|---|---|---|---|
-| `general` (Allgemein) | `language` | str | `en` | auto, en, de, zh-CN, hi, es, ar, fr, bn, pt, ru, id (v0.2.0). `auto` = Windows-Anzeigesprache, nicht unterstützt → `en`. Fehlt der Schlüssel (Konfiguration vor v0.2.0) → `en` |
+| `general` (Allgemein) | `language` | str | `en` | auto, en, de, zh-CN, hi, es, fr, bn, pt, ru, id, nl (v0.2.0). `auto` = Windows-Anzeigesprache, nicht unterstützt → `en`. Fehlt der Schlüssel (Konfiguration vor v0.2.0) → `en` |
 | | `start_view` | str | `discover` | discover, inbox, watchlist, downloads, library, log |
 | | `log_level` | str | `INFO` | DEBUG, INFO, WARNING, ERROR |
 | | `confirm_delete` | bool | true | |

@@ -17,7 +17,7 @@
   const HC = (window.HC = window.HC || {});
 
   /** Supported languages in picker order. Data (genre names, folders, tags) never depends on this. */
-  const SUPPORTED = ['en', 'de', 'zh-CN', 'hi', 'es', 'ar', 'fr', 'bn', 'pt', 'ru', 'id'];
+  const SUPPORTED = ['en', 'de', 'zh-CN', 'hi', 'es', 'fr', 'bn', 'pt', 'ru', 'id', 'nl'];
   const REFERENCE = 'en';
   const CATEGORIES = ['zero', 'one', 'two', 'few', 'many', 'other'];
   const PARAM_NUM = { useGrouping: false, maximumFractionDigits: 2 };

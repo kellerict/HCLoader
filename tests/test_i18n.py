@@ -32,12 +32,12 @@ REQUIRED_PLURALS = {
     "zh-CN": {"other"},
     "hi": {"one", "other"},
     "es": {"one", "other"},
-    "ar": {"zero", "one", "two", "few", "many", "other"},
     "fr": {"one", "other"},
     "bn": {"one", "other"},
     "pt": {"one", "other"},
     "ru": {"one", "few", "many", "other"},
     "id": {"other"},
+    "nl": {"one", "other"},
 }
 PLACEHOLDER = re.compile(r"\{(\w+)\}")
 TAG = re.compile(r"</?(?:b|i|em|strong|small|code|br)\s*/?>")
@@ -154,7 +154,7 @@ def test_ui_locale_meta(code):
     meta, body = ui_catalog(code)
     assert meta["code"] == code
     assert meta["name"].strip()
-    assert meta["dir"] == ("rtl" if code == "ar" else "ltr")
+    assert meta["dir"] == "ltr"
     assert meta["intl"].split("-")[0] == code.split("-")[0]
     assert isinstance(body, dict)
     assert py_catalog(code)["_meta"]["code"] == code
@@ -302,10 +302,16 @@ def test_no_hardcoded_german_in_ui(path):
 
 def test_lint_detects_german(tmp_path):
     bad = tmp_path / "x.js"
-    bad.write_text("const a = 'Datei fehlt'; /* Kommentar für alle */\nconst b = `Grösse`;\n", encoding="utf-8")
+    bad.write_text(
+        "const a = 'Datei fehlt'; /* Kommentar für alle */\nconst b = `Grösse`;\n",
+        encoding="utf-8",
+    )
     assert len(_german_hits(bad)) == 2
     ok = tmp_path / "y.js"
-    ok.write_text("const a = t('file.missing'); // Datei fehlt\nconst b = 'Hardfloor Zürich';\n", encoding="utf-8")
+    ok.write_text(
+        "const a = t('file.missing'); // Datei fehlt\nconst b = 'Hardfloor Zürich';\n",
+        encoding="utf-8",
+    )
     assert _german_hits(ok) == []
 
 
@@ -448,6 +454,7 @@ def test_backend_key_constants_exist():
         ),
         ("zh-CN", {1: "other", 2: "other"}),
         ("id", {1: "other"}),
+        ("nl", {0: "other", 1: "one", 2: "other"}),
     ],
 )
 def test_plural_rules(code, cases):
@@ -495,7 +502,8 @@ def test_tr_follows_active_language():
         ("zh-Hans-CN", "zh-CN"),
         ("zh_CN", "zh-CN"),
         ("zh-TW", None),
-        ("ar-EG", "ar"),
+        ("nl-NL", "nl"),
+        ("Dutch_Netherlands", "nl"),
         ("in_ID", "id"),
         ("German_Switzerland", "de"),
         ("ja-JP", None),
@@ -641,7 +649,8 @@ def test_js_t_plural_fallback_and_escape(page):
       out.ru = [1, 2, 5, 21].map((n) => HC.t('toast.enqueued', {n}));
       out.ru_fallback = HC.t('nav.library');
       out.missing = HC.t('no.such.<key>');
-      HC.i18n.set('ar');
+      HC.i18n.register({code: 'ru', name: 'Русский', intl: 'ru-RU', dir: 'rtl'}, {});
+      HC.i18n.set('ru');
       out.ar = [document.documentElement.dir, document.documentElement.lang];
       HC.i18n.set('de');
       out.resolve = [HC.i18n.resolve('auto', ['pt-PT', 'en']),
@@ -657,7 +666,7 @@ def test_js_t_plural_fallback_and_escape(page):
     assert r["ru"] == ["1 микс", "2 микса", "5 миксов", "21 микс"]
     assert r["ru_fallback"] == "Library"  # missing in ru -> en
     assert r["missing"] == "no.such.&#60;key&#62;"
-    assert r["ar"] == ["rtl", "ar"]
+    assert r["ar"] == ["rtl", "ru-RU"]
     assert r["resolve"] == ["pt", "en", "zh-CN", "en"]
     assert "2013" in r["year"]  # no digit grouping in params
     assert ("warning", "[i18n] missing: no.such.<key>") in page.messages
@@ -698,7 +707,7 @@ def test_js_language_switch_rebuilds_ui(page):
         ".map(o => o.textContent)"
     )
     assert options[:3] == ["Automatic (system language)", "English", "Deutsch"]
-    assert "العربية" in options and len(options) == 12
+    assert "Nederlands" in options and len(options) == 12
 
 
 def test_js_no_missing_keys_while_browsing(page):

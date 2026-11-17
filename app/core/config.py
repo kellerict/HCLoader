@@ -173,7 +173,7 @@ def _clean_list(v: Any) -> Any:
 class GeneralSettings(_Section):
     # UI + message language (docs/TRANSLATING.md); "auto" = Windows display language, else en
     language: Literal[
-        "auto", "en", "de", "zh-CN", "hi", "es", "ar", "fr", "bn", "pt", "ru", "id"
+        "auto", "en", "de", "zh-CN", "hi", "es", "fr", "bn", "pt", "ru", "id", "nl"
     ] = "en"
     start_view: Literal["discover", "inbox", "watchlist", "downloads", "library", "log"] = (
         "discover"
@@ -634,7 +634,7 @@ SECTION_TITLES = {
 }
 
 COMMENTS = {
-    "general.language": "Sprache der Oberfläche: auto (Windows-Sprache), en, de, zh-CN, hi, es, ar, fr, bn, pt, ru, id",
+    "general.language": "Sprache der Oberfläche: auto (Windows-Sprache), en, de, zh-CN, hi, es, fr, bn, pt, ru, id, nl",
     "general.start_view": "Startansicht: discover, inbox, watchlist, downloads, library, log",
     "general.log_level": "Log-Stufe: DEBUG, INFO, WARNING, ERROR",
     "general.confirm_delete": "Vor dem Löschen aus der Bibliothek nachfragen",

@@ -30,7 +30,7 @@ from typing import Any
 
 log = logging.getLogger(__name__)
 
-SUPPORTED: tuple[str, ...] = ("en", "de", "zh-CN", "hi", "es", "ar", "fr", "bn", "pt", "ru", "id")
+SUPPORTED: tuple[str, ...] = ("en", "de", "zh-CN", "hi", "es", "fr", "bn", "pt", "ru", "id", "nl")
 REFERENCE = "en"
 AUTO = "auto"
 LANGUAGE_CHOICES: tuple[str, ...] = (AUTO, *SUPPORTED)
@@ -131,13 +131,13 @@ def match(tag: str | None) -> str | None:
         "chinese": "zh-CN",
         "hindi": "hi",
         "spanish": "es",
-        "arabic": "ar",
         "french": "fr",
         "bangla": "bn",
         "bengali": "bn",
         "portuguese": "pt",
         "russian": "ru",
         "indonesian": "id",
+        "dutch": "nl",
     }
     word = re.split(r"[\s(_-]", t)[0]
     return names.get(word)
@@ -211,7 +211,7 @@ def plural_category(code: str, n: float) -> str:
     base = code.split("-")[0]
     if base in ("zh", "id"):
         return "other"
-    if base in ("en", "de"):
+    if base in ("en", "de", "nl"):
         return "one" if i == 1 and v == 0 else "other"
     if base in ("hi", "bn"):
         return "one" if i == 0 or n == 1 else "other"

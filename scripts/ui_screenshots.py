@@ -50,7 +50,7 @@ CHROMIUM_OFFLINE_ARGS = [
 ]
 
 # app/core/i18n.SUPPORTED (not imported: the script runs without the app package on sys.path)
-LANGUAGES = ["en", "de", "zh-CN", "hi", "es", "ar", "fr", "bn", "pt", "ru", "id"]
+LANGUAGES = ["en", "de", "zh-CN", "hi", "es", "fr", "bn", "pt", "ru", "id", "nl"]
 # browser locale = Intl formatting of the mock page (dates, numbers) and the fatal screen
 BROWSER_LOCALE = {"en": "en-US", "de": "de-CH", "pt": "pt-BR"}
 
