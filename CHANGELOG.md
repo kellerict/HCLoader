@@ -5,6 +5,20 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-17
+
+Erste öffentliche Version. / First public release.
+
+**Highlights**
+- Entdecken: YouTube- und SoundCloud-Suche mit Filtern (Dauer, Jahr/Zeitraum, Keywords, Genre, Kanal-Blacklist), Duplikat-Erkennung über Plattformen.
+- Watchlist für Kanäle, Playlists (auch rückwärts), SoundCloud-Künstler/-Sets und gespeicherte Suchen; Eingang, Auto-Download, In-App-Intervall und Windows-Aufgabenplanung (headless).
+- Downloads: sequenzielle Warteschlange mit Fortschritt, Pausen, Lauf-/Tageslimits und Backoff pro Plattform (YouTube schonen).
+- MP3 320 bzw. Original, ID3v2.4-Tags, quadratisches Cover, CUE und ID3-Kapitel; Ordnerstruktur für Plex/Jellyfin.
+- Bibliothek mit eingebautem Mini-Player (Kapitel-Sprungmarken, Trackliste) oder Standardplayer, Genre per Klick ändern (Datei wird verschoben), Neu taggen, Löschen.
+- Protokoll mit Lauf-Historie, Wartung (yt-dlp-Update, DB-Backups), Selbst-Update mit Rollback.
+- Portable-Build mit eingebettetem Python, Setup per `setup.ps1`, Dark-Hardcore-UI mit App-Icon.
+
+
 ### Added
 - Selbst-Update von HCLoader über GitHub-Releases: Prüfung einmal pro Start (abschaltbar,
   `maintenance.check_app_updates_on_start`), Banner «Version x verfügbar – Herunterladen / Änderungen /
