@@ -6,7 +6,7 @@ Version 0.1 · Stand 2026-11-16
 
 Windows-Desktop-App, mit der Pidi Hardstyle-, Hardcore- und Uptempo-**Mixes** auf YouTube findet (Suche + Watchlist), filtert und als getaggte MP3 lokal ablegt – mit möglichst geringer Last für YouTube. Später sollen die Dateien von einem separaten Medienserver (Plex/Jellyfin) gelesen werden; die Ordnerstruktur und Tags sind darauf ausgelegt.
 
-Nicht-Ziele: kein Streaming/Player, keine Weiterverbreitung, kein Multi-User, kein Video-Download.
+Nicht-Ziele: kein Streaming von YouTube/SoundCloud (abgespielt werden nur bereits geladene, lokale Dateien), keine Weiterverbreitung, kein Multi-User, kein Video-Download.
 
 ## 2. Plattform & Betrieb
 
@@ -47,7 +47,11 @@ Nicht-Ziele: kein Streaming/Player, keine Weiterverbreitung, kein Multi-User, ke
 
 ### 3.4 Bibliothek
 - Liste aller geladenen Mixes (aus DB), Suche/Filter nach Genre/Kanal/Jahr.
-- Aktionen: Ordner öffnen, Datei neu taggen, Eintrag + Datei löschen (mit Bestätigung).
+- Aktionen: Abspielen, Ordner öffnen, Datei neu taggen, Eintrag + Datei löschen (mit Bestätigung).
+- Abspielen (Setting `player.mode`, Default `internal`):
+  - `internal`: eingebauter Mini-Player als Leiste über der Statusleiste, spielt beim Ansichtswechsel weiter. Cover, Titel, Play/Pause, Spulen, Lautstärke, Zeit; Kapitel aus CUE/Sidecar als Sprungmarken auf der Zeitleiste + aufklappbare Trackliste (aktueller Track hervorgehoben). Nur lokale Dateien, kein Netz.
+  - `external`: öffnet die Datei im Windows-Standardplayer.
+  - Die jeweils andere Variante ist pro Eintrag zusätzlich im Menü wählbar.
 
 ### 3.5 Protokoll
 - Live-Log (Info/Warn/Fehler filterbar), Lauf-Historie (Start, Ende, gefunden, geladen, Fehler, Backoff).

@@ -19,6 +19,7 @@ Cloud-Session (Linux-Container). Abweichend von `build-all.md`: alle Phasen auf 
 | 4 – Watchlist & Zeitplan | **abgeschlossen** (QA bestanden; Review R1 behoben 06503c8, R2 freigegeben, R2-m1 behoben) | | | |
 | 5 – Bibliothek, Protokoll, Feinschliff | **abgeschlossen** (QA bestanden; Review R1 behoben ea1e9aa, R2 freigegeben, R2-m1 behoben) |
 | 7 – Weitere Quellen (User-Wunsch) | 7a SoundCloud in Arbeit (Backend); 7b Mixcloud + hearthis.at, 7c archive.org geplant |
+| 8 – Player in der Bibliothek (User-Wunsch) | geplant nach 7a-Backend, zusammen mit 7a-UI: eingebauter Mini-Player (Default) + Standardplayer, Setting `player.mode` |
 | 6 – Portable (User-Wunsch) | gebaut (6ba6448); Windows-Build nie gelaufen (Actions blockiert); QA/Review offen | | | |
 
 ## Aktueller Plan
