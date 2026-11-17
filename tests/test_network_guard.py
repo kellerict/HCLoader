@@ -25,7 +25,8 @@ def test_hostname_lookup_and_urlopen_are_blocked():
 def test_loopback_is_allowed():
     srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     srv.bind(("127.0.0.1", 0))
-    srv.listen(1)
+    # backlog > 1: nothing accepts here, and Windows refuses a 2nd connect when the backlog is full
+    srv.listen(8)
     try:
         conn = socket.create_connection(srv.getsockname(), timeout=2)
         conn.close()

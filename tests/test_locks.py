@@ -139,8 +139,18 @@ def test_mutex_prefers_global_namespace_with_user_tag(monkeypatch):
     monkeypatch.setattr(locks, "_kernel32", lambda: kernel)
     lock = locks.ProcessLock("run")
     assert lock.acquire()
-    assert names == ["Global\\HCLoader.Pidi_Test.run"]
+    assert names == [f"Global\\HCLoader.Pidi_Test.{locks._home_tag()}.run"]
     lock.release()
+
+
+def test_mutex_name_depends_on_data_folder(monkeypatch, tmp_path):
+    """Installed and portable copy (separate data folders) must not block each other."""
+    monkeypatch.setenv("HCLOADER_HOME", str(tmp_path / "a"))
+    a = locks.mutex_names("run")
+    monkeypatch.setenv("HCLOADER_HOME", str(tmp_path / "b"))
+    b = locks.mutex_names("run")
+    monkeypatch.setenv("HCLOADER_HOME", str(tmp_path / "a"))
+    assert a != b and locks.mutex_names("run") == a
 
 
 @pytest.mark.usefixtures("fake_last_error")

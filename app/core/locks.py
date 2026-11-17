@@ -53,10 +53,29 @@ def _user_tag() -> str:
     return re.sub(r"[^0-9A-Za-z_.-]", "_", raw)[:40]
 
 
+def _home_tag() -> str:
+    """Short hash of the data folder: an installed and a portable copy (or tests with their own
+    HCLOADER_HOME) have separate data and must not block each other - two processes on the
+    same data folder (GUI + scheduled task) still share the lock."""
+    import hashlib
+
+    from app.core.config import app_home
+
+    try:
+        home = os.path.normcase(os.path.abspath(str(app_home())))
+    except Exception:
+        home = ""
+    return hashlib.sha1(home.encode("utf-8", "replace")).hexdigest()[:10]
+
+
+def _mutex_base(name: str) -> str:
+    return f"HCLoader.{_user_tag()}.{_home_tag()}.{name}"
+
+
 def mutex_names(name: str) -> list[str]:
     """Names of the Windows mutex of lock `name`, in the order they are tried (the updater
     script waits for the run lock with the same names, Review m3)."""
-    return [f"{prefix}HCLoader.{_user_tag()}.{name}" for prefix in MUTEX_NAMESPACES]
+    return [f"{prefix}{_mutex_base(name)}" for prefix in MUTEX_NAMESPACES]
 
 
 def _kernel32() -> Any:
@@ -178,9 +197,7 @@ class ProcessLock:
             handle = None
             already = False
             for prefix in MUTEX_NAMESPACES:
-                handle = kernel.CreateMutexW(
-                    None, False, f"{prefix}HCLoader.{_user_tag()}.{self.name}"
-                )
+                handle = kernel.CreateMutexW(None, False, f"{prefix}{_mutex_base(self.name)}")
                 if handle:
                     # n2: with use_last_error=True ctypes saves the error right after the call
                     already = _last_error() == ERROR_ALREADY_EXISTS
