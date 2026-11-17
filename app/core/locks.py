@@ -82,13 +82,30 @@ def _last_error() -> int:
     return int(ctypes.get_last_error())  # type: ignore[attr-defined]
 
 
+# Names held by any ProcessLock of this process (safety net: a lock is exclusive inside the
+# process as well, whatever the OS primitive does for the same process/thread).
+_HELD: set[str] = set()
+_HELD_LOCK = threading.Lock()
+
+
 class ProcessLock:
+    """Exclusive named lock across processes *and* inside this process.
+
+    Windows: classic single-instance pattern - `CreateMutexW(bInitialOwner=FALSE)` without any
+    wait; `ERROR_ALREADY_EXISTS` means another handle is open = taken. The mutex is never
+    owned (owned named mutexes are recursive for the owning thread and `ReleaseMutex` only
+    works in that thread), so `release()` = `CloseHandle` works from any thread. The handle
+    keeps the name alive; as long as it is open every further `CreateMutexW` (other process,
+    same process, any thread) sees ALREADY_EXISTS. apply_update.ps1 uses the same semantics.
+    """
+
     def __init__(self, name: str, *, path: Path | None = None) -> None:
         self.name = name
         self.path = path or (config.app_home() / "locks" / f"{name}.lock")
         self._handle: Any = None  # mutex handle (Windows)
         self._fh: Any = None  # open lock file
         self._kernel: Any = None
+        self._key: str | None = None
 
     @property
     def held(self) -> bool:
@@ -98,26 +115,53 @@ class ProcessLock:
         """True if the lock was obtained (or is already held by this object)."""
         if self.held:
             return True
-        if IS_WINDOWS:
-            result = self._acquire_mutex()
-            if result is not None:
-                return result
-        return self._acquire_file()
+        key = str(self.path) if not IS_WINDOWS else self.name
+        with _HELD_LOCK:
+            if key in _HELD:
+                return False
+            _HELD.add(key)
+        ok = False
+        try:
+            if IS_WINDOWS:
+                result = self._acquire_mutex()
+                if result is not None:
+                    ok = result
+                    return result
+            ok = self._acquire_file()
+            return ok
+        finally:
+            if ok:
+                self._key = key
+            else:
+                with _HELD_LOCK:
+                    _HELD.discard(key)
 
     def release(self) -> None:
         if self._handle is not None and self._kernel is not None:
+            handle, self._handle = self._handle, None
             try:
-                self._kernel.ReleaseMutex(self._handle)
-                self._kernel.CloseHandle(self._handle)
+                self._kernel.CloseHandle(handle)  # never owned: no ReleaseMutex
             except Exception:
                 log.debug("Mutex konnte nicht freigegeben werden", exc_info=True)
-            self._handle = None
+        self._handle = None
         if self._fh is not None:
             fh, self._fh = self._fh, None
             try:
                 _unlock_file(fh)
             finally:
                 fh.close()
+        key, self._key = self._key, None
+        if key is not None:
+            with _HELD_LOCK:
+                _HELD.discard(key)
+
+    def __del__(self) -> None:
+        # a lock object dropped without release() must not block the name until process end
+        try:
+            if self.held:
+                self.release()
+        except Exception:
+            pass
 
     def __enter__(self) -> ProcessLock:
         return self

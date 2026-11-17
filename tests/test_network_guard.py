@@ -29,7 +29,13 @@ def test_loopback_is_allowed():
     try:
         conn = socket.create_connection(srv.getsockname(), timeout=2)
         conn.close()
-        conn = socket.create_connection(("localhost", srv.getsockname()[1]), timeout=2)
-        conn.close()
+        # "localhost" through an IPv4 socket: create_connection would try ::1 first, and on
+        # Windows a SYN to a closed loopback port is retried for ~2 s instead of refused at once
+        conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        conn.settimeout(5)
+        try:
+            conn.connect(("localhost", srv.getsockname()[1]))
+        finally:
+            conn.close()
     finally:
         srv.close()

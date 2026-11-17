@@ -870,6 +870,10 @@ def test_library_from_db(env, tmp_path):
         "thumbnail",
     }
     assert lib[0]["missing"] is False and lib[0]["has_cue"] is False
+    from app.core import library
+
+    # platform-neutral: on Windows the real revealer would start explorer.exe /select
+    a._reveal = lambda p: library.reveal(p, opener=env.opened.append, platform="linux")
     assert a.open_folder("abcdefghijk") == {"ok": True} and env.opened == [f.parent]
 
 

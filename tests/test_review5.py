@@ -251,7 +251,9 @@ def test_same_file_and_case_only_rename(tmp_path):
     a = tmp_path / "mix.mp3"
     a.write_bytes(b"data")
     link = tmp_path / "Mix.mp3"
-    link.symlink_to(a)  # stands in for a case-insensitive spelling of the same file
+    if not link.exists():  # case-sensitive file system (Linux): a symlink stands in for it
+        link.symlink_to(a)
+    # Windows/macOS: "Mix.mp3" really is another spelling of the same file
     assert library._same_file(a, link)
     assert not library._same_file(a, tmp_path / "other.mp3")
     library._move(a, link)
@@ -296,7 +298,8 @@ def test_backups_use_a_strict_name_pattern(tmp_path):
     for i in range(3):
         n = f"hcloader-20260101-00000{i}.db"
         (tmp_path / n).write_bytes(b"x")
-        os.utime(tmp_path / n, (1000 + i, 1000 + i))
+        # realistic times: on Windows datetime.fromtimestamp() fails for values < 1 day
+        os.utime(tmp_path / n, (1_700_000_000 + i, 1_700_000_000 + i))
         names.append(n)
     (tmp_path / "hcloader-20260101-000009-2.db").write_bytes(b"x")
     assert mine.name not in [b["name"] for b in maintenance.list_backups(tmp_path)]

@@ -105,6 +105,14 @@ run or watchlist lock, for example the app is downloading. See [Scheduled checks
 After moving the portable folder, Settings, Zeitplan shows that the app was moved. Click to
 re-create the task.
 
+## An app update was interrupted (power loss, Windows shut down)
+
+The updater keeps a journal (`data\update\in_progress.json`, venv install:
+`%APPDATA%\HCLoader\update\in_progress.json`). On the next start HCLoader restores the previous version
+from the `_previous` folder in the app folder and starts again by itself. If that fails, close HCLoader,
+delete `app`, `ui` and `scripts` in the app folder and move the folders from `_previous` (or the newest
+`_previous-<timestamp>`) back; then delete `in_progress.json`. Log: `logs\update.log`.
+
 ## Still stuck?
 
 Open an [issue](https://github.com/kellerict/HCLoader/issues/new/choose) with the app version

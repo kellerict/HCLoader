@@ -62,8 +62,11 @@ class FakeKernel:
         self.released.append(h)
 
 
-@pytest.fixture(autouse=True)
-def _fake_last_error(monkeypatch):
+@pytest.fixture
+def fake_last_error(monkeypatch):
+    """Only for tests with a fake kernel32: on Windows the real tests above must see the real
+    `GetLastError` (an autouse fake hid ERROR_ALREADY_EXISTS there and leaked run-lock
+    handles into later tests -> exit code 4 cascades in the Windows CI)."""
     monkeypatch.setattr(locks, "_last_error", lambda: FakeKernel.last_err)
 
 
@@ -87,6 +90,7 @@ def test_kernel32_sets_handle_restype(monkeypatch):
     assert k.CloseHandle.argtypes == (wintypes.HANDLE,)
 
 
+@pytest.mark.usefixtures("fake_last_error")
 def test_windows_named_mutex(monkeypatch):
     monkeypatch.setattr(locks, "IS_WINDOWS", True)
     kernel = FakeKernel()
@@ -95,11 +99,14 @@ def test_windows_named_mutex(monkeypatch):
     a = locks.ProcessLock("mx")
     assert a.acquire() and a._handle == 42
     b = locks.ProcessLock("mx")
+    monkeypatch.setattr(locks, "_HELD", set())  # check the OS answer, not the in-process set
     assert b.acquire() is False and kernel.closed == [42]  # already exists -> not acquired
     a.release()
-    assert kernel.released == [42] and not a.held
+    # never owned -> no ReleaseMutex (thread-bound), only CloseHandle
+    assert kernel.released == [] and kernel.closed == [42, 42] and not a.held
 
 
+@pytest.mark.usefixtures("fake_last_error")
 def test_windows_mutex_failure_falls_back_to_file(monkeypatch):
     monkeypatch.setattr(locks, "IS_WINDOWS", True)
 
@@ -115,6 +122,7 @@ def test_windows_mutex_failure_falls_back_to_file(monkeypatch):
     lock.release()
 
 
+@pytest.mark.usefixtures("fake_last_error")
 def test_mutex_prefers_global_namespace_with_user_tag(monkeypatch):
     """N3: Global\\ first (a task in session 0 must see the GUI's lock)."""
     monkeypatch.setattr(locks, "IS_WINDOWS", True)
@@ -135,6 +143,7 @@ def test_mutex_prefers_global_namespace_with_user_tag(monkeypatch):
     lock.release()
 
 
+@pytest.mark.usefixtures("fake_last_error")
 def test_mutex_falls_back_to_local_when_global_is_denied(monkeypatch):
     monkeypatch.setattr(locks, "IS_WINDOWS", True)
     names = []
@@ -175,3 +184,86 @@ def test_watchlist_lock_is_exclusive():
     assert first is not None and locks.acquire_watchlist_lock() is None
     first.release()
     assert locks.acquire_watchlist_lock() is not None
+
+
+class RealisticKernel:
+    """Fake kernel32 with the semantics of named mutexes that matter here: a name exists as
+    long as one handle is open; CreateMutexW on an existing name returns a new handle and sets
+    ERROR_ALREADY_EXISTS; CloseHandle works from any thread; ReleaseMutex fails unless the
+    calling thread owns the mutex (owned mutexes are never used by ProcessLock)."""
+
+    def __init__(self):
+        import threading
+
+        self.open: dict[int, str] = {}
+        self.next = 100
+        self.lock = threading.Lock()
+        self.err = threading.local()
+
+    def CreateMutexW(self, attrs, owner, name):  # noqa: N802
+        assert owner is False  # bInitialOwner must be FALSE
+        with self.lock:
+            exists = name in self.open.values()
+            self.next += 1
+            self.open[self.next] = name
+            FakeKernel.last_err = locks.ERROR_ALREADY_EXISTS if exists else 0
+            return self.next
+
+    def CloseHandle(self, h):  # noqa: N802
+        with self.lock:
+            return self.open.pop(h, None) is not None
+
+    def ReleaseMutex(self, h):  # noqa: N802
+        return False  # never owned
+
+
+@pytest.mark.usefixtures("fake_last_error")
+def test_mutex_semantics_same_process_and_cross_thread_release(monkeypatch):
+    import threading
+
+    monkeypatch.setattr(locks, "IS_WINDOWS", True)
+    kernel = RealisticKernel()
+    monkeypatch.setattr(locks, "_kernel32", lambda: kernel)
+    a = locks.ProcessLock("run")
+    box = {}
+    t = threading.Thread(target=lambda: box.setdefault("ok", a.acquire()))
+    t.start()
+    t.join()
+    assert box["ok"] is True  # acquired in thread A
+    # same process, same and other thread: taken
+    assert locks.ProcessLock("run").acquire() is False
+    other = {}
+    t = threading.Thread(target=lambda: other.setdefault("ok", locks.ProcessLock("run").acquire()))
+    t.start()
+    t.join()
+    assert other["ok"] is False
+    # without the in-process set the OS answer alone is exclusive as well
+    monkeypatch.setattr(locks, "_HELD", set())
+    assert locks.ProcessLock("run").acquire() is False
+    monkeypatch.setattr(locks, "_HELD", {"run"})
+    # release from the main thread (thread B)
+    a.release()
+    assert not a.held and kernel.open == {}
+    b = locks.ProcessLock("run")
+    assert b.acquire() is True
+    b.release()
+
+
+def test_dropped_lock_object_frees_the_name():
+    lock = locks.ProcessLock("gc-test")
+    assert lock.acquire()
+    del lock  # CPython: refcount -> __del__ -> release
+    again = locks.ProcessLock("gc-test")
+    assert again.acquire()
+    again.release()
+
+
+def test_file_lock_is_exclusive_inside_the_process(tmp_path):
+    path = tmp_path / "f.lock"
+    a = locks.ProcessLock("f", path=path)
+    assert a.acquire()
+    assert locks.ProcessLock("f", path=path).acquire() is False
+    a.release()
+    b = locks.ProcessLock("f", path=path)
+    assert b.acquire()
+    b.release()

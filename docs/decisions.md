@@ -837,3 +837,40 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
   (MessageBox unter pythonw), Headless schreibt dasselbe nach stderr/Log, Exit 1. Nichts wird verändert.
 - **Nicht live getestet (kein Windows im Container):** `apply_update.ps1` nur statisch (ASCII, keine `&&`,
   Parameter = Python-Aufruf), Prozessstart per Mock, GitHub per Fake-HTTP.
+
+## 2026-11-17 – Review-Funde Phase 7a/8/Selbst-Update (Integrator)
+
+- **Geo-Sperre SoundCloud (M1):** Für flache Einträge wird `policy` vor `super()._extract_info_dict`
+  neutralisiert (ohne Formate würde yt-dlp bei `BLOCK` immer `GeoRestrictedError` werfen) und danach als
+  `sc_policy` gesetzt; `url_result` fängt `ExtractorError` pro Eintrag ab. Neue Spalte `videos.geo_blocked`
+  (Migration 6, statt Wiederverwendung von `preview`: andere Bedeutung, anderer Filtergrund), Filtergrund
+  «Nicht verfügbar (Region)» vor «Nur Vorschau (Go+)». `enqueue` lehnt `preview`/`geo_blocked` ab.
+- **yt-dlp-Drift (M2):** `_sc_check_capabilities` prüft Klassen, Methoden, `_API_V2_BASE`/`_HEADERS` und
+  die Signaturen (`_extract_info_dict(self, info, …, extract_flat)`, `_extract_set(self, playlist,
+  token=None)`, `url_result(url, ie, video_id, …)`). Bei Abweichung keine Unterklassen (Warnung einmal).
+  Zur Laufzeit fangen die Overrides nur `AttributeError/TypeError/KeyError/IndexError/ValueError` und
+  fallen auf das Original zurück; `ExtractorError` (429/403 von SoundCloud) geht immer durch zum Throttle.
+- **SoundCloud-Bot-Prüfung (M3):** `is_rate_limit_error(msg, platform)`: für SoundCloud zusätzlich
+  `[soundcloud…] … HTTP Error 403` und Datadome-Merkmale. yt-dlp holt bei 401/403 in `_call_api` selbst
+  einmal eine neue `client_id` und wiederholt; ein 403, der uns erreicht, ist also der zweite in Folge
+  (= «zwei aufeinanderfolgende 403»). Bewusst nicht: 404, 401, 403 des Medien-CDN (ohne Extractor-Präfix).
+- **Updater (M4, m2, m3):** Rename-Probe aller Einträge vor jeder Änderung (gesperrt → `unchanged`,
+  Update bleibt bereit, alte Version startet). Journal `<update>\in_progress.json` vor jeder Änderung,
+  Einträge vor dem Umbenennen eingetragen; im Austausch nur Umbenennen (kein Kopieren+Löschen).
+  Wiederherstellung per `apply_update.ps1 -Recover` aus `HCLoader.cmd`/`.vbs` und `app.main` (nicht während
+  der schreibende Updater noch lebt). `_previous` wird nur nach `ok`/`rolled_back` gelöscht, sonst
+  `_previous-<Zeit>`. Lauf-Lock: `launch()` prüft ihn nach dem Schreiben von `update.lock`; das Skript hält
+  während des Austauschs selbst einen Handle auf den Run-Mutex (Namen im Manifest).
+- **Prozess-Locks (Windows-CI):** Named Mutex nie besitzen (`bInitialOwner=FALSE`, kein Wait):
+  `ERROR_ALREADY_EXISTS` = belegt, Freigabe = `CloseHandle` (thread-unabhängig; `ReleaseMutex` ginge nur
+  im besitzenden Thread, und besessene Mutexe sind für diesen Thread rekursiv). Dazu ein prozessinternes
+  Set gehaltener Namen und `__del__` als Netz. Ursache der CI-Kaskade war ein autouse-Fake von
+  `GetLastError` in `test_locks.py`, der auf Windows `ALREADY_EXISTS` verdeckte und Run-Lock-Handles
+  liegen liess.
+- **Session-Ende (m1):** `GetSystemMetrics(SM_SHUTTINGDOWN)` (gesetzt, sobald `WM_QUERYENDSESSION`
+  verschickt wurde) in `finish_update`; ein eigener WndProc-Hook im pywebview-Fenster wäre fragil.
+- **Update-Vertrauen (m6/m7):** nur https + GitHub-Hosts (auch nach Redirects), `SHA256SUMS` fail-closed
+  wenn vorhanden, sonst Hinweis «ohne Prüfsumme»; fremdes `update_repo` sichtbar. Voraussetzungen (2FA,
+  Tag-Ruleset `v*`, immutable releases) in `docs/RELEASING.md`.
+- **Update-Banner:** Leiste als erstes Kind von `<main>` statt `position:fixed` oben rechts (QA: verdeckte
+  «Suchen»/Sortierung).

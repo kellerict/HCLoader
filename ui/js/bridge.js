@@ -76,7 +76,7 @@
                                            (Genre-Suchbegriffe, Jahr bei search.append_year) und meldet den
                                            tatsächlich gesuchten Text als effective_query zurück.
      get_inbox()                        -> [Video]    Status "inbox"; mit source_id (siehe Video) für Quelle-Badge/-Filter
-     enqueue(ids)                       -> {ok:true, ids:[übernommen], skipped?: n}
+     enqueue(ids)                       -> {ok:true, ids:[übernommen], skipped?: n, skipped_unloadable?: n (Go+/Region)}
      set_video_status(id, status)       -> {ok}       status: "ignored" | "new"
      set_genre(id, genre)               -> {ok}
      open_video(id)                     -> {ok}       öffnet YouTube bzw. die SoundCloud-Trackseite (Video.url)

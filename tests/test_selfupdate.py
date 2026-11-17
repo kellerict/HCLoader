@@ -168,7 +168,10 @@ def make_updater(root, gh, **kw):
 
 def snapshot(folder: Path) -> dict:
     return {
-        str(p.relative_to(folder)): p.read_bytes() for p in sorted(folder.rglob("*")) if p.is_file()
+        # posix keys: the same on Windows (the test filters "data/update")
+        p.relative_to(folder).as_posix(): p.read_bytes()
+        for p in sorted(folder.rglob("*"))
+        if p.is_file()
     }
 
 
@@ -1128,7 +1131,10 @@ def test_interrupted_update_starts_recovery(monkeypatch, capsys):
 
 
 def test_remove_tree_long_path_noop_elsewhere(tmp_path):
-    assert selfupdate.long_path(tmp_path) == tmp_path
+    if os.name == "nt":
+        assert str(selfupdate.long_path(tmp_path)).startswith("\\\\?\\")
+    else:
+        assert selfupdate.long_path(tmp_path) == tmp_path
     (tmp_path / "a" / "b").mkdir(parents=True)
     selfupdate.remove_tree(tmp_path / "a")
     assert not (tmp_path / "a").exists()
@@ -1152,7 +1158,7 @@ def test_apply_update_script_review_fixes():
     assert "$last.ok -or $last.rolled_back" in text
     assert "$Prev + '-' + (Get-Date -Format 'yyyyMMdd-HHmmss')" in text
     # m3: run mutex from the manifest; m8: -X utf8; n7: manifest parsed inside try; n10
-    assert "run_lock_mutexes" in text and "WaitOne(" in text
+    assert "run_lock_mutexes" in text and "[ref]$created" in text and "ReleaseMutex" not in text
     assert "@('-X', 'utf8', '-m', 'app.main')" in text
     head, body = text.split("\ntry {", 1)
     assert "ConvertFrom-Json" not in head.split("function ")[0]
@@ -1185,3 +1191,29 @@ def test_download_scripts_check_length_and_resolve_paths(name):
     if name == "fetch_binaries.ps1":
         get_zip = text[text.index("function Get-Zip") :]
         assert 'throw "SHA256 stimmt nicht' in get_zip  # mismatch aborts (fail-closed)
+
+
+def test_newer_db_message_only_once_on_stderr(capsys):
+    """QA 7a/8: with the console log handler active the message is not printed twice."""
+    import logging
+
+    from app.headless import run_watchlist
+
+    path = config.db_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(path)
+    dbmod.migrate(conn)
+    conn.execute("UPDATE schema_version SET version=99")
+    conn.commit()
+    conn.close()
+    root_logger = logging.getLogger()
+    before = list(root_logger.handlers)
+    try:
+        assert run_watchlist(configure_logging=True) == app_main.EXIT_FAILED
+        err = capsys.readouterr().err
+    finally:
+        for h in list(root_logger.handlers):
+            if h not in before:
+                root_logger.removeHandler(h)
+                h.close()
+    assert err.count("neueren HCLoader-Version") == 1

@@ -171,7 +171,7 @@ kein Throttle.
 | `get_last_search()` | – | `{query, effective_query, genre, year, results:[SearchVideo], hidden_count}` \| `null` – aus der DB, ohne Netzwerk | 3 |
 | `search(query, opts)` | Suchtext, `{genre: str\|null, year: int\|null}` | `{ok:true, results:[SearchVideo], effective_query, query, genre, year, hidden_count}` \| `{ok:false, error}` | 3 |
 | `get_inbox()` | – | `[Video]` (Status `inbox`, aus DB; gefüllt durch die Watchlist) | 4 |
-| `enqueue(ids)` | `[id]` | `{ok:true, ids:[übernommen], skipped?: n}` | 3 |
+| `enqueue(ids)` | `[id]` | `{ok:true, ids:[übernommen], skipped?: n, skipped_unloadable?: n}` – Go+-Vorschauen (`preview`) und regionsgesperrte Tracks (`geo_blocked`) werden nie eingereiht (`skipped_unloadable`) | 3/7a |
 | `set_video_status(id, status)` | `"ignored"` \| `"new"` | `{ok}` (nicht für queued/downloading/done) | 2 |
 | `set_genre(id, genre)` | Genre-Name aus Settings | `{ok}` | 2 |
 | `open_video(id)` | Video-ID (11 Zeichen) oder `sc:<id>` | `{ok}` – Standardbrowser (SoundCloud: gespeicherte Trackseite `Video.url`, nur `https://soundcloud.com/…`) | 2/7a |

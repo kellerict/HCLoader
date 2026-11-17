@@ -914,6 +914,14 @@ class Api:
         res: dict[str, Any] = {"ok": True, "ids": accepted}
         if skipped:
             res["skipped"] = skipped
+            # QA 7a/8: Go+ previews / geo-blocked tracks are never loadable
+            rows = (self._db.get_video(str(i)) for i in ids if str(i) not in accepted)
+            unloadable = sum(1 for r in rows if r and (r.get("preview") or r.get("geo_blocked")))
+            if unloadable:
+                res["skipped_unloadable"] = unloadable
+                log.info(
+                    "%d nicht ladbare(r) Eintrag/Einträge übersprungen (Go+/Region)", unloadable
+                )
         return res
 
     def set_video_status(self, video_id: str, status: str) -> dict[str, Any]:

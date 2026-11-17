@@ -54,6 +54,28 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
   `fetch_binaries.ps1` mit `-BinDir`/`-Python`/`-LicenseDir`.
 
 ### Fixed
+- Review Phase 7a/8/Selbst-Update: **M1** ein geo-gesperrter SoundCloud-Track (`policy: BLOCK`) bricht
+  Suchen, Nutzer-Listen und Sets nicht mehr ab, er erscheint mit Filtergrund «Nicht verfügbar (Region)»
+  (`videos.geo_blocked`, DB-Migration 6); **M2** Fähigkeitsprüfung der yt-dlp-SoundCloud-Interna
+  (Methoden, Attribute, Signaturen) und Rückfall auf das Originalverhalten bei Laufzeitabweichungen;
+  **M3** SoundCloud-403 nach dem client_id-Refresh (Datadome) gilt als Bot-Prüfung → Backoff nur für
+  SoundCloud (404/CDN-403 nicht); **M4** Updater prüft vor jeder Änderung per Rename-Probe, ob alle
+  Einträge verschiebbar sind, und trägt Einträge vor dem Verschieben ins Rollback-Journal ein.
+  **m1** kein Updater-Start beim Abmelden/Herunterfahren; **m2** Journal `in_progress.json` +
+  Wiederherstellung (`-Recover`) beim nächsten Start, `_previous` bleibt nach einem nicht sauberen Lauf
+  erhalten; **m3** Updater wartet auf einen laufenden Headless-Lauf (Lauf-Lock); **m4** SoundCloud-`resolve`
+  ohne Extractor-Retry; **m5** Backoff-Stufe pro Plattform nach erfolgreicher Watchlist-Prüfung
+  zurückgesetzt, Headless-Exit-Code ohne abgeschaltete Plattformen; **m6** Download-Adressen nur https auf
+  GitHub-Hosts, `SHA256SUMS` fail-closed, Banner «ohne Prüfsumme»; **m7** fremdes `update_repo` im Banner;
+  **m8** Neustart mit `-X utf8`; **m9** `fetch_binaries.ps1`/`build_portable.ps1`: Längenprüfung gegen
+  Content-Length, relative Pfade gegen `$PWD`. Nits: `wiki.yml` nur `main`, `portable.yml` ohne
+  Arbeitsbranch, Manifest im `try`, `update.lock` als Lebenszeichen, lange Pfade beim Löschen von `_previous`.
+- Windows-CI: Prozess-Locks (Named Mutex) nie besessen, Freigabe per `CloseHandle` aus jedem Thread,
+  zusätzlich prozessintern exklusiv; Tests plattformneutral (Pfadtrenner, `?` in Dateinamen,
+  Gross/Klein-Dateisystem, Loopback, Zeitstempel kurz nach 1970).
+- QA 7a/8: `enqueue` lehnt Go+-Vorschauen und regionsgesperrte Tracks ab (`skipped_unloadable`);
+  Update-Banner als Leiste über dem Inhalt (verdeckt keine Knöpfe mehr); Meldung «neuere Datenbank»
+  nur einmal auf stderr.
 - Review Phase 5: **M1** Neu-Taggen behält fremde ID3-Frames (BPM, Key, Rating, ReplayGain, Lyrics …);
   **m1** zu langer Pfad beim Neu-Taggen als saubere Fehlermeldung; **m2** nicht erreichbarer Zielordner
   (`get_library_status`, `unknown`, Banner, Timeout-Prüfung); **m3** «Nur Eintrag entfernen» für Dateien

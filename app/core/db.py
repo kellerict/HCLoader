@@ -472,7 +472,8 @@ class Database:
     def enqueue(self, ids: Iterable[str]) -> list[str]:
         """Put known videos with an ENQUEUEABLE status at the end of the queue (in the given
         order). Returns the ids that were queued; others (unknown, done, ignored, already
-        queued/downloading) are skipped."""
+        queued/downloading, SoundCloud Go+ previews and geo-blocked tracks - never loadable)
+        are skipped."""
         out: list[str] = []
         with self.transaction():
             pos = self._max_queue_pos()
@@ -480,6 +481,8 @@ class Database:
                 row = self.get_video(vid)
                 if not row or row["status"] not in ENQUEUEABLE or vid in out:
                     continue
+                if row.get("preview") or row.get("geo_blocked"):
+                    continue  # QA 7a/8: refused here instead of failing at download time
                 pos += 1
                 self.execute(
                     "UPDATE videos SET status='queued', error=NULL, queue_pos=? WHERE id=?",

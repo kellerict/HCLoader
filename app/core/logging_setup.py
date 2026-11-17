@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+import sys
 import threading
 from collections import deque
 from collections.abc import Callable
@@ -157,3 +158,16 @@ def setup_logging(
         ch._hcloader_console = True  # type: ignore[attr-defined]
         root.addHandler(ch)
     return log_file
+
+
+def console_logs_errors() -> bool:
+    """True if a console handler of `setup_logging` writes ERROR records to the current
+    stderr already (callers then do not print the same message a second time)."""
+    for h in logging.getLogger().handlers:
+        if (
+            getattr(h, "_hcloader_console", False)
+            and getattr(h, "stream", None) is sys.stderr
+            and h.level <= logging.ERROR
+        ):
+            return True
+    return False

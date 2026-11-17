@@ -24,11 +24,16 @@
 
   /* Eigene, kleine Styles (nur .upd-*; Farben aus theme.css). */
   const CSS = `
-.upd-banner{position:fixed;top:14px;right:20px;z-index:140;width:360px;max-width:calc(100vw - 40px);background:var(--panel-2);
+/* Schmale Leiste oben im Inhaltsbereich (erstes Kind von <main>): schiebt die Ansicht nach unten,
+   verdeckt also nie Kopfzeilen-Knöpfe (QA 7a/8: «Suchen»/Sortierung in «Entdecken»). */
+.upd-banner{position:relative;flex:none;z-index:5;margin:10px 20px 0;background:var(--panel-2);
   border:1px solid var(--line-2,var(--line));border-left:3px solid var(--acid);border-radius:var(--radius-sm,2px);
-  box-shadow:0 10px 30px rgba(0,0,0,.6);padding:12px 14px 12px;font-size:13px}
+  padding:8px 36px 8px 14px;font-size:13px;display:flex;flex-wrap:wrap;align-items:center;gap:4px 16px}
+.upd-banner .upd-sub{margin-top:0}
+.upd-banner .upd-actions{margin-top:0;margin-left:auto}
+.upd-banner .upd-prog{margin-top:0;flex:1 1 220px;min-width:180px}
 .upd-banner.err{border-left-color:var(--error)} .upd-banner.warn{border-left-color:var(--warn)}
-.upd-banner .upd-title{font:400 19px/1.1 var(--f-head);letter-spacing:1.2px;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+.upd-banner .upd-title{font:400 17px/1.1 var(--f-head);letter-spacing:1.2px;text-transform:uppercase;display:flex;align-items:center;gap:8px}
 .upd-banner .upd-title svg{width:16px;height:16px;stroke:var(--acid);fill:none;stroke-width:2.2;flex:none}
 .upd-banner.err .upd-title svg{stroke:var(--error)}
 .upd-sub{color:var(--muted);font:12px/1.5 var(--f-mono);margin-top:4px;overflow-wrap:anywhere}
@@ -36,7 +41,7 @@
 .upd-prog{margin-top:9px}
 .upd-prog .progress{height:6px}
 .upd-prog .upd-num{display:flex;justify-content:space-between;color:var(--muted);font:11px var(--f-mono);margin-top:4px;letter-spacing:.5px}
-.upd-x{position:absolute;top:8px;right:8px;background:none;border:0;color:var(--muted);cursor:pointer;padding:2px;line-height:0}
+.upd-x{position:absolute;top:50%;right:8px;transform:translateY(-50%);background:none;border:0;color:var(--muted);cursor:pointer;padding:2px;line-height:0}
 .upd-x svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.2}
 .upd-x:hover{color:var(--text)}
 .upd-notes{max-height:52vh;overflow:auto;font-size:13px;line-height:1.55}
@@ -181,7 +186,9 @@
       banner.className = 'upd-banner';
       banner.setAttribute('role', 'status');
       banner.addEventListener('click', onAction);
-      document.body.appendChild(banner);
+      const host = document.querySelector('main');
+      if (host) host.prepend(banner);
+      else document.body.appendChild(banner);
     }
     banner.classList.toggle('err', st.state === 'error');
     banner.classList.toggle('warn', !!st.blocked && st.state !== 'error');

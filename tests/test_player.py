@@ -1,5 +1,6 @@
 """Phase 8: player backend (file URLs, cover cache, chapter sources, path rules, external)."""
 
+import sys
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
@@ -69,7 +70,8 @@ def back(url: str) -> Path:
         "50% off.mp3",
         "Müller Ärger Öl.mp3",
         "Mix [abc123XYZ_-].mp3",
-        "q?x (1) {2} ~ & = + ;,.mp3",
+        # `?` is not allowed in Windows file names
+        "qx (1) {2} ~ & = + ;,.mp3" if sys.platform == "win32" else "q?x (1) {2} ~ & = + ;,.mp3",
     ],
 )
 def test_file_url_roundtrip_special_characters(tmp_path, name):

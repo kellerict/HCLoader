@@ -11,7 +11,7 @@ from pathlib import Path
 
 from .core import binaries, config, locks, selfupdate
 from .core.db import Database, MigrationBackupError, SchemaTooNewError
-from .core.logging_setup import setup_logging
+from .core.logging_setup import console_logs_errors, setup_logging
 from .core.throttle import Throttle, ThrottleError
 from .exitcodes import EXIT_BLOCKED, EXIT_BUSY, EXIT_FAILED, EXIT_OK, EXIT_USAGE
 
@@ -112,7 +112,8 @@ def show_fatal(message: str) -> None:
     """
     log.critical("%s", message)
     try:
-        print(message, file=sys.stderr)
+        if not console_logs_errors():  # the console log handler printed it already
+            print(message, file=sys.stderr)
     except Exception:  # pythonw: sys.stderr may be None
         pass
     if sys.platform == "win32" and _dialog_allowed():

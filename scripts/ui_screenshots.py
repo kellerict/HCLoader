@@ -432,6 +432,13 @@ class Shooter:
         self.settle()
         self.shot("discover-no-filters")
         page.click("#f-toggle")
+        # App-Update-Banner als Leiste über dem Inhalt: verdeckt weder «Suchen» noch Sortierung
+        page.evaluate("HC.bridge.safe('check_update')")
+        page.wait_for_selector(".upd-banner")
+        self.settle()
+        self.shot("discover-update-banner")
+        page.click(".upd-banner [data-upd=later]")
+        self.settle()
 
         self.go("inbox")
         self.shot("inbox")

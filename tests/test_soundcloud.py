@@ -860,3 +860,12 @@ def test_soundcloud_resolve_has_no_extractor_retry():
     assert ytclient.build_ydl_opts(s, "resolve", "soundcloud")["extractor_retries"] == 0
     assert ytclient.build_ydl_opts(s, "resolve", "youtube")["extractor_retries"] == 1
     assert ytclient.build_ydl_opts(s, "search", "soundcloud")["logger"].platform == "soundcloud"
+
+
+def test_enqueue_refuses_previews_and_geo_blocked(db):
+    """QA 7a/8: known Go+ previews / geo-blocked tracks are skipped by `enqueue`."""
+    db.upsert_video({"id": "sc:1", "title": "a", "preview": True})
+    db.upsert_video({"id": "sc:2", "title": "b", "geo_blocked": True})
+    db.upsert_video({"id": "sc:3", "title": "c"})
+    assert db.enqueue(["sc:1", "sc:2", "sc:3"]) == ["sc:3"]
+    assert db.get_video("sc:1")["status"] == "new"

@@ -21,7 +21,7 @@ from .core import config, locks, watchlist
 from .core.config import Settings
 from .core.db import Database, MigrationBackupError, SchemaTooNewError
 from .core.discover import format_until
-from .core.logging_setup import setup_logging
+from .core.logging_setup import console_logs_errors, setup_logging
 from .core.throttle import Throttle
 from .exitcodes import EXIT_BLOCKED, EXIT_BUSY, EXIT_FAILED, EXIT_OK
 from .worker import DownloadQueue, EventBus, PotWatchdog, WatchdogPotServer, local_preflight
@@ -96,7 +96,8 @@ class _HeldLock:
 
 def _say(message: str) -> None:
     log.error("%s", message)
-    print(message, file=sys.stderr)  # no-op under pythonw (no stderr)
+    if sys.stderr is not None and not console_logs_errors():  # QA: never twice on stderr
+        print(message, file=sys.stderr)
 
 
 def run_watchlist(

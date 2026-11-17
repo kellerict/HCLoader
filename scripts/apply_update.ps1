@@ -255,10 +255,15 @@ function Test-UpdaterAlive($Journal) {
 
 function Get-RunMutex {
     # Review m3: the download-run lock of app\core\locks.py (named mutex, Global\ then Local\).
-    # Holding it keeps a scheduled headless run from starting while files are swapped.
+    # Same semantics as Python: the mutex is never owned; it is "taken" while any handle is
+    # open (CreateMutex reports an existing name). Returns @{ Mutex; Created } or $null.
     foreach ($name in @($m.run_lock_mutexes)) {
         if (-not $name) { continue }
-        try { return (New-Object Threading.Mutex($false, [string]$name)) }
+        try {
+            $created = $false
+            $mx = New-Object Threading.Mutex($false, [string]$name, [ref]$created)
+            return @{ Mutex = $mx; Created = $created }
+        }
         catch { Write-Log "  Mutex $name nicht verfuegbar: $($_.Exception.Message)" }
     }
     return $null
@@ -339,16 +344,23 @@ try {
     }
 
     # --- 3. download-run lock: a scheduled headless run finishes first (Review m3) -----------
-    $runMutex = Get-RunMutex
-    if ($runMutex) {
-        try { $haveMutex = $runMutex.WaitOne(0) } catch [System.Threading.AbandonedMutexException] { $haveMutex = $true }
-        if (-not $haveMutex) {
-            Write-Log "Ein Download-Lauf (z.B. geplante Watchlist-Pruefung) ist aktiv - warte bis $RunLockSeconds s ..."
-            try { $haveMutex = $runMutex.WaitOne($RunLockSeconds * 1000) } catch [System.Threading.AbandonedMutexException] { $haveMutex = $true }
-        }
-        if (-not $haveMutex) {
+    # Holding our own handle while files are swapped keeps a scheduled headless run from
+    # starting (its CreateMutex sees the name -> "busy").
+    $deadline = (Get-Date).AddSeconds($RunLockSeconds)
+    $waitLogged = $false
+    while ($true) {
+        $rm = Get-RunMutex
+        if (-not $rm) { break }                       # no mutex possible: nothing to wait for
+        if ($rm.Created) { $runMutex = $rm.Mutex; $haveMutex = $true; break }
+        $rm.Mutex.Dispose()                           # someone else holds the name
+        if ((Get-Date) -gt $deadline) {
             throw 'Ein Download-Lauf ist noch aktiv - Update nicht eingespielt, naechster Versuch beim naechsten Beenden'
         }
+        if (-not $waitLogged) {
+            Write-Log "Ein Download-Lauf (z.B. geplante Watchlist-Pruefung) ist aktiv - warte bis $RunLockSeconds s ..."
+            $waitLogged = $true
+        }
+        Start-Sleep -Seconds 5
     }
 
     # --- 4. an interrupted earlier run is repaired first (Review m2) -----------------------
@@ -487,8 +499,7 @@ catch {
     }
 }
 finally {
-    if ($haveMutex) { try { $runMutex.ReleaseMutex() } catch { } }
-    if ($runMutex) { try { $runMutex.Dispose() } catch { } }
+    if ($runMutex) { try { $runMutex.Dispose() } catch { } }   # never owned: closing frees the name
     if ($writeResult) {
         try { Write-Result $result } catch { Write-Log ('result.json nicht schreibbar: ' + $_.Exception.Message) }
     }

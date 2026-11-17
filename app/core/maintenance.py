@@ -22,7 +22,7 @@ import threading
 import time
 import urllib.request
 from collections.abc import Callable, Collection
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -449,7 +449,13 @@ def last_backup(dest_dir: Path | None = None) -> str | None:
     if not files:
         return None
     mtime = max(st.st_mtime for _p, st in files)
-    return datetime.fromtimestamp(mtime).astimezone().isoformat(timespec="seconds")
+    return _local_iso(mtime)
+
+
+def _local_iso(ts: float) -> str:
+    """Local ISO time of a file time. Via UTC: on Windows `datetime.fromtimestamp(ts)` (local
+    time) raises OSError [Errno 22] for times shortly after the epoch."""
+    return datetime.fromtimestamp(ts, UTC).astimezone().isoformat(timespec="seconds")
 
 
 def list_backups(dest_dir: Path | None = None) -> list[dict[str, Any]]:
@@ -466,9 +472,7 @@ def list_backups(dest_dir: Path | None = None) -> list[dict[str, Any]]:
                 "name": p.name,
                 "path": str(p),
                 "size_mb": round(st.st_size / 1_048_576, 2),
-                "created": datetime.fromtimestamp(st.st_mtime)
-                .astimezone()
-                .isoformat(timespec="seconds"),
+                "created": _local_iso(st.st_mtime),
             }
         )
     return out
