@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Troubleshooting (Wiki)
+    url: https://github.com/kellerict/HCLoader/wiki/Troubleshooting
+    about: Common problems (WebView2, portable build, 429/backoff, PO token, genres) and how to fix them.
+  - name: Documentation (Wiki)
+    url: https://github.com/kellerict/HCLoader/wiki
+    about: Installation, settings reference, FAQ.
+  - name: Report a security issue privately
+    url: https://github.com/kellerict/HCLoader/security/advisories/new
+    about: Please do not open a public issue for security problems.

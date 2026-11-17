@@ -1,0 +1,28 @@
+**[HCLoader](Home)**
+
+**Setup**
+- [Installation](Installation)
+- [Portable build](Portable-Build)
+- [Getting started](Getting-Started)
+- [App updates](App-Updates)
+
+**Using the app**
+- [Discover and search](Discover-and-Search)
+- [Watchlist and Inbox](Watchlist-and-Inbox)
+- [Downloads and queue](Downloads-and-Queue)
+- [Library and player](Library-and-Player)
+- [File naming and tags](File-Naming-and-Tags)
+- [Scheduled checks](Scheduled-Checks)
+- [Supported sources](Supported-Sources)
+
+**Configuration**
+- [Settings reference](Settings-Reference)
+- [Throttling and backoff](Throttling-and-Backoff)
+
+**Help**
+- [Troubleshooting](Troubleshooting)
+- [FAQ](FAQ)
+
+**Project**
+- [Architecture](Architecture)
+- [Development](Development)

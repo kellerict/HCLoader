@@ -1,0 +1,72 @@
+name: Bug report
+description: Something does not work as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please check the [Troubleshooting page](https://github.com/kellerict/HCLoader/wiki/Troubleshooting) first.
+        **Never post cookies, tokens, or account details.** HCLoader never needs them in an issue.
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: Shown in the app under Einstellungen > Wartung (Settings > Maintenance). Include the yt-dlp version if you can.
+      placeholder: "e.g. 0.8.0, yt-dlp 2026.10.26"
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: Install type
+      options:
+        - Portable build (ZIP, HCLoader.cmd)
+        - venv install (setup.ps1)
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: "e.g. Windows 11 23H2 x64"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead? Screenshots are welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Relevant log lines
+      description: |
+        From `data\logs\hcloader.log` (portable) or `%APPDATA%\HCLoader\logs\hcloader.log` (venv install). Paste only the relevant lines.
+        **Remove personal paths and user names before posting.** Do not include cookies or tokens.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I looked at the Troubleshooting page and searched existing issues.
+          required: true
+        - label: I removed personal information from the log and screenshots.
+          required: true
