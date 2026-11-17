@@ -143,3 +143,4 @@ Entscheide: docs/decisions.md «Alles einlesen», Vertrag docs/bridge-api.md «A
 - 2026-11-17 – v0.3.0 Schritt 1 Backend Festivals & Serien fertig (Migration 7, Erkennung, Zuordnen, Tags, Bridge-Vertrag); UI als Nächstes
 - 2026-11-18 – v0.3.0 Festivals & Serien: Backend, UI, Review (M1 behoben), QA BESTANDEN → Release vorbereitet.
 - 2026-11-18 – v0.4.0 «Alles einlesen (einmalig)» gebaut (Backend, UI, 19 Sprachen, Tests, Screenshots, Doku); offen: QA, Review, echter Test unter Windows, Release (ca. 1–2 Std.)
+- 2026-11-18 – v0.4.0 «Alles einlesen»: Review M1–M3 behoben, QA BESTANDEN → Release vorbereitet (nach v0.3.0).

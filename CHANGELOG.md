@@ -10,6 +10,14 @@ appears after «Show all changes» (`docs/RELEASING.md`).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-18
+
+### Highlights
+- «Read everything (once)»: fetch the complete back catalogue of a channel, playlist or SoundCloud artist/set into the Inbox
+- Gentle by design: paced page by page through the central throttle with its own hourly budget, automatic pause on backoff
+- Resumable after backoff, restart or pause; progress shown right at the source («Reading … 240 / ~500»)
+- Confirmation with an estimate of requests and time before it starts; adjustable cap (default 2000 entries)
+
 ### Highlights
 - Watchlist «Read everything (once)»: read the complete back catalogue of a channel, playlist or SoundCloud profile/set – page by page, gently, into the inbox
 - Confirmation with the estimated number of requests and time before anything starts
