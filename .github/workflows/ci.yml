@@ -22,9 +22,26 @@ jobs:
       - run: ruff check .
       - run: ruff format --check .
       - name: pytest
+        # also run when ruff failed, so test failures are always visible
+        if: success() || failure()
         timeout-minutes: 15
         # Per-test timeout with a stack dump of all threads, so a hanging test is visible.
-        run: pytest -v -rfE --tb=line -p no:cacheprovider --timeout=120 --timeout-method=thread -o faulthandler_timeout=110
+        run: pytest -v -rfE --tb=line --junitxml=pytest-report.xml -p no:cacheprovider --timeout=120 --timeout-method=thread -o faulthandler_timeout=110
+      - name: Failed tests (compact list)
+        if: failure()
+        shell: python
+        run: |
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          p = Path("pytest-report.xml")
+          if not p.exists():
+              raise SystemExit("no report")
+          for case in ET.parse(p).iter("testcase"):
+              for tag in ("failure", "error"):
+                  el = case.find(tag)
+                  if el is not None:
+                      msg = (el.get("message") or "").splitlines()[0][:160] if el.get("message") else ""
+                      print(f"FAILED {case.get('classname')}::{case.get('name')} | {msg}")
       - name: pytest (network tests – PyPI only, never YouTube)
         timeout-minutes: 5
         env:
