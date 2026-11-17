@@ -826,6 +826,14 @@ def test_db_backed_reads_and_simple_actions(env):
         "preview",
         "geo_blocked",
         "duplicate_of",
+        # v0.3.0 festivals & series
+        "edition_id",
+        "suggested_edition_id",
+        "stage",
+        "set_type",
+        "episode",
+        "festival_manual",
+        "festival_confidence",
     }
     assert inbox[0]["platform"] == "youtube" and inbox[0]["duplicate_of"] is None
     assert inbox[0]["source_id"] == sid
@@ -872,6 +880,8 @@ def test_library_from_db(env, tmp_path):
         "platform",
         "genre_manual",
         "thumbnail",
+        "festival",
+        "festival_suggestion",
     }
     assert lib[0]["missing"] is False and lib[0]["has_cue"] is False
     from app.core import library
@@ -951,6 +961,12 @@ def test_every_method_json_serializable(env):
         "get_media": ("abcdefghijk",),
         "play_external": ("abcdefghijk",),
         "suggest_source": ("https://soundcloud.com/dj-x",),
+        # v0.3.0 festivals & series
+        "save_series": ({"name": "My Rave", "kind": "festival", "aliases": ["MyRave"]},),
+        "delete_series": (999,),
+        "set_festival": ("abcdefghijk", None),
+        "reset_festival": ("abcdefghijk",),
+        "detect_festival": ("Defqon.1 2019 | RED",),
     }
     for name in sorted(_bridge_comment_methods()):
         res = getattr(a, name)(*args.get(name, ()))

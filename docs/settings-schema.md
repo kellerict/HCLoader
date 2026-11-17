@@ -33,10 +33,11 @@ Leitfaden `docs/TRANSLATING.md`); Validierungsmeldungen aus `app/locales/<code>.
 | | `write_id3_chapters` | bool | true | |
 | | `keep_original_soundcloud` | bool | true | Phase 7a: SoundCloud-Audio unverändert behalten (AAC 160 → `.m4a`, MP3 128 → `.mp3`); `false` = wie `audio_format` |
 | `storage` (Ablage & Tags) | `target_dir` | str | `%USERPROFILE%\Music\HCLoader` | relativ (z.B. `.\Music`) = relativ zum App-Ordner, nur Portable-Version (Phase 6) |
-| | `path_template` | str | `{genre}/{artist}/{year}/{date} - {title} [{id}]` | Platzhalter: genre, artist, channel, year, date, title, id, platform («YouTube»/«SoundCloud», Phase 7a). `{id}` bei SoundCloud = `sc-<id>` |
+| | `path_template` | str | `{genre}/{artist}/{year}/{date} - {title} [{id}]` | Platzhalter: genre, artist, channel, year, date, title, id, platform («YouTube»/«SoundCloud», Phase 7a), festival, event_year, stage (v0.3.0; leer → Reste wie « - »/«()» entfernt, leere Ordnerebene entfällt). `{id}` bei SoundCloud = `sc-<id>`. Standard bleibt unverändert |
 | | `max_title_length` | int | 120 | 20–200 |
 | | `max_path_length` | int | 240 | 100–259 |
 | | `artist_from_title` | bool | false | |
+| | `album_from_edition` | bool | true | v0.3.0: Album-Tag = Ausgabe («Defqon.1 2024»), wenn ein Festival/eine Serie zugeordnet ist; aus = Album wie bisher = Titel |
 | | `title_cleanup_patterns` | list[str] (Regex) | `\(Official[^)]*\)`, `\[HQ\]`, `\[HD\]`, `\(HQ\)`, `\(HD\)`, `\[Official[^\]]*\]` | gültige Regex |
 | `throttle` (Schonung) | `sleep_requests` | float (s) | 3 | 0–60 |
 | | `sleep_interval` | int (s) | 30 | 0–3600 |
@@ -71,6 +72,12 @@ Leitfaden `docs/TRANSLATING.md`); Validierungsmeldungen aus `app/locales/<code>.
 | | `scanlines` | bool | true | |
 | | `pulse_bpm` | int | 200 | 60–300 |
 | `player` (Tab «Allgemein», Phase 8) | `mode` | str | `internal` | internal (eingebauter Player), external (Standardplayer des Systems) |
+| `festivals` (Festivals & Serien, v0.3.0) | `detect` | bool | true | Festival/Serie, Jahr, Bühne, Set-Art automatisch erkennen (offline, nur gespeicherte Titel/Kanal/Beschreibung) |
+| | `min_confidence` | float | 0.65 | 0.3–1.0; ab diesem Wert zuordnen, darunter nur Vorschlag |
+| | `year_from_upload_date` | bool | true | ohne Jahreszahl im Titel das Upload-Jahr nehmen |
+| | `match_description` | bool | true | Festivalnamen auch in der Beschreibung suchen (Suchtreffer: nur falls geliefert; Bibliothek: Sidecar) |
+| | `extra_stages` | list[str] | `[]` | zusätzliche Bühnennamen, je max. 40 Zeichen (eingebaut: RED, BLUE, BLACK, UV, YELLOW, INDIGO, MAGENTA, GOLD, SILVER, PURPLE, GREEN, ORANGE, WHITE, PINK, Mainstage) |
+| | `extra_set_types` | list[{`keyword` str 1–60, `set_type` Code}] | `[]` | eigene Begriffe für Set-Arten, vor den eingebauten geprüft; Codes: live_set, closing_ceremony, opening, endshow, full_show, warm_up, anthem, episode. Fehler: `festivals.extra_set_types.<i>.set_type` |
 | `maintenance` (Wartung) | `check_updates_on_start` | bool | true | max. 1×/Tag |
 | | `check_app_updates_on_start` | bool | true | HCLoader-Update (GitHub-Release) einmal pro Start prüfen |
 | | `apply_update_on_exit` | bool | true | bereitgelegtes App-Update beim Beenden einspielen |
@@ -96,3 +103,14 @@ Bridge (`ui/js/bridge.js`): `get_settings()` → `{values, defaults}`; `save_set
   Checkbox; eine dritte Plattform kann es später ablösen.
 - Suche: `search(query, {genre?, year?, platform?})`; Genre-Begriffe und Jahr werden auch bei SoundCloud
   angehängt (SoundCloud sucht in Titel, Tags und Beschreibung, die Begriffe grenzen gleich ein).
+
+## v0.3.0 – Festivals & Serien (Entscheid)
+- Neuer Tab «Festivals & Serien» = Abschnitt `festivals` (Tabelle oben) + Serienliste. Die **Serienliste
+  steht nicht in `config.yaml`**, sondern in der DB (Tabelle `series`): mitgelieferte Einträge aus
+  `app/data/series.yaml` werden beim Start synchronisiert, eigene/geänderte/ausgeblendete bleiben bei
+  Updates unangetastet. Bearbeitet wird sie über die Bridge (`get_series`, `save_series`,
+  `delete_series`, `reset_series`, docs/bridge-api.md «Festivals & Serien»), nicht über `save_settings`.
+- Der Tab enthält ausserdem: Knopf «Festivals zuordnen» (`assign_festivals`, Fortschritt
+  `festival_assign`, Stand `get_festival_status`) und ein Testfeld (`detect_festival`).
+- `storage.album_from_edition` gehört zum Tab «Ablage & Tags» (bei den Tag-Optionen), die neuen
+  Platzhalter erklärt die Hilfe von `storage.path_template`.

@@ -315,7 +315,7 @@ kein Throttle.
 
 | Methode | Parameter | Rückgabe | Phase |
 |---|---|---|---|
-| `get_library(filters?)` | `{search?, genre?, channel?, year?, missing?}` | `[LibraryItem]` (Status `done`, neueste Downloads zuerst, aus DB) | 5 |
+| `get_library(filters?)` | `{search?, genre?, channel?, year?, missing?, platform?}` + v0.3.0 `{series_id?, edition_id?, event_year?, stage?, set_type?, festival?}` | `[LibraryItem]` (Status `done`, neueste Downloads zuerst, aus DB) | 5 |
 | `get_library_status()` | | `{target_ok, target}` – Zielordner-Prüfung (Thread mit 3-s-Timeout) des letzten `get_library` | 5 |
 | `open_folder(id)` | | `{ok}` \| `{ok:false, error}` – Windows: Explorer mit markierter Datei, sonst Ordner | 5 |
 | `get_media(id)` | | `{ok:true, id, src, title, artist, genre, platform, duration, cover, chapters:[{start, title, performer}]}` \| `{ok:false, error}` – Phase 8, lokal, kein Netz | 8 |
@@ -330,7 +330,8 @@ kein Throttle.
   Kein Filter / kein Objekt = alles. Die UI leitet die Auswahllisten (Genres, Kanäle, Jahre) aus der
   Gesamtliste ab.
 - `LibraryItem` = `{id, title, artist, channel_id, genre, duration, upload_date, year, downloaded_at,
-  file_path, size_mb, missing, unknown, has_cue, platform, genre_manual, thumbnail}` (`thumbnail`: Bild-URL aus der DB
+  file_path, size_mb, missing, unknown, has_cue, platform, genre_manual, thumbnail, festival,
+  festival_suggestion}` (v0.3.0: `festival`/`festival_suggestion` = `Festival|null`, siehe «Festivals & Serien») (`thumbnail`: Bild-URL aus der DB
   wie bei Suchtreffern, nur über `safeThumb` anzeigen). `missing: true`: die Datei existiert nicht mehr (`size_mb` 0).
   `unknown: true`: der Zielordner ist nicht erreichbar (Laufwerk/Freigabe weg oder hängt >3 s); für
   Dateien darunter wird nichts geprüft, `missing` bleibt `false`. `get_library` bleibt eine Liste, damit
@@ -379,6 +380,115 @@ kein Throttle.
   `debug` < `info`/`ok` < `warn` < `error`), `levels` (genaue Liste, hat Vorrang), `search` (Teilstring,
   ohne Gross/Klein), `limit` (die letzten N, max. 5000). `runs` = letzte `runs_limit` (Default 50, max.
   500) Läufe, neueste zuerst; `kind` filtert sie.
+
+### Festivals & Serien (v0.3.0)
+
+Konzept: `docs/concepts/festivals.md`, Entscheide: `docs/decisions.md` «Festivals & Serien (v0.3.0)».
+Alles **offline** (keine Anfrage an YouTube/SoundCloud). Backend: `app/core/festivals.py` (Erkennung,
+reine Funktionen), `app/core/series.py` (Katalog in der DB, Zuordnen, Gruppieren, Tags/Pfade).
+Gespeicherte Werte sind sprachneutral: Serien-/Bühnennamen sind Eigennamen, `set_type` ist ein **Code**,
+den die UI übersetzt (UI-Schlüssel z.B. `fest.set_type.<code>`, Sache der UI-Kataloge).
+
+| Methode | Parameter | Rückgabe |
+|---|---|---|
+| `get_series(include_hidden=false)` | `true` = auch ausgeblendete mitgelieferte Serien (Feld `hidden`) | `[Series]` sortiert nach Name |
+| `save_series(series)` | `Series` ohne `id` = neu; nur `name, kind, aliases, weak_aliases, channels, variants, default_genre, enabled` werden gelesen | `{ok:true, series:Series}` \| `{ok:false, errors:{feld:"Meldung"}}` |
+| `delete_series(id)` | | `{ok:true, hidden, cleared}` \| `{ok:false, error}` |
+| `reset_series(id?)` | ohne `id` = alle mitgelieferten | `{ok:true, series:[Series]}` \| `{ok:false, error}` |
+| `get_festival_options()` | | `{kinds:["festival","radio","podcast"], set_types:[{code, label}], stages:[Name]}` |
+| `get_library_groups(by="festival")` | `festival` \| `year` \| `event_year` \| `artist` \| `genre` \| `stage` \| `set_type` | `festival`: `{ok, by, series:[SeriesGroup], unassigned, suggested, total}`; sonst `{ok, by, groups:[{key, count}]}`; unbekannt → `{ok:false, error}` |
+| `set_festival(id, data)` | `data`: `null` = «kein Festival»; sonst `{edition_id}` **oder** `{series_id, event_year?, variant?}`, dazu optional `stage`, `set_type`, `episode` | `{ok:true, festival, festival_suggestion}` \| `{ok:false, errors:{feld:"Meldung"}, error}` |
+| `reset_festival(id)` | | `{ok:true, outcome, festival, festival_suggestion}` \| `{ok:false, error}` |
+| `detect_festival(title, opts?)` | `opts`: `{channel_name?, upload_date?, description?}` | `{ok:true, detection: Detection\|null, assigned}` (nichts gespeichert) |
+| `get_festival_status()` | | `{series, assigned, suggested, unassigned, total, last_pass, running}` |
+| `assign_festivals(opts?)` | `opts`: `{scope: "library" (Standard) \| "all"}` | `{ok:true, started:true, scope}` \| `{ok:true, started:false, running:true}` (läuft schon) \| `{ok:false, error}` (andere Wartung läuft) |
+| `cancel_assign_festivals()` | | `{ok:true, running}` – der Durchlauf endet nach dem aktuellen Eintrag |
+
+**Datenformen**
+
+- `Series` = `{id, key, name, kind, aliases:[str], weak_aliases:[str], channels:[str],
+  variants:[{name, aliases:[str]}], default_genre:str|null, builtin, user_modified, enabled, count}`
+  (+ `hidden` nur bei `get_series(true)`). `key`: stabil; mitgeliefert z.B. `defqon1`, eigene `u-<slug>`.
+  `count` = Bibliothekseinträge (Status `done`) mit zugeordneter Ausgabe dieser Serie.
+  `aliases` = starke Schreibweisen (ein Treffer im Titel reicht), `weak_aliases` = Allerweltswörter
+  (Rebirth, Supremacy, Hard Bass …: zählen weniger, ausser direkt gefolgt von einer Jahreszahl). Der Name
+  ist immer ein starker Alias, ausser er steht selbst in `weak_aliases`. Vergleich ohne Gross/Klein,
+  Akzente und Satzzeichen («Defqon.1» = «Defqon 1» = «DEFQON1»). `channels`: Kanal-ID (`UC…`), Kanal-URL
+  oder exakter Kanalname des Veranstalters – nur Bonus, nie allein ausreichend.
+  `variants`: Ausgaben-Varianten wie «Australia», «Chile», «at Home».
+- `Festival` (an `LibraryItem.festival`, Antworten von `set_festival`/`reset_festival`, Event `video`) =
+  `{edition_id, series_id, series_key, series, kind, event_year:int|null, variant:str, edition, festival,
+  stage:str|null, set_type:code|null, episode:int|null, manual:bool, confidence:0–1|null}`.
+  `edition` = Anzeigename der Ausgabe («Defqon.1 Australia 2019», = Album-Tag), `festival` = Serie +
+  Variante («Defqon.1 Australia», = `TXXX:FESTIVAL` und `{festival}`). `confidence` null bei manuellen Werten.
+- `festival_suggestion` = gleiche Form ohne `manual`; nur wenn **nichts** zugeordnet ist und die
+  Erkennung unter der Schwelle `festivals.min_confidence` lag. Die UI zeigt sie als Vorschlag (z.B.
+  gestricheltes Badge); «Übernehmen» = `set_festival(id, {edition_id: s.edition_id, stage: s.stage,
+  set_type: s.set_type, episode: s.episode})`.
+- `Detection` = `{series_key, series_id, series, kind, year, year_source:"title"|"upload"|null, variant,
+  edition, stage, set_type, episode, confidence, alias, reasons:[str]}` (`reasons` = Debug-Codes wie
+  `alias`, `year:title`, `stage`, `negative`; nicht übersetzt, nicht anzeigen).
+- `SeriesGroup` = `{id, key, name, kind, count, editions:[{id, event_year, variant, edition, festival,
+  count, stages:[{stage|null, count}], set_types:[{set_type|null, count}]}]}`. Serien nach `count` absteigend,
+  dann Name; Ausgaben neueste zuerst; `stage: null` = ohne Bühne (zuletzt). Gezählt werden nur
+  Bibliothekseinträge mit zugeordneter Ausgabe; `unassigned` = ohne Ausgabe (inkl. Vorschläge),
+  `suggested` = davon mit Vorschlag, `total` = alle Bibliothekseinträge.
+- `groups` (`get_library_groups` ausser `festival`): `[{key, count}]`, `key ""` = unbekannt/keins (immer
+  zuletzt). `year` = Upload-Jahr, `event_year` = Jahr der zugeordneten Ausgabe, `artist` = Kanalname,
+  `genre`, `stage`/`set_type` (nur zugeordnete Einträge, sonst `""`). Jahre neueste zuerst, sonst nach
+  Anzahl absteigend.
+- Set-Art-Codes: `live_set`, `closing_ceremony`, `opening`, `endshow`, `full_show` (z.B. «Live
+  Registration»), `warm_up`, `anthem`, `episode` (Radio/Podcast mit Folgennummer). `label` aus
+  `get_festival_options` ist der sprachneutrale Text für `TXXX:SET_TYPE` (Englisch), nicht für die UI.
+
+**Verhalten**
+
+- **Erkennung** läuft automatisch (wenn `festivals.detect`) auf neuen bzw. aufgefrischten Treffern der
+  Suche und der Watchlist (gespeicherte flache Daten: Titel, Kanal, Upload-Datum, Beschreibung falls
+  geliefert) und noch einmal nach jedem Download mit Titel + voller Beschreibung. Ab Sicherheit
+  `festivals.min_confidence` (Standard 0.65) wird zugeordnet, darunter nur vorgeschlagen. Manuelle Werte
+  (`festival.manual`) ändert die Erkennung **nie**. Hat die Serie ein `default_genre` und ist das Genre
+  eines noch nicht eingereihten Videos «Unsortiert» (nicht manuell), wird es übernommen.
+- Jahr: eigene Jahreszahl im Titel (auch `'19`, `2k19`; bei mehreren die nach dem Namen), sonst das
+  Upload-Jahr (`festivals.year_from_upload_date`, zählt weniger). Unbekannt → `event_year: null`.
+- `Video` (Suche, Eingang, Warteschlange) trägt nur die Rohwerte `edition_id, suggested_edition_id, stage,
+  set_type, episode, festival_manual, festival_confidence`; Namen über `get_series`/`get_library_groups`
+  bzw. (Bibliothek) `LibraryItem.festival`.
+- `get_library(filters)` kennt zusätzlich `series_id`, `edition_id`, `event_year`, `stage`, `set_type`
+  (zugeordnete Werte) und `festival: "assigned" | "none" | "suggested"`. Die UI darf weiter ohne Filter
+  laden und selbst gruppieren (`LibraryItem.festival` reicht dafür).
+- `set_festival`: setzt `manual` und ersetzt alle Festivalwerte des Videos (nicht genannte Felder werden
+  leer). Mit `series_id` + `event_year` + `variant` wird die Ausgabe bei Bedarf angelegt. Fehler pro Feld:
+  `series_id` (unbekannt), `edition_id` (unbekannt), `event_year` (ungültig), `set_type` (unbekannter
+  Code), `episode` (keine positive Zahl), `id` (Video unbekannt). Danach Event `video`. **Tags und
+  Ablage** der Datei ändern sich erst mit `retag(id)` (wie beim Genre); die UI ruft es bei geladenen,
+  vorhandenen Dateien direkt danach auf.
+- `reset_festival`: manuell aus, Erkennung läuft sofort neu (`outcome`: `assigned` | `suggested` |
+  `none` | `unchanged`). Event `video`.
+- `save_series`: Fehler pro Feld `name` (leer / > 80 Zeichen / gehört schon zu einer anderen Serie),
+  `kind`, `aliases`/`weak_aliases`/`channels` (Liste, max. 40), `default_genre` (unbekanntes Genre),
+  `id` (unbekannt). Ein Alias darf nicht schon zu einer anderen sichtbaren Serie gehören (Meldung nennt
+  sie). Eine mitgelieferte Serie bearbeiten setzt `user_modified` – App-Updates der Liste lassen sie dann
+  in Ruhe; `reset_series(id)` stellt den Lieferzustand wieder her. `enabled:false` = bleibt in der Liste,
+  wird aber nicht mehr erkannt (Zuordnungen bleiben).
+- `delete_series`: eigene Serie wird mit ihren Ausgaben gelöscht; mitgelieferte wird ausgeblendet
+  (`hidden:true`, kommt mit Updates nicht zurück, `reset_series` holt sie). In beiden Fällen werden alle
+  Zuordnungen/Vorschläge zu ihr entfernt (`cleared` = Anzahl Videos), auch manuelle (die werden wieder
+  automatisch).
+- `assign_festivals`: einmaliger Durchlauf «Festivals zuordnen» im Wartungs-Thread über alle
+  Bibliothekseinträge (`scope:"all"`: alle bekannten Videos), auch wenn `festivals.detect` aus ist;
+  Beschreibung aus dem Sidecar (bei `festivals.match_description`). Manuelle Einträge werden übersprungen.
+  Dateien werden **nicht** neu getaggt oder verschoben (dafür `retag`). Fortschritt über das Event
+  `festival_assign`; am Ende Logzeile (ok) und `last_pass` in `get_festival_status`. Läuft schon eine
+  andere Wartung (Update, Backup, Neu-Taggen …) → `{ok:false, error:"Wartung läuft gerade (…) …"}`.
+- **Tags** (beim Download und bei `retag`): `TXXX:FESTIVAL` (= `festival`), `TXXX:EVENT_YEAR`,
+  `TXXX:STAGE`, `TXXX:SET_TYPE` (Label, Englisch), `TXXX:EPISODE`; leere Werte werden nicht geschrieben
+  und beim Neu-Taggen entfernt (fremde Frames bleiben). Album = `edition`, wenn
+  `storage.album_from_edition` (Standard an) und eine Ausgabe zugeordnet ist, sonst wie bisher der Titel.
+  M4A: Freeform-Atome gleichen Namens, Opus: Vorbis-Kommentare `festival`, `event_year` ….
+- **Ablage**: Platzhalter `{festival}`, `{event_year}`, `{stage}` im `storage.path_template`. Leer →
+  Reste wie « - », «()» werden entfernt, eine Ordnerebene, die nur daraus bestand, entfällt. Das
+  Standardmuster bleibt unverändert; bestehende Dateien bewegen sich nur mit `retag`.
 
 ## Datenformen
 
@@ -461,7 +571,7 @@ Status). Ergänzungen der Python-Seite:
 | `status` | `Status` | nach `save/reset_settings`, `update_ytdlp`, `test_po_token`, `clear_backoff`, `create/remove_task`, `set_video_status`, `search`, jeder Queue-Änderung, Start/Stopp des PO-Token-Servers, sonst alle 30 s | 2/3 |
 | `log` | `LogLine` | jede Logzeile (ausser Logger `pywebview*`, `app.worker.events`, `urllib3*`) | 2/3 |
 | `toast` | `{msg, kind?}` (`ok`/`info`/`warn`/`err`) | Ergebnis des letzten App-Updates (ok/err), Update verfügbar, „yt-dlp aktualisiert – bitte HCLoader neu starten“ (warn), „HCLoader wurde verschoben – …“ (warn, Phase 6), Platzhalter „Folgt in Phase N“ | 2/3 |
-| `video` | `{id, status, genre}` | `set_video_status`, `set_genre`, `enqueue`, Start/Ende/Abbruch eines Downloads, Download vom Throttle abgelehnt oder lokal gesperrt (zurück auf `queued`) | 2/3 |
+| `video` | `{id, status, genre}` (+ `festival`, `festival_suggestion` nach `set_festival`/`reset_festival`, v0.3.0) | `set_video_status`, `set_genre`, `set_festival`, `reset_festival`, `enqueue`, Start/Ende/Abbruch eines Downloads, Download vom Throttle abgelehnt oder lokal gesperrt (zurück auf `queued`) | 2/3 |
 | `progress` | `{id, phase, pct, speed, eta}` (+ `sleep_total` bei `sleep`) | Download-Queue: `sleep` einmal zu Beginn der Pause, `download` höchstens ca. 2×/s (Phasenwechsel und 100 % immer), `convert`, `tag` | 3 |
 | `done` | `{id, title}` | Download fertig getaggt und verschoben | 3 |
 | `failed` | `{id, title, error}` | Download fehlgeschlagen (bei 429 zusätzlich Backoff → `status`) | 3 |
@@ -471,6 +581,7 @@ Status). Ergänzungen der Python-Seite:
 | `update` | `UpdateStatus` | jeder Zustandswechsel des App-Updates (Prüfung Start/Ende, Download, bereit, Fehler, Abbruch, Updater gestartet) | Selbst-Update |
 | `update_progress` | `{phase, pct, bytes, total}` | Download (höchstens ca. 4×/s, 100 % immer), dann einmal `verify`, einmal `prepare` | Selbst-Update |
 | `watchlist_done` | `{checked, found}` | Watchlist-Lauf beendet; `checked` = bearbeitete Quellen (auch fehlerhafte), `found` = neu gespeicherte Videos | 4 |
+| `festival_assign` | `{phase, scope, done?, total?, assigned?, suggested?, none?, manual?, unchanged?, cancelled?, ok?, error?}` | «Festivals zuordnen»: `phase` `start` (einmal), `progress` (alle 25 Einträge und am Ende), `done` (Ergebnis wie `assign_pass`: `{ok, cancelled, total, done, assigned, suggested, none, manual, unchanged}`) oder `error` (`{ok:false, error}`). Danach lädt die UI Bibliothek/Gruppen neu | 0.3.0 |
 
 ## Download-Queue (Phase 3)
 

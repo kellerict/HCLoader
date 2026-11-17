@@ -36,6 +36,8 @@ from .core import (
     potoken,
     scheduler,
     selfupdate,
+    series,
+    sidecar,
     watchlist,
 )
 from .core import status as status_mod
@@ -81,6 +83,7 @@ _JOB_LABELS = {
     "backup": "job.backup",
     "po_test": "job.po_test",
     "task_check": "job.task_check",
+    "festivals": "job.festivals",
 }
 _TASK_MOVED = "api.task_moved"
 _UPDATE_BUSY = "api.update_busy"
@@ -205,6 +208,7 @@ class Api:
         self._po_test: tuple[str, int, dict[str, Any]] | None = None
         self._ticker: Ticker | None = None
         self._loaded_once = False
+        self._fest_cancel = threading.Event()
 
     # ================================================================== lifecycle (internal)
 
@@ -250,6 +254,7 @@ class Api:
         self._wl_worker.stop(WATCHLIST_STOP_TIMEOUT_S)
         if self._wl_worker.alive():  # stuck in a request: close its run entry now
             watchlist.close_interrupted(self._db, tr("run.cancelled_exit"))
+        self._fest_cancel.set()  # a running «Assign festivals» pass stops after the current row
         self._updater.stop()  # a running app-update download is aborted and discarded
         self._update_worker.stop()
         ended = self._queue.stop(queue_timeout)
@@ -1248,6 +1253,159 @@ class Api:
         if res.get("ok"):
             self._bus.emit("video", {"id": str(video_id), "status": "ignored", "genre": None})
             self._push()
+        return res
+
+    # ================================================================== festivals & series (v0.3.0)
+
+    def get_series(self, include_hidden: bool = False) -> list[dict[str, Any]]:
+        """Series catalog (built-ins + user series) with library counts; offline."""
+        return series.list_series(self._db, include_hidden=bool(include_hidden))
+
+    def save_series(self, data: dict[str, Any]) -> dict[str, Any]:
+        try:
+            saved = series.save_series(self._db, self._cfg, data)
+        except series.SeriesError as exc:
+            return {"ok": False, "errors": exc.errors}
+        log.info(tr("festival.series_saved", name=saved["name"]))
+        return {"ok": True, "series": saved}
+
+    def delete_series(self, series_id: int) -> dict[str, Any]:
+        try:
+            res = series.delete_series(self._db, int(series_id))
+        except (series.SeriesError, TypeError, ValueError) as exc:
+            return {"ok": False, "error": str(exc) or tr("festival.series_unknown")}
+        return {"ok": True, **res}
+
+    def reset_series(self, series_id: int | None = None) -> dict[str, Any]:
+        try:
+            restored = series.reset_series(self._db, None if series_id is None else int(series_id))
+        except (series.SeriesError, TypeError, ValueError) as exc:
+            return {"ok": False, "error": str(exc) or tr("festival.series_unknown")}
+        return {"ok": True, "series": restored}
+
+    def get_festival_options(self) -> dict[str, Any]:
+        """Choices for dialogs: kinds, set types (code + tag label), stage names."""
+        labels = series.set_type_labels()
+        return {
+            "kinds": list(series.fx.KINDS),
+            "set_types": [{"code": c, "label": labels[c]} for c in series.fx.SET_TYPES],
+            "stages": series.stage_names(self._cfg),
+        }
+
+    def get_library_groups(self, by: str = "festival") -> dict[str, Any]:
+        """Library (status done) grouped with counts; by: festival | year | event_year |
+        artist | genre | stage | set_type."""
+        try:
+            if by == "festival":
+                return {"ok": True, "by": by, **series.festival_tree(self._db)}
+            return {"ok": True, "by": by, "groups": series.group_counts(self._db, str(by))}
+        except ValueError:
+            return {"ok": False, "error": tr("festival.invalid_grouping", by=by)}
+
+    def _festival_payload(self, vid: str) -> dict[str, Any]:
+        row = self._db.get_video(vid) or {}
+        fest, sugg = series.festival_info(row, series.edition_map(self._db))
+        return {"festival": fest, "festival_suggestion": sugg}
+
+    def _emit_festival(self, vid: str) -> dict[str, Any]:
+        payload = self._festival_payload(vid)
+        row = self._db.get_video(vid) or {}
+        self._bus.emit(
+            "video", {"id": vid, "status": row.get("status"), "genre": row.get("genre"), **payload}
+        )
+        return payload
+
+    def set_festival(self, video_id: str, data: dict[str, Any] | None) -> dict[str, Any]:
+        """Manual festival values (detection never overwrites them); data null = «no festival».
+        Tags/path of a downloaded file change only with retag(id)."""
+        vid = str(video_id)
+        try:
+            series.set_manual(self._db, vid, data)
+        except series.SeriesError as exc:
+            return {"ok": False, "errors": exc.errors, "error": str(exc)}
+        return {"ok": True, **self._emit_festival(vid)}
+
+    def reset_festival(self, video_id: str) -> dict[str, Any]:
+        """Manual values off: automatic detection runs again at once (offline)."""
+        vid = str(video_id)
+        try:
+            outcome = series.reset_manual(self._db, self._cfg, vid)
+        except series.SeriesError as exc:
+            return {"ok": False, "error": str(exc)}
+        return {"ok": True, "outcome": outcome, **self._emit_festival(vid)}
+
+    def detect_festival(self, title: str, opts: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Try the detection on a text (settings tab «Test»); nothing is stored."""
+        o = opts if isinstance(opts, dict) else {}
+        cat = series.catalog(self._db, self._cfg)
+        det = series.detect_row(
+            {
+                "title": str(title or ""),
+                "channel_name": o.get("channel_name"),
+                "upload_date": o.get("upload_date"),
+            },
+            cat,
+            self._cfg,
+            description=o.get("description"),
+        )
+        if det is None:
+            return {"ok": True, "detection": None, "assigned": False}
+        return {
+            "ok": True,
+            "detection": det.to_dict(),
+            "assigned": det.confidence >= self._cfg.festivals.min_confidence,
+        }
+
+    def get_festival_status(self) -> dict[str, Any]:
+        st = series.status(self._db)
+        st["running"] = self._worker.busy("festivals")
+        return st
+
+    def assign_festivals(self, opts: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Start the offline pass in the maintenance worker; progress via `festival_assign`."""
+        o = opts if isinstance(opts, dict) else {}
+        scope = "all" if o.get("scope") == "all" else "library"
+        if self._worker.busy("festivals"):
+            return {"ok": True, "started": False, "running": True}
+        other = self._worker.other_job("festivals")
+        if other is not None:
+            label = tr(_JOB_LABELS[other]) if other in _JOB_LABELS else tr("job.retag")
+            return {"ok": False, "error": tr("api.maintenance_busy", label=label)}
+        self._fest_cancel.clear()
+        self._worker.submit("festivals", self._do_assign, scope)
+        return {"ok": True, "started": True, "scope": scope}
+
+    def cancel_assign_festivals(self) -> dict[str, Any]:
+        self._fest_cancel.set()
+        return {"ok": True, "running": self._worker.busy("festivals")}
+
+    def _do_assign(self, scope: str) -> dict[str, Any]:
+        self._bus.emit("festival_assign", {"phase": "start", "scope": scope})
+        log.info(tr("festival.pass_started"))
+
+        def progress(data: dict[str, Any]) -> None:
+            self._bus.emit("festival_assign", {"phase": "progress", "scope": scope, **data})
+
+        def description_of(vid: str) -> str | None:
+            return (sidecar.read(vid) or {}).get("description") or None
+
+        try:
+            res = series.assign_pass(
+                self._db,
+                self._cfg,
+                scope=scope,
+                description_of=description_of,
+                progress=progress,
+                cancel=self._fest_cancel,
+            )
+        except Exception as exc:
+            log.error(tr("festival.pass_failed", error=exc))
+            res = {"ok": False, "error": tr("festival.pass_failed", error=exc)}
+            self._bus.emit("festival_assign", {"phase": "error", "scope": scope, **res})
+            return res
+        key = "festival.pass_cancelled" if res["cancelled"] else "festival.pass_done"
+        log_ok(log, tr(key, n=res["done"], assigned=res["assigned"], suggested=res["suggested"]))
+        self._bus.emit("festival_assign", {"phase": "done", "scope": scope, **res})
         return res
 
 

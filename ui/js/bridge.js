@@ -164,6 +164,24 @@
                                            Die UI schickt false bei Einträgen mit missing:true («Eintrag entfernen»).
                                            Datei ausserhalb des Zielordners / in Benutzung -> error (Fehler-Toast).
 
+   Festivals & Serien (v0.3.0, offline; Vertrag + Beispiele: docs/bridge-api.md «Festivals & Serien»)
+     get_series(include_hidden?)        -> [Series]   Katalog (mitgeliefert + eigene), count = Bibliothekseinträge
+     save_series(series)                -> {ok, series: Series} | {ok:false, errors:{feld: "Meldung"}}  (id fehlt = neu)
+     delete_series(id)                  -> {ok, hidden, cleared} | {ok:false, error}   mitgeliefert -> ausgeblendet
+     reset_series(id?)                  -> {ok, series:[Series]} | {ok:false, error}   mitgelieferte wiederherstellen
+     get_festival_options()             -> {kinds:[..], set_types:[{code, label}], stages:[..]}
+     get_library_groups(by)             -> {ok, by, series:[SeriesGroup], unassigned, suggested, total}  (by "festival")
+                                           | {ok, by, groups:[{key, count}]}  by: year|event_year|artist|genre|stage|set_type
+     set_festival(id, data)             -> {ok, festival, festival_suggestion} | {ok:false, errors, error}
+                                           data null = «kein Festival»; sonst {edition_id} oder {series_id, event_year?,
+                                           variant?} + stage?, set_type?, episode?; setzt manual (Erkennung lässt es in Ruhe)
+     reset_festival(id)                 -> {ok, outcome, festival, festival_suggestion}   zurück auf automatisch
+     detect_festival(title, opts?)      -> {ok, detection: Detection|null, assigned}   Test, speichert nichts
+     get_festival_status()              -> {series, assigned, suggested, unassigned, total, last_pass, running}
+     assign_festivals(opts?)            -> {ok, started, scope} | {ok:false, error}   opts {scope:"library"|"all"};
+                                           Fortschritt: Event "festival_assign"
+     cancel_assign_festivals()          -> {ok, running}
+
    Protokoll
      get_log(filters?)                  -> {lines:[LogLine], runs:[Run]}
                                            filters = {level?, levels?, search?, limit?, kind?, runs_limit?}.
@@ -214,6 +232,11 @@
                   genre_manual -> Punkt am Genre-Badge («manuell gesetzt»). Klick auf das Badge: set_genre(id, genre),
                   danach retag(id) (verschiebt die Datei in den Ordner des Genres); bei missing/unknown nur set_genre.
                   ▶: player.mode "internal" -> get_media(id) + Mini-Player (js/player.js), "external" -> play_external(id).
+                  v0.3.0: festival (Festival|null), festival_suggestion (Festival ohne manual|null).
+     Festival    {edition_id, series_id, series_key, series, kind, event_year (int|null), variant, edition, festival,
+                  stage|null, set_type (Code)|null, episode|null, manual, confidence (0–1|null)}
+     Series      {id, key, name, kind: "festival"|"radio"|"podcast", aliases, weak_aliases, channels,
+                  variants:[{name, aliases}], default_genre|null, builtin, user_modified, enabled, count}
      UpdateStatus {current, latest, available, state, notes, url, progress, error, checked, portable, git_checkout,
                   installed, blocked, apply_on_exit}
                   installed = Kopie aus dem Setup (mitgeliefertes Python, Daten in %APPDATA%\HCLoader)
@@ -258,6 +281,7 @@
      failed          {id, title, error}                Download fehlgeschlagen
      queue           {}                                Warteschlange hat sich geändert -> UI ruft get_queue()
      video           {id, status, genre}               Status/Genre eines Videos geändert (auch "downloading")
+                     v0.3.0 nach set_festival/reset_festival zusätzlich festival, festival_suggestion
      status          Status                            Statusleiste (Backoff, Zähler, PO-Token, nächste Prüfung …)
      log             LogLine                           neue Protokollzeile (Live-Log)
      run             Run                               ein Lauf ist zu Ende (GUI-Watchlist-Prüfung, Download-Lauf der
@@ -275,6 +299,8 @@
      update          UpdateStatus                      Zustand des App-Updates hat sich geändert (Prüfung, Download, bereit …)
      update_progress {phase, pct, bytes, total}        Download/Vorbereitung (ca. 4×/s); phase: "download"|"verify"|"prepare";
                      pct null = Grösse unbekannt (GitHub liefert Quell-ZIPs ohne Länge)
+     festival_assign {phase, scope, done?, total?, assigned?, suggested?, none?, manual?, unchanged?, cancelled?}
+                     phase: "start"|"progress"|"done"|"error" (v0.3.0, «Festivals zuordnen»)
      toast           {msg, kind?}                      kind: "ok"|"info"|"warn"|"err"
 
    UI-seitig abonnieren:  HC.bridge.on('progress', fn)
