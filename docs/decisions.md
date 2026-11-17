@@ -962,3 +962,53 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
   long-path-fähig; tiefe `node_modules`-Pfade des bgutil-Providers.
 - **Offen:** nicht signiert (SmartScreen «Weitere Informationen › Trotzdem ausführen»); nach einem
   Selbst-Update zeigt «Apps & Features» weiter die Version des letzten Setups (kosmetisch).
+
+## 2026-11-17 – Mehrsprachigkeit (v0.2.0, Schritt 1: Architektur + de/en)
+
+- **Entscheid – Englisch ist Referenz und Standard:** `general.language` = `en` als Standard (auch für
+  bestehende `config.yaml` ohne den Schlüssel), `auto` als Option (Windows-Anzeigesprache über
+  `GetUserDefaultUILanguage`, im Browser `navigator.languages`; nicht unterstützt → `en`). Jeder Schlüssel
+  entsteht zuerst in `en`; Rückfall fehlender Schlüssel: aktive Sprache → `en` → Schlüssel (einmal
+  `console.warn` bzw. Log-Warnung). Deutsch (de-CH, «ss») ist der zweite vollständige Katalog.
+  **Grund:** User-Wunsch; Englisch als Brücke für die übrigen neun Sprachen.
+- **Entscheid – UI-Kataloge als JS-Dateien:** `ui/js/locales/<code>.js` ruft
+  `HC.i18n.register(meta, dict)` auf; alle elf Dateien per `<script>`-Tag (~70 KB je Sprache). Beide
+  Argumente sind striktes JSON, damit die Tests sie mit Python prüfen. **Grund:** kein `fetch` unter
+  `file://` in WebView2, kein Build-Step, Sprachwechsel ohne Nachladen.
+- **Entscheid – Sprachwechsel = UI neu laden:** Nach dem Speichern einer anderen Sprache lädt die Seite
+  neu (`location.reload()`); das Backend übernimmt die Sprache sofort. Ein Neuaufbau der Ansichten im
+  laufenden Betrieb wäre fehleranfällig (Ansichten registrieren Event-Listener in `init`). Kein
+  App-Neustart; Warteschlange, Läufe und Downloads laufen im Backend weiter, nur ein laufender
+  Mini-Player stoppt. Im Mock hält `sessionStorage` die Sprache über das Neuladen.
+- **Entscheid – Plurale und Formate über Intl:** Pluralschlüssel sind Objekte mit CLDR-Kategorien
+  (`one`/`other`, Arabisch bis `zero`…`many`), Auswahl über `params.count`, sonst `params.n`
+  (`Intl.PluralRules`; im Backend eigene Regeln für die elf Sprachen in `i18n.plural_category`).
+  Zahlen, Datum, Uhrzeit, relative Zeiten, Dauer und Dateigrössen formatiert `Intl` mit dem `intl`-Locale
+  des Katalogs (de-CH: 1’234’567, 14.11.2026). Zahlen als Parameter ohne Tausendertrennung (Jahre).
+- **Entscheid – Backend übersetzt selbst und sendet fertigen Text:** `app/core/i18n.tr(key, **params)`
+  mit Katalogen `app/locales/<code>.json`; die Meldungen entstehen tief in `core/` (pydantic-Validatoren,
+  yt-dlp-Fehler, Queue-Gründe), UI und Backend folgen derselben Einstellung. Schlüssel+Parameter in jedem
+  Event hätten den Bridge-Vertrag überall geändert. Module-Konstanten speichern den Schlüssel und
+  übersetzen erst beim Gebrauch (sonst wäre die Sprache beim Import eingefroren).
+- **Entscheid – Log-Datei:** INFO/WARNING/ERROR-Zeilen werden beim Schreiben in der aktiven Sprache
+  formuliert – Datei und Live-Log sind identisch. DEBUG-Zeilen und Programmierfehler (ungültige
+  Argumente, interne Signaturprüfungen) sind fest Englisch und nicht im Katalog. **Grund:** ein Logger,
+  ein Text; Support-Logs mit DEBUG sind sprachunabhängig lesbar.
+- **Entscheid – Daten sind sprachneutral:** Genre «Unsortiert» und die Standard-Genres, DB-Werte
+  (Status, Plattform, Lauf-Art), Ordner- und Dateinamen (`{genre}`, Fallback-Artist), Tags, Archiv
+  und `config.yaml`-Schlüssel bleiben unverändert; übersetzt werden nur Anzeigetexte eingebauter
+  UI-Begriffe (Status «Downloaded», Lauf-Art «Manual» …). Der Name des Fallback-Genres wird nicht
+  übersetzt angezeigt, weil er auch Ordnername auf der Platte ist. Freitexte, die mit einem Datensatz
+  gespeichert werden (Lauf-Notiz, Fehler eines Videos), behalten die Sprache ihrer Entstehung.
+  **Grund:** ein Sprachwechsel darf weder Ordner verschieben noch Duplikate erzeugen.
+- **Entscheid – Mock bleibt Englisch:** simulierte Backend-Meldungen und Mock-Daten in `ui/js/mock.js`
+  sind Englisch (kein Katalog), Screenshots `--lang xx` zeigen also UI-Texte in xx, Mock-Logzeilen
+  englisch. **Grund:** der Mock ist ein Entwicklerwerkzeug; doppelte Kataloge nur für den Mock lohnen nicht.
+- **Entscheid – Tests:** `tests/test_i18n.py` prüft Schlüssel-, Platzhalter-, HTML-Tag- und
+  Plural-Parität (en/de vollständig, die neun anderen als `xfail` mit Anzahl fehlender Schlüssel),
+  einen Lint gegen deutsch aussehende Strings in `ui/` (ausser Kommentaren und Katalogen), alle
+  literal verwendeten Schlüssel, Fallback, Plural-Regeln und `general.language`. Die Verhaltens-Tests
+  vor v0.2.0 laufen mit der Fixture `german_messages` und halten so den deutschen Katalog am
+  bisherigen Wortlaut fest.
+- **Offen:** `config.yaml`-Kommentare (`config.COMMENTS`) und die Beschreibung der Windows-Aufgabe
+  bleiben deutsch; `CLAUDE.md` nennt noch «nur de-CH in `ui/js/i18n.js`» (Änderung durch den User).

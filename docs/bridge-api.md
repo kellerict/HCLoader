@@ -37,7 +37,13 @@ pywebview exponierten Methoden **genau** den in `bridge.js` dokumentierten entsp
 
 ## Konventionen
 
-- Aktionen liefern `{ok: true, …}` oder `{ok: false, error: "deutsche Meldung"}`.
+- Aktionen liefern `{ok: true, …}` oder `{ok: false, error: "Meldung"}`.
+- **Sprache (v0.2.0):** Alle Texte, die das Backend liefert (`error`, `errors`, `blocked_reason`,
+  Toasts, `log`-Zeilen, `source.error`, Update-Texte …), sind fertig übersetzt in der aktiven Sprache
+  (`general.language`, aufgelöst; Katalog `app/locales/<code>.json`, `app/core/i18n.py`). Die UI zeigt
+  sie unverändert an. Wo diese Doku deutsche Beispieltexte nennt, ist das die de-Fassung; der
+  Standard ist Englisch. Gespeicherte Texte (Lauf-Notizen, Fehler eines Videos) behalten die Sprache,
+  in der sie entstanden. DEBUG-Logzeilen sind immer Englisch. Siehe `docs/TRANSLATING.md`.
 - Validierungsfehler: `{ok: false, errors: {"section.key": "Meldung"}}`; Genres zusätzlich
   `genres.items.<index>.<feld>` (z.B. `genres.items.2.name` bei doppeltem Namen).
 - Zeitstempel ISO-8601 (`2026-11-16T03:00:00+01:00`), Grössen in MB, Dauer in Sekunden.
@@ -52,8 +58,8 @@ Phase = ab wann die Methode voll funktioniert. „2“ = jetzt implementiert.
 
 | Methode | Parameter | Rückgabe | Phase |
 |---|---|---|---|
-| `get_settings()` | – | `{values, defaults}` – Struktur `docs/settings-schema.md` | 2 |
-| `save_settings(values)` | komplettes Values-Objekt | `{ok:true, values}` (normalisiert) \| `{ok:false, errors}` | 2 |
+| `get_settings()` | – | `{values, defaults, language}` – Struktur `docs/settings-schema.md`; `language` = aufgelöste Sprache (`general.language`, «auto» → Windows-Anzeigesprache, sonst `en`) | 2 / 0.2.0 |
+| `save_settings(values)` | komplettes Values-Objekt | `{ok:true, values, language}` (normalisiert, `language` wie oben) \| `{ok:false, errors}` | 2 / 0.2.0 |
 | `reset_settings(section?)` | Abschnitt oder nichts (= alles) | `{ok:true}` \| `{ok:false, error}` | 2 |
 
 `save_settings` validiert mit pydantic (`config.parse_settings`), speichert `config.yaml`
@@ -64,6 +70,11 @@ an. Ändert sich `schedule.task_scheduler_enabled` oder (bei aktiver Aufgabe) `s
 wird die Windows-Aufgabe angelegt/geändert/entfernt; scheitert das (z.B. nicht Windows), wird nichts
 gespeichert und der Fehler kommt am Feld zurück. `reset_settings` lässt die beiden
 Aufgaben-Felder unverändert (sie spiegeln den Zustand der Windows-Aufgabe).
+
+`general.language` (v0.2.0) wirkt beim Speichern sofort im Backend (neue Meldungen, Validierungs-
+fehler, Logzeilen in der neuen Sprache). Die UI baut sich danach selbst neu auf (Seite neu laden,
+kein App-Neustart; Warteschlange und Läufe leben im Backend weiter, ein laufender Mini-Player stoppt).
+Die Fehler des Speicherns, das die Sprache ändert, kommen noch in der bisherigen Sprache.
 
 ### Status / Wartung
 

@@ -5,6 +5,21 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
 
 ## [Unreleased]
 
+### Added
+- Mehrsprachige Oberfläche (Schritt 1 von v0.2.0): Sprache unter Einstellungen › Allgemein
+  (`general.language`, Standard Englisch, «Automatisch» = Windows-Anzeigesprache). Englisch und
+  Deutsch vollständig; Chinesisch (vereinfacht), Hindi, Spanisch, Arabisch, Französisch, Bengali,
+  Portugiesisch (Brasilien), Russisch und Indonesisch folgen (bis dahin englischer Rückfall).
+  Der Wechsel wirkt sofort, ohne App-Neustart. / Multilingual UI: language picker in Settings ›
+  General, English default, German complete, nine more languages to follow.
+- Datum, Zahlen, Dauer und Dateigrössen im Format der gewählten Sprache (Intl).
+- Meldungen des Backends (Validierung, Fehler, Toasts, Protokoll, Kommandozeile) in der gewählten
+  Sprache. Leitfaden für Übersetzungen: `docs/TRANSLATING.md`.
+
+### Changed
+- Standardsprache ist Englisch, auch für bestehende Installationen ohne Spracheinstellung.
+  Daten bleiben sprachneutral (Genre «Unsortiert», Ordner, Tags, Datenbank).
+
 ### Fixed
 - Portable-Version: der bgutil-PO-Token-Provider lief nach dem Verschieben bzw. Entpacken an einem
   anderen Ort nicht mehr (`Could not find package 'lru-cache'`). Der Provider wird jetzt mit dem

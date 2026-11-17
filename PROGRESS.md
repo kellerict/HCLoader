@@ -51,7 +51,21 @@ Phase 6 – Portable (User-Wunsch, Variante 2: komplett portable)
 - Aufgabenplanung: Pfad ändert sich beim Verschieben → App erkennt veränderten Pfad und bietet an, die Aufgabe neu anzulegen.
 - `scripts/build_portable.ps1` + GitHub-Actions-Job (windows-latest), der ein fertiges Portable-ZIP als Artefakt baut (deno, ffmpeg, bgutil inklusive; Lizenzen beilegen).
 
-## Geplant für v0.2.0
+## v0.2.0 – Mehrsprachigkeit (User-Wunsch: «in allen 10 Top-Weltsprachen erstmal»)
+Sprachen: en (Referenz + Standard), de (de-CH), zh-CN, hi, es, ar (RTL), fr, bn, pt (pt-BR), ru, id.
+Leitfaden `docs/TRANSLATING.md`, Entscheide `docs/decisions.md` «Mehrsprachigkeit».
+- [x] 1 Architektur + Extraktion + de/en (`integrator`): UI-Engine `ui/js/i18n.js`, Kataloge
+  `ui/js/locales/<code>.js` (912 Schlüssel), Backend `app/core/i18n.py` + `app/locales/<code>.json`
+  (399 Schlüssel), Setting `general.language` (Standard `en`, `auto`), Sprachwahl unter Einstellungen ›
+  Allgemein, Intl-Formate, Plurale, Tests `tests/test_i18n.py`, Screenshots `--lang`; Stubs für 9 Sprachen
+- [ ] 2 Übersetzungen der 9 Sprachen (UI- und Backend-Katalog je Sprache; `pytest tests/test_i18n.py -rx`
+  zeigt pro Sprache die fehlenden Schlüssel als xfail)
+- [ ] 3 RTL-Layout (Arabisch, `[dir=rtl]`/logische CSS-Properties), Schriften mit Glyphen für
+  zh/hi/bn/ar/ru (lokal, OFL), Screenshots je Sprache (`scripts/ui_screenshots.py --lang <code>`) –
+  `ui-designer`
+- [ ] 4 QA + Review, dann CHANGELOG/Tag v0.2.0
+
+## Geplant für v0.3.0
 - **Watchlist: «Alles einlesen (einmalig)» pro Quelle** (User-Wunsch): Kanal/Playlist/SoundCloud-Künstler seitenweise vollständig lesen (Throttle, Pausen), Obergrenze einstellbar (~2000), fortsetzbar nach Backoff/Neustart/Abbruch (Cursor in state), Ziel immer Eingang (auch bei Auto-Download), Fortschritt an der Quelle («Liest ein … 240 / ~500»), Bestätigungsdialog mit geschätzter Anzahl Anfragen. Suchquellen bleiben bei 100.
 - Phase 7b: Mixcloud + hearthis.at (Watchlist); 7c: archive.org (optional)
 
@@ -81,3 +95,4 @@ Phase 6 – Portable (User-Wunsch, Variante 2: komplett portable)
 - 2026-11-16 – Hänger-Ursache: modale MessageBox in test_run_gui_without_pywebview → behoben (0aa4709). Phase 6 Portable committet (6ba6448). Actions danach blockiert (Billing vermutet).
 - 2026-11-17 – Portable-Build beim User lauffähig (Fixes: Expand-Archive/PS7-Modulpfade, MAX_PATH, file-URL-Query, relativer Starter HCLoader.cmd, Download-Fortschritt). App-Icon (Fable) und Phase 7a SoundCloud-Backend (Opus) gestartet.
 - 2026-11-17 – Windows-CI erstmals komplett grün (85c1b27; Ursachen: modale MessageBox, rekursive Windows-Mutexe, Lock-Schlüssel ohne Datenordner). QA 7a/8/Update BESTANDEN, Review-Funde behoben. → main angelegt, Tag v0.1.0.
+- 2026-11-17 – v0.2.0 Mehrsprachigkeit Schritt 1 (Architektur, de/en) fertig; Backfill/7b/7c → v0.3.0
