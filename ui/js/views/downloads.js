@@ -10,6 +10,9 @@
      lokale Probleme (PO-Token-Server «pot», Zielordner «target», Download-Modul «error»)
      -> Hinweis «Rest bleibt in der Warteschlange».
      Quelle: queue.blocked_code (+ blocked_reason als Text), sonst Status + Limits.
+   - Phase 7a: queue.platform_blocked = {<plattform>: {code, reason}} – nur diese Plattform steht
+     (z.B. «SoundCloud: Backoff bis …»), die andere lädt weiter. Der Grund steht dann nur an
+     den Einträgen dieser Plattform.
    ===================================================================== */
 (function () {
   'use strict';
@@ -65,7 +68,9 @@
   function blockedReason() {
     const s = HC.status, th = HC.settings.values.throttle;
     if (CODES.includes(queue.blocked_code)) return queue.blocked_code;
-    if (s && s.backoff && s.backoff.active && waitingCount()) return 'backoff';
+    /* YouTube-Backoff gilt nur für YouTube-Einträge: «alles steht» erst, wenn kein wartender Eintrag von SoundCloud ist. */
+    const waiting = queue.items.filter((q) => q.state === 'waiting');
+    if (s && s.backoff && s.backoff.active && waiting.length && waiting.every((q) => HC.platform.of(q.video) === 'youtube')) return 'backoff';
     if ('blocked_code' in queue || !s) return null; // Backend sagt ausdrücklich: nicht blockiert
     const busy = queue.items.some((q) => q.state === 'active' || q.phase === 'sleep');
     if (busy || !waitingCount()) return null;
@@ -77,8 +82,13 @@
   const canUp = (items, i) => i > 0 && items[i].state === 'waiting' && items[i - 1].state === 'waiting';
   const canDown = (items, i) => i < items.length - 1 && items[i].state === 'waiting' && items[i + 1].state === 'waiting';
   const WHY = { restart: 'why_restart', backoff: 'why_backoff', day_limit: 'why_day', run_limit: 'why_run', busy: 'why_busy', paused: 'why_paused', pot: 'why_pot', target: 'why_target', error: 'why_error' };
-  let why = null; // Grund, der bei wartenden Einträgen steht
-  const sig = (q, i, items) => `${q.state}|${q.phase}|${i}|${canUp(items, i)}|${canDown(items, i)}|${why}`;
+  let why = null; // Grund, der bei allen wartenden Einträgen steht
+  /** Sperre nur dieser Plattform ({code, reason}) oder null. */
+  const platBlock = (q) => { const pb = queue.platform_blocked; const x = pb && pb[HC.platform.of(q.video)]; return x && x.code ? x : null; };
+  /** Grund am einzelnen Eintrag: der allgemeine, sonst der seiner Plattform. */
+  const whyOf = (q) => why || (platBlock(q) && WHY[platBlock(q).code] ? platBlock(q).code : null);
+  const thOf = (v) => { const sv = HC.settings.values; return (HC.platform.of(v) === 'soundcloud' && sv.soundcloud) || sv.throttle; };
+  const sig = (q, i, items) => `${q.state}|${q.phase}|${i}|${canUp(items, i)}|${canDown(items, i)}|${whyOf(q)}|${HC.platform.scEnabled()}`;
 
   function inner(q, i, items) {
     const v = q.video, active = q.state === 'active', failed = q.state === 'failed';
@@ -91,10 +101,11 @@
         <span class="steps" title="${esc(t('downloads.steps'))}">${STEPS.map((s, k) => `<i class="${k <= step ? 'on' : ''}"></i>`).join('')}</span>
         <span><b data-f="pct"></b></span><span data-w="speed"><b data-f="speed"></b> MB/s</span><span data-w="eta">${t('downloads.eta')} <b data-f="eta"></b></span>`;
     } else if (q.phase === 'sleep') {
-      const th = HC.settings.values.throttle;
+      const th = thOf(v);
       info = `<span class="phase" title="${esc(t('downloads.sleep_why', { min: th.sleep_interval, max: th.max_sleep_interval }))}">${I.clock}${t('phase.sleep')}</span><span class="countdown">${t('downloads.sleep_left')} <b data-f="eta"></b></span>`;
     } else {
-      info = `<span class="phase">${why ? t('downloads.blocked_wait', { why: t('downloads.' + WHY[why]) }) : t('phase.waiting')}</span><span>${t('downloads.position', { n: i + 1 })}</span>`;
+      const w = whyOf(q);
+      info = `<span class="phase">${w ? t('downloads.blocked_wait', { why: t('downloads.' + WHY[w]) }) : t('phase.waiting')}</span><span>${t('downloads.position', { n: i + 1 })}</span>`;
     }
     const sleeping = !active && !failed && q.phase === 'sleep';
     const actions = failed
@@ -104,7 +115,7 @@
     return `${ui.thumb(v)}<span class="dur">${util.fmtDur(v.duration)}</span></div>
       <div style="min-width:0"><div class="qtitle" title="${esc(v.title)}">${esc(v.title)}</div>
         <div class="progress"><div class="bar ${failed ? 'fail' : active ? 'kick' : sleeping ? 'sleep' : 'idle'}" style="--p:${failed || active ? q.pct : 0}"></div></div>
-        <div class="qinfo">${info}<span class="path" title="${esc(q.target || '')}">${ui.genreDot(v.genre)} · ${esc(v.channel_name)}</span></div></div>
+        <div class="qinfo">${info}<span class="path" title="${esc(q.target || '')}">${ui.pbadge(v)}${ui.genreDot(v.genre)} · ${esc(v.channel_name)}</span></div></div>
       <div class="qactions">${actions}</div>`;
   }
   function patch(node, q) {
@@ -156,7 +167,7 @@
         node.dataset.id = q.id;
         if (!first) node.classList.add('enter');
       }
-      node.className = `qitem ${q.state === 'active' ? 'active' : q.state === 'failed' ? 'failed' : 'waiting'}${q.state === 'waiting' && q.phase === 'sleep' ? ' sleep' : ''}${node.classList.contains('enter') ? ' enter' : ''}`;
+      node.className = `qitem ${q.state === 'active' ? 'active' : q.state === 'failed' ? 'failed' : 'waiting'}${q.state === 'waiting' && q.phase === 'sleep' ? ' sleep' : ''}${q.state === 'waiting' && q.phase !== 'sleep' && whyOf(q) ? ' held' : ''}${node.classList.contains('enter') ? ' enter' : ''}`;
       if (node._sig !== s) { node.innerHTML = inner(q, i, items); node._sig = s; }
       patch(node, q);
       if (host.children[i] !== node) host.insertBefore(node, host.children[i] || null);
@@ -215,6 +226,17 @@
       /* busy, Backoff ohne Status-Details oder künftige Gründe: Text des Backends, sonst eigener. */
       html = ui.notice(reason === 'backoff' ? 'error' : 'info', queue.blocked_reason ? esc(queue.blocked_reason) : t('downloads.busy'));
     }
+    /* Nur eine Plattform steht (Backoff/Limit), die andere lädt weiter. */
+    if (!reason) {
+      HC.platform.all.forEach((p) => {
+        const x = queue.platform_blocked && queue.platform_blocked[p];
+        if (!x || !x.code) return;
+        const bo = HC.platform.backoff(p), other = HC.platform.label(p === 'youtube' ? 'soundcloud' : 'youtube');
+        const text = x.reason ? esc(x.reason) : `${esc(HC.platform.label(p))}: ${esc(t('downloads.' + (WHY[x.code] || 'why_busy')))}`;
+        const tab = p === 'soundcloud' ? 'soundcloud' : 'throttle';
+        html += ui.notice(x.code === 'backoff' ? 'error' : 'warn', `<b>${text}</b>${bo && x.code === 'backoff' ? ` (${esc(t('statusbar.backoff_until', { t: util.fmtWhen(bo.until), rest: util.fmtSpan(bo.remaining_s) }))})` : ''} ${esc(t('downloads.platform_other', { p: other }))} <button class="linkbtn" data-goto="settings/${tab}">${t(p === 'soundcloud' ? 'watchlist.backoff_link_sc' : 'watchlist.backoff_link')}</button>`);
+      });
+    }
     if (queue.paused) html += ui.notice('warn', t('downloads.paused'));
     if (box._html !== html) { box.innerHTML = html; box._html = html; }
     box.hidden = !html;
@@ -250,7 +272,9 @@
     $('#l-day-max', el).textContent = `/ ${th.max_downloads_per_day}`;
     meter('#m-day', s.counters.downloads_day, th.max_downloads_per_day);
     $('#l-rate', el).innerHTML = th.limit_rate_mb ? `${th.limit_rate_mb.toFixed(1)} <small>MB/s</small>` : `<small>${t('downloads.unlimited')}</small>`;
-    $('#q-summary', el).textContent = t('downloads.summary', { day: s.counters.downloads_day, day_max: th.max_downloads_per_day, run: s.counters.downloads_run, run_max: th.max_downloads_per_run });
+    const sc = HC.platform.scEnabled() ? HC.platform.state('soundcloud') : null;
+    $('#q-summary', el).textContent = t('downloads.summary', { day: s.counters.downloads_day, day_max: th.max_downloads_per_day, run: s.counters.downloads_run, run_max: th.max_downloads_per_run })
+      + (sc ? ` · ${t('downloads.summary_sc', { day: sc.counters.downloads_day || 0, day_max: sc.limits.downloads_day })}` : '');
     paintSleepTile();
     renderNotice();
   }

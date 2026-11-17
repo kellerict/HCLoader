@@ -1,6 +1,8 @@
 /* =====================================================================
    views/discover.js – Entdecken: Suche, Genre-Chips, Filter-Panel, Karten
    Die Filter laufen clientseitig auf den Treffern (Spiegel von core/filters.py).
+   Plattform-Umschalter YouTube | SoundCloud (Phase 7a): jede Plattform behält ihre
+   letzten Treffer; gesucht wird immer nur auf der gewählten.
    ===================================================================== */
 (function () {
   'use strict';
@@ -9,7 +11,6 @@
   const t = (k, v) => HC.t(k, v);
   const I = HC.icons;
   const PERIODS = ['all', '7d', '30d', '1y', 'year', 'custom'];
-  const CAN_LOAD = ['new', 'inbox', 'failed'];
   const MIN_YEAR = 2005; // wie core/config.MIN_UPLOAD_YEAR
   const FALLBACK_GENRE = 'Unsortiert'; // hat keine Suchbegriffe
   const maxYear = () => new Date().getFullYear();
@@ -24,6 +25,8 @@
   let incEd, excEd;
   /* Womit die angezeigten Treffer gesucht wurden (für «Gesucht mit …» und den Veraltet-Hinweis). */
   let last = null; // {query, effective, genre, year, known}
+  let platform = 'youtube';
+  const stash = {}; // Treffer der gerade nicht gezeigten Plattform: {results, last}
 
   function defaultsFromSettings() {
     const s = HC.settings.values.filters;
@@ -86,6 +89,7 @@
     return {
       genre: on.length === 1 && on[0] !== FALLBACK_GENRE ? on[0] : null,
       year: f.period === 'year' ? f.year : null,
+      platform,
     };
   }
   /** Das Jahr landet nur im Suchbegriff, wenn search.append_year an ist. */
@@ -94,8 +98,12 @@
 
   function passes(v) {
     if (v.is_live) return false; // Livestreams nie (SPEC §4); nur das Backend erkennt sie (Feld is_live)
-    if (v.duration == null || v.duration < f.min * 60) return false;
-    if (f.max && v.duration > f.max * 60) return false;
+    /* Go+-Vorschau (30 s, nie ladbar): wie «geladen/ignoriert» behandelt – sichtbar nur ohne «ausblenden», dann mit Hinweis. */
+    if (v.preview) { if (f.hide) return false; } else {
+      if (v.duration == null || v.duration < f.min * 60) return false;
+      if (f.max && v.duration > f.max * 60) return false;
+    }
+    if (v.duplicate_of && HC.settings.values.filters.hide_cross_platform_duplicates) return false;
     if (!util.inUploadPeriod(v, f)) return false;
     if (!f.genres.has(v.genre)) return false;
     if (f.inc.length && !f.inc.some((k) => util.kwMatch(v.title, k))) return false;
@@ -160,18 +168,20 @@
     box.hidden = false;
   }
   function renderQuota() {
-    const s = HC.status;
-    if (!s) return;
-    $('#quota', el).innerHTML = t('discover.quota', { n: `<b>${s.counters.searches_hour}</b>`, max: HC.settings.values.throttle.max_searches_per_hour });
+    if (!HC.status) return;
+    const st = HC.platform.state(platform);
+    $('#quota', el).innerHTML = t(platform === 'soundcloud' ? 'discover.quota_sc' : 'discover.quota', { n: `<b>${util.esc(st.counters.searches_hour || 0)}</b>`, max: util.esc(st.limits.searches_hour) });
   }
   function renderCount(list) {
     const n = list.length, hidden = results ? results.length - n : 0;
-    $('#count', el).innerHTML = searching ? t('discover.searching')
+    const prev = results ? results.filter((v) => v.preview).length : 0;
+    $('#count', el).innerHTML = searching ? t(platform === 'soundcloud' ? 'discover.searching_sc' : 'discover.searching')
       : !results ? ''
-        : t('discover.count', { n: `<b>${n}</b>`, hidden }) + (sel.size ? ` · ${t('discover.selected', { n: `<b>${sel.size}</b>` })}` : '');
+        : t('discover.count', { n: `<b>${n}</b>`, hidden }) + (prev ? ` · <span class="prevcount" title="${util.esc(t('discover.previews_title'))}">${t('discover.previews', { n: prev })}</span>` : '')
+          + (sel.size ? ` · ${t('discover.selected', { n: `<b>${sel.size}</b>` })}` : '');
     $('#dl-sel', el).disabled = !sel.size;
     $('#dl-sel-n', el).textContent = sel.size ? ` (${sel.size})` : '';
-    $('#sel-all', el).disabled = !list.some((v) => CAN_LOAD.includes(v.status));
+    $('#sel-all', el).disabled = !list.some(ui.canLoad);
   }
   function renderGrid(animate) {
     const grid = $('#grid', el);
@@ -181,8 +191,8 @@
       return;
     }
     const list = visible();
-    [...sel].forEach((id) => { const v = HC.store.get(id); if (!v || !CAN_LOAD.includes(v.status) || !list.includes(v)) sel.delete(id); });
-    if (!results) grid.innerHTML = `<div class="empty">${I.search}<h4>${t('discover.ready_title')}</h4>${t('discover.ready_text')}</div>`;
+    [...sel].forEach((id) => { const v = HC.store.get(id); if (!ui.canLoad(v) || !list.includes(v)) sel.delete(id); });
+    if (!results) grid.innerHTML = `<div class="empty">${platform === 'soundcloud' ? I.wave : I.search}<h4>${t('discover.ready_title')}</h4>${t(platform === 'soundcloud' ? 'discover.ready_text_sc' : 'discover.ready_text')}</div>`;
     else if (!list.length) grid.innerHTML = `<div class="empty">${I.filter}<h4>${t('discover.none_title')}</h4>${f.period === 'year' ? t('discover.none_year', { year: f.year }) : t('discover.none_text')}</div>`;
     else grid.innerHTML = list.map((v) => ui.card(v, { selected: sel.has(v.id) })).join('');
     renderCount(list);
@@ -199,16 +209,49 @@
     searching = true;
     const btn = $('#btn-search', el);
     ui.busy(btn, true, t('discover.searching_btn'));
+    paintPlatform();
     renderGrid();
     const r = await HC.bridge.safe('search', q, opts);
     searching = false;
     ui.busy(btn, false);
+    paintPlatform();
     if (r && r.ok) {
       results = HC.store.put(r.results || []);
       sel.clear();
       last = { query: q, effective: typeof r.effective_query === 'string' ? r.effective_query : '', genre: opts.genre, year: opts.year || null, known: true };
     } else if (r) ui.toast(r.error || t('err.generic'), 'err');
     renderGrid(true);
+  }
+
+  /* ---------- Plattform-Umschalter ---------- */
+  function paintPlatform() {
+    const scOn = HC.platform.scEnabled();
+    $$('#plat button', el).forEach((b) => {
+      const on = b.dataset.p === platform, off = b.dataset.p === 'soundcloud' && !scOn;
+      b.classList.toggle('on', on);
+      b.classList.toggle('off', off);
+      b.setAttribute('aria-pressed', on);
+      b.setAttribute('aria-disabled', off);
+      b.title = off ? t('platform.sc_off') : t('discover.platform_title');
+      b.disabled = searching && !on;
+    });
+    $('#q', el).placeholder = t(platform === 'soundcloud' ? 'discover.placeholder_sc' : 'discover.placeholder');
+    el.dataset.platform = platform;
+  }
+  function setPlatform(p) {
+    if (p === 'soundcloud' && !HC.platform.scEnabled()) p = 'youtube';
+    if (p === platform || searching) { paintPlatform(); return; }
+    stash[platform] = { results, last, q: $('#q', el).value };
+    platform = p;
+    const x = stash[p] || { results: null, last: null };
+    results = x.results;
+    last = x.last;
+    if (x.q && !$('#q', el).value.trim()) $('#q', el).value = x.q;
+    sel.clear();
+    paintPlatform();
+    renderScope();
+    renderGrid(true);
+    renderQuota();
   }
 
   async function loadBlacklist() {
@@ -221,6 +264,9 @@
     el = root;
     el.innerHTML = `
       <div class="searchbar">
+        <div class="seg pseg" id="plat" role="group" aria-label="${util.esc(t('platform.label'))}">
+          <button type="button" data-p="youtube">${t('platform.youtube')}</button><button type="button" data-p="soundcloud">${I.wave}${t('platform.soundcloud')}</button>
+        </div>
         <div class="search-wrap">${I.search}
           <input class="input" id="q" placeholder="${util.esc(t('discover.placeholder'))}" spellcheck="false" autocomplete="off">
         </div>
@@ -280,6 +326,14 @@
     excEd = ui.chips($('#t-exc', el), { list: f.exc, kind: 'exc', onChange: onKw('exc') });
     syncControls();
 
+    paintPlatform();
+    $('#plat', el).addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-p]');
+      if (!b) return;
+      if (b.classList.contains('off')) { ui.toast(t('platform.sc_off'), 'info'); return; }
+      setPlatform(b.dataset.p);
+      $('#q', el).focus();
+    });
     $('#btn-search', el).onclick = search;
     $('#q', el).addEventListener('keydown', (e) => { if (e.key === 'Enter') search(); });
     $('#sort', el).addEventListener('change', () => renderGrid(true));
@@ -334,7 +388,7 @@
       renderGrid();
     });
     $('#sel-all', el).onclick = () => {
-      const list = visible().filter((v) => CAN_LOAD.includes(v.status));
+      const list = visible().filter(ui.canLoad);
       const all = list.every((v) => sel.has(v.id));
       list.forEach((v) => (all ? sel.delete(v.id) : sel.add(v.id)));
       renderGrid();
@@ -354,7 +408,7 @@
     HC.bridge.on('video', () => renderGrid());
     HC.bridge.on('status_rendered', renderQuota);
     HC.bridge.on('blacklist_changed', loadBlacklist);
-    HC.bridge.on('settings_changed', () => { defaultsFromSettings(); syncControls(); renderGrid(); renderQuota(); });
+    HC.bridge.on('settings_changed', () => { defaultsFromSettings(); syncControls(); setPlatform(platform); renderGrid(); renderQuota(); });
     HC.bridge.on('status_rendered', () => { if (maxYear() !== +$('#f-year', el).max) syncPeriod(); }); // Jahreswechsel bei laufender App
   }
 
@@ -364,6 +418,13 @@
       loaded = true;
       loadBlacklist();
       const prev = await HC.bridge.safe('get_last_search');
+      if (prev && prev.results && !results) {
+        /* Die letzte Suche bestimmt die Plattform beim Start (SoundCloud nur, wenn eingeschaltet). */
+        const pp = prev.platform === 'soundcloud' ? 'soundcloud' : 'youtube';
+        if (HC.platform.enabled(pp)) platform = pp;
+        else { stash[pp] = { results: HC.store.put(prev.results), last: null, q: prev.query || '' }; prev.results = null; }
+        paintPlatform();
+      }
       if (prev && prev.results && !results) {
         $('#q', el).value = prev.query || '';
         results = HC.store.put(prev.results);
@@ -378,5 +439,5 @@
     renderQuota();
   }
 
-  HC.views.discover = { init, show, reset() { loaded = false; results = null; last = null; sel.clear(); } };
+  HC.views.discover = { init, show, reset() { loaded = false; results = null; last = null; sel.clear(); Object.keys(stash).forEach((k) => delete stash[k]); } };
 })();

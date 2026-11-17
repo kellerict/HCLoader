@@ -171,6 +171,19 @@
     led($('#sb-backoff-led'), bo.active ? 'warn blink' : 'off');
     $('#sb-backoff-it').classList.toggle('alert', !!bo.active);
 
+    /* Pro Plattform (Phase 7a): «Backoff» oben = YouTube; SoundCloud bekommt einen eigenen, kompakten Punkt – nur wenn eingeschaltet. */
+    const tip = (p, key) => { const x = HC.platform.state(p); return t(key, { day: x.counters.downloads_day || 0, day_max: x.limits.downloads_day, s: x.counters.searches_hour || 0, s_max: x.limits.searches_hour }); };
+    const scOn = HC.platform.scEnabled();
+    $('#sb-backoff-it').title = scOn ? tip('youtube', 'statusbar.yt_tip') : '';
+    $('#sb-sc-it').hidden = !scOn;
+    if (scOn) {
+      const sc = HC.platform.state('soundcloud'), sbo = sc.backoff && sc.backoff.active ? sc.backoff : null;
+      $('#sb-sc').textContent = sbo ? t('statusbar.sc_backoff', { t: util.fmtWhen(sbo.until) }) : t('statusbar.sc_today', { n: sc.counters.downloads_day || 0, max: sc.limits.downloads_day });
+      led($('#sb-sc-led'), sbo ? 'warn blink' : 'sc');
+      $('#sb-sc-it').classList.toggle('alert', !!sbo);
+      $('#sb-sc-it').title = tip('soundcloud', 'statusbar.sc_tip') + (sbo ? ` · ${t('statusbar.backoff_tip', { p: HC.platform.label('soundcloud'), t: util.fmtWhen(sbo.until), rest: util.fmtSpan(sbo.remaining_s) })}` : '');
+    }
+
     const qn = s.queue_length || 0;
     fx.count($('#sb-queue'), qn);
     $('#sb-queue-sfx').textContent = s.queue_paused && qn ? ` ${t('statusbar.queue_paused')}` : qn ? ` ${t('statusbar.queue_active')}` : '';
@@ -204,6 +217,8 @@
     const B = HC.bridge;
     B.on('status', setStatus);
     B.on('video', (d) => { HC.store.patch(d.id, d.genre ? { status: d.status, genre: d.genre } : { status: d.status }); });
+    /* Einstellungen geändert, Status noch der alte (z.B. SoundCloud ein/aus) -> Statusleiste nachziehen. */
+    B.on('settings_changed', () => HC.app.refreshStatus());
     B.on('done', (d) => HC.ui.toast(t('toast.done', { title: d.title })));
     B.on('failed', (d) => HC.ui.toast(t('toast.failed', { title: d.title, error: d.error }), 'err'));
     B.on('toast', (d) => HC.ui.toast(d.msg, d.kind));
@@ -236,6 +251,7 @@
     applyAppearance();
     if (!inited) {
       wireEvents(); // vor den Ansichten: der Store ist aktuell, wenn sie auf Events reagieren
+      if (HC.player) HC.player.init($('#player'));
       VIEWS.forEach((name) => { const v = HC.views[name]; if (v && v.init) v.init($(`#v-${name}`)); });
       inited = true;
     }
@@ -295,6 +311,7 @@
       $('#mock-flag').hidden = true;
       showBackendError(false);
       VIEWS.forEach((name) => { const v = HC.views[name]; if (v && v.reset) v.reset(); });
+      if (HC.player) HC.player.close(true);
       await load();
     },
   };

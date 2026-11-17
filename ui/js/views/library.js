@@ -1,7 +1,12 @@
 /* =====================================================================
    views/library.js – Bibliothek: alle geladenen Mixes
    Kennzahlen (hochzählend), Suche + Filter (Genre/Kanal/Jahr), Sortierung, optionale
-   Gruppierung nach Genre, Liste oder Kacheln. Aktionen: Ordner öffnen, neu taggen, löschen.
+   Gruppierung nach Genre, Liste oder Kacheln. Aktionen: Abspielen, Ordner öffnen, neu taggen, löschen.
+
+   Abspielen (Phase 8): ▶ nutzt die Einstellung player.mode – «internal» = Mini-Player (js/player.js),
+   «external» = Standardplayer (play_external). Die jeweils andere Variante steht im Menü (⋯).
+   Der Eintrag, der gerade läuft, ist markiert (Equalizer-Balken).
+   Genre: Klick auf das Genre-Badge -> set_genre + retag (verschiebt die Datei in den Ordner des Genres).
 
    get_library() wird ohne Filter aufgerufen: gefiltert, sortiert und gruppiert wird hier
    (sofortige Reaktion, kein Roundtrip). Grosse Bibliotheken werden in Blöcken gezeichnet.
@@ -65,7 +70,7 @@
     const q = util.norm($('#lib-q', el).value.trim());
     const g = $('#lib-genre', el).value, c = $('#lib-channel', el).value, y = $('#lib-year', el).value;
     const list = items.filter((l) => (!g || l.genre === g) && (!c || l.artist === c) && (!y || year(l) === y)
-      && (!onlyMissing || l.missing) && (!q || util.norm(`${l.title} ${l.artist} ${l.file_path}`).includes(q)));
+      && (!onlyMissing || l.missing) && (!q || util.norm(`${l.title} ${l.artist} ${l.file_path} ${HC.platform.label(HC.platform.of(l))}`).includes(q)));
     const cmp = {
       newest: (a, b) => stamp(b) - stamp(a) || byText(a.title, b.title),
       title: (a, b) => byText(a.title, b.title),
@@ -77,21 +82,26 @@
   const filtersActive = () => !!($('#lib-q', el).value.trim() || $('#lib-genre', el).value || $('#lib-channel', el).value || $('#lib-year', el).value || onlyMissing);
 
   /* ---------- Zeile / Kachel ---------- */
+  const playerMode = () => { const pl = HC.settings.values.player; return pl && pl.mode === 'external' ? 'external' : 'internal'; };
+  let now = { id: null, playing: false }; // was der Mini-Player gerade geladen hat
+  const isNow = (l) => now.id != null && now.id === l.id;
   function actions(l) {
-    const working = busy.has(l.id);
-    return `<button class="iconbtn" data-act="folder" title="${esc(t('library.open_folder'))}">${I.folder}</button>
-      <button class="iconbtn" data-act="retag" title="${esc(t(working ? 'library.retagging' : 'library.retag'))}" ${l.missing || l.unknown || working ? 'disabled' : ''}>${working ? '<span class="spinner"></span>' : I.tag}</button>
-      <button class="iconbtn danger" data-act="del" title="${esc(t(l.unknown ? 'library.unknown_title' : l.missing ? 'library.remove' : 'library.delete'))}" ${working || l.unknown ? 'disabled' : ''}>${l.missing ? I.file_x : I.trash}</button>`;
+    const cur = isNow(l), on = cur && now.playing;
+    return `<button class="iconbtn play${cur ? ' on' : ''}" data-act="play" title="${esc(t(l.missing ? 'library.play_missing' : on ? 'library.pause' : 'library.play'))}" ${l.missing ? 'disabled' : ''}>${on ? I.pause : I.play}</button>
+      <button class="iconbtn" data-act="folder" title="${esc(t('library.open_folder'))}">${I.folder}</button>
+      <button class="iconbtn" data-act="more" title="${esc(t('library.more'))}" aria-haspopup="menu">${I.more}</button>`;
   }
   const cueTag = () => `<span class="cue-tag" title="${esc(t('library.cue_title'))}">CUE</span>`;
   const missTag = () => `<span class="miss-tag" title="${esc(t('library.missing_title'))}">${I.warn}${t('library.missing')}</span>`;
-  const cls = (l) => `${l.missing ? ' missing' : ''}${busy.has(l.id) ? ' working' : ''}`;
+  const cls = (l) => `${l.missing ? ' missing' : ''}${busy.has(l.id) ? ' working' : ''}${isNow(l) ? ` now${now.playing ? '' : ' paused'}` : ''}`;
+  const genreTag = (l) => ui.gtag(l.genre, { edit: true, manual: !!l.genre_manual, busy: busy.has(l.id) });
+  const nowMark = (l) => (isNow(l) ? `<span class="nowplay" title="${esc(t('library.now_playing'))}">${ui.eq()}</span>` : '');
   function row(l) {
     return `<tr data-id="${esc(l.id)}" class="${cls(l).trim()}">
-      <td class="clip"><div class="cell-title">${ui.thumb(l, 'mini')}</div>
-        <div><b title="${esc(l.title)}">${esc(l.title)}</b><small title="${esc(l.file_path)}">${l.missing ? missTag() : ''}${l.has_cue && !l.missing ? cueTag() : ''}<span>${esc(shortDir(l.file_path))}</span></small></div></div></td>
+      <td class="clip"><div class="cell-title">${ui.thumb(l, 'mini')}${nowMark(l)}</div>
+        <div><b title="${esc(l.title)}">${esc(l.title)}</b><small title="${esc(l.file_path)}">${ui.pbadge(l)}${l.missing ? missTag() : ''}${l.has_cue && !l.missing ? cueTag() : ''}<span>${esc(shortDir(l.file_path))}</span></small></div></div></td>
       <td class="clip" title="${esc(l.artist)}">${esc(l.artist)}</td>
-      <td>${ui.gtag(l.genre)}</td>
+      <td>${genreTag(l)}</td>
       <td class="mono">${esc(year(l) || '–')}</td>
       <td class="mono num">${util.fmtDur(l.duration)}</td>
       <td class="mono num">${l.missing ? '–' : fmtSize(l.size_mb)}</td>
@@ -100,7 +110,7 @@
   }
   function card(l) {
     return `<div class="card lib-card${cls(l)}" data-id="${esc(l.id)}">
-      ${ui.thumb(l)}${ui.gtag(l.genre)}<span class="dur">${util.fmtDur(l.duration)}</span>${l.missing ? missTag() : ''}</div>
+      ${ui.thumb(l)}<span class="tl">${genreTag(l)}${ui.pbadge(l)}</span><span class="dur">${util.fmtDur(l.duration)}</span>${l.missing ? missTag() : ''}${nowMark(l)}</div>
       <div class="cbody">
         <div class="ctitle" title="${esc(l.title)}">${esc(l.title)}</div>
         <div class="cmeta" title="${esc(l.file_path)}"><span class="ch">${esc(l.artist)}</span><span>·</span><span>${esc(year(l) || '–')}</span><span>·</span><span>${l.missing ? '–' : fmtSize(l.size_mb)}</span></div>
@@ -271,18 +281,87 @@
     if (r && r.ok) ui.toast(t('toast.folder_opening'), 'info', 1600);
     else fail(r);
   }
+  /** Abspielen: internal = Mini-Player, sonst Standardplayer des Systems. */
+  async function play(l, internal) {
+    if (l.missing) return;
+    if (internal) { HC.player.play(l); return; }
+    const r = await HC.bridge.safe('play_external', l.id);
+    if (r && r.ok) ui.toast(t('player.external'), 'info', 1800);
+    else fail(r);
+  }
+  /** Menü (⋯): die andere Abspiel-Variante, neu taggen, löschen. */
+  function more(l, anchor) {
+    const internal = playerMode() === 'internal', working = busy.has(l.id);
+    ui.menu(anchor, [
+      { label: t(internal ? 'library.play_external' : 'library.play_internal'), icon: internal ? I.external : I.play, key: 'play-alt', disabled: !!l.missing, onClick: () => play(l, !internal) },
+      'sep',
+      { label: t('library.retag_short'), icon: I.tag, key: 'retag', disabled: !!(l.missing || l.unknown || working), onClick: () => retag(l) },
+      { label: t(l.missing ? 'library.remove' : 'library.delete'), icon: l.missing ? I.file_x : I.trash, danger: true, key: 'del', disabled: !!(working || l.unknown), onClick: () => remove(l) },
+    ]);
+  }
+  /** Kennzahlen und Auswahllisten nach einer Genre-Änderung nachziehen. */
+  function genreChanged() {
+    fillSelects();
+    $('#ls-bar', el)._sig = null;
+    renderStats(false);
+  }
+  /** Genre per Klick: set_genre (manuell), danach retag – die Datei wandert in den Ordner des neuen Genres. */
+  async function setGenre(l, name) {
+    if (busy.has(l.id) || !name || name === l.genre) return;
+    const old = { genre: l.genre, manual: !!l.genre_manual };
+    const offline = !!(l.missing || l.unknown);
+    const settle = (flash) => { busy.delete(l.id); genreChanged(); render(); if (flash) fx.flash(nodeOf(l.id)); };
+    const revert = (msg) => {
+      l.genre = old.genre;
+      l.genre_manual = old.manual;
+      settle(false);
+      ui.toast(t('toast.genre_failed', { error: msg || t('err.generic') }), 'err');
+    };
+    /* Optimistisch: Badge sofort umstellen, Spinner bis das Neu-Taggen fertig ist. */
+    l.genre = name;
+    l.genre_manual = true;
+    busy.add(l.id);
+    repaint(l);
+    const r0 = await HC.bridge.safe('set_genre', l.id, name);
+    if (!r0 || !r0.ok) return revert(r0 && r0.error);
+    const v = HC.store.get(l.id);
+    if (v) { HC.store.patch(l.id, { genre: name, genre_manual: true }); HC.bridge.emit('video', { id: l.id, status: v.status, genre: name }); }
+    if (offline) {
+      settle(true);
+      ui.toast(t('toast.genre_entry_only', { genre: name }), 'warn', 5200);
+      return;
+    }
+    /* Die Datei wird verschoben: der Mini-Player gibt sie so lange frei und spielt danach an derselben Stelle weiter. */
+    const hold = HC.player.suspend(l.id);
+    const r = await HC.bridge.safe('retag', l.id);
+    if (r && r.ok) {
+      const path = r.path || r.file_path || '';
+      const moved = r.moved != null ? !!r.moved : !!path && path !== l.file_path;
+      if (path) l.file_path = path;
+      if (typeof r.cue === 'boolean') l.has_cue = r.cue;
+      settle(true);
+      ui.toast(moved ? t('toast.genre_moved', { genre: name, path: shortDir(path) }) : t('toast.genre_retagged', { genre: name }), 'ok', moved ? 6000 : 0);
+    } else {
+      await HC.bridge.safe('set_genre', l.id, old.genre); // auch im Backend zurück
+      if (v) { HC.store.patch(l.id, { genre: old.genre }); HC.bridge.emit('video', { id: l.id, status: v.status, genre: old.genre }); }
+      revert(r && r.error);
+    }
+    HC.player.resume(hold);
+  }
   async function retag(l) {
     if (busy.has(l.id) || l.missing || l.unknown) return;
     busy.add(l.id);
     repaint(l);
+    const hold = HC.player.suspend(l.id); // die Datei kann verschoben werden
     const r = await HC.bridge.safe('retag', l.id);
     busy.delete(l.id);
+    HC.player.resume(hold);
     if (r && r.ok) {
       /* Das Ablage-Muster kann die Datei verschieben: die Antwort nennt dann den neuen Pfad. */
       const path = r.path || r.file_path || '';
       const moved = r.moved != null ? !!r.moved : !!path && path !== l.file_path;
       if (path) l.file_path = path;
-      if (r.genre && r.genre !== l.genre) { l.genre = r.genre; fillSelects(); $('#ls-bar', el)._sig = null; renderStats(false); }
+      if (r.genre && r.genre !== l.genre) { l.genre = r.genre; genreChanged(); }
       if (typeof r.cue === 'boolean') l.has_cue = r.cue;
       repaint(l, true);
       if (moved) ui.toast(t('toast.retagged_moved', { title: l.title, path: shortDir(path) }), 'info', 7000);
@@ -314,6 +393,7 @@
       });
       if (!yes) return;
     }
+    HC.player.release(l.id); // eine Datei, die gerade läuft, liesse sich unter Windows nicht löschen
     /* Fehlt die Datei, wird nur der Eintrag entfernt (delete_file = false): es gibt nichts zu löschen. */
     const r = await HC.bridge.safe('delete_library_item', l.id, !l.missing);
     if (r && !r.ok && r.outside) return removeEntryOnly(l, r);
@@ -406,8 +486,16 @@
       const l = items.find((x) => x.id === node.dataset.id);
       if (!l) return;
       if (b.dataset.act === 'folder') openFolder(l);
-      else if (b.dataset.act === 'retag') retag(l);
-      else if (b.dataset.act === 'del') remove(l);
+      else if (b.dataset.act === 'play') play(l, playerMode() === 'internal' || isNow(l));
+      else if (b.dataset.act === 'more') more(l, b);
+      else if (b.dataset.act === 'genre') ui.genreMenu(b, l.genre, (name) => setGenre(l, name));
+    });
+    /* Mini-Player: den laufenden Eintrag markieren (nur die betroffenen Zeilen neu zeichnen). */
+    HC.bridge.on('player', (d) => {
+      const prev = now;
+      now = { id: d.id == null ? null : d.id, playing: !!d.playing };
+      if (!loaded) return;
+      [prev.id, now.id].filter((id, i, a) => id != null && a.indexOf(id) === i).forEach((id) => { const l = items.find((x) => x.id === id); if (l) repaint(l); });
     });
     HC.bridge.on('done', (d) => { if (HC.app.current() === 'library') refresh(false, d.id); });
     HC.bridge.on('settings_changed', () => { if (!loaded) return; fillSelects(); $('#ls-bar', el)._sig = null; renderStats(false); render(); });

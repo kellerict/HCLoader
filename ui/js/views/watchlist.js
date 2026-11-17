@@ -5,6 +5,9 @@
      pending  = angefordert, wartet auf ihren Platz (Throttle zwischen den Quellen)
      checking = wird gerade geprüft
      errors   = letzte Prüfung fehlgeschlagen (nur im Speicher, bis zur nächsten Prüfung)
+
+   Phase 7a: Quellen von YouTube und SoundCloud. Backoff gilt pro Plattform – die andere
+   läuft weiter. Der Dialog schlägt Typ, Plattform und Namen aus der URL vor (suggest_source).
    ===================================================================== */
 (function () {
   'use strict';
@@ -22,18 +25,27 @@
   const flash = new Set(); // Zeilen, die beim nächsten Zeichnen kurz aufleuchten
   let run = null; // {total, done} – laufende Prüfung (total = 0: von aussen gestartet, Umfang unbekannt)
 
-  const FIELDS = ['type', 'name', 'url_or_query', 'default_genre', 'enabled', 'auto_download', 'max_entries', 'newest_last'];
+  const FIELDS = ['type', 'name', 'url_or_query', 'default_genre', 'enabled', 'auto_download', 'max_entries', 'newest_last', 'platform', 'name_auto'];
   /** «Neueste stehen hinten» gibt es nur bei Playlists. */
   /** Obergrenze pro Prüfung: Suchquellen 100, sonst 200 (wie das Backend). */
   const maxLimit = (type) => (type === 'search' ? 100 : 200);
   /** Wert, der bei leerem Feld (max_entries null) gilt: schedule.entries_per_source, begrenzt auf die Obergrenze. */
   const defaultMax = (type) => Math.min(HC.settings.values.schedule.entries_per_source, maxLimit(type));
   const reversed = (s) => s.type === 'playlist' && !!s.newest_last;
-  const payload = (s) => FIELDS.reduce((o, k) => { o[k] = k === 'newest_last' ? reversed(s) : s[k]; return o; }, s.id != null ? { id: s.id } : {});
-  const backoff = () => (HC.status && HC.status.backoff && HC.status.backoff.active ? HC.status.backoff : null);
+  const payload = (s) => FIELDS.reduce((o, k) => { o[k] = k === 'newest_last' ? reversed(s) : k === 'platform' ? HC.platform.of(s) : k === 'name_auto' ? !!s.name_auto : s[k]; return o; }, s.id != null ? { id: s.id } : {});
+  /** Backoff der Plattform dieser Quelle (oder null). */
+  const boOf = (s) => HC.platform.backoff(HC.platform.of(s));
+  /** Jede Plattform mit aktiver Quelle ist im Backoff -> es gibt nichts zu prüfen. */
+  const allBlocked = () => { const act = sources.filter((s) => s.enabled); return act.length > 0 && act.every(boOf); };
   const busy = () => checking.size > 0 || pending.size > 0;
-  /** Warum «Prüfen» gerade nicht geht (Text für den Tooltip) oder ''. */
-  const lockReason = (s) => (backoff() ? t('watchlist.why_backoff') : busy() ? t('watchlist.why_running') : s && !s.enabled ? t('watchlist.why_off') : '');
+  /** Warum «Prüfen» gerade nicht geht (Text für den Tooltip) oder ''. s = null: «Alle prüfen». */
+  function lockReason(s) {
+    if (!s) return allBlocked() ? t('watchlist.why_backoff') : busy() ? t('watchlist.why_running') : '';
+    if (boOf(s)) return t('watchlist.why_backoff_p', { p: HC.platform.label(HC.platform.of(s)) });
+    if (busy()) return t('watchlist.why_running');
+    if (!s.enabled) return t('watchlist.why_off');
+    return HC.platform.enabled(HC.platform.of(s)) ? '' : t('watchlist.why_sc_off');
+  }
 
   function lastCell(s) {
     if (checking.has(s.id)) return `<span class="wl-state on"><span class="spinner"></span>${t('watchlist.checking')}</span>`;
@@ -46,9 +58,9 @@
     const cls = [s.enabled ? '' : 'off', checking.has(s.id) ? 'checking' : '', pending.has(s.id) ? 'pending' : '', err ? 'has-error' : '', flash.has(s.id) ? 'flash' : ''].filter(Boolean).join(' ');
     return `<tr data-id="${s.id}" class="${cls}">
       <td>${ui.toggle(s.enabled, `data-k="enabled" title="${esc(t('watchlist.col_active'))}"`)}</td>
-      <td class="clip"><div class="cell-title"><div><b title="${esc(`${t('source_type.' + s.type)} · ${s.name}`)}">${esc(s.name)}</b>${err
-    ? `<small class="src-err" title="${esc(`${t('watchlist.error_title')}: ${err}`)}">${I.warn}<span>${esc(err)}</span></small>`
-    : `<small class="${reversed(s) ? 'has-rev' : ''}">${reversed(s) ? `<span class="wl-rev" title="${esc(t('watchlist.rev_title'))}">${I.up}${t('watchlist.rev_short')}</span>` : ''}<span title="${esc(s.url_or_query)}">${esc(s.url_or_query)}</span></small>`}</div></div></td>
+      <td class="clip"><div class="cell-title"><div><b${s.name_auto ? ' class="auto"' : ''} title="${esc(s.name_auto ? t('watchlist.name_auto_title') : `${t('source_type.' + s.type)} · ${s.name}`)}">${esc(s.name)}</b>${err
+    ? `<small class="src-err" title="${esc(`${t('watchlist.error_title')}: ${err}`)}">${ui.pbadge(s)}${I.warn}<span>${esc(err)}</span></small>`
+    : `<small class="has-rev">${ui.pbadge(s)}${reversed(s) ? `<span class="wl-rev" title="${esc(t('watchlist.rev_title'))}">${I.up}${t('watchlist.rev_short')}</span>` : ''}<span title="${esc(s.url_or_query)}">${esc(s.url_or_query)}</span></small>`}</div></div></td>
       <td class="mono">${esc(t('source_type.' + s.type))}</td>
       <td>${s.default_genre ? ui.genreDot(s.default_genre) : `<span class="unit">${t('watchlist.genre_auto')}</span>`}</td>
       <td><span class="okline" title="${esc(t(s.auto_download ? 'watchlist.auto_title_on' : 'watchlist.auto_title_off'))}">${ui.toggle(s.auto_download, 'data-k="auto_download"')}<span class="toggle-label">${t(s.auto_download ? 'watchlist.auto_on' : 'watchlist.auto_off')}</span></span></td>
@@ -66,11 +78,13 @@
   let headKey = '';
   function renderHead() {
     const active = sources.filter((s) => s.enabled).length;
-    const bo = backoff(), nx = HC.schedule.next();
-    const key = [sources.length, active, bo ? bo.until : '', bo ? Math.round(bo.remaining_s / 60) : '', nx.at, nx.kind, nx.due, busy(), run ? `${run.done}/${run.total}` : ''].join('|');
+    const nx = HC.schedule.next();
+    /* Backoff nur melden, wenn es die Plattform betrifft: YouTube immer, SoundCloud sobald es Quellen dafür gibt. */
+    const bos = HC.platform.backoffs().filter(([p]) => p === 'youtube' || sources.some((s) => HC.platform.of(s) === p));
+    const key = [sources.length, active, bos.map(([p, b]) => `${p}:${b.until}:${Math.round(b.remaining_s / 60)}`).join(','), allBlocked(), HC.platform.scEnabled(), nx.at, nx.kind, nx.due, busy(), run ? `${run.done}/${run.total}` : ''].join('|');
     if (key === headKey) return;
     headKey = key;
-    $('#wl-sub', el).textContent = t('watchlist.sub_n', { n: sources.length, active }) + (nx.at && !bo ? ` · ${t('watchlist.sub_next', { t: HC.schedule.label(nx) })}` : '');
+    $('#wl-sub', el).textContent = t('watchlist.sub_n', { n: sources.length, active }) + (nx.at && !allBlocked() ? ` · ${t('watchlist.sub_next', { t: HC.schedule.label(nx) })}` : '');
     const btn = $('#wl-check', el);
     const lock = !active ? t('watchlist.none_active') : lockReason(null);
     btn.disabled = !!lock;
@@ -80,8 +94,14 @@
       ? `<span class="spinner"></span>${run && run.total > 1 ? t('watchlist.running_n', { i: Math.min(run.total, run.done + 1), n: run.total }) : t('watchlist.running')}`
       : `${I.refresh}${t('watchlist.check_all')}`;
     const box = $('#wl-notice', el);
-    box.hidden = !bo;
-    box.innerHTML = bo ? ui.notice('error', `${t('watchlist.backoff', { t: esc(util.fmtWhen(bo.until)), rest: esc(util.fmtSpan(bo.remaining_s)) })} <button class="linkbtn" data-goto="settings/throttle">${t('watchlist.backoff_link')}</button>`) : '';
+    /* Gibt es nur YouTube-Quellen, bleibt der bekannte Text; sonst pro Plattform mit dem Hinweis, dass die andere weiterläuft. */
+    const mixed = HC.platform.all.filter((p) => sources.some((s) => HC.platform.of(s) === p)).length > 1;
+    box.hidden = !bos.length;
+    box.innerHTML = bos.map(([p, bo]) => {
+      const v = { t: esc(util.fmtWhen(bo.until)), rest: esc(util.fmtSpan(bo.remaining_s)), p: HC.platform.label(p), other: HC.platform.label(p === 'youtube' ? 'soundcloud' : 'youtube') };
+      const link = `<button class="linkbtn" data-goto="settings/${p === 'soundcloud' ? 'soundcloud' : 'throttle'}">${t(p === 'soundcloud' ? 'watchlist.backoff_link_sc' : 'watchlist.backoff_link')}</button>`;
+      return ui.notice(mixed && !allBlocked() ? 'warn' : 'error', `${t(mixed ? 'watchlist.backoff_p' : 'watchlist.backoff', v)} ${link}`);
+    }).join('');
   }
   function render(animate) {
     const body = $('#wl-body', el);
@@ -103,7 +123,7 @@
   const endRun = () => { checking.clear(); pending.clear(); run = null; };
 
   async function check(ids) {
-    const targets = sources.filter((s) => s.enabled && (!ids || ids.includes(s.id)));
+    const targets = sources.filter((s) => s.enabled && !boOf(s) && (!ids || ids.includes(s.id)));
     if (!targets.length || lockReason(null)) return;
     /* Sofort sichtbar machen – die Events der einzelnen Quellen folgen. */
     targets.forEach((s) => { pending.add(s.id); errors.delete(s.id); });
@@ -128,17 +148,24 @@
   /* ---------- Dialog: Quelle anlegen / bearbeiten ---------- */
   function edit(src) {
     const isNew = !src;
-    const s = Object.assign({ type: 'channel', name: '', url_or_query: '', default_genre: null, enabled: true, auto_download: false, newest_last: false, max_entries: null }, src);
+    const s = Object.assign({ type: 'channel', name: '', url_or_query: '', default_genre: null, enabled: true, auto_download: false, newest_last: false, max_entries: null, platform: 'youtube', name_auto: false }, src);
     const genres = HC.genres.names().filter((g) => g !== 'Unsortiert');
     if (s.default_genre && !genres.includes(s.default_genre)) genres.push(s.default_genre);
     const err = (k) => `<div class="field-error" data-e="${k}" hidden></div>`;
+    const scOn = HC.platform.scEnabled();
+    const plat = HC.platform.of(s);
     const body = `
       <div data-form-error hidden></div>
       <div class="frow"><label class="lbl">${t('watchlist.f_type')}</label>
         <div class="seg wide" data-seg="type">${['channel', 'playlist', 'search'].map((k) => `<button type="button" data-v="${k}" class="${s.type === k ? 'on' : ''}" aria-pressed="${s.type === k}">${t('source_type.' + k)}</button>`).join('')}</div>${err('type')}</div>
-      <div class="frow"><label class="lbl">${t('watchlist.f_name')}</label><input class="input" data-f="name" value="${esc(s.name)}" placeholder="${esc(t('watchlist.ph_name'))}" maxlength="120" autocomplete="off">${err('name')}</div>
-      <div class="frow"><label class="lbl" data-l="url">${t('watchlist.f_url')}</label><input class="input mono" data-f="url_or_query" value="${esc(s.url_or_query)}" spellcheck="false" autocomplete="off">
+      <div class="frow"><div class="lblrow"><label class="lbl" data-l="url">${t('watchlist.f_url')}</label><span class="detected" data-det hidden></span></div>
+        <input class="input mono" data-f="url_or_query" value="${esc(s.url_or_query)}" spellcheck="false" autocomplete="off">
         <div class="fhint" data-h="url"></div>${err('url_or_query')}</div>
+      <div class="frow" data-only="search" hidden><label class="lbl">${t('watchlist.f_platform')}</label>
+        <div class="seg wide pseg" data-seg="platform">${HC.platform.all.map((k) => `<button type="button" data-v="${k}" data-p="${k}" class="${plat === k ? 'on' : ''}" aria-pressed="${plat === k}"${k === 'soundcloud' && !scOn && plat !== k ? ` disabled title="${esc(t('platform.sc_off'))}"` : ''}>${k === 'soundcloud' ? I.wave : ''}${HC.platform.label(k)}</button>`).join('')}</div>${err('platform')}</div>
+      <div class="frow"><div class="lblrow"><label class="lbl">${t('watchlist.f_name')}</label><span class="sugg-tag" data-sugg title="${esc(t('watchlist.suggested_title'))}" hidden>${t('watchlist.suggested')}</span></div>
+        <input class="input" data-f="name" value="${esc(s.name)}" placeholder="${esc(t('watchlist.ph_name'))}" maxlength="120" autocomplete="off">
+        <div class="fhint" data-h="name" hidden></div>${err('name')}</div>
       <div class="frow" data-only="playlist" hidden><label class="check"><input type="checkbox" data-f="newest_last"${s.newest_last ? ' checked' : ''}>${t('watchlist.f_newest_last')}</label>
         <div class="fhint indent">${t('watchlist.hint_newest_last')}</div>${err('newest_last')}</div>
       <div class="frow inline">
@@ -151,6 +178,11 @@
         <div class="seg wide" data-seg="auto">${[['0', 'hits_inbox'], ['1', 'hits_auto']].map(([v, k]) => `<button type="button" data-v="${v}" class="${String(+s.auto_download) === v ? 'on' : ''}" aria-pressed="${String(+s.auto_download) === v}">${t('watchlist.' + k)}</button>`).join('')}</div>
         <div class="fhint" data-h="auto"></div>${err('auto_download')}</div>
       <div class="frow"><label class="check"><input type="checkbox" data-f="enabled"${s.enabled ? ' checked' : ''}>${t('watchlist.f_enabled')}</label>${err('enabled')}</div>`;
+    /* Namensvorschlag: lastSugg = zuletzt eingesetzter Vorschlag (null = keiner). Der Name gilt als «automatisch»,
+       solange das Feld leer ist oder noch genau diesen Vorschlag enthält. */
+    let lastSugg = s.name_auto ? s.name : null;
+    let detected = null; // letzte Antwort von suggest_source
+    let typeManual = null; // vom User angeklickter Typ
     const segVal = (m, name) => ($(`[data-seg=${name}] .on`, m) || {}).dataset.v;
     const showErrors = (m, errs, general) => {
       let first = null, rest = [];
@@ -171,8 +203,33 @@
     ui.modal({
       title: t(isNew ? 'watchlist.add_title' : 'watchlist.edit_title'), body, okLabel: t('common.save'),
       onOpen(m) {
+        const url = $('[data-f=url_or_query]', m), name = $('[data-f=name]', m);
+        const setSeg = (seg, v) => $$(`[data-seg=${seg}] button`, m).forEach((x) => { x.classList.toggle('on', x.dataset.v === v); x.setAttribute('aria-pressed', x.dataset.v === v); });
+        const nameIsAuto = () => name.value.trim() === '' || (lastSugg != null && name.value === lastSugg);
+        /** Vorschlag sichtbar als Vorschlag kennzeichnen, bis der User tippt; leerer Name -> «kommt bei der ersten Prüfung». */
+        const paintName = () => {
+          const type = segVal(m, 'type');
+          const sugg = !!lastSugg && name.value === lastSugg;
+          const later = !name.value.trim() && type !== 'search' && !!url.value.trim() && (!detected || !!detected.type);
+          name.classList.toggle('suggested', sugg);
+          $('[data-sugg]', m).hidden = !sugg;
+          name.placeholder = t(later ? 'watchlist.ph_name_later' : 'watchlist.ph_name');
+          const h = $('[data-h=name]', m);
+          h.textContent = sugg && type !== 'search' ? t('watchlist.hint_name_auto') : later ? t('watchlist.hint_name_later') : '';
+          h.hidden = !h.textContent;
+        };
+        const paintDetected = () => {
+          const box = $('[data-det]', m), type = segVal(m, 'type');
+          const show = !!detected && type !== 'search' && !!url.value.trim();
+          box.hidden = !show;
+          if (!show) return;
+          box.classList.toggle('bad', !detected.type);
+          box.innerHTML = detected.type ? `${ui.pbadge(detected.platform, true)}<span>${esc(t('watchlist.detected', { p: HC.platform.label(detected.platform), type: t('source_type.' + detected.type) }))}</span>` : `<span>${esc(t('watchlist.not_detected'))}</span>`;
+        };
         const sync = () => {
           const type = segVal(m, 'type');
+          paintName();
+          paintDetected();
           $('[data-l=url]', m).textContent = t(type === 'search' ? 'watchlist.f_query' : 'watchlist.f_url');
           $('[data-f=url_or_query]', m).placeholder = t('watchlist.ph_' + type);
           $('[data-h=url]', m).textContent = t('watchlist.hint_' + type);
@@ -182,10 +239,46 @@
           mx.placeholder = defaultMax(type); // leer = Standard aus den Einstellungen
           $('[data-h=auto]', m).textContent = t(segVal(m, 'auto') === '1' ? 'watchlist.hint_auto' : 'watchlist.hint_inbox');
         };
+        /* suggest_source: ohne Netzwerk, nur aus der URL. Typ und Plattform folgen der Eingabe, der Name nur als Vorschlag. */
+        let seq = 0;
+        const ask = async () => {
+          const text = url.value.trim(), my = ++seq;
+          if (!text) {
+            detected = null;
+            if (lastSugg != null && name.value === lastSugg) name.value = '';
+            lastSugg = null;
+            sync();
+            return;
+          }
+          let r = null;
+          try {
+            r = typeManual === 'search' ? await HC.bridge.call('suggest_source', text, 'search') : await HC.bridge.call('suggest_source', text);
+          } catch (e) { console.warn('[watchlist] suggest_source:', e); }
+          if (my !== seq || !m.isConnected || !r) return;
+          detected = r;
+          const isUrlType = r.type === 'channel' || r.type === 'playlist';
+          /* Eine angefangene URL («htt…») sieht zuerst wie ein Suchbegriff aus -> nicht vorschnell auf «Suche» springen. */
+          const asSearch = r.type === 'search' && (typeManual === 'search' || (typeManual == null && !/^(h|ht|htt|http|https|w|ww|www|y|s)[:/.]*$/i.test(text) && (text.length >= 4 || /\s/.test(text))));
+          if (isUrlType || asSearch) {
+            if (r.type !== segVal(m, 'type')) setSeg('type', r.type);
+            if (isUrlType && r.platform) setSeg('platform', r.platform);
+            if (nameIsAuto()) {
+              name.value = r.name || '';
+              lastSugg = r.name || '';
+              const eb = $('[data-e="name"]', m);
+              if (eb && !eb.hidden) { eb.hidden = true; name.classList.remove('invalid'); }
+            }
+          }
+          sync();
+        };
+        const askSoon = util.debounce(ask, 300);
+        url.addEventListener('input', askSoon);
+        name.addEventListener('input', paintName);
         m.addEventListener('click', (e) => {
           const b = e.target.closest('[data-seg] button');
-          if (!b) return;
+          if (!b || b.disabled) return;
           $$('button', b.parentElement).forEach((x) => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); });
+          if (b.parentElement.dataset.seg === 'type') { typeManual = b.dataset.v; if (url.value.trim()) ask(); }
           sync();
         });
         /* Fehler am Feld verschwindet, sobald man es korrigiert. */
@@ -201,8 +294,15 @@
         if (okBtn.disabled) return false;
         const val = (k) => $(`[data-f=${k}]`, m);
         const max = val('max_entries').value.trim();
+        const type = segVal(m, 'type'), text = val('url_or_query').value.trim();
+        let name = val('name').value.trim();
+        /* name_auto: unveränderter Vorschlag oder leer -> die erste Prüfung setzt den echten Namen. Das Backend verlangt
+           trotzdem einen Namen: bei leerem Feld geht vorläufig die URL ohne Protokoll mit. */
+        const auto = type !== 'search' && (name === '' ? !!text : !!lastSugg && name === lastSugg.trim());
+        if (!name && type !== 'search' && text) name = text.replace(/^https?:\/\/(www\.)?/i, '').replace(/\/+$/, '').slice(0, 120);
         const out = Object.assign({}, s, {
-          type: segVal(m, 'type'), name: val('name').value.trim(), url_or_query: val('url_or_query').value.trim(),
+          type, name, url_or_query: text, name_auto: auto,
+          platform: type === 'search' ? segVal(m, 'platform') || 'youtube' : (detected && detected.type && detected.platform) || HC.platform.of(s),
           default_genre: val('default_genre').value || null, max_entries: max === '' ? null : +max,
           enabled: val('enabled').checked, auto_download: segVal(m, 'auto') === '1', newest_last: val('newest_last').checked,
         });
@@ -293,6 +393,7 @@
         pending.delete(d.id);
         if (d.error) errors.set(d.id, String(d.error)); else errors.delete(d.id);
         if (s) {
+          if (typeof d.name === 'string' && d.name && d.name !== s.name) { s.name = d.name; s.name_auto = false; flash.add(d.id); } // name_auto: echter Name
           if (d.last_checked) s.last_checked = d.last_checked;
           if (d.new_count != null) { if (d.new_count > (s.new_count || 0)) flash.add(d.id); s.new_count = d.new_count; }
         }
@@ -305,7 +406,7 @@
     const resync = util.debounce(() => { if (HC.app.current() === 'watchlist' && !busy()) refresh(); }, 400);
     HC.bridge.on('video', resync);
     HC.bridge.on('status_rendered', () => {
-      if (backoff() && pending.size && !checking.size) endRun(); // Lauf wegen Backoff abgebrochen
+      if (allBlocked() && pending.size && !checking.size) endRun(); // Lauf wegen Backoff abgebrochen
       const before = headKey;
       renderHead();
       if (before !== headKey && sources.length) $('#wl-body', el).innerHTML = sources.map(row).join(''); // Sperre der Knöpfe
