@@ -42,6 +42,8 @@ Thumbs.db
 config.yaml.tmp
 config.yaml.bak-*
 docs/screenshots/reduced/
+# Sprach-Screenshots (ui_screenshots.py --lang <code>): nur lokale Sichtprüfung, hält das Repo klein
+docs/screenshots/*/
 
 # Portable-Version (scripts/build_portable.ps1): Build-Ausgabe, Marker und Daten im App-Ordner.
 # Ein portable.txt im Entwicklungs-Checkout würde die Daten nach .\data umleiten.

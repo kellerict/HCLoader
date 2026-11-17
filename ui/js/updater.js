@@ -33,19 +33,19 @@
 .upd-banner .upd-actions{margin-top:0;margin-left:auto}
 .upd-banner .upd-prog{margin-top:0;flex:1 1 220px;min-width:180px}
 .upd-banner.err{border-left-color:var(--error)} .upd-banner.warn{border-left-color:var(--warn)}
-.upd-banner .upd-title{font:400 17px/1.1 var(--f-head);letter-spacing:1.2px;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+.upd-banner .upd-title{font:var(--w-head) condensed 17px/1.1 var(--f-head);text-transform:var(--tt-head);letter-spacing:calc(1.2px * var(--ls));text-transform:uppercase;display:flex;align-items:center;gap:8px}
 .upd-banner .upd-title svg{width:16px;height:16px;stroke:var(--acid);fill:none;stroke-width:2.2;flex:none}
 .upd-banner.err .upd-title svg{stroke:var(--error)}
 .upd-sub{color:var(--muted);font:12px/1.5 var(--f-mono);margin-top:4px;overflow-wrap:anywhere}
 .upd-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .upd-prog{margin-top:9px}
 .upd-prog .progress{height:6px}
-.upd-prog .upd-num{display:flex;justify-content:space-between;color:var(--muted);font:11px var(--f-mono);margin-top:4px;letter-spacing:.5px}
+.upd-prog .upd-num{display:flex;justify-content:space-between;color:var(--muted);font:11px var(--f-mono);margin-top:4px;letter-spacing:calc(.5px * var(--ls))}
 .upd-x{position:absolute;top:50%;right:8px;transform:translateY(-50%);background:none;border:0;color:var(--muted);cursor:pointer;padding:2px;line-height:0}
 .upd-x svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.2}
 .upd-x:hover{color:var(--text)}
 .upd-notes{max-height:52vh;overflow:auto;font-size:13px;line-height:1.55}
-.upd-notes h4{margin:12px 0 4px;font:400 16px/1.2 var(--f-head);letter-spacing:1px;text-transform:uppercase;color:var(--acid)}
+.upd-notes h4{margin:12px 0 4px;font:var(--w-head) condensed 16px/1.2 var(--f-head);text-transform:var(--tt-head);letter-spacing:calc(1px * var(--ls));text-transform:uppercase;color:var(--acid)}
 .upd-notes h4:first-child{margin-top:0}
 .upd-notes ul{margin:4px 0 8px 18px;padding:0}
 .upd-notes p{margin:4px 0}

@@ -3,8 +3,21 @@
    ===================================================================== */
 
 /* --- Lokale Schriften (OFL, siehe ui/fonts/) --- */
-@font-face{font-family:"Bebas Neue";font-style:normal;font-weight:400;font-display:block;
+/* Bebas Neue: Gewichtsbereich statt 400, damit Überschriften anderer Schriftsysteme (600/700) kein
+   künstliches Fett auf lateinische Buchstaben/Ziffern legen. */
+@font-face{font-family:"Bebas Neue";font-style:normal;font-weight:400 700;font-display:block;
   src:url("../fonts/bebas-neue-latin-400-normal.woff2") format("woff2")}
+/* Systemschriften als Display-Ersatz: size-adjust gleicht die Breite an Bebas Neue an, ohne lateinische
+   Zeichen mitzuverkleinern. Reine local()-Quellen – kein Download. */
+@font-face{font-family:"HC Head Cyr";font-weight:300 700;font-stretch:75% 100%;size-adjust:90%;
+  unicode-range:U+0400-052F,U+1C80-1C88,U+2DE0-2DFF,U+A640-A69F;
+  src:local("Bahnschrift")}
+@font-face{font-family:"HC Head Ext";font-weight:300 700;font-stretch:75% 100%;size-adjust:90%;
+  src:local("Bahnschrift")}
+@font-face{font-family:"HC Head CJK";font-weight:400 700;size-adjust:84%;
+  src:local("Microsoft YaHei UI Bold"),local("Microsoft YaHei Bold"),local("Noto Sans CJK SC Bold"),local("WenQuanYi Zen Hei")}
+@font-face{font-family:"HC Head Indic";font-weight:400 700;size-adjust:84%;
+  src:local("Nirmala UI Bold"),local("Noto Sans Devanagari Bold"),local("Noto Sans Bengali Bold"),local("FreeSans")}
 @font-face{font-family:"Inter";font-style:normal;font-weight:400;font-display:block;
   src:url("../fonts/inter-latin-400-normal.woff2") format("woff2")}
 @font-face{font-family:"Inter";font-style:normal;font-weight:500;font-display:block;
@@ -48,14 +61,46 @@
   --ease-out:cubic-bezier(.2,.8,.2,1);
   --ease-snap:cubic-bezier(.3,1.35,.5,1);
 
-  /* Schrift */
-  --f-head:"Bebas Neue","Oswald","Impact",sans-serif;
-  --f-body:"Inter","Segoe UI",system-ui,sans-serif;
-  --f-mono:"JetBrains Mono","Consolas",monospace;
+  /* Schrift
+     Die mitgelieferten Schriften decken nur Latein ab. Alles andere fällt pro Zeichen auf Schriften zurück,
+     die Windows 10/11 mitbringt (nichts wird gebündelt oder geladen):
+       Kyrillisch              Bahnschrift (schmal über font-stretch) / Impact · Segoe UI · Consolas
+       Chinesisch              Microsoft YaHei UI / Microsoft YaHei
+       Devanagari, Bengalisch  Nirmala UI
+     Die «HC Head …»-Familien oben sind dieselben Systemschriften, nur auf die schmale Display-Schrift abgestimmt
+     (kleiner, fett); greift local() nicht, folgt die Systemschrift unter ihrem normalen Namen.
+     Noto/WenQuanYi/FreeSans nur für die Vorschau unter Linux (scripts/ui_screenshots.py). */
+  --f-script:"Microsoft YaHei UI","Microsoft YaHei","Nirmala UI","Noto Sans CJK SC","Noto Sans SC","Noto Sans Devanagari","Noto Sans Bengali";
+  --f-head:"Bebas Neue","Oswald","HC Head Cyr","Bahnschrift","Impact","HC Head CJK","HC Head Indic",var(--f-script),sans-serif;
+  --f-body:"Inter","Segoe UI",var(--f-script),system-ui,sans-serif;
+  --f-mono:"JetBrains Mono","Consolas",var(--f-script),monospace;
+  /* Stellschrauben je Schriftsystem (siehe :lang() unten):
+     --w-head Gewicht der Display-Schrift · --tt-head text-transform der Display-Schrift ·
+     --ls Faktor für jede Laufweite (letter-spacing) */
+  --w-head:400; --tt-head:none; --ls:1;
 
   /* Layout */
   --nav-w:232px; --status-h:30px; --player-h:72px;
 }
+
+/* --- Schriftsysteme (html[lang] setzt js/i18n.js) ---
+   Die Display-Schrift ist schmal und kennt nur Versalien; wo eine Ersatzschrift mit Kleinbuchstaben einspringt
+   (Kyrillisch, Lettisch/Litauisch), setzt --tt-head Versalien, damit Überschriften gleich aussehen. Sperrung ergibt nur für Latein/Kyrillisch Sinn: CJK und indische
+   Schriften laufen ohne (sie zerreisst Silben und Ligaturen), dafür fett, damit Überschriften ihr Gewicht behalten.
+   Lateinische Zeichen und Ziffern bleiben in jeder Sprache in Bebas Neue. */
+:root:lang(ru){--w-head:600; --tt-head:uppercase; --ls:.6; font-synthesis-weight:none}
+/* Lettisch/Litauisch: viele Zeichen (ā č ė ų ž …) fehlen im latin-Subset der mitgelieferten Schriften. Statt einzelne
+   Buchstaben mitten im Wort aus einer anderen Schrift zu holen, läuft der ganze Text in den Systemschriften. */
+:root:lang(lv),:root:lang(lt){--w-head:600; --tt-head:uppercase; --ls:.6; font-synthesis-weight:none;
+  --f-head:"HC Head Ext","Bahnschrift","Impact","Bebas Neue",sans-serif;
+  --f-body:"Segoe UI","Inter",system-ui,sans-serif;
+  --f-mono:"Consolas","JetBrains Mono",monospace}
+:root:lang(zh){--w-head:700; --ls:0}
+:root:lang(hi),:root:lang(bn){--w-head:700; --ls:0}
+/* Lange Navigationswörter («Boîte de réception», «Lista de monitoramento»): Seitenleiste etwas breiter */
+:root:lang(es),:root:lang(fr),:root:lang(pt){--nav-w:260px}
+/* Logo bleibt in jeder Sprache gleich */
+.logo h1{--w-head:400; --tt-head:none; --ls:1}
 
 *,*::before,*::after{box-sizing:border-box}
 *{margin:0;padding:0}
