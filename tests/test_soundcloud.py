@@ -10,8 +10,8 @@ import pytest
 import yt_dlp
 from yt_dlp.extractor import soundcloud as sc
 
-from app.core import config, db as dbmod, duplicates, filters, paths, platforms, sidecar, watchlist
-from app.core import ytclient
+from app.core import config, duplicates, filters, paths, platforms, sidecar, watchlist, ytclient
+from app.core import db as dbmod
 from app.core.db import Database
 from app.core.throttle import BackoffActive, Throttle
 

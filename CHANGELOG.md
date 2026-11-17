@@ -6,6 +6,22 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
 ## [Unreleased]
 
 ### Added
+- Phase 7a SoundCloud als zweite Plattform (Backend): Suche `scsearch` (`search(query, {platform})`),
+  Watchlist-Quellen `soundcloud.com/<nutzer>` (liest `/tracks`, neueste zuerst, inkrementell),
+  `…/sets/<set>` (inkl. «Neueste stehen hinten») und SoundCloud-Suchquellen, Download mit eigenem
+  Throttle (Zähler, Backoff, Pausen, Prozess-Locks pro Plattform; ein 429 von SoundCloud sperrt
+  YouTube nicht und umgekehrt, die Warteschlange lädt die freie Plattform weiter). DB-Migration 5
+  (`platform`, `url`, `channel_url`, `preview`, `sources.platform`, `sources.name_auto`), IDs `sc:<id>`,
+  Dateiname `[sc-<id>]`, Archiv `soundcloud <id>`, Tags `TXXX:SOUNDCLOUD_ID` / `SOURCE=SoundCloud`,
+  Platzhalter `{platform}`. Go+-Vorschauen werden verworfen («Nur Vorschau (Go+)»). Vermutliche
+  Duplikate über Plattformen (`duplicate_of`, Option `filters.hide_cross_platform_duplicates`), nie
+  automatisch geladen. Einstellungen `soundcloud.*`, `download.keep_original_soundcloud`.
+  `get_status().platforms`, `clear_backoff(platform?)`, `get_queue().platform_blocked`.
+  Erweiterte SoundCloud-Extractoren für flache Listen: Metadaten ohne Zusatz-Request, kein
+  HEAD-Request pro Treffer.
+- Quellen-Namen automatisch vorschlagen: `suggest_source(url_or_query, type_hint?)` (ohne Netzwerk),
+  `sources.name_auto`; die nächste Prüfung ersetzt einen unveränderten Vorschlag durch den echten
+  Kanal-/Nutzer-/Playlist-Namen aus der flachen Liste (Event `source` mit `name`).
 - Phase 6 Portable-Version: `scripts/build_portable.ps1` baut `dist\HCLoader\` (Windows-embeddable-Python
   3.12 amd64 mit pip, Abhängigkeiten, App, `bin\` mit Deno/ffmpeg/bgutil-Provider, Lizenzen) und mit
   `-Zip` `HCLoader-portable-<version>-win64.zip`. Starter `HCLoader.vbs` (ohne Konsole),

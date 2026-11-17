@@ -76,7 +76,7 @@ Aufgaben-Felder unverändert (sie spiegeln den Zustand der Windows-Aufgabe).
 | `open_path(kind)` | `"data"` \| `"target"` \| `"logs"` | `{ok}` | 2 |
 | `pick_folder(current?)` | Startordner (`%VAR%` erlaubt) | `{path}` \| `null` (abgebrochen) | 2 |
 | `test_po_token()` | – | `{ok, state, detail, ms}` (abgelehnt/Zeitüberschreitung: `{ok:false, state:"error", detail, error, ms:0}`) | 3 |
-| `clear_backoff()` | – | `{ok:true}` | 2 |
+| `clear_backoff(platform?)` | `"youtube"` \| `"soundcloud"`; ohne = alle Plattformen | `{ok:true}` \| `{ok:false, error}` (unbekannte Plattform) | 2/7a |
 | `get_task_status()` | – | `{registered, name, next_run, time, error, path_mismatch, task_command}` – `registered`: `true`/`false`/`null` (= unbekannt, schtasks-Fehler; `error` sagt warum, Config bleibt unverändert); `path_mismatch` (Phase 6): die Aufgabe startet einen anderen App-Ordner, `task_command` = eingetragene Befehlszeile oder `null` | 3/6 |
 | `create_task(time)` | `"HH:MM"` | `{ok:true, registered, name, next_run, time, path_mismatch, task_command}` \| `{ok:false, error}` | 2 |
 | `remove_task()` | – | `{ok:true, registered:false}` \| `{ok:false, error}` | 2 |
@@ -134,8 +134,8 @@ Aufgaben-Felder unverändert (sie spiegeln den Zustand der Windows-Aufgabe).
 | `enqueue(ids)` | `[id]` | `{ok:true, ids:[übernommen], skipped?: n}` | 3 |
 | `set_video_status(id, status)` | `"ignored"` \| `"new"` | `{ok}` (nicht für queued/downloading/done) | 2 |
 | `set_genre(id, genre)` | Genre-Name aus Settings | `{ok}` | 2 |
-| `open_video(id)` | Video-ID (11 Zeichen) | `{ok}` – Standardbrowser | 2 |
-| `add_channel_source(channel_id, channel_name)` | | `{ok:true, source:Source}` \| `{ok:false, error, source?}` (schon vorhanden) | 3 |
+| `open_video(id)` | Video-ID (11 Zeichen) oder `sc:<id>` | `{ok}` – Standardbrowser (SoundCloud: gespeicherte Trackseite `Video.url`, nur `https://soundcloud.com/…`) | 2/7a |
+| `add_channel_source(channel_id, channel_name)` | YouTube-Kanal-ID oder `sc:<nutzer-id>` | `{ok:true, source:Source}` \| `{ok:false, error, source?}` (schon vorhanden / SoundCloud-Nutzer ohne bekannte Profil-URL); `name_auto:false` | 3/7a |
 | `block_channel(channel_id, channel_name)` | | `{ok}` | 2 |
 
 - `search`: leerer Text → `{ok:false, error:"Suchbegriff fehlt"}`. Unbekanntes Genre bzw. Jahr
@@ -163,6 +163,7 @@ Aufgaben-Felder unverändert (sie spiegeln den Zustand der Windows-Aufgabe).
 | Methode | Parameter | Rückgabe | Phase |
 |---|---|---|---|
 | `get_sources()` | – | `[Source]` (aus DB, `new_count` = Eingang je Quelle) | 4 |
+| `suggest_source(url_or_query, type_hint?)` | Text aus dem Feld URL/Suchbegriff; `type_hint` `"search"` erzwingt Suche | `{type, platform, name, url_normalized}` ohne Netzwerk (siehe «SoundCloud (Phase 7a)») | 7a |
 | `save_source(source)` | `Source` ohne `id` = neu, mit `id` = ändern (Zusatzfelder wie `last_checked`/`new_count` werden ignoriert) | `{ok:true, source:Source}` \| `{ok:false, errors:{feld:"Meldung"}}` (`{ok:false, error, errors:{}}` wenn die `id` nicht mehr existiert) | 4 |
 | `delete_source(id)` | | `{ok}` | 4 |
 | `check_sources(ids?)` | `[id]` \| `null` = alle aktiven | `{ok:true, started:n}` (n = Anzahl Quellen; 0 = nichts zu tun) \| `{ok:false, error, started:0}` + Events `source`, `watchlist_done` | 4 |
@@ -354,7 +355,7 @@ Status). Ergänzungen der Python-Seite:
 | `done` | `{id, title}` | Download fertig getaggt und verschoben | 3 |
 | `failed` | `{id, title, error}` | Download fehlgeschlagen (bei 429 zusätzlich Backoff → `status`) | 3 |
 | `queue` | `{}` | Warteschlange geändert (auch Sperre/Freigabe) → UI ruft `get_queue()` | 3 |
-| `source` | `{id, checking, last_checked?, new_count?, error?}` | `checking:true` vor, `checking:false` nach der Prüfung einer Quelle; `new_count` = Eingang dieser Quelle, `error` = deutscher Text | 4 |
+| `source` | `{id, checking, name?, last_checked?, new_count?, error?}` | `checking:true` vor, `checking:false` nach der Prüfung einer Quelle; `new_count` = Eingang dieser Quelle, `error` = deutscher Text; `name` (7a) = aktueller Name (bei `name_auto` evtl. ersetzt). Übersprungene Quellen (Plattform im Backoff, SoundCloud aus) nur `{id, checking:false, error}` | 4/7a |
 | `run` | `Run` (inkl. `duration`) | ein Lauf ist zu Ende (`DB.finish_run`: GUI-Watchlist-Prüfung, Download-Lauf der Warteschlange; Headless-Läufe sind ein anderer Prozess und senden nichts) | 5 |
 | `watchlist_done` | `{checked, found}` | Watchlist-Lauf beendet; `checked` = bearbeitete Quellen (auch fehlerhafte), `found` = neu gespeicherte Videos | 4 |
 
@@ -401,3 +402,60 @@ die In-App-Prüfung der GUI, endet der Lauf mit Exit 4 (Notiz im Log; die GUI-Pr
 Erreicht der Lauf `max_downloads_per_run`, lautet die Notiz «… – Rest wird beim nächsten Lauf geladen».
 Exit-Codes (`app/exitcodes.py`): 0 ok · 1 Fehler (Quelle/Download/PO-Token/unerwartet) · 2 Backoff (beim
 Start aktiv oder im Lauf ausgelöst) · 3 falsche Argumente · 4 anderer Lauf aktiv (Lauf- oder Watchlist-Lock).
+
+## SoundCloud (Phase 7a)
+
+Plattform = Merkmal jedes Videos/Tracks und jeder Quelle: `platform: "youtube" | "soundcloud"`.
+
+**IDs.** YouTube unverändert (11 Zeichen). SoundCloud: `sc:<numerische Track-ID>` überall, wo die UI
+eine `id` schickt oder bekommt (Video, QueueItem, LibraryItem, Events). `channel_id` von SoundCloud:
+`sc:<Nutzer-ID>` (Blacklist und `add_channel_source` funktionieren damit gleich). Im Dateinamen steht
+`[sc-<id>]`.
+
+**Methoden (neu/erweitert)**
+
+- `search(query, {genre?, year?, platform?})`: `platform` Standard `"youtube"`. Antwort zusätzlich
+  `platform`; `get_last_search()` ebenso. Fehler: `{ok:false, error}` bei SoundCloud aus
+  («SoundCloud ist ausgeschaltet (Einstellungen › SoundCloud)»), unbekannter Plattform, SoundCloud-Backoff
+  («Backoff (SoundCloud) aktiv bis … – Suche gesperrt»), Limit «Suchen pro Stunde» (pro Plattform).
+- `suggest_source(url_or_query, type_hint?)` → `{type, platform, name, url_normalized}`; `type` `""` =
+  nicht erkannt (Meldung erst beim Speichern), `name` `""` = kein guter Name aus der URL.
+  | Eingabe | type | name |
+  |---|---|---|
+  | `youtube.com/@Handle` | channel | `Handle` |
+  | `youtube.com/channel/UC…` | channel | `""` |
+  | `youtube.com/c/Name`, `/user/Name` | channel | `Name` |
+  | `youtube.com/playlist?list=…` (auch `watch?…&list=`) | playlist | `""` |
+  | `soundcloud.com/dj-thera` (auch `/tracks`) | channel | `Dj Thera` (nur kleingeschrieben → Titel-Case) |
+  | `soundcloud.com/dj-x/sets/hc-sessions` | playlist | `Dj X – Hc Sessions` |
+  | anderer Text / `type_hint:"search"` | search | der Text |
+- `save_source(source)`: zusätzlich `name_auto` (bool) und bei `type:"search"` `platform`. Bei URLs
+  erkennt das Backend die Plattform. Neue Feldfehler: `url_or_query` «Nicht unterstützte URL – erwartet
+  wird eine YouTube-URL … oder eine SoundCloud-URL …», «Nicht unterstützte SoundCloud-URL …», «Für ein
+  Set den Typ «Playlist» wählen …», «SoundCloud-Playlist-URL erwartet …», «SoundCloud ist ausgeschaltet …»;
+  `platform` «Plattform muss YouTube oder SoundCloud sein.». `newest_last` gilt auch für SoundCloud-Sets.
+- `clear_backoff(platform?)`, `open_video(id)`, `add_channel_source(...)`: siehe Tabellen oben.
+- `get_library(filters?)`: zusätzlicher Filter `platform`.
+
+**Datenformen (neu)**
+
+- `Video`: `platform`, `url` (Seite des Videos/Tracks oder `null`), `preview` (Go+-Vorschau, nie ladbar).
+  Suchtreffer und `get_inbox()` zusätzlich `duplicate_of: {id, platform, title} | null` – vermutlich
+  dieselbe Aufnahme schon von der anderen Plattform geladen oder eingereiht (Status done/queued/
+  downloading; Dauer ±5 s, normalisierter Titel Token-Jaccard ≥ 0.8). Ausgeblendet wird nur mit
+  `filters.hide_cross_platform_duplicates` (`filter_reason` «Vermutlich bereits geladen (YouTube)» bzw.
+  «(SoundCloud)»). `filter_reason` neu: «Nur Vorschau (Go+)».
+- `Source`: `platform`, `name_auto`.
+- `LibraryItem`: `platform`.
+- `get_queue()`: zusätzlich `platform_blocked: {<platform>: {code, reason}}` – Plattformen mit wartenden,
+  aber gesperrten Einträgen, während die andere weiterlädt (Texte bei SoundCloud mit «SoundCloud: »
+  davor). `blocked_code`/`blocked_reason` nur, wenn **alle** wartenden Einträge stehen.
+- `Status.platforms`: `{youtube: P, soundcloud: P}`, `P = {enabled, backoff: {active, until, level,
+  remaining_s, reason}, counters: {downloads_run, downloads_day, searches_hour}, limits: {downloads_run,
+  downloads_day, searches_hour}}`. `Status.backoff`/`Status.counters` bleiben = YouTube.
+- Thumbnails von SoundCloud kommen von `https://i1.sndcdn.com/…` (`*.sndcdn.com`; CSP/`safeThumb`).
+
+**Watchlist.** Die Prüfung einer Plattform im Backoff überspringt deren übrige Quellen (Event `source`
+mit `error`), Quellen der anderen Plattform laufen weiter; `check_sources` wird nur abgelehnt, wenn
+**jede** Plattform mit aktiver Quelle im Backoff ist. Treffer mit `duplicate_of` landen auch bei
+Auto-Download-Quellen im Eingang, nie direkt in der Warteschlange.

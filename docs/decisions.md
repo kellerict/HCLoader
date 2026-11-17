@@ -592,3 +592,134 @@ Kurze Notizen zu Architekturentscheiden (Datum, Entscheid, Grund).
   und Build-Ordner löschen, (a)+(b) dort wiederholen, prüfen dass `pytest` nicht im ZIP steckt, Deno +
   `generate_once.ts --version` mit leerem `DENO_DIR` sowie `potoken.probe('script')`. Erst dann wird
   das Artefakt hochgeladen. Es gibt keinen Release-Upload.
+
+## 2026-11-17 – SoundCloud: IDs (Phase 7a)
+
+- **Entscheid:** DB-Primärschlüssel bleibt eine einzige Textspalte. YouTube unverändert, SoundCloud
+  `sc:<numerische Track-ID>`; zusätzlich `videos.platform` (Migration 5, Bestand = `youtube`).
+  Dateiname/Temp-Datei/Sidecar `sc-<id>`, Archivzeile `soundcloud <id>` (yt-dlp-Format), `channel_id`
+  `sc:<Nutzer-ID>`. Hilfsfunktionen in `app/core/platforms.py` (rein, ohne yt-dlp).
+- **Grund:** Der Doppelpunkt kommt in YouTube-IDs (`[0-9A-Za-z_-]{11}`) nie vor; damit sind die
+  ID-Räume sicher getrennt, ohne zusammengesetzten Schlüssel. Verworfen: `(platform, id)` als PK –
+  hätte `videos`, `source_videos`, Queue, Bridge (jede Methode mit `id`), Events und Sidecars umgebaut.
+  Verworfen: reine numerische SoundCloud-ID – eine Zahl ist zwar kein gültiges 11-Zeichen-YouTube-Muster
+  bei < 11 Stellen, aber genau 11 Ziffern wären eines. Das Präfix macht die Plattform auch ohne DB-Zeile
+  erkennbar (Download, Archiv, Sidecar). Der Sidecar-Name hängt den Hash der **DB-ID** an, damit eine
+  YouTube-ID `sc-12345678` und der SoundCloud-Track `sc:12345678` nie dieselbe Datei teilen. In `.tmp`
+  könnte eine solche YouTube-ID theoretisch mit einer 8-stelligen SoundCloud-ID kollidieren; aktuelle
+  SoundCloud-IDs haben 9–10 Stellen, Downloads laufen sequenziell.
+- Download-URL wird aus der ID neu gebaut: `https://api.soundcloud.com/tracks/<id>` (SoundcloudIE
+  ruft dann direkt `tracks/<id>` auf, kein `resolve`), damit gilt die Einzel-Track-Garantie wie bei
+  YouTube. Die Webseite (`videos.url`, Permalink) wird gespeichert, weil sie sich nicht aus der ID
+  ableiten lässt (`open_video`, COMM-Tag); `videos.channel_url` für «Nutzer zur Watchlist».
+
+## 2026-11-17 – SoundCloud: yt-dlp-Extractor (geprüft gegen yt-dlp 2026.10.26)
+
+Quelle: `yt_dlp/extractor/soundcloud.py`.
+
+- **client_id:** `SoundcloudBaseIE._initialize_pre_login` lädt sie aus dem yt-dlp-Cache
+  (`cache.load('soundcloud','client_id')`, Standard-Cacheordner). Fehlt sie: Startseite
+  `soundcloud.com` + rückwärts die `<script>`-Assets, bis eine `client_id` gefunden ist (typisch 2–4,
+  im schlechtesten Fall ~10 Requests), dann gecacht. Bei 401/403 einer API-Antwort wird sie einmal neu
+  geholt (gleiche Kosten) und der Aufruf wiederholt. Ein Datadome-403 kostet damit zusätzlich diese Requests.
+- **Suche `scsearchN:`:** `api-v2…/search/tracks?limit=N` (max. 200 pro Seite, Standard 50) → **1
+  API-Request** für N ≤ 200. Flache Einträge kommen aus `_extract_info_dict(item, extract_flat=True)`:
+  Titel, Dauer (ms → s, float), `timestamp` = `created_at` (exakt, nicht ungefähr), Uploader (Name,
+  ID, URL), `playback_count`, Beschreibung, Genre/Tags, `webpage_url` (Permalink). **Aber:**
+  `_extract_thumbnails` macht pro Eintrag einen HEAD-Request auf das «original»-Artwork
+  (`i1.sndcdn.com`), jeweils nach `sleep_interval_requests` → 30 Treffer = 30 zusätzliche Requests
+  und bei 3 s Abstand ~90 s.
+- **Nutzer** (`soundcloud.com/<user>`): `resolve` + `stream/users/<id>` (= «All», **inkl. Reposts
+  fremder Tracks**); `/tracks`: `users/<id>/tracks`, Seiten à 200 (`linked_partitioning`), neueste
+  zuerst (API-Reihenfolge nach `created_at`; nur mit echtem SoundCloud bestätigbar). Kosten: **2
+  Requests** pro Prüfung (bis 200 Einträge). yt-dlp reduziert die Einträge aber auf
+  `url_result(permalink, id, title)`: **keine Dauer, kein Datum, kein Uploader**, obwohl die API sie
+  liefert. Die Seitenabfrage nutzt `impersonate` (Chrome ≥ 116 gegen Datadome); ohne `curl_cffi`
+  (im venv nicht installiert) fällt yt-dlp mit Warnung auf normale Requests zurück.
+- **Sets** (`/<user>/sets/<set>`): ein `resolve`; nur die ersten ~5 Tracks sind vollständig, der Rest
+  sind Stubs (nur `id`). yt-dlp holt die vollen Daten nur bei privaten Sets (Token) über
+  `tracks?ids=…`. Einträge sind `url_transparent` ohne Metadaten.
+- **Formate:** `media.transcodings` (progressive/HLS × MP3 128 / Opus 64 / AAC 160, Go+ «hq» AAC 256).
+  Für **jede** angefragte Transcodierung ein API-Request (`_call_api(format_url)`); Auswahl über
+  `extractor_args soundcloud:formats` (Standard 6 Muster). Dazu optional `tracks/<id>/download`
+  (Original, bei `downloadable`), 1 HEAD für das Original-Artwork. Ein Download kostet so 1 (Info) +
+  1 je Format + 1 HEAD (+ Medien-Segmente auf dem CDN).
+- **Go+-Vorschauen:** Feld `policy: "SNIP"` im Track-Objekt; Transcodierungen haben `snipped: true`
+  bzw. URL `/preview/` → yt-dlp hängt `_preview` an `format_id` und setzt `preference -10`. In flachen
+  Einträgen fehlt beides. `policy: "BLOCK"` → Geo-Sperre.
+- **Rate-Limit:** yt-dlp nennt «~600 requests per 10 minutes»; 429 erscheint als `HTTP Error 429`
+  (wird von `is_rate_limit_error` erkannt). Unsere Optionen setzen `extractor_retries: 0`, also keine
+  RetryManager-Wiederholung.
+
+**Entscheide daraus:**
+
+- `ytclient._sc_flat_extractor_classes()`: Unterklassen von `SoundcloudSearchIE`, `SoundcloudUserIE`,
+  `SoundcloudSetIE` mit gleichem `ie_key()` (Klassenname), nur für flache Abfragen pro
+  YoutubeDL-Instanz registriert (`add_info_extractor` ersetzt den Eintrag an derselben Stelle).
+  (1) kein HEAD für das Artwork (`t500x500` direkt), (2) `_call_api` merkt sich die vollen
+  Track-Objekte, `url_result` fügt deren Metadaten in die Einträge ein (kein Zusatz-Request), (3) bei
+  Sets werden nur die Stubs **im benötigten Fenster** (erste bzw. letzte N, `newest_last`) in
+  50er-Blöcken nachgeladen, (4) `sc_policy` in jedem flachen Eintrag. Kosten danach: Suche **1**,
+  Nutzer **2**, Set **1 + ⌈Stubs/50⌉**. Ändert yt-dlp die internen Namen, greift die Erweiterung nicht
+  mehr (Original-Verhalten, Dauer fehlt → Filter «Dauer unbekannt»); ein Test mit echtem yt-dlp und
+  gemockter HTTP-Schicht (`tests/test_soundcloud.py`) fällt dann auf.
+- Watchlist liest bei einem Nutzer immer `/tracks` (`normalize_source_url`), nicht den Stream mit
+  Reposts. `/<user>/likes`, `/reposts`, `/albums` usw. werden abgelehnt.
+- `soundcloud:formats = http_aac, hls_aac, http_mp3, hls_mp3` (ohne Opus 64: nie besser, kostet je
+  einen Request). Format `bestaudio` ohne WAV/AIFF/FLAC (Original-Downloads sind riesig und nicht
+  taggbar). Mit `download.keep_original_soundcloud` (Standard) keine MP3-Umwandlung (AAC 160 → `.m4a`).
+- Download: Liefert die Extraktion nur `…_preview`-Formate, bricht `YtClient` **vor** der
+  Medienübertragung ab («Nur Vorschau (Go+) – …»), markiert `videos.preview`. Filter: `preview` oder
+  SoundCloud-Dauer 29–31 s → «Nur Vorschau (Go+)».
+- Für SoundCloud gelten weder PO-Token, Deno (`js_runtimes`), `youtubetab:approximate_date` noch
+  `cookiesfrombrowser` (die Cookie-Notlösung ist für YouTube gedacht).
+
+## 2026-11-17 – Throttle, Warteschlange und Watchlist pro Plattform (Phase 7a)
+
+- **Throttle:** Das App-Objekt `Throttle` ist der YouTube-Throttle (State-Schlüssel und Lock-Namen
+  unverändert, keine Migration). `throttle.platform("soundcloud")` liefert einen Geschwister-Throttle
+  mit eigenen Grenzen (`settings.soundcloud`), State-Präfix `soundcloud.` (Backoff, Stufe, Suchzeiten,
+  Tages-/Laufzähler, letzter Request, Ende des letzten Downloads), eigenem Prozess-Lock
+  `throttle-soundcloud` und Metadaten-Lock (`metadata-soundcloud`, Datei-Lock + Thread-Lock). Eine
+  SoundCloud-Suche darf also parallel zur YouTube-Extraktion laufen – es sind verschiedene Server,
+  pro Plattform bleibt alles seriell. `start_run()` setzt die Laufzähler aller Plattformen zurück
+  (ein Lauf umfasst beide), `finish_run(success, platforms=…)` setzt die Backoff-Stufe nur der
+  Plattformen zurück, die im Lauf erfolgreich luden. Der Lauf-Lock (ein Download-Lauf) bleibt global:
+  weiterhin genau ein aktiver Download.
+- **Warteschlange:** Eine Sperre (Backoff, Tageslimit, Lauflimit) gilt pro Plattform. Der Lauf nimmt
+  den ersten wartenden Eintrag einer **freien** Plattform (`next_queued(exclude_platforms=…)`); die
+  Reihenfolge innerhalb einer Plattform bleibt. `blocked_code` nur, wenn alle wartenden Plattformen
+  gesperrt sind, sonst `platform_blocked`. Lokale Sperren (PO-Token-Server im HTTP-Modus, Zielordner)
+  gelten weiterhin für die ganze Warteschlange (siehe offene Punkte).
+- **Watchlist:** Ein 429/Backoff bei einer Quelle überspringt die restlichen Quellen **dieser**
+  Plattform (Event `source` mit Fehler, nicht als Fehler gezählt), die andere Plattform wird weiter
+  geprüft. `result.backoff` bleibt `true` → `watchlist_last_run` wird nicht gesetzt (nach dem Backoff
+  erneut prüfen, wie bisher). Abgelehnt/verschoben (`check_sources`, In-App-Intervall, Headless-Start)
+  wird nur, wenn **jede** Plattform mit aktiver Quelle im Backoff ist (`watchlist.blocked_until`).
+  SoundCloud-Quellen werden bei `soundcloud.enabled = false` übersprungen.
+- **Status:** `get_status().platforms` (pro Plattform Backoff, Zähler, Grenzen); `backoff`/`counters`
+  oben bleiben YouTube (UI kompatibel). `clear_backoff(platform?)`, ohne Argument alle.
+
+## 2026-11-17 – Duplikate über Plattformen (Phase 7a)
+
+- Gleiche Dauer ±5 s **und** normalisierter Titel (Kleinbuchstaben, Akzente, Satzzeichen weg,
+  Füllwörter wie «official/audio/hq/ft» weg) mit Token-Jaccard ≥ 0.8 gegen Zeilen der **anderen**
+  Plattform mit Status done/queued/downloading (`app/core/duplicates.py`, Index
+  `videos(platform, duration)`). Ergebnis `duplicate_of {id, platform, title}` bei Suchtreffern und im
+  Eingang. Nicht automatisch ausgeblendet; `filters.hide_cross_platform_duplicates` setzt den
+  Filtergrund «Vermutlich bereits geladen (…)». Watchlist: nie automatisch in die Warteschlange (auch bei
+  Auto-Download → Eingang); mit der Option gar nicht in den Eingang.
+- **Grund:** Mixes werden oft auf beiden Plattformen hochgeladen; Titel unterscheiden sich in
+  Zusätzen («(Official Audio)», «[HQ]»). Eine reine Titelgleichheit wäre zu streng, die Dauer allein
+  zu lose. Bewusst nur «vermutlich»: Der User entscheidet.
+
+## 2026-11-17 – Quellen-Namen vorschlagen (`name_auto`)
+
+- `watchlist.suggest_source(url_or_query, type_hint)` (rein, ohne Netzwerk) und Bridge
+  `suggest_source`. `sources.name_auto` (Migration 5). Die Prüfung ersetzt einen automatischen Namen
+  durch den Namen aus der flachen Liste (`YtClient.list_source` gibt eine `SourceListing` mit
+  `source_name` zurück): YouTube-Kanal `channel`/`uploader` (der `title` ist «<Kanal> - Videos»),
+  Playlist `title`, SoundCloud-Nutzer `title` ohne « (Tracks)», Set «<uploader> – <title>». Kein
+  Zusatz-Request; Suchquellen behalten ihre Query. `name_auto` bleibt `true`, bis der User den Namen
+  ändert (die UI schickt dann `false`). `add_channel_source` aus der Suche setzt den bekannten
+  Kanalnamen mit `name_auto=false`.
