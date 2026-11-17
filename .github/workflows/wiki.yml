@@ -1,0 +1,40 @@
+name: Publish wiki
+# Mirrors docs/wiki/*.md (except README.md) into the GitHub wiki of this repository.
+# The wiki must have been initialised once in the web UI (create the Home page).
+on:
+  push:
+    branches: [main, "claude/**"]
+    paths: ["docs/wiki/**", ".github/workflows/wiki.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: wiki
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Push docs/wiki to the wiki repository
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          git clone --depth 1 "https://x-access-token:${TOKEN}@github.com/${REPO}.wiki.git" wiki
+          find wiki -maxdepth 1 -name '*.md' -delete
+          for f in docs/wiki/*.md; do
+            [ "$(basename "$f")" = "README.md" ] || cp "$f" wiki/
+          done
+          cd wiki
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Wiki already up to date."
+          else
+            git commit -m "Sync wiki from ${GITHUB_SHA::7}"
+            git push origin HEAD
+          fi

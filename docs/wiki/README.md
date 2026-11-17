@@ -1,5 +1,10 @@
 # Wiki sources
 
+The pages in this folder are published to the GitHub wiki **automatically** by the workflow
+`.github/workflows/wiki.yml` on every push that changes `docs/wiki/` (and via *Run workflow*).
+Edit the pages here, not in the wiki web UI – manual wiki edits are overwritten on the next sync.
+
+
 These Markdown files are the source of the GitHub Wiki of HCLoader. They are kept in the main
 repository so that they are reviewed and versioned together with the code. File names follow the
 GitHub wiki convention (`Home.md`, `_Sidebar.md`, `_Footer.md`, `Page-Name.md`), and pages link to
