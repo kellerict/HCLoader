@@ -38,6 +38,7 @@ from mutagen.id3 import (
 )
 
 from .binaries import _NO_WINDOW, ffmpeg_path
+from .i18n import tr
 from .paths import normalize_date
 
 log = logging.getLogger(__name__)
@@ -157,9 +158,7 @@ def cue_chapters(chapters: Iterable[Chapter]) -> list[Chapter]:
     if out and out[0].start > 0:
         out[0] = Chapter(0.0, out[0].title, out[0].end)  # intro before the first stamp
     if len(out) > MAX_CUE_TRACKS:
-        log.warning(
-            "CUE: %d Kapitel, nur die ersten %d werden geschrieben", len(out), MAX_CUE_TRACKS
-        )
+        log.warning(tr("tag.cue_truncated", n=len(out), max=MAX_CUE_TRACKS))
         out = out[:MAX_CUE_TRACKS]
     return out
 
@@ -187,7 +186,7 @@ def write_cue(
     audio_path = Path(audio_path)
     chapters = cue_chapters(chapters)
     if not chapters:
-        raise TaggingError("Keine Kapitel für die CUE-Datei")
+        raise TaggingError(tr("tag.no_chapters"))
     ftype = "MP3" if audio_path.suffix.lower() == ".mp3" else "WAVE"
     lines: list[str] = []
     if performer:
@@ -278,10 +277,10 @@ def make_square_cover(
                 check=False,
             )
         except (OSError, subprocess.SubprocessError) as exc:
-            raise TaggingError(f"Cover konnte nicht erzeugt werden: {exc}") from exc
+            raise TaggingError(tr("tag.cover_failed", error=exc)) from exc
         if proc.returncode != 0 or not out.exists():
             err = (proc.stderr or b"").decode("utf-8", "replace").strip()[:300]
-            raise TaggingError(f"Cover konnte nicht erzeugt werden: {err}")
+            raise TaggingError(tr("tag.cover_failed", error=err))
         return out.read_bytes()
 
 
@@ -335,7 +334,7 @@ def write_tags(
     if ext == ".opus":
         _write_opus(Path(path), meta, cover_jpeg)
         return True
-    log.info("Tagging für %s übersprungen (nicht unterstützt)", ext or "?")
+    log.info(tr("tag.skipped", path=ext or "?"))
     return False
 
 

@@ -2,6 +2,8 @@
 # Alle Werte sind optional; fehlende Werte nehmen den Standard. Kommentare bleiben erhalten.
 # --- Allgemein ---
 general:
+  # Sprache der Oberfläche: auto (Windows-Sprache), en, de, zh-CN, hi, es, ar, fr, bn, pt, ru, id
+  language: en
   # Startansicht: discover, inbox, watchlist, downloads, library, log
   start_view: discover
   # Log-Stufe: DEBUG, INFO, WARNING, ERROR

@@ -30,6 +30,7 @@ from .config import UNSORTED, Settings
 from .db import Database, now_iso
 from .discover import format_until
 from .genre import detect_genre
+from .i18n import tr
 from .redact import redact
 from .throttle import BackoffActive, LimitReached, WaitCancelled
 
@@ -93,10 +94,7 @@ _SC_RESERVED = {
 _SC_NAME_RE = r"[A-Za-z0-9_-]+"
 _SC_USER_PATH_RE = re.compile(rf"^/({_SC_NAME_RE})(?:/(tracks))?/?$")
 _SC_SET_PATH_RE = re.compile(rf"^/({_SC_NAME_RE})/sets/([A-Za-z0-9_:-]+)/?$")
-UNSUPPORTED_URL = (
-    "Nicht unterstützte URL – erwartet wird eine YouTube-URL (Kanal, Playlist) oder eine "
-    "SoundCloud-URL (soundcloud.com/<nutzer>, …/<nutzer>/tracks, …/<nutzer>/sets/<set>)."
-)
+UNSUPPORTED_URL = "source.unsupported_url"  # message key (app/locales)
 
 SourceEvent = Callable[[dict[str, Any]], None]
 Enqueue = Callable[[list[str]], list[str]]
@@ -122,9 +120,9 @@ def _youtube_url(text: str) -> tuple[Any, str | None]:
     try:
         parsed = urlparse(text)
     except ValueError:
-        return None, "Ungültige URL."
+        return None, tr("source.invalid_url")
     if parsed.scheme not in ("http", "https") or (parsed.hostname or "") not in _YT_HOSTS:
-        return None, "YouTube-URL erwartet (https://www.youtube.com/…)."
+        return None, tr("source.youtube_url_expected")
     return parsed, None
 
 
@@ -139,12 +137,12 @@ def validate_source(
     errors: dict[str, str] = {}
     stype = str(data.get("type") or "")
     if stype not in SOURCE_TYPES:
-        errors["type"] = "Typ muss Kanal, Playlist oder Suche sein."
+        errors["type"] = tr("source.type_invalid")
     name = str(data.get("name") or "").strip()
     if not name:
-        errors["name"] = "Name fehlt."
+        errors["name"] = tr("source.name_missing")
     elif len(name) > MAX_NAME_LENGTH:
-        errors["name"] = f"Name ist zu lang (max. {MAX_NAME_LENGTH} Zeichen)."
+        errors["name"] = tr("source.name_too_long", max=MAX_NAME_LENGTH)
 
     target = str(data.get("url_or_query") or "").strip()
     platform = platforms.YOUTUBE
@@ -152,16 +150,16 @@ def validate_source(
         target = re.sub(r"\s+", " ", target)
         platform = str(data.get("platform") or platforms.YOUTUBE)
         if not platforms.valid(platform):
-            errors["platform"] = "Plattform muss YouTube oder SoundCloud sein."
+            errors["platform"] = tr("source.platform_invalid")
         if not target:
-            errors["url_or_query"] = "Suchbegriff fehlt."
+            errors["url_or_query"] = tr("source.query_missing")
         elif len(target) > MAX_QUERY_LENGTH:
-            errors["url_or_query"] = f"Suchbegriff ist zu lang (max. {MAX_QUERY_LENGTH} Zeichen)."
+            errors["url_or_query"] = tr("source.query_too_long", max=MAX_QUERY_LENGTH)
     elif stype in ("channel", "playlist"):
         if not target:
-            errors["url_or_query"] = "URL fehlt."
+            errors["url_or_query"] = tr("source.url_missing")
         elif len(target) > MAX_URL_LENGTH:
-            errors["url_or_query"] = "URL ist zu lang."
+            errors["url_or_query"] = tr("source.url_too_long")
         elif platforms.url_platform(target) == platforms.SOUNDCLOUD:
             platform = platforms.SOUNDCLOUD
             err = _soundcloud_error(target, stype)
@@ -170,20 +168,17 @@ def validate_source(
         elif platforms.url_platform(target) is None and target.lower().startswith(
             ("http://", "https://")
         ):
-            errors["url_or_query"] = UNSUPPORTED_URL
+            errors["url_or_query"] = tr(UNSUPPORTED_URL)
         else:
             parsed, err = _youtube_url(target)
             if err:
                 errors["url_or_query"] = err
             elif stype == "channel" and not _CHANNEL_PATH_RE.match(parsed.path):
-                errors["url_or_query"] = (
-                    "Kanal-URL erwartet (…/@name, …/channel/ID, …/c/name oder …/user/name; "
-                    "optional /videos oder /streams)."
-                )
+                errors["url_or_query"] = tr("source.channel_url_expected")
             elif stype == "playlist" and not parse_qs(parsed.query).get("list"):
-                errors["url_or_query"] = "Playlist-URL erwartet (…/playlist?list=ID)."
+                errors["url_or_query"] = tr("source.playlist_url_expected")
     elif not target:
-        errors["url_or_query"] = "URL oder Suchbegriff fehlt."
+        errors["url_or_query"] = tr("source.url_or_query_missing")
 
     # n7: empty = "use the default" (schedule.entries_per_source at check time), stored as NULL
     raw_max = data.get("max_entries")
@@ -197,18 +192,16 @@ def validate_source(
             if not 1 <= max_entries <= upper:
                 raise ValueError
         except (TypeError, ValueError):
-            errors["max_entries"] = f"Wert muss eine ganze Zahl zwischen 1 und {upper} sein."
+            errors["max_entries"] = tr("source.max_entries", max=upper)
 
     if platform == platforms.SOUNDCLOUD and not settings.soundcloud.enabled:
-        errors.setdefault(
-            "url_or_query", "SoundCloud ist ausgeschaltet (Einstellungen › SoundCloud)."
-        )
+        errors.setdefault("url_or_query", tr("sc.off_settings_dot"))
 
     genre = data.get("default_genre") or None
     if genre == UNSORTED:
         genre = None
     if genre is not None and genre not in {g.name for g in settings.genres.items}:
-        errors["default_genre"] = f"Unbekanntes Genre: {genre}"
+        errors["default_genre"] = tr("genre.unknown", genre=genre)
 
     if not errors:
         own = data.get("id")
@@ -219,7 +212,7 @@ def validate_source(
                 and (other.get("platform") or platforms.YOUTUBE) == platform
                 and _same_target(str(other["url_or_query"]), target, platform)
             ):
-                errors["url_or_query"] = f"Quelle existiert bereits ({other['name']})."
+                errors["url_or_query"] = tr("source.exists", name=other["name"])
                 break
     if errors:
         return {}, errors
@@ -242,19 +235,16 @@ def _soundcloud_error(target: str, stype: str) -> str | None:
     try:
         parsed = urlparse(target)
     except ValueError:
-        return "Ungültige URL."
+        return tr("source.invalid_url")
     if parsed.scheme not in ("http", "https"):
-        return "SoundCloud-URL erwartet (https://soundcloud.com/…)."
+        return tr("source.sc_url_expected")
     kind = soundcloud_parts(parsed)
     if kind is None:
-        return (
-            "Nicht unterstützte SoundCloud-URL. Erlaubt: soundcloud.com/<nutzer>, "
-            "…/<nutzer>/tracks oder …/<nutzer>/sets/<set> (einzelne Tracks sind keine Quelle)."
-        )
+        return tr("source.sc_url_unsupported")
     if stype == "channel" and kind[0] != "user":
-        return "Für ein Set den Typ «Playlist» wählen (…/<nutzer>/sets/<set>)."
+        return tr("source.sc_set_type")
     if stype == "playlist" and kind[0] != "set":
-        return "SoundCloud-Playlist-URL erwartet (…/<nutzer>/sets/<set>)."
+        return tr("source.sc_playlist_expected")
     return None
 
 
@@ -510,9 +500,11 @@ def check_source(
             if dup:
                 res.duplicates += 1
                 log.info(
-                    "Vermutlich bereits geladen (%s): %s",
-                    platforms.label(dup["platform"]),
-                    entry.get("title"),
+                    tr(
+                        "watchlist.duplicate",
+                        platform=platforms.label(dup["platform"]),
+                        title=entry.get("title"),
+                    ),
                 )
             if not ok:
                 res.filtered += 1
@@ -546,13 +538,15 @@ def check_source(
         res.inbox += len([v for v in to_queue if v not in accepted])  # stay in the inbox
     db.mark_source_checked(sid)
     log.info(
-        "Quelle «%s»: %d neu (%d im Eingang, %d in der Warteschlange, %d gefiltert)%s",
-        source.get("name"),
-        res.new,
-        res.inbox,
-        res.queued,
-        res.filtered,
-        f" · {res.adopted} schon bekannt übernommen" if res.adopted else "",
+        tr(
+            "watchlist.source_result",
+            name=source.get("name"),
+            n=res.new,
+            inbox=res.inbox,
+            queued=res.queued,
+            filtered=res.filtered,
+            extra=tr("watchlist.known_taken", n=res.adopted) if res.adopted else "",
+        ),
     )
     return res
 
@@ -568,7 +562,7 @@ def _maybe_rename(source: Mapping[str, Any], entries: Any, db: Database, res: So
     if name and name != source.get("name"):
         db.update_source(int(source["id"]), name=name)
         res.name = name
-        log.info("Quelle «%s» heisst jetzt «%s»", source.get("name"), name)
+        log.info(tr("watchlist.renamed", old=source.get("name"), new=name))
 
 
 def active_platforms(db: Database, settings: Settings | None = None) -> set[str]:
@@ -607,7 +601,7 @@ def _backoff_note(throttle: Any, exc: BaseException | None = None) -> str:
     until = throttle.backoff_until() if throttle is not None else None
     if until is None and isinstance(exc, BackoffActive):
         until = exc.until
-    tail = f" bis {format_until(until)}" if until else ""
+    tail = tr("watchlist.until", until=format_until(until)) if until else ""
     reason = getattr(exc, "reason", "") if exc is not None else ""
     return f"Backoff{tail}" + (f" ({reason[:80]})" if reason else "")
 
@@ -641,14 +635,14 @@ def check_all(
         result.run_id = db.start_run(run_kind)
     if ids is None:  # m2: other processes see that a full check is running
         db.set_state(K_RUNNING_SINCE, now_iso())
-    log.info("Watchlist-Prüfung gestartet · %d Quelle(n)", len(sources))
+    log.info(tr("watchlist.started", n=len(sources)))
 
     def emit(payload: dict[str, Any]) -> None:
         if on_source:
             try:
                 on_source(payload)
             except Exception:
-                log.debug("source-Event fehlgeschlagen", exc_info=True)
+                log.debug("source event failed", exc_info=True)
 
     blocked: set[str] = set()  # 7a: platforms in backoff - their sources are skipped
     try:
@@ -660,8 +654,8 @@ def check_all(
             sid = source["id"]
             platform = source.get("platform") or platforms.YOUTUBE
             if platform == platforms.SOUNDCLOUD and not settings.soundcloud.enabled:
-                log.info("Quelle «%s» übersprungen: SoundCloud ist ausgeschaltet", source["name"])
-                emit({"id": sid, "checking": False, "error": "SoundCloud ist ausgeschaltet"})
+                log.info(tr("watchlist.skipped_sc_off", name=source["name"]))
+                emit({"id": sid, "checking": False, "error": tr("sc.off")})
                 continue
             pth = _platform_throttle(throttle, platform)
             if platform in blocked:  # the first source of this platform hit the backoff
@@ -671,7 +665,7 @@ def check_all(
                         "id": sid,
                         "checking": False,
                         "name": source.get("name"),
-                        "error": f"{label} blockiert gerade (Backoff) – nicht geprüft",
+                        "error": tr("watchlist.blocked_backoff", platform=label),
                     }
                 )
                 continue
@@ -690,21 +684,23 @@ def check_all(
                 if _is_rate_limited(exc):
                     check.backoff = True
                     label = platforms.label(platform)
-                    check.error = f"{label} blockiert gerade (429/Bot-Prüfung)"
+                    check.error = tr("watchlist.blocked_429", platform=label)
                     result.backoff = True
                     result.backoff_platforms.add(platform)
                     blocked.add(platform)
                     note = _backoff_note(pth, exc)
                     result.note = result.note or note
-                    log.error("Watchlist: %s-Quellen werden übersprungen: %s", label, note)
+                    log.error(tr("watchlist.platform_skipped", platform=label, reason=note))
                 else:
                     text = redact(exc) or exc.__class__.__name__
                     check.error = (
-                        "Limit «Suchen pro Stunde» erreicht"
+                        tr("watchlist.limit_hour")
                         if isinstance(exc, LimitReached)
                         else str(text)[:300]
                     )
-                    log.error("Quelle «%s»: %s", source.get("name"), check.error)
+                    log.error(
+                        tr("watchlist.source_error", name=source.get("name"), error=check.error)
+                    )
                     log.debug("Details", exc_info=True)
                 result.errors += 1
                 result.sources.append(check)
@@ -741,17 +737,19 @@ def check_all(
         if ids is None:
             _finish_full_run(db, result)
         if result.errors and not result.note and not result.backoff:
-            result.note = f"{result.errors} Quelle(n) mit Fehler"
+            result.note = tr("watchlist.sources_failed", n=result.errors)
         if result.run_id is not None:
             db.finish_run(
                 result.run_id, found=result.found, errors=result.errors, note=result.note or None
             )
         log.info(
-            "Watchlist-Prüfung beendet: %d geprüft, %d neu, %d Fehler%s",
-            result.checked,
-            result.found,
-            result.errors,
-            f" · {result.note}" if result.note else "",
+            tr(
+                "watchlist.finished",
+                checked=result.checked,
+                n=result.found,
+                errors=result.errors,
+                extra=f" · {result.note}" if result.note else "",
+            ),
         )
     return result
 
@@ -772,11 +770,9 @@ def _finish_full_run(db: Database, result: WatchlistResult) -> None:
             db.set_state(K_RETRY_COUNT, failures)
             retry = datetime.now(UTC) + retry_delay(failures)
             db.set_state(K_RETRY_AT, retry.isoformat(timespec="seconds"))
-            log.warning(
-                "Keine Quelle erfolgreich geprüft – neuer Versuch um %s", format_until(retry)
-            )
+            log.warning(tr("watchlist.retry_at", time=format_until(retry)))
     except Exception:
-        log.debug("Watchlist-Status nicht gespeichert", exc_info=True)
+        log.debug("Watchlist state not saved", exc_info=True)
 
 
 def close_interrupted(db: Database, note: str) -> None:
@@ -790,7 +786,7 @@ def close_interrupted(db: Database, note: str) -> None:
         )
         db.delete_state(K_RUNNING_SINCE)
     except Exception:
-        log.debug("Watchlist-Lauf nicht abgeschlossen", exc_info=True)
+        log.debug("Watchlist run not closed", exc_info=True)
 
 
 def _state_time(db: Database, key: str) -> datetime | None:

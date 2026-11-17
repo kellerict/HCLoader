@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from .i18n import tr
 from .platforms import platform_of
 
 STATUSES = ("new", "inbox", "queued", "downloading", "done", "ignored", "failed")
@@ -201,24 +202,13 @@ class SchemaTooNewError(RuntimeError):
     def __init__(self, found: int, supported: int) -> None:
         self.found = found
         self.supported = supported
-        super().__init__(
-            f"Datenbank-Schema v{found} ist neuer als unterstützt (v{supported}); "
-            "bitte HCLoader aktualisieren"
-        )
+        super().__init__(tr("db.schema_too_new", found=found, known=supported))
 
     def user_message(self, backups: Path | str | None = None) -> str:
         """Clear German text for the start dialog (instead of a traceback)."""
-        text = (
-            f"Die Datenbank stammt von einer neueren HCLoader-Version (Schema v{self.found}); "
-            f"diese Version kennt nur v{self.supported}.\n\n"
-            "Bitte HCLoader auf die neueste Version aktualisieren (Portable-ZIP neu "
-            "herunterladen bzw. «git pull» und setup.ps1). Die Daten bleiben unverändert."
-        )
+        text = tr("db.schema_too_new_user", found=self.found, known=self.supported)
         if backups:
-            text += (
-                "\n\nWer bewusst zur älteren Version zurück will: HCLoader schliessen und eine "
-                f"Sicherung aus {backups} (hcloader-premigrate-…) als hcloader.db zurückkopieren."
-            )
+            text += tr("db.schema_downgrade_hint", folder=backups)
         return text
 
 
@@ -248,9 +238,7 @@ def migrate(
             before(version, len(steps))
         except Exception as exc:
             raise MigrationBackupError(
-                f"Sicherung vor der Datenbank-Migration v{version} → v{len(steps)} "
-                f"fehlgeschlagen ({exc}). Die Migration wurde nicht gestartet, die Daten sind "
-                "unverändert."
+                tr("db.migration_backup_failed", old=version, new=len(steps), error=exc)
             ) from exc
     for target in range(version + 1, len(steps) + 1):
         # Migration steps must use conn.execute() only (never executescript(), which commits).
@@ -390,7 +378,7 @@ class Database:
     @staticmethod
     def _check_status(status: str) -> None:
         if status not in STATUSES:
-            raise ValueError(f"Ungültiger Status: {status}")
+            raise ValueError(f"Invalid status: {status}")
 
     def get_video(self, video_id: str) -> dict[str, Any] | None:
         return self.query_one("SELECT * FROM videos WHERE id=?", (video_id,))
@@ -592,7 +580,7 @@ class Database:
             "channel": "channel_name COLLATE NOCASE",
         }
         if order_by not in orders:
-            raise ValueError(f"Ungültige Sortierung: {order_by}")
+            raise ValueError(f"Invalid sort: {order_by}")
         sql = f"SELECT * FROM videos {where} ORDER BY {orders[order_by]} "
         sql += "DESC" if descending else "ASC"
         sql += ", id"
@@ -658,7 +646,7 @@ class Database:
         name_auto: bool = False,
     ) -> int:
         if type not in SOURCE_TYPES:
-            raise ValueError(f"Ungültiger Quellentyp: {type}")
+            raise ValueError(f"Invalid source type: {type}")
         cur = self.execute(
             "INSERT INTO sources(type,name,url_or_query,default_genre,enabled,auto_download,"
             "max_entries,newest_last,platform,name_auto) VALUES (?,?,?,?,?,?,?,?,?,?)",
@@ -689,7 +677,7 @@ class Database:
     def update_source(self, source_id: int, **fields: Any) -> None:
         bad = set(fields) - set(_SOURCE_FIELDS)
         if bad:
-            raise ValueError(f"Unbekannte Felder: {', '.join(sorted(bad))}")
+            raise ValueError(f"Unknown fields: {', '.join(sorted(bad))}")
         if not fields:
             return
         for k in ("enabled", "auto_download", "newest_last", "name_auto"):

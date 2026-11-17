@@ -26,6 +26,7 @@ from .core import (
     binaries,
     config,
     discover,
+    i18n,
     library,
     locks,
     logview,
@@ -40,6 +41,7 @@ from .core import (
 from .core import status as status_mod
 from .core.config import Settings
 from .core.db import Database
+from .core.i18n import tr
 from .core.logging_setup import setup_logging
 from .core.platforms import file_id
 from .core.redact import redact
@@ -72,19 +74,16 @@ QUEUE_STOP_TIMEOUT_S = 60.0
 WATCHLIST_STOP_TIMEOUT_S = 10.0  # n5: a cancelled check ends after the current request
 # m2: at the first queue start in HTTP mode, wait this long for the PO-token watchdog
 POT_START_WAIT_S = 20.0
+# message keys (app/locales), translated when used
 _JOB_LABELS = {
-    "update": "Update",
-    "update_check": "Update-Prüfung",
-    "backup": "Sicherung",
-    "po_test": "PO-Token-Test",
-    "task_check": "Aufgabenprüfung",
+    "update": "job.update",
+    "update_check": "job.update_check",
+    "backup": "job.backup",
+    "po_test": "job.po_test",
+    "task_check": "job.task_check",
 }
-_TASK_MOVED = (
-    "HCLoader wurde verschoben – die geplante Aufgabe startet noch den alten Ordner. "
-    "Einstellungen › Zeitplan › «Aufgabe neu anlegen»."
-)
-_SC_OFF = "SoundCloud ist ausgeschaltet (Einstellungen › SoundCloud)"
-_UPDATE_BUSY = "Wartung läuft gerade (Update) – bitte später erneut"
+_TASK_MOVED = "api.task_moved"
+_UPDATE_BUSY = "api.update_busy"
 # self-update (docs/decisions.md "Selbst-Update"): a manual check waits at most this long
 APP_UPDATE_CHECK_WAIT_S = 30.0
 APP_UPDATE_CLOSE_DELAY_S = 0.3  # let apply_update_now() answer before the window closes
@@ -128,6 +127,7 @@ class Api:
     ) -> None:
         self._config_file = config_file or config.config_path()
         settings, warnings = config.load_with_warnings(self._config_file)
+        i18n.set_language(settings.general.language)
         for w in warnings:
             log.warning(w)
         self._settings: Settings = settings
@@ -233,7 +233,7 @@ class Api:
             self._update_result = self._updater.take_result()  # outcome of apply_update.ps1
             self._updater.restore()  # an update staged in an earlier session is ready again
         except Exception:
-            log.exception("App-Update-Zustand nicht lesbar")
+            log.exception("App update state not readable")
 
     @_internal
     def shutdown(self, queue_timeout: float = QUEUE_STOP_TIMEOUT_S) -> bool:
@@ -249,7 +249,7 @@ class Api:
         self._wl_cancel.set()  # n5: reaches the throttle/metadata-lock waits of the check
         self._wl_worker.stop(WATCHLIST_STOP_TIMEOUT_S)
         if self._wl_worker.alive():  # stuck in a request: close its run entry now
-            watchlist.close_interrupted(self._db, "Abgebrochen (App beendet)")
+            watchlist.close_interrupted(self._db, tr("run.cancelled_exit"))
         self._updater.stop()  # a running app-update download is aborted and discarded
         self._update_worker.stop()
         ended = self._queue.stop(queue_timeout)
@@ -258,10 +258,7 @@ class Api:
         self._worker.stop()
         self._bus.close()
         if not ended:
-            log.warning(
-                "Download wird beim Beenden noch abgeschlossen (Konvertierung) – "
-                "Eintrag bleibt in der Warteschlange"
-            )
+            log.warning(tr("api.exit_converting"))
             try:
                 self._db.requeue_downloading()
             except Exception:
@@ -300,7 +297,7 @@ class Api:
         try:
             self._bus.emit("status", self.get_status())
         except Exception:
-            log.debug("Status konnte nicht gesendet werden", exc_info=True)
+            log.debug("Status could not be sent", exc_info=True)
 
     @property
     def _cfg(self) -> Settings:
@@ -322,7 +319,12 @@ class Api:
     # ================================================================== settings
 
     def get_settings(self) -> dict[str, Any]:
-        return {"values": self._cfg.to_dict(), "defaults": config.defaults_dict()}
+        # language: `general.language` resolved ("auto" -> Windows display language)
+        return {
+            "values": self._cfg.to_dict(),
+            "defaults": config.defaults_dict(),
+            "language": i18n.current(),
+        }
 
     def save_settings(self, values: dict[str, Any]) -> dict[str, Any]:
         parsed, errors = config.parse_settings(values)
@@ -334,7 +336,7 @@ class Api:
             try:
                 config.save(parsed, self._config_file)
             except OSError as exc:
-                msg = f"Speichern fehlgeschlagen: {exc}"
+                msg = tr("api.save_failed", error=exc)
                 log.error(msg)
                 return {"ok": False, "errors": {"settings": msg}}
             task_errors = self._sync_task(old, parsed)
@@ -342,12 +344,12 @@ class Api:
                 try:
                     config.save(old, self._config_file)  # roll back
                 except OSError as exc:
-                    log.error("Einstellungen konnten nicht zurückgesetzt werden: %s", exc)
+                    log.error(tr("api.settings_rollback_failed", error=exc))
                 return {"ok": False, "errors": task_errors}
             self._settings = parsed
         self._apply(old, parsed)
-        log.info("Einstellungen gespeichert")
-        return {"ok": True, "values": parsed.to_dict()}
+        log.info(tr("api.settings_saved"))
+        return {"ok": True, "values": parsed.to_dict(), "language": i18n.current()}
 
     def reset_settings(self, section: str | None = None) -> dict[str, Any]:
         with self._lock:
@@ -362,15 +364,15 @@ class Api:
             try:
                 config.save(fresh, self._config_file)
             except OSError as exc:
-                msg = f"Speichern fehlgeschlagen: {exc}"
+                msg = tr("api.save_failed", error=exc)
                 log.error(msg)
                 return {"ok": False, "error": msg}
             self._settings = fresh
         self._apply(old, fresh)
         if section:
-            log.warning("Einstellungen «%s» auf Standard zurückgesetzt", section)
+            log.warning(tr("api.settings_reset_section", section=section))
         else:
-            log.warning("Alle Einstellungen auf Standard zurückgesetzt")
+            log.warning(tr("api.settings_reset_all"))
         return {"ok": True}
 
     def _sync_task(self, old: Settings, new: Settings) -> dict[str, str]:
@@ -395,6 +397,8 @@ class Api:
     def _apply(self, old: Settings, new: Settings) -> None:
         """Make saved settings effective: log level, PO-token server, status bar.
         Throttle and yt-dlp options read the settings live; appearance is applied by the UI."""
+        if old.general.language != new.general.language:
+            i18n.set_language(new.general.language)  # backend messages follow at once
         if self._configure_logging and old.general.log_level != new.general.log_level:
             setup_logging(new.general.log_level)
         if old.network != new.network:
@@ -405,7 +409,7 @@ class Api:
         self._push()
 
     def _persist(self, **schedule: Any) -> str | None:
-        """Store schedule fields; returns a German error message or None (m8)."""
+        """Store schedule fields; returns a translated error message or None (m8)."""
         with self._lock:
             data = self._cfg.to_dict()
             data["schedule"].update(schedule)
@@ -413,7 +417,7 @@ class Api:
             try:
                 config.save(fresh, self._config_file)
             except OSError as exc:
-                msg = f"Speichern fehlgeschlagen: {exc}"
+                msg = tr("api.save_failed", error=exc)
                 log.error(msg)
                 return msg
             self._settings = fresh
@@ -449,14 +453,18 @@ class Api:
         """Run a maintenance job; refuse at once if another one is running (m3)."""
         other = self._worker.other_job(key)
         if other is not None:
-            label = "Neu taggen" if other.startswith("retag:") else _JOB_LABELS.get(other, other)
-            return {"ok": False, "error": f"Wartung läuft gerade ({label}) – bitte später erneut"}
+            label = (
+                tr("job.retag")
+                if other.startswith("retag:")
+                else (tr(_JOB_LABELS[other]) if other in _JOB_LABELS else other)
+            )
+            return {"ok": False, "error": tr("api.maintenance_busy", label=label)}
         try:
             return self._worker.run(key, fn, timeout=timeout)
         except FutureTimeout:
             return {
                 "ok": False,
-                "error": "Zeitüberschreitung – der Auftrag läuft im Hintergrund weiter",
+                "error": tr("api.job_timeout"),
             }
 
     def get_versions(self) -> dict[str, Any]:
@@ -481,7 +489,7 @@ class Api:
         except GateBusy:
             return {
                 "ok": False,
-                "error": "Eine Suche läuft gerade – Update danach ausführen.",
+                "error": tr("api.update_search_running"),
                 "output": "",
             }
 
@@ -490,12 +498,12 @@ class Api:
         if lock is None:
             return {
                 "ok": False,
-                "error": "Ein Download-Lauf ist aktiv – Update danach ausführen.",
+                "error": tr("api.update_run_active"),
                 "output": "",
             }
         ulog = logging.getLogger("hcloader.update")
         try:
-            log.info("yt-dlp & Plugin werden aktualisiert …")
+            log.info(tr("api.updating_ytdlp"))
             result = self._update_runner(on_line=lambda line: ulog.info("%s", line))
         finally:
             lock.release()
@@ -506,17 +514,21 @@ class Api:
             # extractor imports) or locked .pyd files on Windows -> no downloads until restart
             self._queue.set_restart_required()
             result["restart_required"] = True
-            self._bus.toast("yt-dlp aktualisiert – bitte HCLoader neu starten", "warn")
+            self._bus.toast(tr("api.ytdlp_updated_restart"), "warn")
         if result.get("ok"):
             log_ok(
                 log,
-                "Aktualisierung fertig: yt-dlp %s, Plugin %s%s",
-                result.get("ytdlp"),
-                result.get("plugin"),
-                " (neu)" if result.get("changed") else " (bereits aktuell)",
+                tr(
+                    "api.update_done",
+                    ytdlp=result.get("ytdlp"),
+                    plugin=result.get("plugin"),
+                    state=tr("api.update_state_new")
+                    if result.get("changed")
+                    else tr("api.update_state_same"),
+                ),
             )
         else:
-            log.error("Aktualisierung fehlgeschlagen: %s", result.get("error"))
+            log.error(tr("api.update_failed", error=result.get("error")))
         self._push()
         return result
 
@@ -539,16 +551,13 @@ class Api:
         try:
             st = self._scheduler.query(self._cfg.schedule.task_time)
         except scheduler.SchedulerError as exc:
-            log.debug("Aufgabenprüfung: %s", exc)
+            log.debug("Task check: %s", exc)
             return {"ok": False, "error": str(exc)}
         if st.registered and st.path_mismatch:
             log.warning(
-                "Aufgabenplanung: Aufgabe startet %s, die App liegt jetzt in %s – "
-                "Aufgabe neu anlegen (Einstellungen › Zeitplan)",
-                st.task_command,
-                config.app_root(),
+                tr("api.task_moved_log", task=st.task_command, app=config.app_root()),
             )
-            self._bus.toast(_TASK_MOVED, "warn")
+            self._bus.toast(tr(_TASK_MOVED), "warn")
         return {"ok": True, "path_mismatch": st.path_mismatch}
 
     def _do_update_check(self) -> dict[str, Any]:
@@ -563,11 +572,11 @@ class Api:
             if p.get("newer")
         ]
         if newer:
-            msg = "Update verfügbar: " + ", ".join(newer) + " (Einstellungen › Wartung)"
+            msg = tr("api.update_available", packages=", ".join(newer))
             log.warning(msg)
             self._bus.toast(msg, "info")
         else:
-            log.info("yt-dlp und Plugin sind aktuell")
+            log.info(tr("api.ytdlp_up_to_date"))
         return res
 
     # ================================================================== app self-update
@@ -578,15 +587,17 @@ class Api:
         res, self._update_result = self._update_result, None
         if res:
             if res.get("ok"):
-                msg = f"HCLoader aktualisiert auf v{res.get('to_version')}"
+                msg = tr("api.app_updated", version=res.get("to_version"))
                 log_ok(log, "%s", msg)
                 self._bus.toast(msg, "ok")
             else:
-                msg = f"App-Update fehlgeschlagen: {res.get('error') or 'unbekannter Fehler'}"
+                msg = tr(
+                    "api.app_update_failed", error=res.get("error") or tr("common.unknown_error")
+                )
                 msg += (
-                    " – die bisherige Version wurde wiederhergestellt"
+                    tr("api.app_update_rolled_back")
                     if res.get("rolled_back")
-                    else f" – Details: {res.get('log') or 'logs/update.log'}"
+                    else tr("api.app_update_details", log=res.get("log") or "logs/update.log")
                 )
                 log.error("%s", msg)
                 self._bus.toast(msg, "err")
@@ -607,7 +618,7 @@ class Api:
                 timeout=APP_UPDATE_CHECK_WAIT_S,
             )
         except FutureTimeout:
-            return {"ok": False, "error": "Zeitüberschreitung bei der Update-Prüfung"}
+            return {"ok": False, "error": tr("api.update_check_timeout")}
         except RuntimeError as exc:  # worker stopped (app is closing)
             return {"ok": False, "error": str(exc)}
         res["apply_on_exit"] = bool(self._cfg.maintenance.apply_update_on_exit)
@@ -635,9 +646,9 @@ class Api:
         if st["blocked"]:
             return {"ok": False, "error": st["blocked"]}
         if st["state"] != "ready":
-            return {"ok": False, "error": "Kein Update bereit"}
+            return {"ok": False, "error": tr("update.none_ready")}
         self._apply_requested = True
-        log.warning("App wird für das Update auf v%s beendet …", st["latest"])
+        log.warning(tr("api.closing_for_update", version=st["latest"]))
         if self._window is not None:
             timer = threading.Timer(APP_UPDATE_CLOSE_DELAY_S, self._close_window)
             timer.daemon = True
@@ -648,7 +659,7 @@ class Api:
         try:
             self._window.destroy()
         except Exception:
-            log.exception("Fenster konnte nicht geschlossen werden")
+            log.exception("Window could not be closed")
 
     @_internal
     def finish_update(self) -> dict[str, Any] | None:
@@ -658,13 +669,13 @@ class Api:
             return None
         if selfupdate.session_ending():
             # m1: Windows logs off / shuts down - the updater would be killed mid-way
-            log.info("Windows wird beendet – App-Update bleibt für den nächsten Start bereit")
+            log.info(tr("api.update_session_ending"))
             return None
         if self._apply_requested:
             return self._updater.launch(restart=True)
         if self._cfg.maintenance.apply_update_on_exit:
             return self._updater.launch(restart=False)
-        log.info("App-Update bleibt bereit (wird beim nächsten Start wieder angeboten)")
+        log.info(tr("api.update_stays_ready"))
         return None
 
     def backup_db(self) -> dict[str, Any]:
@@ -674,10 +685,10 @@ class Api:
         try:
             path = maintenance.backup_database(Path(self._db.path))
         except Exception as exc:
-            log.error("Datenbank-Sicherung fehlgeschlagen: %s", exc)
-            return {"ok": False, "error": f"Sicherung fehlgeschlagen: {exc}"}
+            log.error(tr("api.backup_failed_log", error=exc))
+            return {"ok": False, "error": tr("api.backup_failed", error=exc)}
         self._db.set_state(maintenance.K_LAST_BACKUP, _now_iso())
-        log_ok(log, "Datenbank gesichert: %s", path)
+        log_ok(log, tr("api.backup_done", path=path))
         return {"ok": True, "path": str(path)}
 
     def open_path(self, kind: str) -> dict[str, Any]:
@@ -687,13 +698,13 @@ class Api:
             "logs": config.logs_dir,
         }
         if kind not in targets:
-            return {"ok": False, "error": f"Unbekannter Ordner: {kind}"}
+            return {"ok": False, "error": tr("api.unknown_folder", kind=kind)}
         path = targets[kind]()
         try:
             path.mkdir(parents=True, exist_ok=True)
             self._open(path)
         except OSError as exc:
-            return {"ok": False, "error": f"Ordner kann nicht geöffnet werden: {exc}"}
+            return {"ok": False, "error": tr("api.folder_open_failed", error=exc)}
         return {"ok": True}
 
     def pick_folder(self, current: str | None = None) -> dict[str, Any] | None:
@@ -727,16 +738,16 @@ class Api:
         res = self._probe(net.po_token_mode, net.po_token_port)
         self._po_test = (net.po_token_mode, net.po_token_port, res)
         if res.get("ok"):
-            log_ok(log, "PO-Token-Test erfolgreich (%s ms): %s", res.get("ms"), res.get("detail"))
+            log_ok(log, tr("api.po_test_ok", ms=res.get("ms"), detail=res.get("detail")))
         elif res.get("state") == "error":
-            log.error("PO-Token-Test fehlgeschlagen: %s", res.get("detail"))
+            log.error(tr("api.po_test_failed", detail=res.get("detail")))
         self._push()
         return res
 
     def clear_backoff(self, platform: str | None = None) -> dict[str, Any]:
         """Lift the backoff of `platform` ('youtube' | 'soundcloud'); none = every platform."""
         if platform not in (None, "", "youtube", "soundcloud"):
-            return {"ok": False, "error": "Unbekannte Plattform"}
+            return {"ok": False, "error": tr("api.unknown_platform")}
         targets = [self._throttle.platform(platform)] if platform else self._throttle.platforms()
         for th in targets:
             if th is self._throttle or th.backoff_until() is not None:
@@ -753,7 +764,7 @@ class Api:
 
     def unblock_channel(self, channel_id: str) -> dict[str, Any]:
         self._db.remove_from_blacklist(str(channel_id))
-        log.info("Kanal entsperrt: %s", channel_id)
+        log.info(tr("api.channel_unblocked", channel=channel_id))
         return {"ok": True}
 
     # ================================================================== scheduled task
@@ -774,7 +785,7 @@ class Api:
         if st.registered is not None and st.registered != sched.task_scheduler_enabled:
             err = self._persist(task_scheduler_enabled=st.registered)  # changed outside
             if err:
-                log.warning("Aufgabenplanung: Abgleich nicht gespeichert (%s)", err)
+                log.warning(tr("api.task_sync_not_saved", error=err))
         return st.to_dict()
 
     def create_task(self, time: str) -> dict[str, Any]:
@@ -790,7 +801,7 @@ class Api:
         try:
             st = self._scheduler.create(hhmm)
         except scheduler.SchedulerError as exc:
-            log.error("Aufgabenplanung: %s", exc)
+            log.error(tr("api.task_error", error=exc))
             self._persist(
                 task_scheduler_enabled=old.task_scheduler_enabled, task_time=old.task_time
             )
@@ -808,7 +819,7 @@ class Api:
         except scheduler.SchedulerUnavailable as exc:
             return {"ok": False, "error": str(exc)}
         except scheduler.SchedulerError as exc:
-            log.error("Aufgabenplanung: %s", exc)
+            log.error(tr("api.task_error", error=exc))
             self._persist(task_scheduler_enabled=old.task_scheduler_enabled)
             return {"ok": False, "error": str(exc)}
         self._push()
@@ -837,20 +848,20 @@ class Api:
     def search(self, query: str, opts: dict[str, Any] | None = None) -> dict[str, Any]:
         query = str(query or "").strip()
         if not query:
-            return {"ok": False, "error": "Suchbegriff fehlt"}
+            return {"ok": False, "error": tr("api.query_missing")}
         if self._queue.restart_required:
-            return {"ok": False, "error": "Neustart nötig – yt-dlp wurde aktualisiert"}
+            return {"ok": False, "error": tr("api.restart_required")}
         if self._ytdlp_gate.updating:
-            return {"ok": False, "error": _UPDATE_BUSY}
+            return {"ok": False, "error": tr(_UPDATE_BUSY)}
         clean = opts if isinstance(opts, dict) else None
         genre, year = discover.clean_options(clean, self._cfg)
         platform = discover.clean_platform(clean)
         if platform is None:
-            return {"ok": False, "error": "Unbekannte Plattform"}
+            return {"ok": False, "error": tr("api.unknown_platform")}
         if platform == "soundcloud" and not self._cfg.soundcloud.enabled:
             return {
                 "ok": False,
-                "error": "SoundCloud ist ausgeschaltet (Einstellungen › SoundCloud)",
+                "error": tr("sc.off_settings"),
             }
         try:
             return self._search_worker.run(
@@ -863,7 +874,7 @@ class Api:
                 timeout=SEARCH_TIMEOUT_S,
             )
         except FutureTimeout:
-            return {"ok": False, "error": "Suche dauert zu lange – bitte später erneut versuchen"}
+            return {"ok": False, "error": tr("api.search_timeout")}
 
     def _do_search(
         self, query: str, genre: str | None, year: int | None, platform: str = "youtube"
@@ -872,7 +883,7 @@ class Api:
             with self._ytdlp_gate.search():  # n2: checked and registered atomically
                 return self._do_search_locked(query, genre, year, platform)
         except GateBusy:
-            return {"ok": False, "error": _UPDATE_BUSY}
+            return {"ok": False, "error": tr(_UPDATE_BUSY)}
 
     def _do_search_locked(
         self, query: str, genre: str | None, year: int | None, platform: str = "youtube"
@@ -908,7 +919,7 @@ class Api:
 
     def enqueue(self, ids: list[str]) -> dict[str, Any]:
         if not isinstance(ids, (list, tuple)):
-            return {"ok": False, "error": "Ungültige Auswahl", "ids": []}
+            return {"ok": False, "error": tr("api.invalid_selection"), "ids": []}
         accepted = self._queue.enqueue([str(i) for i in ids])
         skipped = len(ids) - len(accepted)
         res: dict[str, Any] = {"ok": True, "ids": accepted}
@@ -919,19 +930,17 @@ class Api:
             unloadable = sum(1 for r in rows if r and (r.get("preview") or r.get("geo_blocked")))
             if unloadable:
                 res["skipped_unloadable"] = unloadable
-                log.info(
-                    "%d nicht ladbare(r) Eintrag/Einträge übersprungen (Go+/Region)", unloadable
-                )
+                log.info(tr("api.skipped_unloadable", n=unloadable))
         return res
 
     def set_video_status(self, video_id: str, status: str) -> dict[str, Any]:
         if status not in ("ignored", "new"):
-            return {"ok": False, "error": f"Ungültiger Status: {status}"}
+            return {"ok": False, "error": tr("api.invalid_status", status=status)}
         row = self._db.get_video(video_id)
         if not row:
-            return {"ok": False, "error": "Video unbekannt"}
+            return {"ok": False, "error": tr("api.video_unknown")}
         if row["status"] in ("queued", "downloading", "done"):
-            return {"ok": False, "error": "Status in der Warteschlange/Bibliothek nicht änderbar"}
+            return {"ok": False, "error": tr("api.status_locked")}
         self._db.set_status(video_id, status)
         self._bus.emit("video", {"id": video_id, "status": status})
         self._push()
@@ -940,10 +949,10 @@ class Api:
     def set_genre(self, video_id: str, genre: str) -> dict[str, Any]:
         names = {g.name for g in self._cfg.genres.items}
         if genre not in names:
-            return {"ok": False, "error": f"Unbekanntes Genre: {genre}"}
+            return {"ok": False, "error": tr("genre.unknown", genre=genre)}
         row = self._db.get_video(video_id)
         if not row:
-            return {"ok": False, "error": "Video unbekannt"}
+            return {"ok": False, "error": tr("api.video_unknown")}
         self._db.set_genre(video_id, genre, manual=True)
         self._bus.emit("video", {"id": video_id, "status": row["status"], "genre": genre})
         return {"ok": True}
@@ -955,7 +964,7 @@ class Api:
             return {"ok": True}
         url = discover.soundcloud_page(self._db, vid)
         if url is None:
-            return {"ok": False, "error": "Ungültige Video-ID"}
+            return {"ok": False, "error": tr("api.invalid_video_id")}
         self._browser(url)
         return {"ok": True}
 
@@ -970,28 +979,28 @@ class Api:
         if platform == "soundcloud":
             url = discover.soundcloud_channel_page(self._db, cid)
             if url is None:
-                return {"ok": False, "error": "SoundCloud-Nutzer unbekannt (keine Profil-URL)"}
+                return {"ok": False, "error": tr("api.sc_user_unknown")}
         elif re.fullmatch(r"[0-9A-Za-z_-]{3,64}", cid):
             url = f"https://www.youtube.com/channel/{cid}"
         else:
-            return {"ok": False, "error": "Ungültige Kanal-ID"}
+            return {"ok": False, "error": tr("api.invalid_channel_id")}
         for s in self.get_sources():
             if s["url_or_query"].rstrip("/").lower() == url.lower():
-                return {"ok": False, "error": "Kanal ist bereits in der Watchlist", "source": s}
+                return {"ok": False, "error": tr("api.channel_in_watchlist"), "source": s}
         name = str(channel_name or "").strip() or cid
         # the known channel name from the search: no automatic renaming (name_auto false)
         sid = self._db.add_source(
             "channel", name, url, platform=platform, name_auto=not str(channel_name or "").strip()
         )  # n7: max_entries NULL = default
-        log.info("Kanal zur Watchlist hinzugefügt: %s", name)
+        log.info(tr("api.channel_watched", channel=name))
         source = next(s for s in self.get_sources() if s["id"] == sid)
         return {"ok": True, "source": source}
 
     def block_channel(self, channel_id: str, channel_name: str = "") -> dict[str, Any]:
         if not channel_id:
-            return {"ok": False, "error": "Kanal-ID fehlt"}
+            return {"ok": False, "error": tr("api.channel_id_missing")}
         self._db.add_to_blacklist(str(channel_id), str(channel_name or ""))
-        log.info("Kanal blockiert: %s", channel_name or channel_id)
+        log.info(tr("api.channel_blocked", channel=channel_name or channel_id))
         return {"ok": True}
 
     # ================================================================== watchlist
@@ -1018,7 +1027,7 @@ class Api:
 
     def save_source(self, source: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(source, dict):
-            return {"ok": False, "error": "Ungültige Quelle", "errors": {}}
+            return {"ok": False, "error": tr("api.invalid_source"), "errors": {}}
         clean, errors = watchlist.validate_source(
             source, self._cfg, existing=self._db.list_sources()
         )
@@ -1029,13 +1038,13 @@ class Api:
             sid = self._db.add_source(
                 clean.pop("type"), clean.pop("name"), clean.pop("url_or_query"), **clean
             )
-            log.info("Quelle hinzugefügt: %s", source.get("name"))
+            log.info(tr("api.source_added", name=source.get("name")))
         else:
             sid = int(raw_id)
             if self._db.get_source(sid) is None:
-                return {"ok": False, "error": "Quelle existiert nicht mehr", "errors": {}}
+                return {"ok": False, "error": tr("api.source_gone"), "errors": {}}
             self._db.update_source(sid, **clean)
-            log.info("Quelle gespeichert: %s", clean["name"])
+            log.info(tr("api.source_saved", name=clean["name"]))
         self._push()  # next planned check may change (first source / enabled flag)
         return {"ok": True, "source": self._source_dict(self._db.get_source(sid))}
 
@@ -1048,11 +1057,11 @@ class Api:
         """Start a check in the watchlist thread; progress comes as `source` events and a final
         `watchlist_done`. `started` = number of sources that will be checked."""
         if ids is not None and not isinstance(ids, (list, tuple)):
-            return {"ok": False, "error": "Ungültige Auswahl", "started": 0}
+            return {"ok": False, "error": tr("api.invalid_selection"), "started": 0}
         try:
             wanted = None if ids is None else sorted({int(i) for i in ids})
         except (TypeError, ValueError):
-            return {"ok": False, "error": "Ungültige Auswahl", "started": 0}
+            return {"ok": False, "error": tr("api.invalid_selection"), "started": 0}
         refusal = self._watchlist_refusal()
         if refusal:
             return {"ok": False, "error": refusal, "started": 0}
@@ -1066,12 +1075,12 @@ class Api:
     def _watchlist_refusal(self) -> str | None:
         """Why no check may start right now (German), else None."""
         if self._queue.restart_required:
-            return "Neustart nötig – yt-dlp wurde aktualisiert"
+            return tr("api.restart_required")
         if self._ytdlp_gate.updating:
-            return _UPDATE_BUSY
+            return tr(_UPDATE_BUSY)
         until = watchlist.blocked_until(self._db, self._throttle, self._cfg)
         if until:
-            return f"Backoff aktiv bis {discover.format_until(until)} – Prüfung gesperrt"
+            return tr("api.watchlist_backoff", until=discover.format_until(until))
         return None
 
     @staticmethod
@@ -1086,7 +1095,7 @@ class Api:
         or something forbids it. Never during a backoff, a yt-dlp update or a headless run."""
         if self._watchlist_refusal() or self._wl_worker.busy(self._check_key(None)):
             return False
-        log.info("Geplante Watchlist-Prüfung (Intervall in der App)")
+        log.info(tr("api.scheduled_check"))
         self._submit_check(None, scheduled=True)
         return True
 
@@ -1094,11 +1103,11 @@ class Api:
         lock = self._watchlist_lock()
         if lock is None and scheduled:  # m2: the headless task checks right now - quietly later
             retry = self._wl_sched.defer()
-            log.debug("Watchlist-Lock belegt (Aufgabe läuft) – neuer Versuch ab %s", retry)
+            log.debug("Watchlist lock busy (task running) – next attempt from %s", retry)
             self._push()
             return {"ok": False, "deferred": True}
         if lock is None:  # a headless run checks right now
-            msg = "Die Watchlist wird gerade von einem anderen Lauf geprüft (z.B. geplante Prüfung)"
+            msg = tr("watchlist.busy_other")
             log.warning(msg)
             self._bus.toast(msg, "warn")
             self._bus.emit("watchlist_done", {"checked": 0, "found": 0})
@@ -1121,14 +1130,14 @@ class Api:
                 finally:
                     client.close()
         except GateBusy:
-            self._bus.toast(_UPDATE_BUSY, "warn")
+            self._bus.toast(tr(_UPDATE_BUSY), "warn")
         except Exception as exc:
-            log.exception("Watchlist-Prüfung fehlgeschlagen")
-            self._bus.toast(f"Watchlist-Prüfung fehlgeschlagen: {redact(exc)}", "err")
+            log.exception(tr("watchlist.check_failed"))
+            self._bus.toast(tr("watchlist.check_failed_error", error=redact(exc)), "err")
         finally:
             lock.release()
         if result.backoff:
-            self._bus.toast(f"Watchlist abgebrochen: {result.note}", "warn")
+            self._bus.toast(tr("watchlist.aborted", error=result.note), "warn")
         checked = result.checked + result.errors  # sources processed (checked or failed)
         self._bus.emit("watchlist_done", {"checked": checked, "found": result.found})
         self._push()
@@ -1146,23 +1155,23 @@ class Api:
         try:
             step = int(delta)
         except (TypeError, ValueError):
-            return {"ok": False, "error": "Ungültige Richtung"}
+            return {"ok": False, "error": tr("api.invalid_direction")}
         if self._queue.move(str(video_id), step):
             return {"ok": True}
-        return {"ok": False, "error": "Nur wartende Einträge lassen sich verschieben"}
+        return {"ok": False, "error": tr("api.only_waiting_move")}
 
     def queue_cancel(self, video_id: str) -> dict[str, Any]:
         res = self._queue.cancel(str(video_id))
         if res == "ok":
             return {"ok": True}
         if res == "late":
-            return {"ok": False, "error": "Download bereits fertig"}
-        return {"ok": False, "error": "Eintrag ist nicht (mehr) in der Warteschlange"}
+            return {"ok": False, "error": tr("api.download_finished")}
+        return {"ok": False, "error": tr("api.not_in_queue")}
 
     def queue_retry(self, video_id: str) -> dict[str, Any]:
         if self._queue.retry(str(video_id)):
             return {"ok": True}
-        return {"ok": False, "error": "Nur fehlgeschlagene Einträge lassen sich wiederholen"}
+        return {"ok": False, "error": tr("api.only_failed_retry")}
 
     # ================================================================== library
 
@@ -1190,14 +1199,14 @@ class Api:
     def open_folder(self, video_id: str) -> dict[str, Any]:
         row = self._db.get_video(str(video_id))
         if not row or not row.get("file_path"):
-            return {"ok": False, "error": "Keine Datei zu diesem Eintrag"}
+            return {"ok": False, "error": tr("api.no_file")}
         path = Path(row["file_path"])
         if not path.parent.is_dir():
-            return {"ok": False, "error": f"Ordner fehlt: {path.parent}"}
+            return {"ok": False, "error": tr("api.folder_missing", path=path.parent)}
         try:
             self._reveal(path)
         except OSError as exc:
-            return {"ok": False, "error": f"Ordner kann nicht geöffnet werden: {exc}"}
+            return {"ok": False, "error": tr("api.folder_open_failed", error=exc)}
         return {"ok": True}
 
     def get_media(self, video_id: str) -> dict[str, Any]:

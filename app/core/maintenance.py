@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Any
 
 from . import binaries, config
+from .i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -220,10 +221,7 @@ def run_update(
             else installed_versions
         )
     if not venv_check():
-        msg = (
-            "HCLoader läuft weder in einer virtuellen Umgebung (venv) noch im mitgelieferten "
-            "Python (Portable-Version oder Installation) – Update abgebrochen"
-        )
+        msg = tr("maint.no_venv")
         log.error(msg)
         return {"ok": False, "error": msg, "output": ""}
     before = versions()
@@ -234,7 +232,7 @@ def run_update(
     try:
         proc = popen(cmd)
     except OSError as exc:
-        return {"ok": False, "error": f"pip konnte nicht gestartet werden: {exc}", "output": ""}
+        return {"ok": False, "error": tr("maint.pip_not_started", error=exc), "output": ""}
     assert proc.stdout is not None
     timed_out = threading.Event()
 
@@ -267,13 +265,13 @@ def run_update(
     after = versions()
     output = "\n".join(lines)
     if timed_out.is_set():
-        msg = f"Zeitüberschreitung nach {int(timeout_s)} s – pip wurde beendet"
+        msg = tr("maint.pip_timeout", s=int(timeout_s))
         return {"ok": False, "error": msg, "output": output}
     if code != 0:
-        return {"ok": False, "error": f"pip ist mit Code {code} beendet", "output": output}
+        return {"ok": False, "error": tr("maint.pip_exit", code=code), "output": output}
     changed = after != before
     if changed:
-        note = "Neue Version installiert – wirksam nach einem Neustart von HCLoader."
+        note = tr("maint.restart_note")
         lines.append(note)
         output += "\n" + note
         if on_line:
@@ -325,7 +323,7 @@ def check_updates(
                 "newer": is_newer(latest, installed.get(key)),
             }
     except Exception as exc:  # network/parse error: never fatal
-        return {"ok": False, "error": f"Update-Prüfung fehlgeschlagen: {exc}", "packages": packages}
+        return {"ok": False, "error": tr("update.check_failed", error=exc), "packages": packages}
     return {
         "ok": True,
         "available": any(p["newer"] for p in packages.values()),
@@ -407,7 +405,7 @@ def prune_backups(
             old.unlink()
             removed.append(old)
         except OSError:
-            log.warning("Altes Backup nicht löschbar: %s", old)
+            log.warning(tr("maint.backup_not_deletable", path=old))
     return removed
 
 
@@ -423,7 +421,7 @@ def backup_database(
     dest_dir = dest_dir or backups_dir()
     target = _copy_db(db_path, dest_dir, "hcloader", now)
     for old in prune_backups(dest_dir, keep, protect=target):
-        log.info("Altes Backup gelöscht: %s", old.name)
+        log.info(tr("maint.backup_deleted", path=old.name))
     return target
 
 
@@ -442,8 +440,8 @@ def backup_before_migration(
     dest_dir = dest_dir or Path(db_path).parent / "backups"
     target = _copy_db(db_path, dest_dir, f"hcloader-premigrate-v{old}-to-v{new}", now)
     for gone in prune_backups(dest_dir, keep, protect=target, pattern=_PREMIGRATE_RE):
-        log.info("Altes Migrations-Backup gelöscht: %s", gone.name)
-    log.warning("Datenbank wird von Schema v%d auf v%d migriert – Sicherung: %s", old, new, target)
+        log.info(tr("maint.migration_backup_deleted", path=gone.name))
+    log.warning(tr("maint.migrating", old=old, new=new, path=target))
     return target
 
 
@@ -592,12 +590,9 @@ def cleanup_stale_partials(
                 f.unlink()
                 removed += 1
         except OSError:
-            log.debug("Teildatei nicht löschbar: %s", f)
+            log.debug("Partial file cannot be deleted: %s", f)
     if removed:
         log.info(
-            "%d alte Teildateien (älter als %d Tage) aus %s entfernt",
-            removed,
-            int(max_age_days),
-            tmp_dir,
+            tr("maint.partials_removed", n=removed, days=int(max_age_days), path=tmp_dir),
         )
     return removed

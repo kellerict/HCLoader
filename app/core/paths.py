@@ -8,6 +8,8 @@ import unicodedata
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 
+from .i18n import tr
+
 _REPLACEMENTS = {
     '"': "'",
     ":": "-",
@@ -205,4 +207,4 @@ def build_target_path(
         path = build(MIN_TITLE_LENGTH, other)
         if fits(path):
             return path
-    raise PathTooLongError(f"Pfad zu lang (max. {max_path_length} Zeichen): {path}")
+    raise PathTooLongError(tr("paths.too_long", max=max_path_length, path=path))

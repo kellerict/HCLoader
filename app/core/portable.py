@@ -53,9 +53,9 @@ def unblock_dotnet_dlls(
         except FileNotFoundError:
             continue  # not blocked
         except OSError as exc:
-            log.debug("Zone.Identifier nicht entfernbar (%s): %s", dll, exc)
+            log.debug("Zone.Identifier not removable (%s): %s", dll, exc)
     if count:
-        log.info("Portable: %d DLLs entsperrt (Download-Markierung entfernt)", count)
+        log.info("Portable: %d DLLs unblocked (download mark removed)", count)
     return count
 
 
@@ -66,5 +66,5 @@ def prepare_gui_start(*, platform: str | None = None) -> int:
     try:
         return unblock_dotnet_dlls()
     except Exception:  # never block the start
-        log.debug("Entsperren fehlgeschlagen", exc_info=True)
+        log.debug("Unblocking failed", exc_info=True)
         return 0

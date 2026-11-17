@@ -27,6 +27,7 @@ from typing import Any
 
 from . import locks
 from .db import Database
+from .i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -78,7 +79,7 @@ class BackoffActive(ThrottleError):
     def __init__(self, until: datetime, reason: str = "") -> None:
         self.until = until
         self.reason = reason
-        super().__init__(f"Backoff aktiv bis {until.astimezone():%Y-%m-%d %H:%M}")
+        super().__init__(tr("throttle.backoff_until", until=f"{until.astimezone():%Y-%m-%d %H:%M}"))
 
 
 class WaitCancelled(Exception):
@@ -89,7 +90,7 @@ class MetadataBusy(Exception):
     """The metadata lock stayed busy (a download is extracting) - try again shortly."""
 
     def __init__(self) -> None:
-        super().__init__("Download-Abfrage läuft gerade – bitte gleich erneut versuchen")
+        super().__init__(tr("throttle.download_query_busy"))
 
 
 class LimitReached(ThrottleError):
@@ -99,11 +100,11 @@ class LimitReached(ThrottleError):
         self.kind = kind
         self.limit = limit
         names = {
-            "searches_per_hour": "Suchen pro Stunde",
-            "downloads_per_run": "Downloads pro Lauf",
-            "downloads_per_day": "Downloads pro Tag",
+            "searches_per_hour": tr("throttle.limit_searches_hour"),
+            "downloads_per_run": tr("throttle.limit_downloads_run"),
+            "downloads_per_day": tr("throttle.limit_downloads_day"),
         }
-        super().__init__(f"Limit erreicht: {names.get(kind, kind)} ({limit})")
+        super().__init__(tr("throttle.limit_reached", what=names.get(kind, kind), count=limit))
 
 
 PLATFORM_NAMES = {"youtube": "YouTube", "soundcloud": "SoundCloud"}
@@ -283,7 +284,13 @@ class Throttle:
             self._set(K_BACKOFF_UNTIL, until.isoformat())
             self._set(K_BACKOFF_REASON, reason)
             log.error(
-                "%s-Sperre erkannt (%s): Pause bis %s (%.1f h)", self.label, reason, until, hours
+                tr(
+                    "throttle.block_detected",
+                    platform=self.label,
+                    reason=reason,
+                    until=until,
+                    hours=f"{hours:.1f}",
+                )
             )
             return until
 
@@ -319,7 +326,7 @@ class Throttle:
             # Never lift a backoff that is still active (e.g. a 429 warning seen during this
             # run while the download itself succeeded) - only reset the escalation level.
             if self.backoff_until() is not None:
-                log.info("Lauf erfolgreich, aber Backoff aktiv - bleibt bestehen")
+                log.info(tr("throttle.backoff_stays"))
                 return
             self.reset_backoff()
 
@@ -328,7 +335,7 @@ class Throttle:
         with self._xlock():  # n1
             self._del(K_BACKOFF_UNTIL)
             self._del(K_BACKOFF_REASON)
-        log.warning("Backoff manuell aufgehoben (%s)", self.label)
+        log.warning(tr("throttle.backoff_cleared", platform=self.label))
 
     # ------------------------------------------------------------------ requests
 
@@ -531,7 +538,7 @@ class Throttle:
     def _wait_between_downloads(self, cancel_event: threading.Event | None) -> None:
         wait = self.download_wait()
         if wait > 0:
-            log.info("Pause zwischen Downloads: %.0f s", wait)
+            log.info(tr("throttle.pause", s=f"{wait:.0f}"))
             self._wait(wait, cancel_event)
 
     def mark_download_end(self) -> None:

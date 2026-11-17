@@ -171,7 +171,7 @@ class ProcessLock:
             try:
                 self._kernel.CloseHandle(handle)  # never owned: no ReleaseMutex
             except Exception:
-                log.debug("Mutex konnte nicht freigegeben werden", exc_info=True)
+                log.debug("Mutex could not be released", exc_info=True)
         self._handle = None
         if self._fh is not None:
             fh, self._fh = self._fh, None
@@ -213,11 +213,11 @@ class ProcessLock:
                     # n2: with use_last_error=True ctypes saves the error right after the call
                     already = _last_error() == ERROR_ALREADY_EXISTS
                     break
-                log.debug("Mutex im Namensraum %s nicht erlaubt", prefix)
+                log.debug("Mutex in namespace %s not allowed", prefix)
             if not handle:
                 return None
         except Exception:
-            log.debug("Named Mutex nicht verfügbar, Datei-Lock als Fallback", exc_info=True)
+            log.debug("Named mutex not available, file lock as fallback", exc_info=True)
             return None
         if already:
             kernel.CloseHandle(handle)
@@ -230,7 +230,7 @@ class ProcessLock:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             fh = self.path.open("a+b")
         except OSError as exc:
-            log.warning("Lock-Datei nicht verfügbar (%s): %s", self.path, exc)
+            log.warning("Lock file not available (%s): %s", self.path, exc)
             return True  # cannot lock at all: do not block the user
         if _try_lock_file(fh):
             self._fh = fh
@@ -316,7 +316,7 @@ def cross_process_lock(
         lock_path.parent.mkdir(parents=True, exist_ok=True)
         fh = lock_path.open("a+b")
     except OSError as exc:
-        log.warning("Lock-Datei nicht verfügbar (%s): %s", lock_path, exc)
+        log.warning("Lock file not available (%s): %s", lock_path, exc)
     held = False
     if fh is not None:
         deadline = time.monotonic() + max(0.0, timeout)
@@ -328,7 +328,7 @@ def cross_process_lock(
                 if on_timeout is not None:
                     fh.close()
                     raise on_timeout()
-                log.warning("Prozess-Lock «%s» nicht erhalten – fahre ohne fort", name)
+                log.warning("Process lock “%s” not acquired – continuing without", name)
                 break
             time.sleep(poll)
     try:

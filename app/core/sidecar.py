@@ -37,7 +37,7 @@ def meta_dir() -> Path:
 
 def _check(video_id: str) -> None:
     if not _ID_RE.match(video_id or ""):
-        raise ValueError(f"Ungültige Video-ID: {video_id!r}")
+        raise ValueError(f"Invalid video ID: {video_id!r}")
 
 
 def sidecar_path(video_id: str) -> Path:
@@ -96,7 +96,7 @@ def write(video_id: str, data: Mapping[str, Any]) -> Path | None:
             legacy.unlink(missing_ok=True)
         return path
     except (OSError, ValueError, TypeError) as exc:
-        log.warning("Metadaten-Sidecar nicht geschrieben (%s): %s", video_id, exc)
+        log.warning("Metadata sidecar not written (%s): %s", video_id, exc)
         return None
 
 
@@ -128,7 +128,7 @@ def delete(video_id: str) -> None:
         if old is None or old.get("id") in (None, video_id):
             legacy.unlink(missing_ok=True)
     except (OSError, ValueError):
-        log.debug("Sidecar nicht löschbar: %s", video_id)
+        log.debug("Sidecar not deletable: %s", video_id)
 
 
 def chapters_of(data: Mapping[str, Any] | None) -> list[Chapter]:

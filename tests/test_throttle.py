@@ -10,6 +10,9 @@ from app.core.throttle import (
     is_rate_limit_error,
 )
 
+# pre-v0.2.0 behaviour tests assert the German texts (pins the de catalog)
+pytestmark = pytest.mark.usefixtures("german_messages")
+
 
 class FakeTime:
     def __init__(self):

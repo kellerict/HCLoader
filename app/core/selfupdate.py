@@ -39,6 +39,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 from . import config, locks
+from .i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -100,12 +101,10 @@ PROTECTED = (
 )
 STATES = ("idle", "checking", "downloading", "ready", "applying", "error")
 
-RUN_ACTIVE = (
-    "Ein Download-Lauf (z.B. die geplante Watchlist-Prüfung) ist aktiv – das Update bleibt "
-    "bereit und wird beim nächsten Beenden eingespielt."
-)
-GIT_HINT = "Git-Checkout – bitte «git pull» und danach «scripts\\setup.ps1» ausführen."
-WINDOWS_ONLY = "Das Selbst-Update gibt es nur unter Windows."
+# message keys (app/locales)
+RUN_ACTIVE = "update.run_active"
+GIT_HINT = "update.git_hint"
+WINDOWS_ONLY = "update.windows_only"
 
 _SEMVER_RE = re.compile(
     r"^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$"
@@ -203,7 +202,7 @@ def check_url(url: str) -> str:
     parts = urllib.parse.urlsplit(str(url or ""))
     host = (parts.hostname or "").lower()
     if parts.scheme != "https" or host not in ALLOWED_HOSTS or parts.username or parts.password:
-        raise UpdateError(f"Unzulässige Download-Adresse: {str(url)[:120]}")
+        raise UpdateError(tr("update.bad_url", url=str(url)[:120]))
     return url
 
 
@@ -311,7 +310,7 @@ def _latest_from_tags(repo: str, opener: Opener, timeout: float) -> Release | No
             _get_text(RAW_CHANGELOG.format(repo=repo, tag=tag), opener, timeout), ver
         )
     except Exception as exc:  # notes are optional
-        log.debug("CHANGELOG von %s nicht lesbar: %s", tag, exc)
+        log.debug("CHANGELOG of %s not readable: %s", tag, exc)
     return Release(
         version=ver,
         tag=tag,
@@ -368,7 +367,7 @@ def download(
             except (AttributeError, TypeError, ValueError):
                 total = 0
             if total > max_bytes:
-                raise UpdateError(f"Download zu gross ({total} Bytes)")
+                raise UpdateError(tr("update.too_big", n=total))
             if on_progress:
                 on_progress(0, total)
             while True:
@@ -380,11 +379,11 @@ def download(
                 fh.write(buf)
                 done += len(buf)
                 if done > max_bytes:
-                    raise UpdateError("Download zu gross – abgebrochen")
+                    raise UpdateError(tr("update.too_big_aborted"))
                 if on_progress:
                     on_progress(done, total)
         if total and done != total:
-            raise UpdateError(f"Download unvollständig ({done} von {total} Bytes)")
+            raise UpdateError(tr("update.incomplete", got=done, total=total))
         part.replace(dest)
     except BaseException:
         part.unlink(missing_ok=True)
@@ -433,7 +432,7 @@ def zip_prefix(zf: zipfile.ZipFile) -> str:
         parts = n.split("/")
         if len(parts) == 3 and parts[1:] == ["app", "__init__.py"]:
             return parts[0] + "/"
-    raise UpdateError("Das Paket enthält keinen HCLoader-Quellcode (app/__init__.py fehlt)")
+    raise UpdateError(tr("update.no_source"))
 
 
 def verify_zip(path: Path) -> str:
@@ -443,18 +442,18 @@ def verify_zip(path: Path) -> str:
         with zipfile.ZipFile(path) as zf:
             bad = zf.testzip()
             if bad is not None:
-                raise UpdateError(f"ZIP beschädigt ({bad})")
+                raise UpdateError(tr("update.zip_damaged", error=bad))
             for info in zf.infolist():
                 if _safe_parts(info.filename) is None:
-                    raise UpdateError(f"Ungültiger Pfad im ZIP: {info.filename}")
+                    raise UpdateError(tr("update.zip_bad_path", path=info.filename))
             if sum(i.file_size for i in zf.infolist()) > MAX_UNPACKED_BYTES:
-                raise UpdateError("ZIP-Inhalt zu gross")
+                raise UpdateError(tr("update.zip_too_big"))
             prefix = zip_prefix(zf)
             if prefix + "app/main.py" not in zf.namelist():
-                raise UpdateError("Das Paket ist unvollständig (app/main.py fehlt)")
+                raise UpdateError(tr("update.no_main"))
             return prefix
     except zipfile.BadZipFile as exc:
-        raise UpdateError(f"Kein gültiges ZIP: {exc}") from exc
+        raise UpdateError(tr("update.not_zip", error=exc)) from exc
 
 
 def extract_program(zip_path: Path, staging: Path, prefix: str) -> list[str]:
@@ -584,40 +583,29 @@ def prepare_staging(
     found = extract_program(zip_path, staging, prefix)
     for need in ("app", "ui", "scripts"):
         if need not in found:
-            raise UpdateError(f"Das Paket ist unvollständig ({need}/ fehlt)")
+            raise UpdateError(tr("update.missing_dir", dir=need))
     if not (staging / "scripts" / "apply_update.ps1").is_file():
-        raise UpdateError("Das Paket ist unvollständig (scripts/apply_update.ps1 fehlt)")
+        raise UpdateError(tr("update.no_script"))
     staged_version = version_from_init(_read(staging / "app" / "__init__.py") or "")
     if staged_version != expected:
         raise UpdateError(
-            f"Die Version im Paket ({staged_version or '?'}) passt nicht zum Release ({expected})"
+            tr("update.version_mismatch", package=staged_version or "?", release=expected)
         )
     need_py = min_python(_read(staging / "pyproject.toml") or "")
     if need_py and tuple(python_version) < need_py:
         want = ".".join(map(str, need_py))
         if runtime.mode == "portable":
-            raise UpdateError(
-                f"Version {expected} braucht Python {want}. Bitte das Portable-ZIP neu "
-                "herunterladen und den Ordner data\\ übernehmen."
-            )
+            raise UpdateError(tr("update.python_portable", version=expected, python=want))
         if runtime.mode == "installed":
             raise UpdateError(
-                f"Version {expected} braucht Python {want}. Bitte das Setup "
-                f"(HCLoader-Setup-{expected}.exe) der neuen Version herunterladen und "
-                "installieren – die Daten in %APPDATA%\\HCLoader bleiben erhalten."
+                tr("update.python_installer", version=expected, python=want, setup=expected)
             )
-        raise UpdateError(
-            f"Version {expected} braucht Python {want}. Bitte Python {want} installieren, "
-            "das venv neu anlegen und scripts\\setup.ps1 ausführen."
-        )
+        raise UpdateError(tr("update.python_venv", version=expected, python=want, python2=want))
     req_changed = requirements_changed(
         _read(root / "requirements.txt"), _read(staging / "requirements.txt")
     )
     if req_changed and runtime.mode == "other":
-        raise UpdateError(
-            "Die neue Version braucht andere Python-Pakete, HCLoader läuft aber weder im venv "
-            "noch in der Portable-Version. Bitte scripts\\setup.ps1 ausführen."
-        )
+        raise UpdateError(tr("update.new_requirements"))
     fetch = Path("scripts") / "fetch_binaries.ps1"
     bin_changed = req_changed or _file_hash(root / fetch) != _file_hash(staging / fetch)
     items = [i for i in (*PROGRAM_DIRS, *PROGRAM_FILES) if (staging / i).exists()]
@@ -677,7 +665,7 @@ def remove_tree(path: Path) -> None:
     if path.is_dir() and not path.is_symlink():
         shutil.rmtree(long_path(path), ignore_errors=True)
         if path.exists():
-            log.warning("Ordner nicht vollständig gelöscht: %s", path)
+            log.warning("Folder not completely deleted: %s", path)
     elif path.exists() or path.is_symlink():
         path.unlink(missing_ok=True)
 
@@ -795,9 +783,9 @@ class SelfUpdater:
     def blocked(self) -> str | None:
         """Why this installation cannot update itself (None = it can)."""
         if self.git_checkout:
-            return GIT_HINT
+            return tr(GIT_HINT)
         if self._platform != "win32":
-            return WINDOWS_ONLY
+            return tr(WINDOWS_ONLY)
         return None
 
     @property
@@ -844,7 +832,7 @@ class SelfUpdater:
             try:
                 self._on_change(st)
             except Exception:
-                log.debug("update-Event fehlgeschlagen", exc_info=True)
+                log.debug("update event failed", exc_info=True)
         return st
 
     def _progress(self, phase: str, done: int, total: int, *, force: bool = False) -> None:
@@ -860,7 +848,7 @@ class SelfUpdater:
             try:
                 self._on_progress(data)
             except Exception:
-                log.debug("update_progress-Event fehlgeschlagen", exc_info=True)
+                log.debug("update_progress event failed", exc_info=True)
 
     # -- start: leftovers of a previous session
 
@@ -912,7 +900,7 @@ class SelfUpdater:
         if res.get("unchanged"):
             # M4/m3: nothing was changed (locked file, a headless run, an interrupted earlier
             # run repaired first): the prepared update stays ready for the next exit
-            log.info("App-Update nicht eingespielt (%s) – bleibt bereit", res.get("error") or "?")
+            log.info(tr("update.not_applied", reason=res.get("error") or "?"))
         else:
             # after a failure: the same staging would fail again; the next check offers the
             # release anew. `_previous` stays (the updater keeps it unless the last run was ok)
@@ -936,14 +924,14 @@ class SelfUpdater:
         in the result (manual check); the state stays as it was."""
         with self._lock:
             if self._s.state in ("checking", "downloading", "applying"):
-                return {**self.status(), "ok": False, "error": "Update läuft bereits"}
+                return {**self.status(), "ok": False, "error": tr("update.running")}
             before = self._s.state
         repo = self.repo()
         self._set(state="checking", error=None if manual else self._s.error)
         try:
             rel = find_latest(repo, opener=self._open)
         except Exception as exc:
-            msg = f"Update-Prüfung fehlgeschlagen: {_reason(exc)}"
+            msg = tr("update.check_failed", error=_reason(exc))
             if manual:
                 log.warning("%s", msg)
             else:
@@ -952,7 +940,7 @@ class SelfUpdater:
             return {**st, "ok": False, "error": msg}
         now = _now_iso()
         if rel is None:
-            log.info("Keine HCLoader-Version auf GitHub gefunden (%s)", repo)
+            log.info(tr("update.no_release", repo=repo))
             st = self._set(state=before if before == "ready" else "idle", checked=now)
             return {**st, "ok": True}
         keep_ready = before == "ready" and self._s.manifest is not None
@@ -969,9 +957,9 @@ class SelfUpdater:
                 error=None,
             )
         if st["available"]:
-            log.info("HCLoader %s ist verfügbar (installiert: %s)", rel.version, self.current)
+            log.info(tr("update.available", latest=rel.version, current=self.current))
         else:
-            log.info("HCLoader ist aktuell (%s)", self.current)
+            log.info(tr("update.current", version=self.current))
         return {**st, "ok": True}
 
     # -- download + prepare
@@ -983,14 +971,14 @@ class SelfUpdater:
             return b
         with self._lock:
             if self._s.state == "downloading":
-                return "Das Update wird bereits heruntergeladen"
+                return tr("update.downloading")
             if self._s.state in ("ready", "applying"):
-                return "Das Update ist schon bereit"
+                return tr("update.already_ready")
             if self._s.state == "checking":
-                return "Die Update-Prüfung läuft noch"
+                return tr("update.checking")
             rel = self._s.release
         if rel is None or not is_newer(rel.version, self.current):
-            return "Kein neueres Update bekannt – bitte zuerst prüfen"
+            return tr("update.none_known")
         return None
 
     def begin_download(self) -> str | None:
@@ -1019,7 +1007,7 @@ class SelfUpdater:
         self.update_dir.mkdir(parents=True, exist_ok=True)
         zip_path = self.update_dir / "download.zip"
         try:
-            log.info("Lade HCLoader %s: %s", rel.version, rel.zip_url)
+            log.info(tr("update.loading", version=rel.version, url=rel.zip_url))
             download(
                 rel.zip_url,
                 zip_path,
@@ -1050,13 +1038,13 @@ class SelfUpdater:
             if self._cancel.is_set():
                 raise UpdateCancelled()
         except UpdateCancelled:
-            log.info("App-Update abgebrochen")
+            log.info(tr("update.cancelled"))
             self.discard()
             st = self._set(state="idle", progress=None)
             return {**st, "ok": False, "cancelled": True, "error": "Abgebrochen"}
         except Exception as exc:
             msg = str(exc) if isinstance(exc, UpdateError) else _reason(exc)
-            log.error("App-Update fehlgeschlagen: %s", msg)
+            log.error(tr("update.failed", error=msg))
             self.discard()
             st = self._set(state="error", error=msg, progress=None)
             return {**st, "ok": False, "error": msg}
@@ -1064,10 +1052,12 @@ class SelfUpdater:
         manifest["verified"] = verified
         _write_manifest(self.update_dir, manifest)
         log.info(
-            "HCLoader %s ist bereit (Pakete neu: %s, Binaries prüfen: %s)",
-            rel.version,
-            "ja" if manifest["requirements_changed"] else "nein",
-            "ja" if manifest["binaries_changed"] else "nein",
+            tr(
+                "update.ready",
+                version=rel.version,
+                packages="ja" if manifest["requirements_changed"] else "nein",
+                binaries="ja" if manifest["binaries_changed"] else "nein",
+            ),
         )
         if not self._s.notes:
             notes = changelog_section(
@@ -1088,26 +1078,28 @@ class SelfUpdater:
         Without SHA256SUMS (tags without a release, older releases) only the ZIP integrity is
         checked; returns False then (banner «ohne Prüfsumme»), True after a matching hash."""
         if not rel.sums_url:
-            log.warning("Keine SHA256SUMS im Release – geprüft wird nur die ZIP-Integrität")
+            log.warning(tr("update.no_sums"))
             return False
         try:
             sums = parse_sums(_get_text(rel.sums_url, self._open, DOWNLOAD_TIMEOUT_S))
         except UpdateError:
             raise
         except Exception as exc:
-            raise UpdateError(f"SHA256SUMS nicht lesbar: {_reason(exc)}") from exc
+            raise UpdateError(tr("update.sums_unreadable", error=_reason(exc))) from exc
         expected = sums.get(rel.zip_name)
         if not expected:
-            raise UpdateError(
-                f"SHA256SUMS enthält keinen Eintrag für {rel.zip_name} – Update abgebrochen"
-            )
+            raise UpdateError(tr("update.sums_no_entry", file=rel.zip_name))
         actual = sha256_file(zip_path)
         if actual != expected:
             raise UpdateError(
-                f"Prüfsumme stimmt nicht ({rel.zip_name}): erwartet {expected[:12]}…, "
-                f"erhalten {actual[:12]}…"
+                tr(
+                    "update.checksum_mismatch",
+                    file=rel.zip_name,
+                    expected=expected[:12],
+                    got=actual[:12],
+                )
             )
-        log.info("SHA256 geprüft (%s)", rel.zip_name)
+        log.info(tr("update.sha_ok", file=rel.zip_name))
         return True
 
     def cancel(self) -> dict[str, Any]:
@@ -1135,7 +1127,7 @@ class SelfUpdater:
         with self._lock:
             m = self._s.manifest
             if refusal is None and (self._s.state != "ready" or not m):
-                refusal = "Kein Update bereit"
+                refusal = tr("update.none_ready")
         if refusal:
             return {"ok": False, "error": refusal}
         assert m is not None
@@ -1152,7 +1144,7 @@ class SelfUpdater:
                 json.dumps({"pid": self._pid(), "started": _now_iso()}), encoding="utf-8"
             )
         except OSError as exc:
-            msg = f"Updater konnte nicht vorbereitet werden: {exc}"
+            msg = tr("update.prepare_failed", error=exc)
             log.error("%s", msg)
             self._set(state="error", error=msg)
             return {"ok": False, "error": msg}
@@ -1161,7 +1153,7 @@ class SelfUpdater:
         # update stays ready for the next exit (apply_update.ps1 waits for the lock as well).
         if not self._run_lock_free():
             lock_path(self.update_dir).unlink(missing_ok=True)
-            msg = RUN_ACTIVE
+            msg = tr(RUN_ACTIVE)
             log.warning("%s", msg)
             return {"ok": False, "error": msg, "deferred": True}
         args = updater_command(script, manifest, self._pid(), restart=restart)
@@ -1169,14 +1161,12 @@ class SelfUpdater:
             _start_detached(self._popen, args, cwd=self.update_dir)
         except OSError as exc:
             lock_path(self.update_dir).unlink(missing_ok=True)
-            msg = f"Updater konnte nicht gestartet werden: {exc}"
+            msg = tr("update.start_failed", error=exc)
             log.error("%s", msg)
             self._set(state="error", error=msg)
             return {"ok": False, "error": msg}
         log.warning(
-            "App-Update auf %s wird nach dem Beenden eingespielt (Protokoll: %s)",
-            m.get("to_version"),
-            m.get("log"),
+            tr("update.on_exit", version=m.get("to_version"), log=m.get("log")),
         )
         self._set(state="applying")
         return {"ok": True, "args": args}
@@ -1205,7 +1195,7 @@ def session_ending(platform: str = sys.platform) -> bool:
 
         return bool(ctypes.windll.user32.GetSystemMetrics(SM_SHUTTINGDOWN))  # type: ignore[attr-defined]
     except Exception:
-        log.debug("GetSystemMetrics nicht verfügbar", exc_info=True)
+        log.debug("GetSystemMetrics not available", exc_info=True)
         return False
 
 
@@ -1231,15 +1221,15 @@ def start_recovery(
         script = root / "scripts" / "apply_update.ps1"
     manifest = update_dir / "manifest.json"
     if not script.is_file() or not manifest.is_file():
-        log.error("Wiederherstellung nicht möglich: %s oder %s fehlt", script, manifest)
+        log.error(tr("update.recover_impossible", a=script, b=manifest))
         return False
     args = [*updater_command(script, manifest, pid, restart=restart), "-Recover"]
     try:
         _start_detached(popen, args, cwd=update_dir)
     except OSError as exc:
-        log.error("Wiederherstellung konnte nicht gestartet werden: %s", exc)
+        log.error(tr("update.recover_failed", error=exc))
         return False
-    log.warning("Unterbrochenes App-Update: Wiederherstellung gestartet (%s)", script)
+    log.warning(tr("update.recover_started", log=script))
     return True
 
 
@@ -1303,10 +1293,10 @@ def _start_detached(popen: Callable[..., Any], args: list[str], *, cwd: Path) ->
 def _reason(exc: BaseException) -> str:
     if isinstance(exc, urllib.error.HTTPError):
         if exc.code == 403:
-            return "GitHub-Limit erreicht (HTTP 403) – später erneut"
+            return tr("update.github_limit")
         return f"HTTP {exc.code}"
     if isinstance(exc, urllib.error.URLError):
-        return f"keine Verbindung ({exc.reason})"
+        return tr("update.no_connection", error=exc.reason)
     if isinstance(exc, TimeoutError):
-        return "Zeitüberschreitung"
+        return tr("update.timeout")
     return str(exc) or exc.__class__.__name__

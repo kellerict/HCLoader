@@ -4,6 +4,9 @@ from app import main as app_main
 from app.core import ytclient
 from app.core.ytclient import DownloadResult
 
+# pre-v0.2.0 behaviour tests assert the German texts (pins the de catalog)
+pytestmark = pytest.mark.usefixtures("german_messages")
+
 
 def test_headless_run_without_sources_exits_0_and_writes_run_entry():
     from app.core import config

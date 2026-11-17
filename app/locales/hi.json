@@ -1,0 +1,8 @@
+{
+  "_meta": {
+    "code": "hi",
+    "name": "हिन्दी",
+    "dir": "ltr",
+    "note": "Backend messages. Guide: docs/TRANSLATING.md – not translated yet, falls back to English"
+  }
+}

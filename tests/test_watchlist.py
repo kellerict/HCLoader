@@ -10,6 +10,9 @@ import pytest
 from app.core import config, watchlist
 from app.core.throttle import BackoffActive, LimitReached
 
+# pre-v0.2.0 behaviour tests assert the German texts (pins the de catalog)
+pytestmark = pytest.mark.usefixtures("german_messages")
+
 
 def entry(vid, title="Hardcore Mix", duration=3600, **kw):
     return {"id": vid, "title": title, "duration": duration, "channel_id": "UC1", **kw}
@@ -518,7 +521,7 @@ def test_source_error_continues_and_is_counted(db, settings):
     err = [e for e in events if e.get("error")][0]
     assert "u:p" not in err["error"] and "***" in err["error"]
     assert db.get_source(a["id"])["last_checked"] is None
-    assert "1 Quelle(n) mit Fehler" in db.list_runs()[0]["note"]
+    assert "1 Quelle mit Fehler" in db.list_runs()[0]["note"]
 
 
 def test_search_limit_is_a_source_error_not_an_abort(db, settings):

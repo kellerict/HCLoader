@@ -12,6 +12,9 @@ from app.core import config, player, sidecar
 from app.core.config import Settings
 from app.core.tagging import Chapter
 
+# pre-v0.2.0 behaviour tests assert the German texts (pins the de catalog)
+pytestmark = pytest.mark.usefixtures("german_messages")
+
 VID = "abc123XYZ_-"
 JPEG = b"\xff\xd8\xff\xe0fake-jpeg\xff\xd9"
 

@@ -27,6 +27,7 @@ from .config import UNSORTED, Settings
 from .db import Database
 from .filters import normalize
 from .genre import detect_genre
+from .i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -107,7 +108,7 @@ def _move(src: Path, dst: Path) -> None:
             try:
                 dst.unlink()
             except OSError:
-                log.warning("Kopie am Ziel nicht entfernt: %s", dst)
+                log.warning(tr("library.copy_not_removed", path=dst))
         raise
 
 
@@ -152,7 +153,7 @@ def _duration(row: dict[str, Any], path: Path | None, present: bool) -> int | No
             if f is not None and f.info is not None and f.info.length:
                 return int(f.info.length)
         except Exception:  # unreadable audio: no duration
-            log.debug("Dauer nicht lesbar: %s", path, exc_info=True)
+            log.debug("Duration not readable: %s", path, exc_info=True)
     return None
 
 
@@ -285,7 +286,7 @@ def extract_cover(path: Path) -> bytes | None:
     except (ID3NoHeaderError, OSError, ValueError):
         pass
     except Exception:  # corrupt tag block: re-tag without cover rather than failing
-        log.debug("Cover nicht lesbar: %s", path, exc_info=True)
+        log.debug("Cover not readable: %s", path, exc_info=True)
     return None
 
 
@@ -315,7 +316,7 @@ def _rewrite_cue_file_line(cue: Path, audio_name: str) -> None:
         text = re.sub(r'^FILE ".*?"', lambda _m: f'FILE "{name}"', text, count=1, flags=re.M)
         cue.write_text(text, encoding="utf-8-sig", newline="\n")
     except OSError as exc:
-        log.warning("CUE-Datei nicht angepasst (%s): %s", cue, exc)
+        log.warning(tr("library.cue_not_adjusted", path=cue, error=exc))
 
 
 def retag(db: Database, settings: Settings, video_id: str) -> dict[str, Any]:
@@ -334,10 +335,10 @@ def _retag(db: Database, settings: Settings, video_id: str) -> dict[str, Any]:
     """
     row = db.get_video(video_id)
     if not row or row.get("status") != "done" or not row.get("file_path"):
-        return {"ok": False, "error": "Eintrag ist nicht in der Bibliothek"}
+        return {"ok": False, "error": tr("library.not_in_library")}
     path = Path(row["file_path"])
     if not path.is_file():
-        return {"ok": False, "error": f"Datei fehlt: {path}"}
+        return {"ok": False, "error": tr("library.file_missing", path=path)}
     data = sidecar.read(video_id)
     st, dl = settings.storage, settings.download
 
@@ -408,19 +409,19 @@ def _retag(db: Database, settings: Settings, video_id: str) -> dict[str, Any]:
                 max_path_length=st.max_path_length,
             )
         except paths.PathTooLongError as exc:
-            log.warning("Neu taggen: neuer Pfad zu lang (%s): %s", video_id, exc)
+            log.warning(tr("library.retag_path_long", id=video_id, error=exc))
             return {
                 "ok": False,
-                "error": f"Neuer Ablagepfad ist zu lang – Datei nicht verändert. {exc}",
+                "error": tr("library.path_too_long", error=exc),
             }
         except (ValueError, OSError) as exc:
-            log.warning("Neu taggen: Pfad nicht bildbar (%s): %s", video_id, exc)
-            return {"ok": False, "error": f"Neuer Ablagepfad nicht möglich: {exc}"}
+            log.warning(tr("library.retag_path_failed", id=video_id, error=exc))
+            return {"ok": False, "error": tr("library.path_impossible", error=exc)}
     same = _same_file(new_path, path)
     # a pure case change counts as a rename (same file, other spelling)
     moving = str(new_path) != str(path) and (not same or new_path.name != path.name)
     if moving and not same and new_path.exists():
-        return {"ok": False, "error": f"Zieldatei existiert bereits: {new_path}"}
+        return {"ok": False, "error": tr("library.target_exists", path=new_path)}
 
     try:
         tagging.write_tags(
@@ -436,8 +437,8 @@ def _retag(db: Database, settings: Settings, video_id: str) -> dict[str, Any]:
             keep_existing=True,
         )
     except Exception as exc:
-        log.error("Neu taggen fehlgeschlagen (%s): %s", video_id, exc)
-        return {"ok": False, "error": f"Tags konnten nicht geschrieben werden: {exc}"}
+        log.error(tr("library.retag_failed_log", id=video_id, error=exc))
+        return {"ok": False, "error": tr("library.tags_failed", error=exc)}
 
     old_cue = path.with_suffix(".cue")
     had_cue = old_cue.is_file()
@@ -446,8 +447,8 @@ def _retag(db: Database, settings: Settings, video_id: str) -> dict[str, Any]:
             new_path.parent.mkdir(parents=True, exist_ok=True)
             _move(path, new_path)
         except OSError as exc:
-            log.error("Verschieben fehlgeschlagen (%s): %s", video_id, exc)
-            return {"ok": False, "error": f"Datei konnte nicht verschoben werden: {exc}"}
+            log.error(tr("library.move_failed_log", id=video_id, error=exc))
+            return {"ok": False, "error": tr("library.move_failed", error=exc)}
         db.set_file_path(video_id, str(new_path))
     db.set_genre(video_id, genre, manual=bool(manual))
 
@@ -466,19 +467,21 @@ def _retag(db: Database, settings: Settings, video_id: str) -> dict[str, Any]:
         elif had_cue:
             cue_written = True
     except (OSError, tagging.TaggingError) as exc:
-        log.warning("CUE-Datei nicht aktualisiert (%s): %s", video_id, exc)
+        log.warning(tr("library.cue_not_updated", path=video_id, error=exc))
     if cover and dl.write_cover_jpg:
         try:
             cover_file = new_path.parent / COVER_NAME
             if not cover_file.exists():
                 cover_file.write_bytes(cover)
         except OSError as exc:
-            log.warning("cover.jpg nicht geschrieben (%s): %s", video_id, exc)
+            log.warning(tr("library.cover_jpg_failed", path=video_id, error=exc))
     if moving and within(path.parent, root):
         prune_empty_dirs(path.parent, root)
     if data is not None and data.get("genre") != genre:
         sidecar.write(video_id, {**data, "genre": genre})
-    log.info("Neu getaggt: %s%s", new_path, " (verschoben)" if moving else "")
+    log.info(
+        tr("library.retagged", title=new_path, moved=tr("library.moved_suffix") if moving else "")
+    )
     return {
         "ok": True,
         "path": str(new_path),
@@ -514,23 +517,27 @@ def _delete_item(
     """
     row = db.get_video(video_id)
     if not row or row.get("status") != "done":
-        return {"ok": False, "error": "Eintrag ist nicht in der Bibliothek"}
+        return {"ok": False, "error": tr("library.not_in_library")}
     removed: list[str] = []
     root = settings.target_dir_path()
     fp = row.get("file_path")
     if fp and _under(fp, root) and not target_reachable(root):
         # the file's state is unknown: never drop the entry (m2)
-        return {"ok": False, "error": f"Zielordner nicht erreichbar: {root}", "unreachable": True}
+        return {
+            "ok": False,
+            "error": tr("library.target_unreachable", path=root),
+            "unreachable": True,
+        }
     if delete_file and fp:
         path = Path(fp)
         if not within(path, root):
             return {
                 "ok": False,
-                "error": f"Datei liegt ausserhalb des Zielordners ({root}) – nicht gelöscht",
+                "error": tr("library.outside_target", path=root),
                 "outside": True,
             }
         if path.is_dir():
-            return {"ok": False, "error": f"Kein Dateipfad: {path}"}
+            return {"ok": False, "error": tr("library.no_path", id=path)}
         try:
             # .cue first: if the audio file cannot be deleted (in use), the DB stays consistent
             for victim in (path.with_suffix(".cue"), path):
@@ -538,13 +545,15 @@ def _delete_item(
                     victim.unlink()
                     removed.append(victim.name)
         except OSError as exc:
-            log.error("Löschen fehlgeschlagen (%s): %s", video_id, exc)
+            log.error(tr("library.delete_failed_log", id=video_id, error=exc))
             return {
                 "ok": False,
-                "error": f"Datei konnte nicht gelöscht werden (in Benutzung?): {exc}",
+                "error": tr("library.delete_failed", error=exc),
             }
         prune_empty_dirs(path.parent, root)
     sidecar.delete(video_id)
     db.mark_removed(video_id)
-    log.info("Aus der Bibliothek entfernt: %s (%s)", video_id, ", ".join(removed) or "ohne Datei")
+    log.info(
+        tr("library.removed", title=video_id, what=", ".join(removed) or tr("library.without_file"))
+    )
     return {"ok": True, "deleted": removed}

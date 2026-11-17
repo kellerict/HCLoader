@@ -35,6 +35,7 @@ from .config import UNSORTED, Settings
 from .db import Database
 from .filters import normalize
 from .genre import detect_genre, genre_search_terms
+from .i18n import tr
 from .library import FS_LOCK
 from .platforms import SOUNDCLOUD, YOUTUBE
 from .redact import redact
@@ -76,7 +77,7 @@ NEWEST_LAST_MAX = 2000
 SC_FORMATS = ["http_aac", "hls_aac", "http_mp3", "hls_mp3"]
 # lossless originals (downloadable tracks) are huge and cannot be tagged: prefer streams
 SC_FORMAT = "bestaudio[ext!=wav][ext!=aiff][ext!=aif][ext!=flac]/bestaudio/best"
-PREVIEW_REASON = "Nur Vorschau (Go+)"
+PREVIEW_REASON = "filter.preview"  # message key (app/locales)
 _SC_USER_RESERVED = {
     "discover",
     "search",
@@ -135,7 +136,7 @@ class PreviewOnly(YtClientError):
     """SoundCloud offers only the 30 s Go+ preview of this track (never downloaded)."""
 
     def __init__(self) -> None:
-        super().__init__(f"{PREVIEW_REASON} – vollständiger Track nur mit SoundCloud Go+")
+        super().__init__(tr("yt.preview_only", reason=tr(PREVIEW_REASON)))
 
 
 class LocalError(YtClientError, preflight.LocalError):
@@ -399,9 +400,9 @@ def build_ydl_opts(
     `download.keep_original_soundcloud`, no MP3 conversion.
     """
     if purpose not in PURPOSES:
-        raise ValueError(f"Unbekannter Zweck: {purpose}")
+        raise ValueError(f"Unknown purpose: {purpose}")
     if platform not in platforms.PLATFORMS:
-        raise ValueError(f"Unbekannte Plattform: {platform}")
+        raise ValueError(f"Unknown platform: {platform}")
     net = settings.network
     limits = settings.throttle_for(platform)
     opts: dict[str, Any] = {
@@ -427,8 +428,7 @@ def build_ydl_opts(
     if net.cookies_from_browser and platform == YOUTUBE:
         opts["cookiesfrombrowser"] = (net.cookies_from_browser,)
         log.warning(
-            "Cookies aus %s aktiv (Notlösung, kann mit PO-Token Probleme machen)",
-            net.cookies_from_browser,
+            tr("yt.cookies_active", browser=net.cookies_from_browser),
         )
     if purpose in ("search", "list"):
         opts["extract_flat"] = "in_playlist"
@@ -591,9 +591,7 @@ class YtClient:
             return
         if self._external_pot:
             if not self._pot_server.running():  # type: ignore[union-attr]
-                raise LocalError(
-                    "pot", "PO-Token-Server läuft nicht (wird vom Watchdog neu gestartet)"
-                )
+                raise LocalError("pot", tr("yt.pot_not_running"))
             return
         with self._lock:
             if self._pot_server is None or self._pot_server.port != net.po_token_port:
@@ -601,9 +599,7 @@ class YtClient:
                     self._pot_server.stop()
                 self._pot_server = binaries.PotServer(net.po_token_port)
             if not self._pot_server.start():
-                raise LocalError(
-                    "pot", "PO-Token-Server nicht bereit (Deno/Provider fehlt oder keine Antwort)"
-                )
+                raise LocalError("pot", tr("yt.pot_not_ready"))
 
     def _extract(
         self,
@@ -652,18 +648,16 @@ class YtClient:
                             on_request()
                         ie_result = ydl.extract_info(url, download=False, process=False)
                     if ie_result is None:
-                        raise YtClientError("Keine Daten von yt-dlp erhalten")
+                        raise YtClientError(tr("yt.no_data"))
                     if platform == SOUNDCLOUD and _only_previews(ie_result):
                         raise PreviewOnly
                     if ie_result.get("_type") == "playlist":
-                        raise YtClientError("Keine einzelne Video-URL (Playlist erkannt)")
+                        raise YtClientError(tr("yt.not_single_video"))
                     if ie_result.get("_type") not in (None, "video"):  # R2-n1: url/url_transparent
-                        raise YtClientError(
-                            "Kein direktes Video (Verweis, z.B. Trailer eines Bezahlvideos)"
-                        )
+                        raise YtClientError(tr("yt.not_direct_video"))
                     info = ydl.process_ie_result(ie_result, download=True)
                     if info is None:
-                        raise YtClientError("Keine Daten von yt-dlp erhalten")
+                        raise YtClientError(tr("yt.no_data"))
                     return ydl.sanitize_info(info)  # type: ignore[no-any-return]
             with th.metadata_lock(timeout=METADATA_WAIT_S, cancel_event=cancel_event):
                 th.before_request(kind, cancel_event=cancel_event)
@@ -675,7 +669,7 @@ class YtClient:
                             _install_sc_flat_extractors(ydl, window)
                         info = ydl.extract_info(url, download=False, process=handler is None)
                         if info is None:
-                            raise YtClientError("Keine Daten von yt-dlp erhalten")
+                            raise YtClientError(tr("yt.no_data"))
                         if handler is not None:
                             info = handler(ydl, info)
                         return ydl.sanitize_info(info)  # type: ignore[no-any-return]
@@ -737,9 +731,9 @@ class YtClient:
         `platform` and DB ids `sc:<id>`."""
         settings = self.settings
         if platform not in platforms.PLATFORMS:
-            raise YtClientError(f"Unbekannte Plattform: {platform}")
+            raise YtClientError(tr("api.unknown_platform_x", platform=platform))
         if platform == SOUNDCLOUD and not settings.soundcloud.enabled:
-            raise YtClientError("SoundCloud ist in den Einstellungen ausgeschaltet")
+            raise YtClientError(tr("sc.off_in_settings"))
         n = n or settings.search.results_count
         full_query = build_search_query(query, genre=genre, year=year, settings=settings)
         opts = build_ydl_opts(settings, "search", platform)
@@ -772,7 +766,7 @@ class YtClient:
         settings = self.settings
         platform = platforms.url_platform(url) or YOUTUBE
         if platform == SOUNDCLOUD and not settings.soundcloud.enabled:
-            raise YtClientError("SoundCloud ist in den Einstellungen ausgeschaltet")
+            raise YtClientError(tr("sc.off_in_settings"))
         max_entries = int(max_entries or settings.schedule.entries_per_source)
         opts = build_ydl_opts(settings, "list", platform)
         handler = None
@@ -841,7 +835,7 @@ class YtClient:
             with archive.open("a", encoding="utf-8", newline="\n") as fh:
                 fh.write(platforms.archive_line(video_id) + "\n")
         except OSError as exc:
-            log.warning("Download-Archiv nicht beschreibbar (%s): %s", archive, exc)
+            log.warning(tr("yt.archive_not_writable", path=archive, error=exc))
 
     def download(
         self,
@@ -868,8 +862,8 @@ class YtClient:
         settings = self.settings
         vid = extract_video_id(url_or_id)
         if not vid:
-            msg = "Keine Video-URL oder Video-ID (Playlists, Kanäle und Suchen sind nicht erlaubt)"
-            log.error("Download abgelehnt: %s (%s)", msg, (url_or_id or "")[:100])
+            msg = tr("yt.no_video_url")
+            log.error(tr("yt.download_refused", target=msg, error=(url_or_id or "")[:100]))
             return DownloadResult("", "failed", error=msg)
         url = watch_url(vid)
         platform = platforms.platform_of(vid)
@@ -879,9 +873,7 @@ class YtClient:
         if skipped:
             return skipped
         if platform == SOUNDCLOUD and not settings.soundcloud.enabled:
-            return DownloadResult(
-                vid, "failed", error="SoundCloud ist in den Einstellungen ausgeschaltet"
-            )
+            return DownloadResult(vid, "failed", error=tr("sc.off_in_settings"))
         th = self.throttle.platform(platform)
         th.check_download()
 
@@ -940,7 +932,7 @@ class YtClient:
             limited = th.handle_error(exc)
             msg = _clean_error(exc)
             if not isinstance(exc, (yt_dlp.utils.YoutubeDLError, OSError, YtClientError)):
-                log.exception("Unerwarteter Fehler beim Download von %s", vid)
+                log.exception(tr("yt.unexpected", id=vid))
             keep = (
                 not limited
                 and not _HTTP_403_RE.search(str(exc))
@@ -971,11 +963,11 @@ class YtClient:
     def _skip_result(self, vid: str) -> DownloadResult | None:
         row = self.db.get_video(vid)
         if row and row["status"] == "done":
-            log.info("Übersprungen (bereits geladen): %s", vid)
+            log.info(tr("yt.skipped_done", id=vid))
             fp = Path(row["file_path"]) if row.get("file_path") else None
             return DownloadResult(vid, "skipped", fp, row.get("title") or "", skipped=True)
         if self.in_archive(vid):
-            log.info("Übersprungen (im Download-Archiv): %s", vid)
+            log.info(tr("yt.skipped_archive", id=vid))
             return DownloadResult(vid, "skipped", None, (row or {}).get("title") or "", True)
         return None
 
@@ -1020,9 +1012,7 @@ class YtClient:
                         raise
                     if attempt < 1 and _NETWORK_RE.search(msg):
                         attempt += 1
-                        log.warning(
-                            "Netzwerkfehler, ein Versuch wird wiederholt: %s", _clean_error(exc)
-                        )
+                        log.warning(tr("yt.network_retry", error=_clean_error(exc)))
                         check_cancel()
                         continue
                     raise
@@ -1046,7 +1036,7 @@ class YtClient:
         stem = platforms.file_id(vid)
         audio = _find_audio(info, tmp, stem)
         if audio is None:
-            raise YtClientError("Audiodatei nach dem Download nicht gefunden")
+            raise YtClientError(tr("yt.audio_not_found"))
         meta = normalize_entry(info, platform)
         row = self.db.get_video(vid) or {}
         manual = row.get("genre") if row.get("genre_manual") else None
@@ -1093,7 +1083,7 @@ class YtClient:
             try:
                 cover = tagging.make_square_cover(thumb, ffmpeg=binaries.ffmpeg_path())
             except tagging.TaggingError as exc:
-                log.warning("Cover übersprungen: %s", exc)
+                log.warning(tr("yt.cover_skipped", error=exc))
         # always resolved: the sidecar keeps them for a later re-tag even if CUE/CHAP are off
         chapters = tagging.chapters_from_info(info)
         duration = float(meta["duration"]) if meta["duration"] else None
@@ -1136,14 +1126,14 @@ class YtClient:
             try:
                 cue_path = tagging.write_cue(target, chapters, performer=artist, title=title)
             except Exception as exc:
-                log.warning("CUE-Datei nicht geschrieben (%s): %s", vid, exc)
+                log.warning(tr("yt.cue_not_written", path=vid, error=exc))
         if cover and dl.write_cover_jpg:
             try:
                 cover_file = target.parent / "cover.jpg"
                 if not cover_file.exists():
                     cover_file.write_bytes(cover)
             except OSError as exc:
-                log.warning("cover.jpg nicht geschrieben (%s): %s", vid, exc)
+                log.warning(tr("library.cover_jpg_failed", path=vid, error=exc))
         _cleanup_tmp(tmp, stem)
 
         self.db.upsert_video(
@@ -1173,14 +1163,14 @@ class YtClient:
             ),
         )
         self._record_archive(vid)  # only after `done`: no crash window blocks a video forever
-        log.info("Geladen: %s -> %s", vid, target)
+        log.info(tr("yt.downloaded", id=vid, path=target))
         return DownloadResult(vid, "done", target, title, cue_path=cue_path, info=meta)
 
     def _cancelled(self, vid: str, tmp: Path, prev_status: str) -> DownloadResult:
         """Abort: keep resumable `.part` files, put the video back to its previous status."""
         _cleanup_tmp(tmp, platforms.file_id(vid), keep_partial=True)
         self._restore_status(vid, prev_status, "Abgebrochen")
-        log.info("Download cancelled: %s", vid)
+        log.info(tr("yt.cancelled", id=vid))
         return DownloadResult(vid, "cancelled", error="Abgebrochen")
 
     def _fail(
@@ -1196,7 +1186,7 @@ class YtClient:
         _cleanup_tmp(tmp, platforms.file_id(vid), keep_partial=keep_partial)
         if self.db.is_known(vid):
             self.db.set_status(vid, "failed", error=message)
-        log.error("Download failed: %s (%s)", vid, message)
+        log.error(tr("yt.failed", id=vid, error=message))
         return DownloadResult(vid, "failed", error=message, rate_limited=rate_limited)
 
 
@@ -1268,13 +1258,14 @@ def _sc_fallback(where: str, exc: BaseException) -> None:
     """Review M2: an override hit an unexpected yt-dlp change at runtime -> stock behaviour."""
     _sc_warn_once(
         f"runtime:{where}",
-        "SoundCloud-Erweiterung (%s) passt nicht zu dieser yt-dlp-Version (%s), "
-        "Standardverhalten von yt-dlp wird verwendet: %s",
-        where,
-        getattr(yt_dlp.version, "__version__", "?"),
-        exc,
+        tr(
+            "yt.sc_ext_mismatch",
+            ext=where,
+            version=getattr(yt_dlp.version, "__version__", "?"),
+            error=exc,
+        ),
     )
-    log.debug("SoundCloud-Erweiterung: Fallback in %s", where, exc_info=exc)
+    log.debug("SoundCloud extension: fallback in %s", where, exc_info=exc)
 
 
 # errors that mean «the yt-dlp internals changed» (never ExtractorError: those are real
@@ -1303,20 +1294,20 @@ def _sc_check_capabilities(sc: Any) -> list[str]:
     )
     for name in names:
         if not isinstance(getattr(sc, name, None), type):
-            problems.append(f"Klasse {name} fehlt")
+            problems.append(f"Class {name} missing")
     if problems:
         return problems
     base = sc.SoundcloudBaseIE
     for cls in (sc.SoundcloudSearchIE, sc.SoundcloudUserIE, sc.SoundcloudSetIE):
         if not issubclass(cls, base):
-            problems.append(f"{cls.__name__} erbt nicht von SoundcloudBaseIE")
+            problems.append(f"{cls.__name__} does not inherit from SoundcloudBaseIE")
     for attr in ("_call_api", "_extract_thumbnails", "_extract_info_dict", "url_result"):
         if not callable(getattr(base, attr, None)):
-            problems.append(f"SoundcloudBaseIE.{attr} fehlt")
+            problems.append(f"SoundcloudBaseIE.{attr} missing")
     if not isinstance(getattr(base, "_API_V2_BASE", None), str):
-        problems.append("SoundcloudBaseIE._API_V2_BASE fehlt")
+        problems.append("SoundcloudBaseIE._API_V2_BASE missing")
     if not isinstance(getattr(base, "_HEADERS", None), dict):
-        problems.append("SoundcloudBaseIE._HEADERS fehlt")
+        problems.append("SoundcloudBaseIE._HEADERS missing")
     if problems:
         return problems
 
@@ -1326,13 +1317,13 @@ def _sc_check_capabilities(sc: Any) -> list[str]:
 
     info_dict = names_of(base._extract_info_dict)
     if not info_dict or info_dict[:2] != ["self", "info"] or "extract_flat" not in info_dict:
-        problems.append(f"Signatur _extract_info_dict geändert: {info_dict}")
+        problems.append(f"Signature _extract_info_dict changed: {info_dict}")
     thumbs = names_of(base._extract_thumbnails)
     if not thumbs or thumbs[:2] != ["self", "info"]:
-        problems.append(f"Signatur _extract_thumbnails geändert: {thumbs}")
+        problems.append(f"Signature _extract_thumbnails changed: {thumbs}")
     url_res = names_of(base.url_result)  # staticmethod: (url, ie, video_id, video_title, ...)
     if not url_res or url_res[:3] != ["url", "ie", "video_id"]:
-        problems.append(f"Signatur url_result geändert: {url_res}")
+        problems.append(f"Signature url_result changed: {url_res}")
     ext_set = getattr(sc.SoundcloudSetIE, "_extract_set", None)
     set_params = _params(ext_set) if callable(ext_set) else None
     if (
@@ -1340,7 +1331,7 @@ def _sc_check_capabilities(sc: Any) -> list[str]:
         or [p.name for p in set_params[:3]] != ["self", "playlist", "token"]
         or set_params[2].default is inspect.Parameter.empty
     ):
-        problems.append("Signatur _extract_set(playlist, token=None) geändert")
+        problems.append("Signature _extract_set(playlist, token=None) changed")
     return problems
 
 
@@ -1381,9 +1372,7 @@ def _sc_flat_extractor_classes() -> list[type]:
     if version and version != SC_CHECKED_YTDLP:
         _sc_warn_once(
             "version",
-            "yt-dlp %s: SoundCloud-Erweiterung geprüft mit %s (Schnittstellen passen)",
-            version,
-            SC_CHECKED_YTDLP,
+            tr("yt.sc_ext_ok", version=version, checked=SC_CHECKED_YTDLP),
         )
 
     class _Mixin:
@@ -1463,7 +1452,7 @@ def _sc_flat_extractor_classes() -> list[type]:
                     try:
                         meta = dict(self._extract_info_dict(track, extract_flat=True))
                     except ExtractorError as exc:  # never let one track abort the listing
-                        log.debug("SoundCloud-Eintrag %s ohne Metadaten: %s", video_id, exc)
+                        log.debug("SoundCloud entry %s without metadata: %s", video_id, exc)
                         meta = {"sc_policy": track.get("policy")}
                     for key in ("formats", "__post_extractor", "id"):
                         meta.pop(key, None)
@@ -1529,10 +1518,9 @@ def _install_sc_flat_extractors(ydl: Any, window: tuple[str, int] | None) -> Non
     except Exception as exc:  # yt-dlp changed: stock extractors stay in use
         _sc_warn_once(
             "build",
-            "SoundCloud-Erweiterung nicht aktiv (yt-dlp %s geändert: %s) – Standardverhalten, "
-            "Dauer/Datum in Listen können fehlen",
-            getattr(yt_dlp.version, "__version__", "?"),
-            exc,
+            tr(
+                "yt.sc_ext_inactive", version=getattr(yt_dlp.version, "__version__", "?"), error=exc
+            ),
         )
         return
     for cls in classes:
@@ -1545,9 +1533,7 @@ def _install_sc_flat_extractors(ydl: Any, window: tuple[str, int] | None) -> Non
 
 
 def _playlist_too_long(n: int) -> YtClientError:
-    return YtClientError(
-        f"Playlist zu lang für Rückwärts-Lesen ({n} Einträge, max. {NEWEST_LAST_MAX})"
-    )
+    return YtClientError(tr("yt.playlist_too_long", n=n, max=NEWEST_LAST_MAX))
 
 
 def _newest_last_handler(
@@ -1566,7 +1552,7 @@ def _newest_last_handler(
             ydl.params["playlistend"] = max_entries
             info = ydl.process_ie_result(ie_result, download=False)
             if info is None:
-                raise YtClientError("Keine Daten von yt-dlp erhalten")
+                raise YtClientError(tr("yt.no_data"))
             return info  # type: ignore[no-any-return]
         count = ie_result.get("playlist_count")
         if isinstance(count, int) and count > NEWEST_LAST_MAX:
@@ -1607,7 +1593,7 @@ def _cleanup_tmp(tmp: Path, vid: str, *, keep_partial: bool = False) -> None:
         try:
             f.unlink()
         except OSError:
-            log.debug("Temporäre Datei nicht löschbar: %s", f)
+            log.debug("Temporary file not deletable: %s", f)
 
 
 def glob_escape(text: str) -> str:

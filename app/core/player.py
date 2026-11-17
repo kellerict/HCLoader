@@ -28,6 +28,7 @@ from mutagen import File as MutagenFile
 from . import config, library, platforms, sidecar, tagging
 from .config import UNSORTED, Settings
 from .db import Database
+from .i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -57,18 +58,18 @@ def resolve_playable(
     """(row, path) of a library item that may be played; raises PlayerError (German)."""
     row = db.get_video(str(video_id))
     if not row or row.get("status") != "done" or not row.get("file_path"):
-        raise PlayerError("Eintrag ist nicht in der Bibliothek")
+        raise PlayerError(tr("library.not_in_library"))
     path = Path(row["file_path"])
     # Playing only reads: files of an earlier target folder stay playable (deleting/moving
     # them stays restricted to the current target folder, see library.py). Only audio files,
     # so play_external/os.startfile can never launch anything else.
     if path.suffix.lower() not in AUDIO_SUFFIXES:
-        raise PlayerError("Keine Audiodatei")
+        raise PlayerError(tr("player.no_audio"))
     try:
         if not path.is_file():
-            raise PlayerError("Datei fehlt")
+            raise PlayerError(tr("player.file_missing"))
     except OSError as exc:
-        raise PlayerError("Datei fehlt") from exc
+        raise PlayerError(tr("player.file_missing")) from exc
     return row, path
 
 
@@ -96,7 +97,7 @@ def cover_file(video_id: str, path: Path) -> Path | None:
         tmp.write_bytes(data)
         os.replace(tmp, target)
     except OSError as exc:
-        log.warning("Cover-Cache nicht geschrieben (%s): %s", video_id, exc)
+        log.warning("Cover cache not written (%s): %s", video_id, exc)
         return None
     return target
 
@@ -168,7 +169,7 @@ def _duration(row: dict[str, Any], path: Path) -> float | None:
         if f is not None and f.info is not None and f.info.length:
             return float(f.info.length)
     except Exception:  # unreadable audio: unknown duration
-        log.debug("Dauer nicht lesbar: %s", path, exc_info=True)
+        log.debug("Duration not readable: %s", path, exc_info=True)
     return None
 
 
@@ -223,5 +224,5 @@ def play_external(
                 stderr=subprocess.DEVNULL,
             )
     except (OSError, AttributeError) as exc:
-        return {"ok": False, "error": f"Datei kann nicht abgespielt werden: {exc}"}
+        return {"ok": False, "error": tr("player.cannot_play", error=exc)}
     return {"ok": True}

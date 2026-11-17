@@ -11,6 +11,9 @@ from app.core.throttle import Throttle
 from app.exitcodes import EXIT_BLOCKED, EXIT_BUSY, EXIT_FAILED, EXIT_OK, EXIT_USAGE
 from app.main import main
 
+# pre-v0.2.0 behaviour tests assert the German texts (pins the de catalog)
+pytestmark = pytest.mark.usefixtures("german_messages")
+
 
 class NullClient:
     def __init__(self, fail=None):

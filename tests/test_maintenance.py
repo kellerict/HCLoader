@@ -9,6 +9,9 @@ import pytest
 from app.core import binaries, config, maintenance, potoken, status
 from app.core.db import Database
 
+# pre-v0.2.0 behaviour tests assert the German texts (pins the de catalog)
+pytestmark = pytest.mark.usefixtures("german_messages")
+
 # --------------------------------------------------------------------------- pip update
 
 

@@ -8,6 +8,8 @@ from collections.abc import Collection, Iterable, Mapping
 from datetime import UTC, date, datetime, timedelta
 from typing import Any, Protocol
 
+from .i18n import tr
+
 PERIOD_DAYS = {"7d": 7, "30d": 30, "1y": 365}
 
 
@@ -64,11 +66,11 @@ def check_duration(
 ) -> str | None:
     """Return a rejection reason or None if OK. Unknown duration is rejected."""
     if duration is None or duration <= 0:
-        return "Dauer unbekannt"
+        return tr("filter.duration_unknown")
     if duration < min_duration:
-        return "Zu kurz"
+        return tr("filter.too_short")
     if max_duration and duration > max_duration:
-        return "Zu lang"
+        return tr("filter.too_long")
     return None
 
 
@@ -141,7 +143,7 @@ def is_live(video: Mapping[str, Any]) -> bool:
     return bool(video.get("is_live")) or video.get("live_status") in {"is_live", "is_upcoming"}
 
 
-PREVIEW_REASON = "Nur Vorschau (Go+)"
+PREVIEW_REASON = "filter.preview"  # message key (app/locales)
 # SoundCloud Go+ snippets are 30 s long; flat results may lack the policy flag
 PREVIEW_SECONDS = (29, 31)
 
@@ -159,7 +161,7 @@ def is_preview(video: Mapping[str, Any]) -> bool:
     )
 
 
-GEO_REASON = "Nicht verfügbar (Region)"
+GEO_REASON = "filter.geo"  # message key (app/locales)
 
 
 def is_geo_blocked(video: Mapping[str, Any]) -> bool:
@@ -169,8 +171,8 @@ def is_geo_blocked(video: Mapping[str, Any]) -> bool:
 
 def _period_reason(upload_date: str | None, period: str) -> str:
     if parse_upload_date(upload_date) is None:
-        return "Upload-Datum unbekannt"
-    return "Ausserhalb des Zeitraums"
+        return tr("filter.date_unknown")
+    return tr("filter.outside_period")
 
 
 def passes(
@@ -183,9 +185,9 @@ def passes(
     if is_live(video):
         return False, "Livestream"
     if is_geo_blocked(video):
-        return False, GEO_REASON
+        return False, tr(GEO_REASON)
     if is_preview(video):
-        return False, PREVIEW_REASON
+        return False, tr(PREVIEW_REASON)
     reason = check_duration(video.get("duration"), settings.min_duration, settings.max_duration)
     if reason:
         return False, reason
@@ -207,14 +209,14 @@ def passes(
         text = f"{text} {video['description']}"
 
     if settings.include_keywords and not matches_any(text, settings.include_keywords):
-        return False, "Kein Include-Keyword"
+        return False, tr("filter.no_include")
     hit = matches_any(text, settings.exclude_keywords)
     if hit:
-        return False, f"Exclude-Keyword: {hit}"
+        return False, tr("filter.exclude_keyword", keyword=hit)
 
     channel_id = video.get("channel_id")
     if settings.apply_channel_blacklist and blacklist and channel_id in blacklist:
-        return False, "Kanal blockiert"
+        return False, tr("filter.channel_blocked")
     if settings.hide_done_ignored and status in ("done", "ignored"):
-        return False, "Bereits geladen" if status == "done" else "Ignoriert"
+        return False, tr("filter.downloaded") if status == "done" else "Ignoriert"
     return True, ""

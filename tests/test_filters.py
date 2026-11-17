@@ -5,6 +5,9 @@ import pytest
 from app.core import filters
 from app.core.config import DEFAULT_EXCLUDE_KEYWORDS, DEFAULT_INCLUDE_KEYWORDS, FilterSettings
 
+# pre-v0.2.0 behaviour tests assert the German texts (pins the de catalog)
+pytestmark = pytest.mark.usefixtures("german_messages")
+
 
 def S(**kw):
     return FilterSettings(**kw)

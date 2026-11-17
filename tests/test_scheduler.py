@@ -8,6 +8,9 @@ import pytest
 from app.core import scheduler
 from app.core.scheduler import SchedulerError, SchedulerUnavailable, TaskScheduler
 
+# pre-v0.2.0 behaviour tests assert the German texts (pins the de catalog)
+pytestmark = pytest.mark.usefixtures("german_messages")
+
 CSV_HEADER = (
     '"Hostname","Aufgabenname","Nächste Laufzeit","Status","Anmeldemodus",'
     '"Letzte Laufzeit","Letztes Ergebnis","Autor","Auszuführende Aufgabe"'

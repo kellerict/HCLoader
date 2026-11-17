@@ -12,13 +12,12 @@ from __future__ import annotations
 from pathlib import Path
 
 from . import paths
+from .i18n import tr
 
-REST = "Rest bleibt in der Warteschlange"
-POT_NOT_READY = "PO-Token-Server nicht bereit – Downloads warten, bis er läuft"
-POT_GAVE_UP = (
-    "PO-Token-Server startet nicht (mehrere Versuche) – bitte Deno/Provider und "
-    "Einstellungen › Netzwerk prüfen"
-)
+# message keys (app/locales)
+REST = "queue.rest_stays"
+POT_NOT_READY = "queue.pot_not_ready"
+POT_GAVE_UP = "queue.pot_gave_up"
 
 
 class LocalError(RuntimeError):
@@ -31,7 +30,7 @@ class LocalError(RuntimeError):
 
 def block_reason(message: str) -> str:
     """Queue wording (`blocked_reason`) for a local block."""
-    return f"{message} – {REST}"
+    return f"{message} – {tr(REST)}"
 
 
 def check_target(target_dir: Path) -> LocalError | None:
@@ -39,6 +38,4 @@ def check_target(target_dir: Path) -> LocalError | None:
     err = paths.check_writable_dir(paths.tmp_dir(target_dir))
     if err is None:
         return None
-    return LocalError(
-        "target", f"Zielordner nicht erreichbar oder nicht beschreibbar ({target_dir}): {err}"
-    )
+    return LocalError("target", tr("queue.target_unusable", path=target_dir, error=err))

@@ -12,6 +12,9 @@ from app.core.config import Settings
 from app.core.throttle import BackoffActive, LimitReached, Throttle
 from app.core.ytclient import DownloadCancelled, YtClient, YtClientError, build_ydl_opts
 
+# pre-v0.2.0 behaviour tests assert the German texts (pins the de catalog)
+pytestmark = pytest.mark.usefixtures("german_messages")
+
 needs_ffmpeg = pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg fehlt")
 VID = "abc123XYZ_-"
 

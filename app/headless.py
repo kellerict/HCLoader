@@ -17,10 +17,11 @@ import sys
 from collections.abc import Callable
 from typing import Any
 
-from .core import config, locks, watchlist
+from .core import config, i18n, locks, watchlist
 from .core.config import Settings
 from .core.db import Database, MigrationBackupError, SchemaTooNewError
 from .core.discover import format_until
+from .core.i18n import tr
 from .core.logging_setup import console_logs_errors, setup_logging
 from .core.throttle import Throttle
 from .exitcodes import EXIT_BLOCKED, EXIT_BUSY, EXIT_FAILED, EXIT_OK
@@ -119,6 +120,7 @@ def run_watchlist(
         settings, warnings = config.load_with_warnings()
     else:
         warnings = []
+    i18n.set_language(settings.general.language)
     if configure_logging:
         setup_logging(settings.general.log_level, console=sys.stderr is not None)
     for w in warnings:
@@ -126,16 +128,13 @@ def run_watchlist(
 
     run = run_lock()
     if run is None:
-        _say("Ein anderer Download-Lauf ist aktiv (GUI oder Headless).")
+        _say(tr("run.busy"))
         return EXIT_BUSY
     wl = watchlist_lock()
     if wl is None:
         run.release()
         # m2: usually the in-app check of the open GUI - it does the work, nothing is lost
-        _say(
-            "Die Watchlist wird gerade von einem anderen Lauf geprüft (z.B. In-App-Prüfung der "
-            "GUI) – dieser Lauf wird übersprungen."
-        )
+        _say(tr("headless.watchlist_busy"))
         return EXIT_BUSY
     if watchdog is None and settings.network.po_token_mode == "http":
         watchdog = _shared_pot(settings.network.po_token_port, gui_probe, pot_ping)
@@ -180,9 +179,9 @@ def _shared_pot(
         if not gui_probe() or not pot_ping(port):
             return None
     except Exception:
-        log.debug("PO-Token-Server der GUI nicht prüfbar", exc_info=True)
+        log.debug("PO token server of the GUI not checkable", exc_info=True)
         return None
-    log.info("PO-Token-Server der laufenden GUI wird mitbenutzt (Port %s)", port)
+    log.info(tr("headless.shared_pot", port=port))
     return SharedPotWatchdog(SharedPotServer(port, pot_ping))
 
 
@@ -213,10 +212,10 @@ def _run(
     # we hold the run lock: rows left in 'downloading' by a crash are not in use by anyone
     n = db.reset_interrupted_downloads()
     if n:
-        log.warning("%d unterbrochene Downloads auf 'failed' gesetzt", n)
+        log.warning(tr("run.interrupted_reset", n=n))
 
     run_id = db.start_run("headless")
-    log.info("Headless-Lauf gestartet (Watchlist)")
+    log.info(tr("headless.started"))
     found = downloaded = errors = 0
     notes: list[str] = []
     code = EXIT_OK
@@ -226,7 +225,7 @@ def _run(
         # 7a: blocked only if every platform with an enabled source is in backoff
         until = watchlist.blocked_until(db, throttle, settings)
         if until:
-            notes.append(f"Backoff aktiv bis {format_until(until)} – nichts geprüft")
+            notes.append(tr("headless.backoff", until=format_until(until)))
             log.warning(notes[-1])
             return EXIT_BLOCKED
 
@@ -270,7 +269,7 @@ def _run(
 
         if not res.backoff and db.next_queued() is not None:
             if queue.paused:
-                notes.append("Warteschlange pausiert – nichts geladen")
+                notes.append(tr("headless.paused"))
             elif target_error is not None:
                 errors += 1
                 notes.append(str(target_error))
@@ -310,25 +309,25 @@ def _run(
         if until_now is not None or res.backoff:
             code = EXIT_BLOCKED
             if until_now is not None and not any(n.startswith("Backoff") for n in notes):
-                notes.append(f"Backoff bis {format_until(until_now)}")
+                notes.append(tr("headless.backoff_until", until=format_until(until_now)))
         elif errors:
             code = EXIT_FAILED
         return code
     except Exception as exc:
-        log.exception("Headless-Lauf: unerwarteter Fehler")
+        log.exception(tr("headless.unexpected_log"))
         errors += 1
-        notes.append(f"Unerwarteter Fehler: {exc}"[:200])
+        notes.append(tr("headless.unexpected", error=exc)[:200])
         return EXIT_FAILED
     finally:
         if client is not None:
             try:
                 client.close()
             except Exception:
-                log.debug("Client schliessen", exc_info=True)
+                log.debug("Closing client", exc_info=True)
         try:
             watchdog.stop()
         except Exception:
-            log.debug("PO-Token-Server beenden", exc_info=True)
+            log.debug("Stopping PO token server", exc_info=True)
         db.finish_run(
             run_id,
             found=found,
@@ -337,9 +336,11 @@ def _run(
             note="; ".join(n for n in notes if n) or None,
         )
         log.info(
-            "Headless-Lauf beendet: %d neu, %d geladen, %d Fehler%s",
-            found,
-            downloaded,
-            errors,
-            f" · {'; '.join(notes)}" if notes else "",
+            tr(
+                "headless.finished",
+                n=found,
+                downloaded=downloaded,
+                errors=errors,
+                extra=f" · {'; '.join(notes)}" if notes else "",
+            ),
         )

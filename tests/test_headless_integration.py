@@ -20,7 +20,10 @@ from app.core.db import Database
 from app.core.throttle import Throttle
 from app.exitcodes import EXIT_BLOCKED, EXIT_BUSY, EXIT_FAILED, EXIT_OK
 
-pytestmark = pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg fehlt")
+pytestmark = [
+    pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg fehlt"),
+    pytest.mark.usefixtures("german_messages"),  # pre-v0.2.0 tests pin the German texts
+]
 
 CHANNEL_URL = "https://www.youtube.com/@DJTest"
 PLAYLIST_URL = "https://www.youtube.com/playlist?list=PLtest123"

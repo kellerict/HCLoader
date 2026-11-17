@@ -1,0 +1,8 @@
+{
+  "_meta": {
+    "code": "id",
+    "name": "Bahasa Indonesia",
+    "dir": "ltr",
+    "note": "Backend messages. Guide: docs/TRANSLATING.md – not translated yet, falls back to English"
+  }
+}

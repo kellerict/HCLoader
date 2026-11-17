@@ -33,6 +33,7 @@ from typing import Any
 
 from .core import binaries, locks, preflight, watchlist
 from .core.discover import format_until
+from .core.i18n import tr
 from .core.logging_setup import live_handler
 from .core.platforms import file_id, platform_of
 from .core.preflight import LocalError
@@ -130,7 +131,7 @@ class EventBus:
             try:
                 fn(event_type, data)
             except Exception:
-                _events_log.debug("Event-Listener fehlgeschlagen", exc_info=True)
+                _events_log.debug("Event listener failed", exc_info=True)
         if self._closed or not self.ready:
             return  # UI not there yet: it fetches the current state itself when it loads
         try:
@@ -158,7 +159,7 @@ class EventBus:
                 try:
                     window.evaluate_js(event_script(*item))
                 except Exception as exc:  # window closing, page reloading …
-                    _events_log.debug("evaluate_js fehlgeschlagen: %s", exc)
+                    _events_log.debug("evaluate_js failed: %s", exc)
             finally:
                 self._queue.task_done()
 
@@ -262,7 +263,7 @@ class Worker:
         with self._lock:
             if self._stopped:
                 fut: Future = Future()
-                fut.set_exception(RuntimeError("Worker ist beendet"))
+                fut.set_exception(RuntimeError("Worker has stopped"))
                 return fut
             existing = self._pending.get(key)
             if existing is not None:
@@ -291,7 +292,7 @@ class Worker:
                     try:
                         result = job.fn()
                     except BaseException as exc:
-                        log.exception("Hintergrundauftrag %s fehlgeschlagen", job.key)
+                        log.exception("Background job %s failed", job.key)
                         self._release(job)
                         job.future.set_exception(exc)
                     else:
@@ -338,7 +339,7 @@ class RunBusy(Exception):
     """Another download run (GUI, headless or smoke) holds the run lock."""
 
     def __init__(self) -> None:
-        super().__init__("Ein anderer Download-Lauf ist aktiv (GUI oder Headless).")
+        super().__init__(tr("run.busy"))
 
 
 @dataclass
@@ -514,7 +515,7 @@ class DownloadQueue:
         failed to load (m3) and re-evaluate everything now."""
         if self._client_error is not None:
             self._client_error = None
-            log.info("Download-Modul wird erneut geladen")
+            log.info(tr("queue.reload_module"))
         self.wake()
 
     def wait_idle(self, timeout: float = 10.0) -> bool:
@@ -526,13 +527,13 @@ class DownloadQueue:
             try:  # housekeeping (old partial files) before the first download, same thread
                 self._on_thread_start()
             except Exception:
-                log.debug("Warteschlange: Start-Aufgabe fehlgeschlagen", exc_info=True)
+                log.debug("Queue: start task failed", exc_info=True)
         while not self._stop.is_set():
             self._wake.clear()
             try:
                 self.run_pending()
             except Exception:
-                log.exception("Download-Warteschlange: unerwarteter Fehler")
+                log.exception(tr("queue.unexpected"))
             if self._stop.is_set():
                 break
             with self._lock:
@@ -555,7 +556,7 @@ class DownloadQueue:
         """After a yt-dlp update in this process (Review m2): no more downloads until restart."""
         if not self._restart_required:
             self._restart_required = True
-            log.warning("yt-dlp wurde aktualisiert – Downloads erst nach einem Neustart")
+            log.warning(tr("queue.restart_needed_log"))
         self._changed()
 
     def _th(self, platform: str) -> Any:
@@ -573,27 +574,23 @@ class DownloadQueue:
         prefix = "" if platform == "youtube" else f"{getattr(th, 'label', platform)}: "
         until = th.backoff_until()
         if until:
-            return "backoff", (
-                f"{prefix}Backoff aktiv bis {format_until(until)} – "
-                "Rest bleibt in der Warteschlange"
-            )
+            return "backoff", (tr("queue.backoff_rest", prefix=prefix, until=format_until(until)))
         cfg = th.cfg
         today = th.downloads_today()
         if today >= cfg.max_downloads_per_day:
             return "day_limit", (
-                f"{prefix}Tageslimit erreicht ({today}/{cfg.max_downloads_per_day}) – "
-                "Rest bleibt in der Warteschlange"
+                tr("queue.day_limit_rest", prefix=prefix, n=today, max=cfg.max_downloads_per_day)
             )
         if platform in self._run_limit_hit:
-            head = (
-                f"{prefix}Limit pro Lauf erreicht ({cfg.max_downloads_per_run}/"
-                f"{cfg.max_downloads_per_run}) – "
+            head = tr(
+                "queue.run_limit",
+                prefix=prefix,
+                n=cfg.max_downloads_per_run,
+                max=cfg.max_downloads_per_run,
             )
             if not self._record_run:  # headless: no «Fortsetzen» button (QA Phase 4)
-                return "run_limit", head + "Rest wird beim nächsten Lauf geladen"
-            return "run_limit", (
-                head + "Rest bleibt in der Warteschlange; «Fortsetzen» startet einen neuen Lauf"
-            )
+                return "run_limit", head + tr("queue.rest_next_run")
+            return "run_limit", (head + tr("queue.rest_resume"))
         return None
 
     def platform_blocked(self) -> dict[str, dict[str, str]]:
@@ -615,10 +612,7 @@ class DownloadQueue:
         message is returned); otherwise see `platform_blocked`.
         """
         if self._restart_required:
-            return "restart", (
-                "Neustart nötig – yt-dlp wurde aktualisiert. Bitte HCLoader neu starten, "
-                "die Warteschlange bleibt erhalten"
-            )
+            return "restart", tr("queue.restart_required")
         verdicts = [self._platform_block(p) for p in self._waiting_platforms()]
         if verdicts and all(verdicts):
             return verdicts[0]  # type: ignore[return-value]
@@ -628,7 +622,7 @@ class DownloadQueue:
         if local:
             return local
         if self._busy:
-            return "busy", "Ein anderer Download-Lauf ist aktiv (z.B. geplante Prüfung) – wartet"
+            return "busy", tr("queue.other_run")
         return None, None
 
     def snapshot(self) -> dict[str, Any]:
@@ -687,7 +681,7 @@ class DownloadQueue:
         for vid in accepted:
             self._emit_video(vid)
         if accepted:
-            log.info("%d Mix(es) zur Warteschlange hinzugefügt", len(accepted))
+            log.info(tr("queue.enqueued", n=len(accepted)))
             if not auto:
                 self._run_limit_hit = set()  # explicit user action = new run
         self._changed()
@@ -707,10 +701,10 @@ class DownloadQueue:
                 if in_sleep:  # abort the pause, the entry stays queued
                     self._cancel_target = None
                     self._cancel.set()
-            log.info("Warteschlange pausiert (laufender Download wird fertig geladen)")
+            log.info(tr("queue.paused"))
         else:
             self._run_limit_hit = set()
-            log.info("Warteschlange fortgesetzt")
+            log.info(tr("queue.resumed"))
         self._changed()
         if paused:
             self.wake()
@@ -744,7 +738,7 @@ class DownloadQueue:
         if not row or row["status"] not in ("queued", "failed"):
             return "missing"
         self._db.dequeue(vid, "new")
-        log.info("Aus der Warteschlange entfernt: %s", row.get("title") or vid)
+        log.info(tr("queue.removed", title=row.get("title") or vid))
         self._emit_video(vid)
         self._changed()
         return "ok"
@@ -800,7 +794,7 @@ class DownloadQueue:
             try:
                 result = self._preflight(wait, self._stop)
             except Exception:
-                log.exception("Download-Vorprüfung fehlgeschlagen")
+                log.exception("Download preflight failed")
         return self._set_local_block(result)
 
     def _set_local_block(self, exc: LocalError | None) -> bool:
@@ -808,9 +802,9 @@ class DownloadQueue:
         block = (exc.code, preflight.block_reason(str(exc))) if exc is not None else None
         self._local_block = block
         if block and block != prev:
-            log.warning("Warteschlange wartet: %s", exc)
+            log.warning(tr("queue.waiting", reason=exc))
         elif prev and not block:
-            log.info("Warteschlange: lokale Sperre aufgehoben")
+            log.info(tr("queue.local_cleared"))
         return block is not None
 
     def _make_client(self) -> Any:
@@ -820,12 +814,9 @@ class DownloadQueue:
             return self._factory()
         except Exception as exc:
             text = redact(exc)[:300] or exc.__class__.__name__
-            self._client_error = (
-                f"Download-Modul (yt-dlp) konnte nicht geladen werden: {text} – neuer Versuch "
-                "nach «Fortsetzen», neuen Einträgen oder dem Speichern der Einstellungen"
-            )
+            self._client_error = tr("queue.module_failed", error=text)
             log.error("%s", self._client_error)
-            log.debug("Client-Fehler", exc_info=True)
+            log.debug("Client error", exc_info=True)
             self._note_block("error")
             return None
 
@@ -838,7 +829,7 @@ class DownloadQueue:
         run_id = self._db.start_run("manual") if self._record_run else None
         downloaded = errors = 0
         note = ""
-        log.info("Download-Lauf gestartet")
+        log.info(tr("queue.run_started"))
         first = True
         refused: set[str] = set()  # platforms that refused a download in this run (7a)
         try:
@@ -852,7 +843,7 @@ class DownloadQueue:
                 row = self._db.next_queued(exclude_platforms=sorted(excluded))
                 if row is None:  # every waiting platform is blocked
                     note = self.blocked()[1] or self._first_block_message(excluded)
-                    log.warning("Warteschlange angehalten: %s", note)
+                    log.warning(tr("queue.halted", reason=note))
                     break
                 if not first and self._check_local(0):  # run_pending just checked the first
                     note = self.blocked()[1] or ""
@@ -878,7 +869,7 @@ class DownloadQueue:
             self.last_session = {"downloaded": downloaded, "errors": errors, "note": note}
             if run_id is not None:
                 self._db.finish_run(run_id, downloaded=downloaded, errors=errors, note=note or None)
-            log.info("Download-Lauf beendet: %d geladen, %d Fehler", downloaded, errors)
+            log.info(tr("queue.run_finished", n=downloaded, errors=errors))
             self._changed()
 
     def _blocked_platforms(self) -> set[str]:
@@ -958,7 +949,7 @@ class DownloadQueue:
                 on_commit=self._commit_hook(vid),
             )
         except ThrottleError as exc:  # status restored by YtClient
-            log.warning("Download gesperrt: %s", exc)
+            log.warning(tr("queue.download_blocked", reason=exc))
             self._emit_video(vid)  # m6: cards back from "downloading" to "queued"
             return "blocked"
         except LocalError as exc:  # m2: nothing requested; status restored by YtClient
@@ -966,7 +957,7 @@ class DownloadQueue:
             self._emit_video(vid)
             return "blocked"
         except Exception as exc:
-            log.exception("Download von %s: unerwarteter Fehler", vid)
+            log.exception(tr("queue.download_unexpected", id=vid))
             msg = str(exc)[:500] or exc.__class__.__name__
             if self._db.is_known(vid):
                 self._db.set_status(vid, "failed", error=msg)
@@ -979,15 +970,15 @@ class DownloadQueue:
         status = getattr(result, "status", "failed")
         title = getattr(result, "title", "") or title
         if status == "done":
-            log_ok(log, "Fertig: %s", title)
+            log_ok(log, "%s", tr("queue.finished", title=title))
             self._emit_video(vid)
             self._bus.emit("done", {"id": vid, "title": title})
             return "done"
         if status == "skipped":
             current = self._db.get_video(vid)
             if current and current["status"] != "done":
-                self._db.set_status(vid, "done", error="Bereits im Download-Archiv")
-            log.info("Übersprungen (bereits geladen): %s", title)
+                self._db.set_status(vid, "done", error=tr("queue.in_archive"))
+            log.info(tr("yt.skipped_done", id=title))
             self._emit_video(vid)
             return "skipped"
         if status == "cancelled":
@@ -996,14 +987,14 @@ class DownloadQueue:
             else:
                 self._emit_video(vid)
             return "cancelled"
-        error = getattr(result, "error", "") or "Fehler"
+        error = getattr(result, "error", "") or tr("common.error")
         self._bus.emit("failed", {"id": vid, "title": title, "error": error})
         self._emit_video(vid)
         return "failed"
 
     def _remove_cancelled(self, vid: str, title: str) -> None:
         self._db.dequeue(vid, "new")
-        log.warning("Abgebrochen: %s", title)
+        log.warning(tr("queue.cancelled", title=title))
         self._emit_video(vid)
 
     def _commit_hook(self, vid: str) -> Callable[[], bool]:
@@ -1239,8 +1230,7 @@ class PotWatchdog:
                         self._failures += 1
                         if self._failures >= self._max_failures:
                             log.error(
-                                "PO-Token-Server startet nicht (%d Versuche) – bitte prüfen",
-                                self._failures,
+                                tr("pot.watchdog_gave_up", n=self._failures),
                             )
                     self._server = server
                     changed = True
@@ -1274,7 +1264,9 @@ def local_preflight(
             running = watchdog.wait_ready(wait, stop)
         if not running:
             gave_up = bool(getattr(watchdog, "gave_up", False))
-            return LocalError("pot", preflight.POT_GAVE_UP if gave_up else preflight.POT_NOT_READY)
+            return LocalError(
+                "pot", tr(preflight.POT_GAVE_UP if gave_up else preflight.POT_NOT_READY)
+            )
     return preflight.check_target(settings.target_dir_path())
 
 

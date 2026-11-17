@@ -15,6 +15,9 @@ from app.core import db as dbmod
 from app.core.db import Database
 from app.core.throttle import BackoffActive, Throttle
 
+# pre-v0.2.0 behaviour tests assert the German texts (pins the de catalog)
+pytestmark = pytest.mark.usefixtures("german_messages")
+
 # --------------------------------------------------------------------------- ids / platforms
 
 

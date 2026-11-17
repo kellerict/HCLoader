@@ -25,6 +25,8 @@ from pathlib import Path
 from typing import Any
 from xml.sax.saxutils import escape, unescape
 
+from .i18n import tr
+
 log = logging.getLogger(__name__)
 
 TASK_NAME = "HCLoader-Watchlist"
@@ -64,7 +66,7 @@ class SchedulerError(Exception):
 
 class SchedulerUnavailable(SchedulerError):
     def __init__(self) -> None:
-        super().__init__("Die Aufgabenplanung gibt es nur unter Windows.")
+        super().__init__(tr("task.windows_only"))
 
 
 @dataclass
@@ -172,7 +174,7 @@ def task_xml(time_str: str, executable: str | None = None, now: datetime | None 
 
 def validate_time(value: Any) -> str:
     if not isinstance(value, str) or not _TIME_RE.match(value.strip()):
-        raise SchedulerError("Uhrzeit im Format HH:MM erwartet.")
+        raise SchedulerError(tr("task.time_format"))
     return value.strip()
 
 
@@ -311,7 +313,7 @@ class TaskScheduler:
         try:
             proc = self._run(["schtasks", *args])
         except (OSError, subprocess.SubprocessError) as exc:
-            raise SchedulerError(f"schtasks konnte nicht ausgeführt werden: {exc}") from exc
+            raise SchedulerError(tr("task.schtasks_failed", error=exc)) from exc
         out = _decode(proc.stdout).strip()
         err = _decode(proc.stderr).strip()
         return proc.returncode, (out if proc.returncode == 0 else (err or out))
@@ -334,8 +336,8 @@ class TaskScheduler:
             except OSError:
                 pass
         if code != 0:
-            raise SchedulerError(f"Aufgabe konnte nicht angelegt werden: {msg}")
-        log.info("Aufgabenplanung: %s täglich um %s angelegt", self.name, time_str)
+            raise SchedulerError(tr("task.create_failed", error=msg))
+        log.info(tr("task.created", name=self.name, time=time_str))
         status = self.query(time_str)
         if not status.registered:  # created but not queryable: still report what we know
             status = TaskStatus(True, self.name, next_daily(time_str).isoformat(), time_str)
@@ -345,8 +347,8 @@ class TaskScheduler:
         self._require()
         code, msg = self._call("/Delete", "/TN", self.name, "/F")
         if code != 0 and self.query().registered is not False:
-            raise SchedulerError(f"Aufgabe konnte nicht entfernt werden: {msg}")
-        log.info("Aufgabenplanung: %s entfernt", self.name)
+            raise SchedulerError(tr("task.remove_failed", error=msg))
+        log.info(tr("task.removed", name=self.name))
 
     def _task_xml(self) -> str | None:
         """Task definition via `schtasks /Query /XML`; None if not readable."""
@@ -371,10 +373,10 @@ class TaskScheduler:
             if _NOT_FOUND_RE.search(out):
                 return TaskStatus(False, self.name, None, expected_time)
             # any other failure (access denied, service down, ...) is not "not registered" (m6)
-            log.warning("schtasks /Query fehlgeschlagen (Code %s): %s", code, out[:200])
+            log.warning(tr("task.query_failed", code=code, error=out[:200]))
             detail = out[:200] or f"Code {code}"
             return TaskStatus(
-                None, self.name, None, expected_time, f"Status nicht lesbar: {detail}"
+                None, self.name, None, expected_time, tr("task.status_unreadable", error=detail)
             )
         rows = [r for r in csv.reader(io.StringIO(out)) if r]
         data = rows[1] if len(rows) > 1 else []
@@ -387,7 +389,7 @@ class TaskScheduler:
         mismatch, registered_cmd = path_mismatch(xml_text or "", self._executable)
         if mismatch:
             log.debug(
-                "Aufgabenplanung: %s startet %s statt %s (App verschoben?)",
+                "Task Scheduler: %s starts %s instead of %s (app moved?)",
                 self.name,
                 registered_cmd,
                 self.command(),

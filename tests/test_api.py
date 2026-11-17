@@ -16,10 +16,13 @@ import pytest
 
 from app import api as api_mod
 from app.api import Api
-from app.core import config, maintenance
+from app.core import config, i18n, maintenance
 from app.core.logging_setup import live_handler
 from app.core.scheduler import TaskScheduler
 from app.worker import EventBus
+
+# pre-v0.2.0 behaviour tests assert the German texts (pins the de catalog)
+pytestmark = pytest.mark.usefixtures("german_messages")
 
 ROOT = Path(__file__).resolve().parents[1]
 BRIDGE = (ROOT / "ui" / "js" / "bridge.js").read_text(encoding="utf-8")
@@ -360,7 +363,8 @@ def _with(values, section, changes):
 
 def test_get_settings_shape(env):
     s = env.make().get_settings()
-    assert set(s) == {"values", "defaults"}
+    assert set(s) == {"values", "defaults", "language"}
+    assert s["language"] in i18n.SUPPORTED
     assert s["values"] == s["defaults"] == config.defaults_dict()
     assert set(s["values"]) == set(config.SECTIONS)
     json.dumps(s)

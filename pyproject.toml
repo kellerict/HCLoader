@@ -20,6 +20,9 @@ dev = ["pytest", "ruff", "playwright"]
 [tool.setuptools]
 packages = ["app", "app.core"]
 
+[tool.setuptools.package-data]
+app = ["locales/*.json"]  # backend message catalogs (app/core/i18n.py)
+
 [tool.setuptools.dynamic]
 version = {attr = "app.__version__"}
 

@@ -4,9 +4,14 @@ import sys
 import types
 from pathlib import Path
 
+import pytest
+
 from app import main as app_main
 from app.api import Api
 from app.instance import activation_file, request_activation
+
+# pre-v0.2.0 behaviour tests assert the German texts (pins the de catalog)
+pytestmark = pytest.mark.usefixtures("german_messages")
 
 
 class FakeEvent:

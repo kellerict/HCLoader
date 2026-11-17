@@ -23,6 +23,9 @@ from test_tagging import make_mp3, needs_ffmpeg
 from app.core import library, maintenance, sidecar, tagging
 from app.core.tagging import Chapter
 
+# pre-v0.2.0 behaviour tests assert the German texts (pins the de catalog)
+pytestmark = pytest.mark.usefixtures("german_messages")
+
 # ------------------------------------------------------------------ M1
 
 

@@ -20,6 +20,9 @@ from test_scheduler import FakeSchtasks
 from app.core import config, maintenance, portable, scheduler
 from app.core.scheduler import TaskScheduler
 
+# pre-v0.2.0 behaviour tests assert the German texts (pins the de catalog)
+pytestmark = pytest.mark.usefixtures("german_messages")
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -358,9 +361,9 @@ def test_api_startup_no_task_check_when_disabled(env):  # noqa: F811
 
 def test_ui_handles_path_mismatch():
     settings_js = (ROOT / "ui" / "js" / "views" / "settings.js").read_text(encoding="utf-8")
-    i18n = (ROOT / "ui" / "js" / "i18n.js").read_text(encoding="utf-8")
+    de = (ROOT / "ui" / "js" / "locales" / "de.js").read_text(encoding="utf-8")
     assert "s.path_mismatch" in settings_js and "set.task.recreate" in settings_js
-    assert re.search(r"moved: 'App wurde verschoben – Aufgabe neu anlegen'", i18n)
+    assert re.search(r'"moved": "App wurde verschoben – Aufgabe neu anlegen"', de)
 
 
 # --------------------------------------------------------------------------- Mark of the Web

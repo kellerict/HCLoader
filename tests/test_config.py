@@ -4,6 +4,9 @@ import pytest
 
 from app.core import config
 
+# pre-v0.2.0 behaviour tests assert the German texts (pins the de catalog)
+pytestmark = pytest.mark.usefixtures("german_messages")
+
 ROOT = Path(__file__).resolve().parent.parent
 
 

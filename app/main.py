@@ -9,8 +9,9 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from .core import binaries, config, locks, selfupdate
+from .core import binaries, config, i18n, locks, selfupdate
 from .core.db import Database, MigrationBackupError, SchemaTooNewError
+from .core.i18n import tr
 from .core.logging_setup import console_logs_errors, setup_logging
 from .core.throttle import Throttle, ThrottleError
 from .exitcodes import EXIT_BLOCKED, EXIT_BUSY, EXIT_FAILED, EXIT_OK, EXIT_USAGE
@@ -23,9 +24,9 @@ log = logging.getLogger("hcloader")
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="app.main", description="HCLoader")
-    p.add_argument("--smoke", metavar="URL", help="genau einen Download ausführen (nur QA)")
-    p.add_argument("--headless", action="store_true", help="ohne GUI laufen")
-    p.add_argument("--run-watchlist", action="store_true", help="Watchlist prüfen (mit --headless)")
+    p.add_argument("--smoke", metavar="URL", help=tr("cli.smoke"))
+    p.add_argument("--headless", action="store_true", help=tr("cli.headless"))
+    p.add_argument("--run-watchlist", action="store_true", help=tr("cli.run_watchlist"))
     return p
 
 
@@ -33,7 +34,7 @@ def _reset_interrupted(db: Database) -> None:
     """Startup housekeeping: rows left in 'downloading' by a crash become 'failed'."""
     n = db.reset_interrupted_downloads()
     if n:
-        log.warning("%d unterbrochene Downloads auf 'failed' gesetzt", n)
+        log.warning(tr("run.interrupted_reset", n=n))
 
 
 WINDOW_TITLE = "HCLoader"
@@ -76,7 +77,7 @@ def _set_app_user_model_id() -> None:
 
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_USER_MODEL_ID)  # type: ignore[attr-defined]
     except Exception:
-        log.debug("AppUserModelID konnte nicht gesetzt werden", exc_info=True)
+        log.debug("AppUserModelID could not be set", exc_info=True)
 
 
 def _bring_to_front(window) -> None:
@@ -85,7 +86,7 @@ def _bring_to_front(window) -> None:
         try:
             step()
         except Exception:
-            log.debug("Fenster: %s fehlgeschlagen", step, exc_info=True)
+            log.debug("Window: %s failed", step, exc_info=True)
     try:  # Windows focus rules: briefly topmost so the window really comes forward
         window.on_top = True
         window.on_top = False
@@ -123,28 +124,20 @@ def show_fatal(message: str) -> None:
             mb_iconerror = 0x10
             ctypes.windll.user32.MessageBoxW(None, message, "HCLoader", mb_iconerror)  # type: ignore[attr-defined]
         except Exception:
-            log.debug("MessageBox fehlgeschlagen", exc_info=True)
+            log.debug("MessageBox failed", exc_info=True)
 
 
 def db_error_message(exc: Exception) -> str:
     """Start dialog text for DB errors that need the user (self-update, docs/decisions.md)."""
     if isinstance(exc, SchemaTooNewError):
         return exc.user_message(config.app_home() / "backups")
-    return f"HCLoader konnte nicht gestartet werden:\n\n{exc}"
+    return tr("main.start_failed", error=exc)
 
 
-UPDATE_RUNNING = (
-    "HCLoader wird gerade aktualisiert – bitte einen Moment warten. Die App startet danach "
-    "von selbst neu."
-)
-UPDATE_RECOVERING = (
-    "Ein App-Update wurde unterbrochen. Die vorherige Version wird wiederhergestellt – "
-    "HCLoader startet danach von selbst neu."
-)
-UPDATE_RECOVER_FAILED = (
-    "Ein App-Update wurde unterbrochen und die Wiederherstellung konnte nicht gestartet werden. "
-    "Die alte Version liegt im App-Ordner unter «_previous» (siehe Wiki, Fehlerbehebung)."
-)
+# message keys (app/locales)
+UPDATE_RUNNING = "main.update_running"
+UPDATE_RECOVERING = "main.update_recovering"
+UPDATE_RECOVER_FAILED = "main.update_recover_failed"
 
 
 def update_dir() -> Path:
@@ -156,15 +149,12 @@ def run_gui() -> int:
     try:
         return _run_gui()
     except (SchemaTooNewError, MigrationBackupError) as exc:
-        log.error("Datenbank: %s", exc)
+        log.error(tr("main.database_error", error=exc))
         show_fatal(db_error_message(exc))
         return EXIT_FAILED
     except Exception as exc:
-        log.exception("GUI-Start fehlgeschlagen")
-        show_fatal(
-            f"HCLoader konnte nicht gestartet werden:\n\n{exc}\n\n"
-            f"Details im Protokoll: {config.logs_dir()}"
-        )
+        log.exception(tr("main.gui_failed"))
+        show_fatal(tr("main.start_failed_log", error=exc, logs=config.logs_dir()))
         return EXIT_FAILED
 
 
@@ -176,7 +166,7 @@ def _run_gui() -> int:
     try:
         import webview
     except ImportError:
-        show_fatal("pywebview ist nicht installiert (pip install pywebview).")
+        show_fatal(tr("main.no_pywebview"))
         return EXIT_FAILED
     from .api import Api
     from .instance import ActivationServer
@@ -185,11 +175,13 @@ def _run_gui() -> int:
     setup_logging(settings.general.log_level, history=500)
     st = binaries.status()
     log.info(
-        "HCLoader gestartet · yt-dlp %s · Deno %s · ffmpeg %s · Plugin %s",
-        st["yt_dlp_version"] or "FEHLT",
-        st["deno_version"] or "FEHLT",
-        st["ffmpeg_version"] or "FEHLT",
-        st["bgutil_version"] or "FEHLT",
+        tr(
+            "main.started",
+            ytdlp=st["yt_dlp_version"] or tr("main.missing"),
+            deno=st["deno_version"] or tr("main.missing"),
+            ffmpeg=st["ffmpeg_version"] or tr("main.missing"),
+            plugin=st["bgutil_version"] or tr("main.missing"),
+        ),
     )
     api = Api()  # logs config warnings itself
     _set_app_user_model_id()
@@ -223,7 +215,7 @@ def _run_gui() -> int:
         try:
             api.finish_update()
         except Exception:
-            log.exception("App-Update konnte nicht gestartet werden")
+            log.exception(tr("main.update_start_failed"))
     return EXIT_OK
 
 
@@ -239,14 +231,14 @@ def run_smoke(url: str) -> int:
         st["yt_dlp_version"],
         st["ejs_version"],
         st["bgutil_version"],
-        st["deno_version"] or "FEHLT",
-        st["ffmpeg_version"] or "FEHLT",
+        st["deno_version"] or "MISSING",
+        st["ffmpeg_version"] or "MISSING",
     )
     from .core.ytclient import DownloadResult, YtClient, YtClientError, soundcloud_track_url
 
     run_lock = locks.acquire_run_lock()
     if run_lock is None:
-        print("Ein anderer Download-Lauf ist aktiv (GUI oder Headless).", file=sys.stderr)
+        print(tr("run.busy"), file=sys.stderr)
         return EXIT_BUSY
     db = Database(config.db_path())
     _reset_interrupted(db)
@@ -276,28 +268,28 @@ def run_smoke(url: str) -> int:
             meta = client.resolve(url)
             target = meta.get("id") or ""
             if not target:
-                print("Fehler: Track-ID nicht ermittelt", file=sys.stderr)
+                print(tr("smoke.no_track_id"), file=sys.stderr)
                 return EXIT_FAILED
-            print(f"Aufgelöst: {target} – {meta.get('title') or ''}", flush=True)
+            print(tr("smoke.resolved", id=target, title=meta.get("title") or ""), flush=True)
         result: DownloadResult = client.download(target, on_progress=on_progress)
         throttle.finish_run(result.status == "done")
     except YtClientError as exc:
-        print(f"Fehler: {exc}", file=sys.stderr)
+        print(tr("smoke.error", error=exc), file=sys.stderr)
         return EXIT_BLOCKED if exc.rate_limited else EXIT_FAILED
     except ThrottleError as exc:
-        print(f"GESPERRT: {exc}", file=sys.stderr)
+        print(tr("smoke.blocked", error=exc), file=sys.stderr)
         return EXIT_BLOCKED
     finally:
         client.close()
         db.close()
         run_lock.release()
-    print(f"Ergebnis: {result.status}")
+    print(tr("smoke.result", status=result.status))
     if result.file_path:
-        print(f"Datei: {result.file_path}")
+        print(tr("smoke.file", path=result.file_path))
     if result.cue_path:
         print(f"CUE: {result.cue_path}")
     if result.error:
-        print(f"Fehler: {result.error}", file=sys.stderr)
+        print(tr("smoke.error", error=result.error), file=sys.stderr)
     return EXIT_OK if result.ok else EXIT_FAILED
 
 
@@ -310,7 +302,7 @@ def _recover_interrupted_update(args: argparse.Namespace) -> bool:
     started = selfupdate.start_recovery(
         update_dir(), config.app_root(), restart=not args.run_watchlist
     )
-    text = UPDATE_RECOVERING if started else UPDATE_RECOVER_FAILED
+    text = tr(UPDATE_RECOVERING if started else UPDATE_RECOVER_FAILED)
     if args.run_watchlist:
         print(text, file=sys.stderr)
     else:
@@ -318,7 +310,17 @@ def _recover_interrupted_update(args: argparse.Namespace) -> bool:
     return True
 
 
+def _init_language() -> None:
+    """Messages before the GUI/headless run (CLI help, start dialogs) in the configured
+    language; a broken config is reported later by the normal start."""
+    try:
+        i18n.set_language(config.load_with_warnings()[0].general.language)
+    except Exception:
+        i18n.set_language(i18n.REFERENCE)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
+    _init_language()
     args = build_parser().parse_args(argv)
     if args.smoke:
         return run_smoke(args.smoke)
@@ -327,23 +329,23 @@ def main(argv: Sequence[str] | None = None) -> int:
     if (args.run_watchlist or not args.headless) and selfupdate.update_in_progress(update_dir()):
         # apply_update.ps1 swaps the program files right now (lock file, docs/decisions.md)
         if args.run_watchlist:
-            print(UPDATE_RUNNING, file=sys.stderr)
+            print(tr(UPDATE_RUNNING), file=sys.stderr)
         else:
-            show_fatal(UPDATE_RUNNING)
+            show_fatal(tr(UPDATE_RUNNING))
         return EXIT_BUSY
     if args.run_watchlist:
         from .headless import run_watchlist
 
         return run_watchlist()
     if args.headless:
-        print("--headless braucht --run-watchlist.", file=sys.stderr)
+        print(tr("cli.headless_needs_watchlist"), file=sys.stderr)
         return EXIT_USAGE
     instance = locks.acquire_single_instance()
     if instance is None:
         from .instance import request_activation
 
         if not request_activation():
-            print("HCLoader läuft bereits.", file=sys.stderr)
+            print(tr("main.already_running"), file=sys.stderr)
         return EXIT_OK
     try:
         # only while no download run is active (a headless run may be downloading right now)

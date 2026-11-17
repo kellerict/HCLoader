@@ -30,7 +30,11 @@ from app import main as app_main
 from app.core import config, locks, maintenance, selfupdate
 from app.core import db as dbmod
 from app.core.db import Database, SchemaTooNewError
+from app.core.i18n import tr
 from app.core.selfupdate import Runtime, SelfUpdater, UpdateError
+
+# pre-v0.2.0 behaviour tests assert the German texts (pins the de catalog)
+pytestmark = pytest.mark.usefixtures("german_messages")
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "apply_update.ps1"
@@ -552,7 +556,7 @@ def test_repo_checkout_is_a_git_checkout():
 def test_not_on_windows_blocked(root):
     up = make_updater(root, FakeGitHub({LATEST: release()}), platform="linux")
     up.check()
-    assert up.begin_download() == selfupdate.WINDOWS_ONLY
+    assert up.begin_download() == tr(selfupdate.WINDOWS_ONLY)
 
 
 def test_cancel_while_ready_discards(root):

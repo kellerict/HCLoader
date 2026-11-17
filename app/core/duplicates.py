@@ -14,6 +14,7 @@ from collections.abc import Iterable, Mapping
 from typing import Any
 
 from .filters import normalize
+from .i18n import tr
 from .platforms import label, platform_of
 
 DURATION_TOLERANCE_S = 5
@@ -103,4 +104,4 @@ def find_duplicate(db: Any, video: Mapping[str, Any]) -> dict | None:
 
 def reason(dup: Mapping[str, Any]) -> str:
     """German filter reason for a hidden duplicate."""
-    return f"Vermutlich bereits geladen ({label(dup.get('platform'))})"
+    return tr("filter.duplicate", platform=label(dup.get("platform")))

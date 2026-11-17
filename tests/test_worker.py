@@ -19,6 +19,9 @@ from app.worker import (
     run_session,
 )
 
+# pre-v0.2.0 behaviour tests assert the German texts (pins the de catalog)
+pytestmark = pytest.mark.usefixtures("german_messages")
+
 _SCRIPT_RE = re.compile(r'^window\.mv && window\.mv\.emit\(("(?:[^"\\]|\\.)*"), (.*)\)$', re.S)
 
 

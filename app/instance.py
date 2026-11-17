@@ -45,7 +45,7 @@ class ActivationServer:
             sock.listen(4)
             sock.settimeout(0.5)
         except OSError as exc:
-            log.warning("Aktivierungs-Socket nicht verfügbar: %s", exc)
+            log.warning("Activation socket not available: %s", exc)
             return False
         self._sock = sock
         self.port = sock.getsockname()[1]
@@ -55,7 +55,7 @@ class ActivationServer:
             tmp.write_text(json.dumps({"port": self.port, "token": self._token}), encoding="utf-8")
             tmp.replace(self._path)
         except OSError as exc:
-            log.warning("Aktivierungsdatei nicht schreibbar: %s", exc)
+            log.warning("Activation file not writable: %s", exc)
         self._thread = threading.Thread(target=self._serve, name="hcloader-activate", daemon=True)
         self._thread.start()
         return True
@@ -83,7 +83,7 @@ class ActivationServer:
                     try:
                         self._on_show()
                     except Exception:
-                        log.debug("Fenster konnte nicht nach vorne geholt werden", exc_info=True)
+                        log.debug("Window could not be brought to the front", exc_info=True)
 
     def stop(self) -> None:
         self._stop.set()

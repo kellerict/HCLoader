@@ -1,0 +1,8 @@
+{
+  "_meta": {
+    "code": "ar",
+    "name": "العربية",
+    "dir": "rtl",
+    "note": "Backend messages. Guide: docs/TRANSLATING.md – not translated yet, falls back to English"
+  }
+}

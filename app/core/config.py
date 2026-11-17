@@ -18,6 +18,8 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 
+from .i18n import tr
+
 log = logging.getLogger(__name__)
 
 APP_NAME = "HCLoader"
@@ -169,6 +171,10 @@ def _clean_list(v: Any) -> Any:
 
 
 class GeneralSettings(_Section):
+    # UI + message language (docs/TRANSLATING.md); "auto" = Windows display language, else en
+    language: Literal[
+        "auto", "en", "de", "zh-CN", "hi", "es", "ar", "fr", "bn", "pt", "ru", "id"
+    ] = "en"
     start_view: Literal["discover", "inbox", "watchlist", "downloads", "library", "log"] = (
         "discover"
     )
@@ -202,11 +208,9 @@ class FilterSettings(_Section):
     @classmethod
     def _upload_year(cls, v: int, info: Any) -> int:
         if v != 0 and not (MIN_UPLOAD_YEAR <= v <= datetime.now().year):
-            raise ValueError(
-                f"Jahr muss zwischen {MIN_UPLOAD_YEAR} und {datetime.now().year} liegen"
-            )
+            raise ValueError(tr("config.year_range", min=MIN_UPLOAD_YEAR, max=datetime.now().year))
         if v == 0 and info.data.get("upload_period") == "year":
-            raise ValueError("Jahr fehlt (Pflicht beim Zeitraum 'Jahr')")
+            raise ValueError(tr("config.year_missing"))
         return v
 
     @field_validator("upload_from", "upload_to", mode="before")
@@ -221,7 +225,7 @@ class FilterSettings(_Section):
             try:
                 datetime.strptime(v, "%Y-%m-%d")
             except ValueError:
-                raise ValueError("Ungültiges Datum (Format JJJJ-MM-TT)") from None
+                raise ValueError(tr("config.invalid_date")) from None
         return v
 
     @field_validator("upload_to")
@@ -229,7 +233,7 @@ class FilterSettings(_Section):
     def _to_after_from(cls, v: str, info: Any) -> str:
         start = info.data.get("upload_from")
         if v and start and v < start:
-            raise ValueError("Bis-Datum liegt vor dem Von-Datum")
+            raise ValueError(tr("config.to_before_from"))
         return v
 
     @field_validator("max_duration")
@@ -237,7 +241,7 @@ class FilterSettings(_Section):
     def _max_duration(cls, v: int, info: Any) -> int:
         low = info.data.get("min_duration")
         if v and low is not None and v < low:
-            raise ValueError("Maximum liegt unter der Mindestdauer (0 = unbegrenzt)")
+            raise ValueError(tr("config.max_below_min"))
         return v
 
 
@@ -300,7 +304,7 @@ class GenreSettings(_Section):
         for g in items:
             key = g.name.casefold()
             if key in seen:
-                raise ValueError(f"Genre-Namen müssen eindeutig sein ('{g.name}' doppelt)")
+                raise ValueError(tr("config.genre_names_unique", name=g.name))
             seen.add(key)
         if UNSORTED.casefold() not in seen:
             items = [*items, GenreItem(name=UNSORTED, color="#6b6b78", keywords=[], priority=99)]
@@ -346,11 +350,14 @@ class StorageSettings(_Section):
         unknown = sorted(names - allowed)
         if unknown:
             raise ValueError(
-                f"Unbekannte Platzhalter: {', '.join(unknown)} "
-                f"(erlaubt: {', '.join(sorted(allowed))})"
+                tr(
+                    "config.unknown_placeholders",
+                    bad=", ".join(unknown),
+                    allowed=", ".join(sorted(allowed)),
+                )
             )
         if "id" not in names:
-            raise ValueError("Der Platzhalter {id} muss enthalten sein (Eindeutigkeit)")
+            raise ValueError(tr("config.id_placeholder"))
         return v
 
     @field_validator("title_cleanup_patterns", mode="before")
@@ -362,7 +369,7 @@ class StorageSettings(_Section):
                 try:
                     re.compile(pat)
                 except re.error as exc:
-                    raise ValueError(f"Ungültiger regulärer Ausdruck #{i + 1}: {exc}") from exc
+                    raise ValueError(tr("config.invalid_regex", n=i + 1, error=exc)) from exc
         return v
 
 
@@ -382,7 +389,7 @@ class ThrottleSettings(_Section):
     def _max_sleep(cls, v: int, info: Any) -> int:
         low = info.data.get("sleep_interval")
         if low is not None and v < low:
-            raise ValueError("Muss grösser oder gleich dem minimalen Intervall sein")
+            raise ValueError(tr("config.ge_min_interval"))
         return v
 
     @field_validator("backoff_max_hours")
@@ -390,7 +397,7 @@ class ThrottleSettings(_Section):
     def _backoff_max(cls, v: float, info: Any) -> float:
         low = info.data.get("backoff_initial_hours")
         if low is not None and v < low:
-            raise ValueError("Muss grösser oder gleich der anfänglichen Sperrzeit sein")
+            raise ValueError(tr("config.ge_initial_backoff"))
         return v
 
 
@@ -457,7 +464,7 @@ class MaintenanceSettings(_Section):
             if v.endswith(".git"):
                 v = v[:-4]
             if not _REPO_RE.match(v) or ".." in v:
-                raise ValueError("Format «besitzer/repo», z.B. kellerict/HCLoader")
+                raise ValueError(tr("config.repo_format"))
         return v
 
 
@@ -509,7 +516,7 @@ def reset(settings: Settings, section: str | None = None) -> Settings:
     if section is None:
         return defaults()
     if section not in SECTION_MODELS:
-        raise KeyError(f"Unbekannter Abschnitt: {section}")
+        raise KeyError(f"Unknown section: {section}")
     data = settings.to_dict()
     data[section] = defaults_dict()[section]
     return Settings.model_validate(data)
@@ -517,20 +524,21 @@ def reset(settings: Settings, section: str | None = None) -> Settings:
 
 # --------------------------------------------------------------------------- validation
 
+# pydantic error type -> message key (app/locales), translated per call
 _TYPE_MESSAGES = {
-    "int_parsing": "Muss eine ganze Zahl sein",
-    "int_from_float": "Muss eine ganze Zahl sein",
-    "float_parsing": "Muss eine Zahl sein",
-    "bool_parsing": "Muss ja oder nein sein",
-    "bool_type": "Muss ja oder nein sein",
-    "string_type": "Muss ein Text sein",
-    "list_type": "Muss eine Liste sein",
-    "missing": "Pflichtfeld",
-    "string_too_short": "Darf nicht leer sein",
-    "too_short": "Darf nicht leer sein",
-    "string_pattern_mismatch": "Ungültiges Format",
-    "int_type": "Muss eine ganze Zahl sein",
-    "float_type": "Muss eine Zahl sein",
+    "int_parsing": "config.must_int",
+    "int_from_float": "config.must_int",
+    "float_parsing": "config.must_number",
+    "bool_parsing": "config.must_bool",
+    "bool_type": "config.must_bool",
+    "string_type": "config.must_text",
+    "list_type": "config.must_list",
+    "missing": "config.required",
+    "string_too_short": "config.not_empty",
+    "too_short": "config.not_empty",
+    "string_pattern_mismatch": "config.invalid_format",
+    "int_type": "config.must_int",
+    "float_type": "config.must_number",
 }
 
 
@@ -541,16 +549,20 @@ def _fmt_num(v: Any) -> str:
 def _error_message(err: dict[str, Any]) -> str:
     etype, ctx = err["type"], err.get("ctx") or {}
     if etype == "greater_than_equal":
-        return f"Muss mindestens {_fmt_num(ctx['ge'])} sein"
+        return tr("config.at_least", v=_fmt_num(ctx["ge"]))
     if etype == "less_than_equal":
-        return f"Darf höchstens {_fmt_num(ctx['le'])} sein"
+        return tr("config.at_most", v=_fmt_num(ctx["le"]))
     if etype == "literal_error":
-        return f"Erlaubte Werte: {ctx.get('expected', '')}".replace("'", "")
+        return tr("config.allowed_values", values=ctx.get("expected", "")).replace("'", "")
     if etype == "value_error":
         return str(ctx.get("error", err["msg"])).removeprefix("Value error, ")
     if etype == "string_pattern_mismatch":
-        return "Ungültiges Format" + (" (HH:MM)" if "[0-5]" in str(ctx.get("pattern")) else "")
-    return _TYPE_MESSAGES.get(etype, err["msg"].removeprefix("Value error, "))
+        return tr("config.invalid_format") + (
+            " (HH:MM)" if "[0-5]" in str(ctx.get("pattern")) else ""
+        )
+    if etype in _TYPE_MESSAGES:
+        return tr(_TYPE_MESSAGES[etype])
+    return err["msg"].removeprefix("Value error, ")
 
 
 def _errors_to_dict(exc: ValidationError, prefix: tuple[str, ...] = ()) -> dict[str, str]:
@@ -567,7 +579,7 @@ def parse_settings(values: dict[str, Any]) -> tuple[Settings | None, dict[str, s
     Returns (settings, {}) on success or (None, {"section.key": "Meldung"}).
     """
     if not isinstance(values, dict):
-        return None, {"settings": "Ungültige Einstellungen"}
+        return None, {"settings": tr("config.invalid_settings")}
     try:
         return Settings.model_validate(values), {}
     except ValidationError as exc:
@@ -593,7 +605,7 @@ def _duplicate_genre_errors(values: dict[str, Any]) -> dict[str, str]:
             continue
         key = name.strip().casefold()
         if key in seen:
-            out[f"genres.items.{i}.name"] = f"Name '{name.strip()}' ist doppelt vergeben"
+            out[f"genres.items.{i}.name"] = tr("config.name_twice", name=name.strip())
         seen.add(key)
     return out
 
@@ -622,6 +634,7 @@ SECTION_TITLES = {
 }
 
 COMMENTS = {
+    "general.language": "Sprache der Oberfläche: auto (Windows-Sprache), en, de, zh-CN, hi, es, ar, fr, bn, pt, ru, id",
     "general.start_view": "Startansicht: discover, inbox, watchlist, downloads, library, log",
     "general.log_level": "Log-Stufe: DEBUG, INFO, WARNING, ERROR",
     "general.confirm_delete": "Vor dem Löschen aus der Bibliothek nachfragen",
@@ -767,9 +780,9 @@ def _backup_unreadable(path: Path) -> None:
     backup = path.with_name(f"{path.name}.bak-{datetime.now():%Y%m%d-%H%M%S}")
     try:
         shutil.copy2(path, backup)
-        log.warning("Unlesbare Konfiguration gesichert als %s", backup)
+        log.warning(tr("config.unreadable_backed_up", path=backup))
     except OSError as exc:
-        log.error("Backup der unlesbaren Konfiguration fehlgeschlagen: %s", exc)
+        log.error(tr("config.unreadable_backup_failed", error=exc))
 
 
 def save(settings: Settings, path: Path | None = None) -> Path:
@@ -786,7 +799,7 @@ def save(settings: Settings, path: Path | None = None) -> Path:
             if isinstance(loaded, CommentedMap):
                 doc = loaded
         except Exception:  # corrupt file: overwrite with fresh content
-            log.warning("Konfigurationsdatei unlesbar, wird neu geschrieben: %s", path)
+            log.warning(tr("config.unreadable_rewrite", error=path))
         if doc is None:
             _backup_unreadable(path)
     if doc is None:
@@ -804,7 +817,7 @@ def save(settings: Settings, path: Path | None = None) -> Path:
 def _repair_section(model: type[_Section], data: Any, name: str, warnings: list[str]) -> _Section:
     if not isinstance(data, dict):
         if data is not None:
-            warnings.append(f"Abschnitt '{name}' ist ungültig, Standardwerte werden verwendet")
+            warnings.append(tr("config.section_invalid", section=name))
         return model()
     data = dict(data)
     for _ in range(3):
@@ -813,9 +826,9 @@ def _repair_section(model: type[_Section], data: Any, name: str, warnings: list[
         except ValidationError as exc:
             bad = {err["loc"][0] for err in exc.errors() if err["loc"]}
             for key in bad:
-                warnings.append(f"Ungültiger Wert für {name}.{key}, Standard wird verwendet")
+                warnings.append(tr("config.value_invalid", section=name, field=key))
                 data.pop(key, None)
-    warnings.append(f"Abschnitt '{name}' ist ungültig, Standardwerte werden verwendet")
+    warnings.append(tr("config.section_invalid", section=name))
     return model()
 
 
@@ -836,12 +849,12 @@ def load_with_warnings(path: Path | None = None) -> tuple[Settings, list[str]]:
     try:
         raw = _plain(_yaml().load(path.read_text(encoding="utf-8")))
     except Exception as exc:
-        warnings.append(f"Konfigurationsdatei ungültig ({exc.__class__.__name__}): Standardwerte")
+        warnings.append(tr("config.file_invalid", error=exc.__class__.__name__))
         return defaults(), warnings
     if raw is None:
         return defaults(), warnings
     if not isinstance(raw, dict):
-        warnings.append("Konfigurationsdatei hat ein ungültiges Format: Standardwerte")
+        warnings.append(tr("config.file_bad_format"))
         return defaults(), warnings
     sections = {
         name: _repair_section(model, raw.get(name), name, warnings)

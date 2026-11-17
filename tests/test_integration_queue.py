@@ -25,7 +25,10 @@ from app.core.db import Database
 from app.core.throttle import Throttle
 from app.worker import EventBus
 
-pytestmark = pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg fehlt")
+pytestmark = [
+    pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg fehlt"),
+    pytest.mark.usefixtures("german_messages"),  # pre-v0.2.0 tests pin the German texts
+]
 
 DOWNLOAD_PAUSE = 30.0
 

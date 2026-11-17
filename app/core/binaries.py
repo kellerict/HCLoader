@@ -20,6 +20,8 @@ from importlib import metadata
 from pathlib import Path
 from typing import Any
 
+from .i18n import tr
+
 log = logging.getLogger(__name__)
 
 IS_WINDOWS = sys.platform == "win32"
@@ -96,7 +98,7 @@ def _run_version(exe: Path, *args: str) -> str | None:
             check=False,
         )
     except (OSError, subprocess.SubprocessError) as exc:
-        log.debug("Versionsabfrage fehlgeschlagen (%s): %s", exe, exc)
+        log.debug("Version query failed (%s): %s", exe, exc)
         return None
     out = (proc.stdout or proc.stderr or "").strip()
     return out.splitlines()[0].strip() if proc.returncode == 0 and out else None
@@ -181,7 +183,7 @@ class KillOnCloseJob:
         try:
             self.handle = self._create()
         except Exception as exc:  # pragma: no cover - Windows only
-            log.debug("Job Object nicht verfügbar: %s", exc)
+            log.debug("Job object not available: %s", exc)
             self.handle = None
 
     def _create(self) -> int | None:  # pragma: no cover - Windows only
@@ -257,7 +259,7 @@ class KillOnCloseJob:
             handle = int(proc._handle)  # type: ignore[attr-defined]
             if self._k32.AssignProcessToJobObject(self.handle, handle):
                 return True
-            log.debug("AssignProcessToJobObject fehlgeschlagen")
+            log.debug("AssignProcessToJobObject failed")
         except Exception as exc:  # pragma: no cover - Windows only
             log.debug("Job Object: %s", exc)
         return False
@@ -313,16 +315,14 @@ class PotServer:
         if self.running():
             return True
         if not deno_path().exists() or not provider_dir_ok():
-            log.warning("PO-Token-Server nicht startbar: Deno oder Provider-Verzeichnis fehlt")
+            log.warning(tr("pot.server_not_startable"))
             return False
         if self.ping():
             # Something already answers on our port (an orphaned server of an earlier, hard-
             # killed HCLoader or a foreign one). Our own start would fail on the port while
             # /ping still succeeds, so report it instead of pretending to own it.
             log.error(
-                "Port %s ist bereits belegt (fremder oder verwaister PO-Token-Server) – "
-                "Prozess beenden oder anderen Port wählen",
-                self.port,
+                tr("pot.port_busy", port=self.port),
             )
             return False
         cwd = provider_server_dir() / "node_modules"
@@ -335,15 +335,15 @@ class PotServer:
                 creationflags=_NO_WINDOW,
             )
         except OSError as exc:
-            log.error("PO-Token-Server konnte nicht gestartet werden: %s", exc)
+            log.error(tr("pot.server_start_failed", error=exc))
             return False
         self._job = KillOnCloseJob()
         self._job.assign(self._proc)
         if not self.wait_ready():
-            log.error("PO-Token-Server antwortet nicht auf /ping (Port %s)", self.port)
+            log.error(tr("pot.server_no_ping", port=self.port))
             self.stop()
             return False
-        log.info("PO-Token-Server bereit auf %s", self.base_url)
+        log.info(tr("pot.server_ready", url=self.base_url))
         return True
 
     def ping(self) -> bool:
@@ -385,7 +385,7 @@ class PotServer:
                 proc.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 proc.kill()
-            log.info("PO-Token-Server beendet")
+            log.info(tr("pot.server_stopped"))
         finally:
             if job is not None:
                 job.close()

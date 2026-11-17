@@ -18,6 +18,7 @@ from . import duplicates, filters, platforms
 from .config import UNSORTED, Settings
 from .db import Database
 from .genre import detect_genre
+from .i18n import tr
 from .redact import redact
 from .throttle import BackoffActive, LimitReached, MetadataBusy, Throttle
 
@@ -230,25 +231,25 @@ def run_search(
         what = "Backoff" if platform == platforms.YOUTUBE else f"Backoff ({name})"
         return {
             "ok": False,
-            "error": f"{what} aktiv bis {format_until(exc.until)} – Suche gesperrt",
+            "error": tr("search.backoff", platform=what, until=format_until(exc.until)),
         }
     except MetadataBusy as exc:  # a download is extracting right now (m4)
         return {"ok": False, "error": str(exc)}
     except LimitReached as exc:
         at = pth.search_available_at()
-        when = f" – wieder möglich ab {format_until(at)}" if at else ""
+        when = tr("search.possible_from", time=format_until(at)) if at else ""
         return {
             "ok": False,
-            "error": f"Limit «Suchen pro Stunde» erreicht ({exc.limit}/{exc.limit}){when}",
+            "error": tr("search.limit_hour", n=exc.limit, max=exc.limit, extra=when),
         }
     except Exception as exc:
         if getattr(exc, "rate_limited", False):
             until = pth.backoff_until()
-            tail = f" – Backoff bis {format_until(until)}" if until else ""
-            return {"ok": False, "error": f"{name} blockiert gerade (429/Bot-Prüfung){tail}"}
+            tail = tr("search.backoff_until", until=format_until(until)) if until else ""
+            return {"ok": False, "error": tr("search.blocked", platform=name, extra=tail)}
         text = redact(exc)  # n4: proxy credentials never reach the UI or the log
-        log.error("Suche fehlgeschlagen: %s", text)
-        return {"ok": False, "error": f"Suche fehlgeschlagen: {text}"}
+        log.error(tr("search.failed", error=text))
+        return {"ok": False, "error": tr("search.failed", error=text)}
     ids = store_results(db, entries, settings, genre_hint=genre)
     live = [e["id"] for e in entries if filters.is_live(e)]
     db.set_state(
@@ -269,11 +270,7 @@ def run_search(
     results = _annotated(db, ids, set(live), settings, year=year, video_dict=video_dict)
     hidden = sum(1 for r in results if r["filter_reason"])
     log.info(
-        "Suche «%s» (%s): %d Treffer, %d davon ausgefiltert",
-        effective_query,
-        name,
-        len(results),
-        hidden,
+        tr("search.log", query=effective_query, platform=name, n=len(results), hidden=hidden),
     )
     return {
         "ok": True,

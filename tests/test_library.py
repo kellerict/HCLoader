@@ -9,6 +9,9 @@ from app.core import library, sidecar, tagging
 from app.core.config import Settings
 from app.core.tagging import Chapter
 
+# pre-v0.2.0 behaviour tests assert the German texts (pins the de catalog)
+pytestmark = pytest.mark.usefixtures("german_messages")
+
 VID = "abc123XYZ_-"
 VID2 = "def456UVW_-"
 

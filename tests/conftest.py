@@ -113,3 +113,26 @@ def _no_leaked_process_locks():
 
     with locks._HELD_LOCK:
         locks._HELD.clear()
+
+
+@pytest.fixture(autouse=True)
+def _english_messages():
+    """Backend messages in the reference language (en) for every test; tests that check
+    another language switch explicitly. Resets the global language afterwards (no leakage)."""
+    from app.core import i18n
+
+    i18n.set_language(i18n.REFERENCE)
+    yield
+    i18n.set_language(i18n.REFERENCE)
+
+
+@pytest.fixture
+def german_messages(monkeypatch):
+    """Backend messages fixed to German (de-CH catalog). The behaviour tests written before
+    v0.2.0 assert the German texts; with this fixture they keep doing so and thereby pin the
+    German catalog to the original wording. `set_language` (Api start, saving settings) keeps
+    resolving but does not switch away from German."""
+    from app.core import i18n
+
+    monkeypatch.setattr(i18n, "_active", "de")
+    monkeypatch.setattr(i18n, "set_language", lambda setting: i18n.resolve(setting))
