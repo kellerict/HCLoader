@@ -59,7 +59,7 @@ HCLoader/
 
 - Code, Bezeichner, Commits: Englisch. Die App ist mehrsprachig (ab v0.2.0), **Standardsprache Englisch**.
 - Alle UI-Texte und Meldungen für den User über Sprachkataloge, nie hart im Markup/Code: UI `ui/js/locales/<code>.js` (Engine `ui/js/i18n.js`), Backend `app/locales/<code>.json` (`app/core/i18n.py`). **Englisch ist die Referenz**; neue Keys immer in `en` und `de` anlegen, die übrigen Sprachen nachziehen (Paritätstests). Deutsch = de-CH mit "ss" statt "ß". Varianten (`nl-BE`, `de-x-frk`) fallen über `meta.fallback` auf ihre Elternsprache zurück. Details: `docs/TRANSLATING.md`.
-- Gespräche mit dem User und `PROGRESS.md`: Deutsch (Schweiz). Doku auf GitHub (README, Wiki, `CHANGELOG.md` = Release-Notes): Englisch.
+- Gespräche mit dem User und `PROGRESS.md`: Deutsch (Schweiz). Bei Status, laufender Arbeit und «gebe Bescheid»-Zusagen immer gleich eine **grobe Restzeit** angeben (z.B. «ca. 40 Min.»). Doku auf GitHub (README, Wiki, `CHANGELOG.md` = Release-Notes): Englisch.
 - `core/` kennt die GUI nicht. `api.py` kennt yt-dlp nicht. Nur `ytclient.py` importiert `yt_dlp`.
 - Lange Operationen nie im pywebview-Callback-Thread – immer über `worker.py`; Fortschritt per Event-Push (`window.evaluate_js`) an das Frontend.
 - Pfade immer `pathlib.Path`. User-Daten unter `%APPDATA%\HCLoader\` (config.yaml, hcloader.db, archive.txt, logs\).

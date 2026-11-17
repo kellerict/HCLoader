@@ -18,12 +18,12 @@ Ausgabe genau so, leere Abschnitte weglassen:
 |---|---|
 
 **Läuft gerade**
-| Was | Stand |
-|---|---|
+| Was | Stand | Restzeit (grob) |
+|---|---|---|
 
 **Steht an**
-| # | Was |
-|---|---|
+| # | Was | Aufwand (grob) |
+|---|---|---|
 
 **Offen bei dir**
 - …
