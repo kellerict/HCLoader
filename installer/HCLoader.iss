@@ -109,6 +109,7 @@ PrivacyDescription=Which systems HCLoader contacts and how to switch it off.
 PrivacyText=HCLoader sends no telemetry, has no analytics and needs no account.%n%nYouTube and SoundCloud are only contacted when you search, download or run a watchlist check (manually or on a schedule you set up).%n%nAt each start HCLoader can check GitHub for a new HCLoader version and PyPI for yt-dlp updates (at most once a day). These requests contain only the usual connection data (IP address, program version). You can change this later in Settings > Maintenance.
 PrivacyUpdateCheck=Check for updates at startup (GitHub, PyPI)
 PrivacyLink=Privacy policy (CODE_SIGNING.md)
+PrivacyExisting=HCLoader is already set up for this user: the existing setting stays as it is. Change it in Settings > Maintenance.
 de.PathTooLong=Der Ordner%n%n%1%n%nist zu lang: einige Dateien von HCLoader wuerden die Windows-Pfadgrenze von 260 Zeichen ueberschreiten. Bitte einen Ordner mit hoechstens %2 Zeichen waehlen, z.B. den vorgeschlagenen.
 de.PortableDir=Der Ordner%n%n%1%n%nenthaelt eine Portable-Version von HCLoader (portable.txt oder data). Bitte in einen anderen Ordner installieren; die Portable-Version und ihre Daten bleiben unveraendert.
 de.DirNotEmpty=Der Ordner%n%n%1%n%nist nicht leer und enthaelt keine fruehere HCLoader-Installation. Bitte einen leeren oder neuen Ordner waehlen (die Deinstallation entfernt den ganzen Ordner).
@@ -118,6 +119,7 @@ de.PrivacyDescription=Welche Dienste HCLoader kontaktiert und wie man es abschal
 de.PrivacyText=HCLoader sendet keine Telemetrie, hat keine Analyse und braucht kein Konto.%n%nYouTube und SoundCloud werden nur kontaktiert, wenn Sie suchen, herunterladen oder eine Watchlist-Pruefung starten (von Hand oder nach einem von Ihnen eingerichteten Zeitplan).%n%nBei jedem Start kann HCLoader auf GitHub nach einer neuen HCLoader-Version und auf PyPI nach yt-dlp-Updates suchen (hoechstens einmal pro Tag). Diese Anfragen enthalten nur die ueblichen Verbindungsdaten (IP-Adresse, Programmversion). Spaeter aenderbar unter Einstellungen > Wartung.
 de.PrivacyUpdateCheck=Beim Start nach Updates suchen (GitHub, PyPI)
 de.PrivacyLink=Datenschutzerklaerung (CODE_SIGNING.md)
+de.PrivacyExisting=HCLoader ist fuer diesen Benutzer bereits eingerichtet: die bestehende Einstellung bleibt unveraendert. Aendern unter Einstellungen > Wartung.
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -159,12 +161,30 @@ var
   PrivacyPage: TInputOptionWizardPage;
 
 // '1' = check for updates at startup. Order: /UPDATECHECK=0|1, the choice of an earlier
-// install, default on.
+// install, default on. Review v0.2.0 m5: 0/false/no/off (any case) switch it off, 1/true/yes/on
+// switch it on, anything else is logged and ignored.
 function DefaultUpdateCheck(): String;
+var
+  Param: String;
 begin
-  Result := ExpandConstant('{param:UPDATECHECK|}');
-  if Result = '' then
+  Param := Lowercase(Trim(ExpandConstant('{param:UPDATECHECK|}')));
+  if (Param = '0') or (Param = 'false') or (Param = 'no') or (Param = 'off') then
+    Result := '0'
+  else if (Param = '1') or (Param = 'true') or (Param = 'yes') or (Param = 'on') then
+    Result := '1'
+  else
+  begin
+    if Param <> '' then
+      Log('Unknown /UPDATECHECK value ignored: ' + Param);
     Result := GetPreviousData('UpdateCheck', '1');
+  end;
+end;
+
+// Upgrade / reinstall: the app already has a config.yaml, which always wins over
+// installer-defaults.json (Review v0.2.0 m4) - the checkbox would have no effect, so it is hidden.
+function HasUserConfig(): Boolean;
+begin
+  Result := FileExists(ExpandConstant('{userappdata}\HCLoader\config.yaml'));
 end;
 
 procedure PrivacyLinkClick(Sender: TObject);
@@ -178,13 +198,29 @@ end;
 // during installation, offer to disable it).
 procedure InitializeWizard();
 var
-  Link: TNewStaticText;
+  Link, Note: TNewStaticText;
+  Below: Integer;
 begin
   PrivacyPage := CreateInputOptionPage(wpSelectDir, CustomMessage('PrivacyCaption'),
     CustomMessage('PrivacyDescription'), CustomMessage('PrivacyText'), False, False);
   PrivacyPage.Add(CustomMessage('PrivacyUpdateCheck'));
   PrivacyPage.Values[0] := DefaultUpdateCheck() <> '0';
   PrivacyPage.CheckListBox.Height := ScaleY(28);
+  Below := PrivacyPage.CheckListBox.Top + PrivacyPage.CheckListBox.Height + ScaleY(8);
+  if HasUserConfig() then
+  begin
+    PrivacyPage.CheckListBox.Visible := False;
+    Note := TNewStaticText.Create(PrivacyPage);
+    Note.Parent := PrivacyPage.Surface;
+    Note.AutoSize := False;
+    Note.WordWrap := True;
+    Note.Left := PrivacyPage.CheckListBox.Left;
+    Note.Top := PrivacyPage.CheckListBox.Top;
+    Note.Width := PrivacyPage.SurfaceWidth - Note.Left;
+    Note.Height := ScaleY(40);
+    Note.Caption := CustomMessage('PrivacyExisting');
+    Below := Note.Top + Note.Height + ScaleY(8);
+  end;
   Link := TNewStaticText.Create(PrivacyPage);
   Link.Parent := PrivacyPage.Surface;
   Link.Caption := CustomMessage('PrivacyLink');
@@ -193,7 +229,7 @@ begin
   Link.Font.Style := [fsUnderline];
   Link.OnClick := @PrivacyLinkClick;
   Link.Left := PrivacyPage.CheckListBox.Left;
-  Link.Top := PrivacyPage.CheckListBox.Top + PrivacyPage.CheckListBox.Height + ScaleY(8);
+  Link.Top := Below;
 end;
 
 procedure RegisterPreviousData(PreviousDataKey: Integer);

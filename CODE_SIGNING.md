@@ -46,7 +46,8 @@ installation and can be disabled there**: the installer has a page «Privacy and
 (after the folder page) that describes these connections and offers the checkbox «Check for updates
 at startup» (default on; silent installs: `/UPDATECHECK=0`). The choice is written to
 `installer-defaults.json` in the program folder and becomes the setting when HCLoader creates its
-configuration on first start; an existing configuration is never changed. Both checks can be switched
+configuration on first start; an existing configuration is never changed (on an upgrade or
+reinstall the page therefore shows a note instead of the checkbox). Both checks can be switched
 off at any time in Settings › Maintenance. The portable ZIP has no installer: there the checks are on by
 default and can be switched off in the same place.
 

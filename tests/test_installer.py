@@ -298,7 +298,10 @@ def test_iss_uninstall_removes_app_folder_but_never_user_data():
         names = re.findall(r'^Type: \w+; Name: "([^"]+)"', sec, re.M)
         assert names and all(n == "{app}" or n.startswith("{app}\\") for n in names), names
     code = _section(text, "Code")
-    assert "{userappdata}" not in code and "DelTree" not in code
+    # the data folder is only ever read (upgrade detection), never written or deleted
+    assert "DelTree" not in code
+    for line in (ln for ln in code.splitlines() if "{userappdata}" in ln):
+        assert "FileExists(ExpandConstant('{userappdata}" in line, line
     # the scheduled task is only removed when it starts this copy
     assert "Get-ScheduledTask -TaskName ''{#TaskName}''" in code
     assert "Unregister-ScheduledTask" in code and "WorkingDirectory" in code
@@ -377,10 +380,15 @@ def test_iss_privacy_page_offers_to_disable_update_checks():
     assert "PrivacyPage.Add(CustomMessage('PrivacyUpdateCheck'))" in code
     assert "DefaultUpdateCheck() <> '0'" in code  # default: checked
     assert "{param:UPDATECHECK|}" in code and "GetPreviousData('UpdateCheck', '1')" in code
+    for word in ("'false'", "'no'", "'off'", "Lowercase(Trim("):  # review v0.2.0 m5
+        assert word in code
     assert "SetPreviousData(PreviousDataKey, 'UpdateCheck'" in code
     assert "ssPostInstall" in code and "{app}\\{#InstallerDefaults}" in code
     assert f'#define InstallerDefaults "{config.INSTALLER_DEFAULTS}"' in text
     assert "ShellExecAsOriginalUser('open', '{#PrivacyUrl}'" in code
+    # Review v0.2.0 m4: on upgrade (config.yaml exists) the checkbox would do nothing -> hidden
+    assert "{userappdata}\\HCLoader\\config.yaml" in code
+    assert "CheckListBox.Visible := False" in code and "CustomMessage('PrivacyExisting')" in code
     assert "/blob/main/CODE_SIGNING.md#privacy-policy" in text
     # the JSON keys the installer writes are real settings
     fields = config.MaintenanceSettings.model_fields
@@ -393,6 +401,7 @@ def test_iss_privacy_page_offers_to_disable_update_checks():
         "PrivacyText",
         "PrivacyUpdateCheck",
         "PrivacyLink",
+        "PrivacyExisting",
     ):
         assert re.search(rf"^{name}=\S", msgs, re.M), name  # all languages (English)
         assert re.search(rf"^de\.{name}=\S", msgs, re.M), name
