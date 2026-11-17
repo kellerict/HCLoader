@@ -16,11 +16,11 @@
           "body": "Move every UI and user-facing backend text into translation catalogs. Setting `general.language` (default `en`, `auto` = system language). Live switching, Intl formatting for dates/numbers, plural rules. Data (genres, folders, tags) stays language-independent."
         },
         {
-          "title": "Translations: de, zh-CN, hi, es, ar, fr, bn, pt-BR, ru, id",
+          "title": "Translations: de, zh-CN, hi, es, fr, bn, pt-BR, ru, id, nl",
           "body": "Complete catalogs for the ten languages next to English, with key/placeholder parity tests. See docs/TRANSLATING.md for how to help."
         },
         {
-          "title": "Right-to-left layout (Arabic) and fonts for CJK, Devanagari, Bengali, Arabic",
+          "title": "Fonts for CJK, Devanagari, Bengali and long-label checks",
           "body": "`dir=rtl` layout with logical CSS properties, font fallbacks for non-Latin scripts, screenshots per language for visual review."
         },
         {
