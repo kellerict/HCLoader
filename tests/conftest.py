@@ -103,3 +103,13 @@ def _drop_console_log_handlers():
     root = logging.getLogger()
     for h in [h for h in root.handlers if getattr(h, "_hcloader_console", False)]:
         root.removeHandler(h)
+
+
+@pytest.fixture(autouse=True)
+def _no_leaked_process_locks():
+    """A test that forgets lock.release() must not block the next tests (Windows CI)."""
+    yield
+    from app.core import locks
+
+    with locks._HELD_LOCK:
+        locks._HELD.clear()

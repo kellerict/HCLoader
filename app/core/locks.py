@@ -101,6 +101,15 @@ def _last_error() -> int:
     return int(ctypes.get_last_error())  # type: ignore[attr-defined]
 
 
+def _clear_last_error() -> None:
+    try:
+        import ctypes
+
+        ctypes.set_last_error(0)  # type: ignore[attr-defined]
+    except Exception:
+        pass
+
+
 # Names held by any ProcessLock of this process (safety net: a lock is exclusive inside the
 # process as well, whatever the OS primitive does for the same process/thread).
 _HELD: set[str] = set()
@@ -134,7 +143,8 @@ class ProcessLock:
         """True if the lock was obtained (or is already held by this object)."""
         if self.held:
             return True
-        key = str(self.path) if not IS_WINDOWS else self.name
+        # per data folder, like the mutex name: separate data folders never share a lock
+        key = str(self.path) if not IS_WINDOWS else _mutex_base(self.name)
         with _HELD_LOCK:
             if key in _HELD:
                 return False
@@ -197,6 +207,7 @@ class ProcessLock:
             handle = None
             already = False
             for prefix in MUTEX_NAMESPACES:
+                _clear_last_error()  # never read a stale ALREADY_EXISTS of an earlier call
                 handle = kernel.CreateMutexW(None, False, f"{prefix}{_mutex_base(self.name)}")
                 if handle:
                     # n2: with use_last_error=True ctypes saves the error right after the call
