@@ -6,6 +6,12 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
 ## [Unreleased]
 
 ### Added
+- Phase 8 Player (Backend): Einstellung `player.mode` (`internal`/`external`, Default `internal`), Bridge
+  `get_media(id)` (prozentkodierte `file:`-URL, Cover-Cache unter `cache/covers/`, Kapitel aus Sidecar > ID3 CHAP > CUE)
+  und `play_external(id)` (Standardplayer). Nur lokale Dateien innerhalb des Zielordners, kein Netzwerk.
+- `--smoke` nimmt SoundCloud-Permalinks an (auflösen über den Throttle, dann Download per ID).
+- yt-dlp-Cache im Datenordner (`cache/yt-dlp`); `curl-cffi` als Extra von yt-dlp (Impersonation gegen
+  SoundCloud-403).
 - Phase 7a SoundCloud als zweite Plattform (Backend): Suche `scsearch` (`search(query, {platform})`),
   Watchlist-Quellen `soundcloud.com/<nutzer>` (liest `/tracks`, neueste zuerst, inkrementell),
   `…/sets/<set>` (inkl. «Neueste stehen hinten») und SoundCloud-Suchquellen, Download mit eigenem

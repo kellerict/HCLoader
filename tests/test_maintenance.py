@@ -57,7 +57,7 @@ def test_update_command_uses_venv_python(tmp_path):
         "pip",
         "install",
         "-U",
-        "yt-dlp[default]",
+        "yt-dlp[default,curl-cffi]",
         "bgutil-ytdlp-pot-provider",
     ]
 
@@ -72,7 +72,7 @@ def test_run_update_streams_and_reports_change():
 
     res = maintenance.run_update(seen.append, popen=popen, versions=lambda: next(versions))
     assert res["ok"] and res["changed"] and res["ytdlp"] == "2" and res["plugin"] == "1"
-    assert seen[0] == "> pip install -U yt-dlp[default] bgutil-ytdlp-pot-provider"
+    assert seen[0] == "> pip install -U yt-dlp[default,curl-cffi] bgutil-ytdlp-pot-provider"
     assert "Successfully installed yt-dlp-2" in seen and "Neustart" in res["output"]
     assert cmds[0][1:3] == ["-m", "pip"]
 

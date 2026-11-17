@@ -103,6 +103,11 @@ _SC_USER_RE = re.compile(
     re.I,
 )
 
+_SC_TRACK_RE = re.compile(
+    r"^https?://(?:www\.|m\.)?soundcloud\.com/([\w-]+)/([\w-]+)/?(?:[?#].*)?$", re.I
+)
+_SC_NOT_TRACK = {"tracks", "sets", "likes", "albums", "reposts", "popular-tracks", "following"}
+
 __all__ = [
     "DownloadCancelled",
     "DownloadResult",
@@ -111,6 +116,7 @@ __all__ = [
     "YtClientError",
     "build_ydl_opts",
     "extract_video_id",
+    "soundcloud_track_url",
     "build_search_query",
     "normalize_entry",
 ]
@@ -168,6 +174,15 @@ def extract_video_id(url_or_id: str) -> str | None:
         return text
     m = _URL_ID_RE.search(text)
     return m.group(1) if m else None
+
+
+def soundcloud_track_url(text: str) -> str | None:
+    """The permalink `https://soundcloud.com/<user>/<track>` (query/fragment cut off), else None.
+    User roots, `/tracks`, `/sets/...`, `/likes` and reserved site paths are no track."""
+    m = _SC_TRACK_RE.match((text or "").strip())
+    if not m or m.group(1).lower() in _SC_USER_RESERVED or m.group(2).lower() in _SC_NOT_TRACK:
+        return None
+    return f"https://soundcloud.com/{m.group(1)}/{m.group(2)}"
 
 
 def watch_url(video_id: str) -> str:
@@ -392,6 +407,8 @@ def build_ydl_opts(
         "sleep_interval_requests": limits.sleep_requests,
         "noplaylist": purpose in ("resolve", "download"),
         "extractor_args": _extractor_args(settings, purpose, platform),
+        # SoundCloud client_id etc.: keep yt-dlp's cache in the data folder (portable mode)
+        "cachedir": str(config.app_home() / "cache" / "yt-dlp"),
     }
     if platform == YOUTUBE:
         deno = binaries.deno_path()
@@ -770,10 +787,16 @@ class YtClient:
 
     def resolve(self, video_id: str) -> dict[str, Any]:
         settings = self.settings
-        vid = extract_video_id(video_id) or video_id
-        platform = platforms.platform_of(vid)
+        permalink = soundcloud_track_url(video_id)
+        if permalink:  # SoundCloud permalink: the id is only known after this request
+            vid, url = "", permalink
+            platform = SOUNDCLOUD
+        else:
+            vid = extract_video_id(video_id) or video_id
+            platform = platforms.platform_of(vid)
+            url = watch_url(vid)
         opts = build_ydl_opts(settings, "resolve", platform)
-        info = self._metadata_call("resolve", watch_url(vid), opts, settings, platform=platform)
+        info = self._metadata_call("resolve", url, opts, settings, platform=platform)
         out = normalize_entry(info, platform)
         out.update(
             {

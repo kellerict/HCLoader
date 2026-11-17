@@ -723,3 +723,38 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
   Zusatz-Request; Suchquellen behalten ihre Query. `name_auto` bleibt `true`, bis der User den Namen
   ändert (die UI schickt dann `false`). `add_channel_source` aus der Suche setzt den bekannten
   Kanalnamen mit `name_auto=false`.
+
+## 2026-11-17 – Player (Phase 8, Backend)
+
+- **Einstellung** `player.mode` ∈ {`internal`, `external`}, Default `internal` (Tab «Allgemein»). Beide Aufrufe
+  `get_media` / `play_external` stehen immer bereit; die Einstellung wählt nur die UI (Menü bietet pro Eintrag die
+  andere Variante).
+- **Logik** in `app/core/player.py`, `api.py` delegiert nur. Kein Netzwerk, kein Throttle.
+- **`file:`-URL:** `Path.resolve().as_uri()`. pywebview/.NET `System.Uri` behandelt `?` und `#` in `file:`-URLs als
+  Teil von Query/Fragment, deshalb sind Leerzeichen, `#`, `%`, `?`, `[`, `]`, Umlaute prozentkodiert (getestet:
+  die URL führt zurück auf dieselbe Datei). Die URL wird nur für `<audio>`/`<img>` erzeugt, nie als Pfad gespeichert.
+- **Pfadregel (Orchestrator-Entscheid):** Status `done` und eine Audiodatei (Endung `.mp3/.m4a/.opus/.ogg/.webm/
+  .flac/.aac/.wav`). Abspielen ist reines Lesen: Mixes aus einem früheren Zielordner bleiben abspielbar, nachdem der
+  User den Zielordner geändert hat. Der Pfad stammt nur aus der eigenen DB (vom Download geschrieben), nie aus der UI.
+  Die Endungsprüfung verhindert, dass `play_external`/`os.startfile` je etwas anderes als Audio startet.
+  Löschen/Verschieben bleibt auf den aktuellen Zielordner beschränkt (library.py).
+- **Cover-Cache:** `<app_home>/cache/covers/<Sidecar-Name>.jpg` (Name = `<file-id>.<hash>` des Sidecars, damit
+  `sc:…`/Gross-Kleinschreibung nie kollidieren). Neu erzeugt nur, wenn die Audiodatei neuer ist als der Cache.
+- **Kapitel:** Sidecar, sonst ID3 CHAP, sonst `.cue`. Die Reihenfolge entspricht dem Neu-taggen (Sidecar ist die
+  aufgelöste Wahrheit; CUE ist der letzte Notnagel, z.B. bei von Hand kopierten Dateien).
+- **CSP:** Der UI-Agent ergänzt `media-src 'self' file:` (und `img-src … file:` für das Cover) in `ui/index.html`;
+  hier nur dokumentiert.
+
+## 2026-11-17 – SoundCloud-Nacharbeiten (Phase 8)
+
+- **`--smoke` mit SoundCloud-Permalink** (`https://soundcloud.com/<user>/<track>`): `ytclient.soundcloud_track_url`
+  erkennt ihn (Nutzer-Root, `/tracks`, `/sets/…`, reservierte Pfade nicht). `YtClient.resolve` akzeptiert den
+  Permalink (Plattform SoundCloud, URL ohne Query/Fragment, Throttle wie jeder Metadaten-Request), liefert die
+  `sc:<id>`, danach lädt `download` per ID wie sonst. Der Smoke-Throttle kennt jetzt auch die SoundCloud-Limits
+  (`platform_settings`), vorher galten dort die YouTube-Werte.
+- **yt-dlp-Cache:** `build_ydl_opts` setzt `cachedir` = `<app_home>/cache/yt-dlp` (SoundCloud-`client_id`, Signatur-
+  Caches); im Portable-Modus bleibt damit alles im Datenordner statt in `%LOCALAPPDATA%`/`~/.cache`.
+- **`curl_cffi`:** yt-dlp 2026.10.26 hat das Extra `curl-cffi` (`curl-cffi>=0.5.10,<0.18`, ohne 0.6–0.9), im
+  `METADATA` geprüft. Es erlaubt Browser-Impersonation, die SoundCloud/Datadome bei 403 verlangt. PyPI-Wheel
+  `curl_cffi-0.17.0-cp310-abi3-win_amd64.whl` existiert (abi3, passt für Python 3.12). Darum `yt-dlp[default,curl-cffi]`
+  in `requirements.txt`, `pyproject.toml` und im Update-Knopf (`maintenance.PIP_SPECS`). Im dev-venv installiert.

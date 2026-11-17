@@ -129,6 +129,13 @@
                                            Die UI ruft OHNE Filter auf und sucht/filtert/sortiert/gruppiert selbst
                                            (sofortige Reaktion; Auswahllisten und Kennzahlen brauchen ohnehin alles).
      open_folder(id)                    -> {ok} | {ok:false, error}      Explorer mit markierter Datei bzw. Ordner
+     get_media(id)                      -> {ok:true, id, src, title, artist, genre, platform, duration, cover, chapters:[{start, title, performer}]}
+                                           | {ok:false, error}   Phase 8, nur lokal. src/cover = prozentkodierte file:-URLs
+                                           (nur für <audio>/<img>; Sonderzeichen wie # % [ ] sind kodiert, nicht umbauen).
+                                           cover null ohne Bild; chapters (Sekunden, float) aus Sidecar > ID3 CHAP > .cue,
+                                           sortiert, [] ohne Kapitel; duration Sekunden oder null.
+                                           error: "Datei fehlt" | "Datei liegt ausserhalb des Zielordners" | "Eintrag ist nicht in der Bibliothek"
+     play_external(id)                  -> {ok} | {ok:false, error}      öffnet die Datei im Standardplayer (gleiche Prüfungen)
      retag(id)                          -> {ok:true, path, moved, genre, cue, sidecar} | {ok:false, error}
                                            offline; schreibt Tags/Cover/CUE nach den aktuellen Einstellungen neu und
                                            verschiebt die Datei, wenn das Ablage-Muster einen anderen Pfad ergibt

@@ -68,6 +68,7 @@ Schlüssel = Englisch, snake_case. UI-Labels kommen aus `ui/js/i18n.js`. Änderu
 | `appearance` (Darstellung) | `reduce_effects` | bool | false | |
 | | `scanlines` | bool | true | |
 | | `pulse_bpm` | int | 200 | 60–300 |
+| `player` (Tab «Allgemein», Phase 8) | `mode` | str | `internal` | internal (eingebauter Player), external (Standardplayer des Systems) |
 | `maintenance` (Wartung) | `check_updates_on_start` | bool | true | max. 1×/Tag |
 
 Bridge (`ui/js/bridge.js`): `get_settings()` → `{values, defaults}`; `save_settings(values)` → `{ok: true}` oder `{ok: false, errors: {"section.key": "Meldung"}}`; `reset_settings(section?)`.

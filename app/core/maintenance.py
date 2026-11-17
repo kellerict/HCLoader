@@ -32,7 +32,7 @@ log = logging.getLogger(__name__)
 
 YTDLP = "yt-dlp"
 PLUGIN = "bgutil-ytdlp-pot-provider"
-PIP_SPECS = ("yt-dlp[default]", PLUGIN)
+PIP_SPECS = ("yt-dlp[default,curl-cffi]", PLUGIN)
 PYPI_URL = "https://pypi.org/pypi/{name}/json"
 UPDATE_TIMEOUT_S = 600
 K_LAST_UPDATE_CHECK = "last_update_check"
@@ -168,7 +168,7 @@ def run_update(
     timeout_s: float = UPDATE_TIMEOUT_S,
     venv_check: Callable[[], bool] | None = None,
 ) -> dict[str, Any]:
-    """pip install -U yt-dlp[default] bgutil-ytdlp-pot-provider; streams output lines.
+    """pip install -U yt-dlp[default,curl-cffi] bgutil-ytdlp-pot-provider; streams output lines.
 
     Returns {ok, ytdlp, plugin, changed, output} or {ok: False, error, output}. The running
     process keeps the old yt-dlp module until restart (noted in the output).

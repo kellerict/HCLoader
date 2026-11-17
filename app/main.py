@@ -206,7 +206,7 @@ def run_smoke(url: str) -> int:
         st["deno_version"] or "FEHLT",
         st["ffmpeg_version"] or "FEHLT",
     )
-    from .core.ytclient import DownloadResult, YtClient
+    from .core.ytclient import DownloadResult, YtClient, YtClientError, soundcloud_track_url
 
     run_lock = locks.acquire_run_lock()
     if run_lock is None:
@@ -214,7 +214,11 @@ def run_smoke(url: str) -> int:
         return EXIT_BUSY
     db = Database(config.db_path())
     _reset_interrupted(db)
-    throttle = Throttle(db, lambda: settings.throttle)
+    throttle = Throttle(
+        db,
+        lambda: settings.throttle,
+        platform_settings={"soundcloud": lambda: settings.soundcloud},
+    )
     # no GUI watchdog here: the smoke run starts (and stops) its own PO-token server if needed
     client = YtClient(lambda: settings, db, throttle)
     throttle.start_run()
@@ -229,8 +233,21 @@ def run_smoke(url: str) -> int:
             print(f"[{d.get('phase')}] {shown}".rstrip(), flush=True)
 
     try:
-        result: DownloadResult = client.download(url, on_progress=on_progress)
+        target = url
+        if soundcloud_track_url(url):
+            # a permalink carries no track id: resolve it first (through the throttle), then
+            # download by id like every other track
+            meta = client.resolve(url)
+            target = meta.get("id") or ""
+            if not target:
+                print("Fehler: Track-ID nicht ermittelt", file=sys.stderr)
+                return EXIT_FAILED
+            print(f"Aufgelöst: {target} – {meta.get('title') or ''}", flush=True)
+        result: DownloadResult = client.download(target, on_progress=on_progress)
         throttle.finish_run(result.status == "done")
+    except YtClientError as exc:
+        print(f"Fehler: {exc}", file=sys.stderr)
+        return EXIT_BLOCKED if exc.rate_limited else EXIT_FAILED
     except ThrottleError as exc:
         print(f"GESPERRT: {exc}", file=sys.stderr)
         return EXIT_BLOCKED

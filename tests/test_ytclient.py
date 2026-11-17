@@ -63,6 +63,30 @@ def test_opts_resolve(settings):
     assert "extract_flat" not in o
 
 
+@pytest.mark.parametrize("purpose", ["search", "list", "resolve", "download"])
+@pytest.mark.parametrize("platform", ["youtube", "soundcloud"])
+def test_opts_cachedir_in_app_home(settings, purpose, platform):
+    o = build_ydl_opts(settings, purpose, platform)
+    assert Path(o["cachedir"]) == config.app_home() / "cache" / "yt-dlp"
+
+
+def test_resolve_soundcloud_permalink_uses_url_and_returns_sc_id(client, monkeypatch):
+    seen = {}
+
+    def fake(kind, url, opts, settings, **kw):
+        seen.update(kind=kind, url=url, platform=kw["platform"])
+        return {"id": 123, "title": "T", "uploader": "U", "uploader_id": 5, "duration": 60.0}
+
+    monkeypatch.setattr(client, "_metadata_call", fake)
+    out = client.resolve("https://soundcloud.com/user/track?si=abc")
+    assert seen == {
+        "kind": "resolve",
+        "url": "https://soundcloud.com/user/track",
+        "platform": "soundcloud",
+    }
+    assert out["id"] == "sc:123" and out["platform"] == "soundcloud"
+
+
 def test_opts_unknown_purpose(settings):
     with pytest.raises(ValueError):
         build_ydl_opts(settings, "bogus")

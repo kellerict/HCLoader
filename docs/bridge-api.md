@@ -257,6 +257,8 @@ Aufgaben-Felder unverändert (sie spiegeln den Zustand der Windows-Aufgabe).
 | `get_library(filters?)` | `{search?, genre?, channel?, year?, missing?}` | `[LibraryItem]` (Status `done`, neueste Downloads zuerst, aus DB) | 5 |
 | `get_library_status()` | | `{target_ok, target}` – Zielordner-Prüfung (Thread mit 3-s-Timeout) des letzten `get_library` | 5 |
 | `open_folder(id)` | | `{ok}` \| `{ok:false, error}` – Windows: Explorer mit markierter Datei, sonst Ordner | 5 |
+| `get_media(id)` | | `{ok:true, id, src, title, artist, genre, platform, duration, cover, chapters:[{start, title, performer}]}` \| `{ok:false, error}` – Phase 8, lokal, kein Netz | 8 |
+| `play_external(id)` | | `{ok}` \| `{ok:false, error}` – Standardplayer des Systems | 8 |
 | `retag(id)` | | `{ok:true, path, moved, genre, cue, sidecar}` \| `{ok:false, error}` | 5 |
 | `delete_library_item(id, delete_file=true)` | | `{ok:true, deleted:[Dateinamen]}` \| `{ok:false, error}` | 5 |
 | `get_log(filters?)` | `{level?, levels?, search?, limit?, kind?, runs_limit?}` | `{lines:[LogLine], runs:[Run]}` | 5 |
@@ -277,6 +279,16 @@ Aufgaben-Felder unverändert (sie spiegeln den Zustand der Windows-Aufgabe).
   (Anzeige); der ID3-Artist kann bei `storage.artist_from_title` abweichen.
 - `open_folder`: Windows `explorer /select,"<Datei>"` (Datei markiert); existiert die Datei nicht, bzw.
   auf anderen Systemen, wird der Ordner geöffnet. Fehlt der Ordner: `{ok:false, error:"Ordner fehlt: …"}`.
+- `get_media(id)` (Phase 8): nur Einträge mit Status `done`, deren Datei innerhalb des Zielordners liegt und existiert
+  (Fehler: «Datei fehlt», «Datei liegt ausserhalb des Zielordners», «Eintrag ist nicht in der Bibliothek»).
+  `src`/`cover` sind per `Path.as_uri()` prozentkodierte `file:`-URLs (nur für `<audio>`/`<img>`; .NET `System.Uri`
+  würde rohes `?`/`#` als Query/Fragment lesen). `cover`: eingebettetes Bild als Datei in
+  `<app_home>/cache/covers/<id>.<hash>.jpg` (gleicher Name wie der Sidecar ohne `.json`), einmal erzeugt und
+  wiederverwendet (neu erzeugt, wenn die Audiodatei neuer ist); `null` ohne Bild. `chapters` in Sekunden (float),
+  sortiert; Quelle der Reihenfolge nach Sidecar, ID3 CHAP, `.cue`; `performer` = Interpret des Kapitels (Titel
+  «A - B» wird wie in der CUE-Datei geteilt), sonst der Kanal; `[]` ohne Kapitel. `duration` Sekunden (DB, sonst mutagen).
+- `play_external(id)`: gleiche Prüfungen; Windows `os.startfile`, sonst `xdg-open`/`open`. Einstellung `player.mode`
+  (`internal`/`external`) entscheidet nur die UI, die Bridge bietet beide Aufrufe immer an.
 - `retag(id)` (Wartungs-Worker, kein Netzwerk): schreibt Tags, Cover (aus der vorhandenen Datei
   übernommen), CUE und ID3-CHAP aus dem Sidecar (`<app_home>/meta/<id>.json`) und den **aktuellen**
   Einstellungen neu (Titelbereinigung, `artist_from_title`, Genre-Keywords, `write_cue`,

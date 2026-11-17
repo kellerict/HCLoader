@@ -31,6 +31,7 @@ from .core import (
     logview,
     maintenance,
     paths,
+    player,
     potoken,
     scheduler,
     watchlist,
@@ -1063,6 +1064,14 @@ class Api:
         except OSError as exc:
             return {"ok": False, "error": f"Ordner kann nicht geöffnet werden: {exc}"}
         return {"ok": True}
+
+    def get_media(self, video_id: str) -> dict[str, Any]:
+        """Data for the built-in player (file: URL, cover, chapters); local only, no network."""
+        return player.get_media(self._db, self._cfg, str(video_id))
+
+    def play_external(self, video_id: str) -> dict[str, Any]:
+        """Open the file in the system's default player."""
+        return player.play_external(self._db, self._cfg, str(video_id))
 
     def retag(self, video_id: str) -> dict[str, Any]:
         """Tags, cover, CUE/CHAP from sidecar + current settings, file moved to the current

@@ -154,3 +154,68 @@ def test_gui_start_resets_interrupted_downloads(monkeypatch):
     with Database(config.db_path()) as db:
         row = db.get_video("x")
     assert row["status"] == "failed" and row["error"] == "Unterbrochen"
+
+
+def test_smoke_soundcloud_permalink_resolves_then_downloads_by_id(monkeypatch, capsys, tmp_path):
+    calls = []
+
+    class FakeClient:
+        def __init__(self, settings_provider, db, throttle):
+            # SoundCloud limits come from `settings.soundcloud`, not the YouTube ones
+            calls.append(("platforms", throttle.platform("soundcloud").platform_name))
+
+        def resolve(self, url):
+            calls.append(("resolve", url))
+            return {"id": "sc:123", "title": "Track"}
+
+        def download(self, url, *, on_progress=None, cancel_event=None):
+            calls.append(("download", url))
+            return DownloadResult("sc:123", "done", tmp_path / "x.m4a", "Track")
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(ytclient, "YtClient", FakeClient)
+    assert app_main.main(["--smoke", "https://soundcloud.com/some-user/some-track?si=1"]) == 0
+    assert ("resolve", "https://soundcloud.com/some-user/some-track?si=1") in calls
+    assert calls[-1] == ("download", "sc:123")
+    assert "Aufgelöst: sc:123" in capsys.readouterr().out
+
+
+def test_smoke_soundcloud_resolve_error(monkeypatch, capsys):
+    class FakeClient:
+        def __init__(self, *a):
+            pass
+
+        def resolve(self, url):
+            raise ytclient.YtClientError("403 Forbidden")
+
+        def download(self, *a, **k):
+            raise AssertionError("must not download")
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(ytclient, "YtClient", FakeClient)
+    assert app_main.run_smoke("https://soundcloud.com/u/t") == app_main.EXIT_FAILED
+    assert "403" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("https://soundcloud.com/u/t", "https://soundcloud.com/u/t"),
+        (
+            "https://www.soundcloud.com/u-1/my-track/?si=x#t=1",
+            "https://soundcloud.com/u-1/my-track",
+        ),
+        ("https://soundcloud.com/u", None),
+        ("https://soundcloud.com/u/tracks", None),
+        ("https://soundcloud.com/u/sets/s1", None),
+        ("https://soundcloud.com/discover/sets", None),
+        ("https://soundcloud.com/u/t/extra", None),
+        ("https://youtu.be/abcdefghijk", None),
+    ],
+)
+def test_soundcloud_track_url(text, expected):
+    assert ytclient.soundcloud_track_url(text) == expected

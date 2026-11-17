@@ -428,6 +428,12 @@ class AppearanceSettings(_Section):
     pulse_bpm: int = Field(200, ge=60, le=300)
 
 
+class PlayerSettings(_Section):
+    """Phase 8: `internal` = built-in player bar, `external` = system default player."""
+
+    mode: Literal["internal", "external"] = "internal"
+
+
 class MaintenanceSettings(_Section):
     check_updates_on_start: bool = True
 
@@ -447,6 +453,7 @@ class Settings(BaseModel):
     schedule: ScheduleSettings = Field(default_factory=ScheduleSettings)
     appearance: AppearanceSettings = Field(default_factory=AppearanceSettings)
     maintenance: MaintenanceSettings = Field(default_factory=MaintenanceSettings)
+    player: PlayerSettings = Field(default_factory=PlayerSettings)
 
     def to_dict(self) -> dict[str, Any]:
         return self.model_dump(mode="json")
@@ -588,6 +595,7 @@ SECTION_TITLES = {
     "schedule": "Zeitplan",
     "appearance": "Darstellung",
     "maintenance": "Wartung",
+    "player": "Player",
 }
 
 COMMENTS = {
@@ -654,6 +662,7 @@ COMMENTS = {
     "appearance.reduce_effects": "Effekte reduzieren",
     "appearance.scanlines": "Scanlines-Overlay anzeigen",
     "appearance.pulse_bpm": "Takt des Fortschrittsbalkens in BPM (60-300)",
+    "player.mode": "Abspielen: internal (eingebauter Player) oder external (Standardplayer von Windows)",
     "maintenance.check_updates_on_start": "Beim Start auf yt-dlp-Updates prüfen (max. 1x pro Tag)",
 }
 

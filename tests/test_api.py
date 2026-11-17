@@ -936,6 +936,8 @@ def test_every_method_json_serializable(env):
         "block_channel": ("UC1", "x"),
         "delete_source": (1,),
         "open_folder": ("abcdefghijk",),
+        "get_media": ("abcdefghijk",),
+        "play_external": ("abcdefghijk",),
         "suggest_source": ("https://soundcloud.com/dj-x",),
     }
     for name in sorted(_bridge_comment_methods()):

@@ -229,3 +229,8 @@ appearance:
 maintenance:
   # Beim Start auf yt-dlp-Updates prüfen (max. 1x pro Tag)
   check_updates_on_start: true
+
+# --- Player ---
+player:
+  # Abspielen: internal (eingebauter Player) oder external (Standardplayer von Windows)
+  mode: internal
