@@ -22,6 +22,9 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
   (still: `/UPDATECHECK=0`). Die Wahl gilt für eine neue Konfiguration (`installer-defaults.json`),
   eine bestehende bleibt unverändert. Weitere Installer-Sprachen: es, fr, pt-BR, ru, nl, fi, nb (sv,
   falls Inno Setup sie mitbringt).
+- Release-Automatik: Ein Push auf `main` mit neuer Version (`__version__` ohne Tag) und
+  CHANGELOG-Abschnitt `## [X.Y.Z]` erstellt nach erfolgreichem Build und Smoke-Test Tag, Release
+  (Notizen aus dem CHANGELOG) und Assets (`docs/RELEASING.md`).
 - Datum, Zahlen, Dauer und Dateigrössen im Format der gewählten Sprache (Intl).
 - Meldungen des Backends (Validierung, Fehler, Toasts, Protokoll, Kommandozeile) in der gewählten
   Sprache. Leitfaden für Übersetzungen: `docs/TRANSLATING.md`.

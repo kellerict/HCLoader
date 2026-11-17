@@ -5,7 +5,10 @@ from __future__ import annotations
 
 import importlib.util
 import io
+import json
+import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -548,14 +551,109 @@ def test_portable_workflow_contract():
     assert data["permissions"] == {"contents": "read"}
     assert "permissions" not in data["jobs"]["portable"]
     rel = data["jobs"]["release"]
-    assert rel["if"] == "startsWith(github.ref, 'refs/tags/v')" and rel["needs"] == "portable"
+    # tags v* and new versions pushed to main (job plan decides), after build + smoke
+    assert rel["if"] == "needs.plan.outputs.release == 'true'"
+    assert rel["needs"] == ["plan", "portable"]
     assert rel["permissions"] == {"contents": "write"}
+    assert "permissions" not in data["jobs"]["plan"]
     assert wf.count("contents: write") == 1
     portable_job = wf[wf.index("  portable:") : wf.index("  release:")]
     assert "gh release" not in portable_job and "action-gh-release" not in portable_job
     steps = "\n".join(s.get("run", "") for s in rel["steps"])
     assert "gh release upload" in steps and "SHA256SUMS" in steps and "git archive" in steps
     assert "-source.zip" in steps and "__version__" in steps
+    assert '--title "HCLoader $VERSION"' in steps and "--prerelease" in steps
+    assert "Code signing policy" in steps and "git archive" in steps and "$GITHUB_SHA" in steps
+    tag_step = next(x for x in rel["steps"] if x.get("name", "").startswith("Tag on the pushed"))
+    assert tag_step["if"] == "needs.plan.outputs.create_tag == 'true'"
+    assert '-f sha="$GITHUB_SHA"' in tag_step["run"]
+
+
+def _plan_script() -> str:
+    from ruamel.yaml import YAML
+
+    data = YAML(typ="safe").load(_text(".github/workflows/portable.yml"))
+    return next(s for s in data["jobs"]["plan"]["steps"] if s.get("id") == "plan")["run"]
+
+
+@pytest.mark.skipif(
+    sys.platform == "win32" or not shutil.which("bash"), reason="bash script of the Linux job"
+)
+@pytest.mark.parametrize(
+    ("event", "ref", "existing_tags", "changelog", "expected"),
+    [
+        # new version on main with a CHANGELOG section -> tag + release
+        ("push", "refs/heads/main", "", "## [0.2.0] - 2026-11-20\n", ("true", "true", "v0.2.0")),
+        # tag exists already -> nothing
+        (
+            "push",
+            "refs/heads/main",
+            "refs/tags/v0.2.0",
+            "## [0.2.0]\n",
+            ("false", "false", "v0.2.0"),
+        ),
+        # no CHANGELOG section (only Unreleased) -> nothing
+        ("push", "refs/heads/main", "", "## [Unreleased]\n", ("false", "false", "v0.2.0")),
+        # a tag v0.2.0-rc1 is not v0.2.0
+        (
+            "push",
+            "refs/heads/main",
+            "refs/tags/v0.2.0-rc1",
+            "## [0.2.0]\n",
+            ("true", "true", "v0.2.0"),
+        ),
+        # other branches, PRs and dispatch on main never release
+        ("push", "refs/heads/dev", "", "## [0.2.0]\n", ("false", "false", "")),
+        ("pull_request", "refs/pull/1/merge", "", "## [0.2.0]\n", ("false", "false", "")),
+        ("workflow_dispatch", "refs/heads/main", "", "## [0.2.0]\n", ("false", "false", "")),
+        # tag push / dispatch on a tag: release of that tag, no tag creation
+        ("push", "refs/tags/v0.2.0", "refs/tags/v0.2.0", "", ("true", "false", "v0.2.0")),
+        ("workflow_dispatch", "refs/tags/v0.2.0", "", "", ("true", "false", "v0.2.0")),
+    ],
+)
+def test_release_plan_decision(tmp_path, event, ref, existing_tags, changelog, expected):
+    (tmp_path / "app").mkdir()
+    (tmp_path / "app" / "__init__.py").write_text('__version__ = "0.2.0"\n', encoding="utf-8")
+    (tmp_path / "CHANGELOG.md").write_text("# Changelog\n\n" + changelog, encoding="utf-8")
+    if not shutil.which("jq"):
+        pytest.skip("jq missing")
+    # fake gh: `gh api <matching-refs URL> --jq <filter>` answers with the existing tags whose
+    # ref starts with the prefix, run through the workflow's real filter (jq -r = gh --jq)
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    refs = [{"ref": r, "object": {"sha": "abc"}} for r in existing_tags.split()]
+    (tmp_path / "refs.json").write_text(json.dumps(refs), encoding="utf-8")
+    gh = bindir / "gh"
+    gh.write_text(
+        f"#!{sys.executable}\n"
+        "import json, subprocess, sys\n"
+        "a = sys.argv[1:]\n"
+        "assert a[0] == 'api' and '/git/matching-refs/tags/' in a[1] and a[2] == '--jq', a\n"
+        "prefix = 'refs/' + a[1].split('/git/matching-refs/')[1]\n"
+        f"refs = json.load(open({str(tmp_path / 'refs.json')!r}))\n"
+        "data = json.dumps([r for r in refs if r['ref'].startswith(prefix)])\n"
+        "sys.exit(subprocess.run(['jq', '-r', a[3]], input=data, text=True).returncode)\n",
+        encoding="utf-8",
+    )
+    gh.chmod(0o755)
+    out = tmp_path / "out.txt"
+    run_env = {
+        **os.environ,
+        "PATH": f"{bindir}{os.pathsep}{os.environ['PATH']}",
+        "GITHUB_OUTPUT": str(out),
+        "GITHUB_REPOSITORY": "owner/HCLoader",
+        "GH_TOKEN": "x",
+        "EVENT": event,
+        "REF": ref,
+        "REF_NAME": ref.rsplit("/", 1)[-1],
+    }
+    r = subprocess.run(
+        ["bash", "-c", _plan_script()], cwd=tmp_path, env=run_env, capture_output=True, text=True
+    )
+    assert r.returncode == 0, r.stderr + r.stdout
+    got = dict(line.split("=", 1) for line in out.read_text(encoding="utf-8").splitlines())
+    assert (got["release"], got["create_tag"], got["tag"]) == expected
+    assert got["version"] == "0.2.0"
 
 
 # --------------------------------------------------------------------------- hoisted node_modules

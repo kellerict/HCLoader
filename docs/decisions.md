@@ -1035,3 +1035,13 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
   **Grund:** SignPath-Foundation-Bedingung (Netzwerkzugriffe ohne User-Auftrag beschreiben, bei der
   Installation zeigen, abschaltbar); ein Upgrade oder eine Neuinstallation darf eine bestehende
   User-Konfiguration nie überschreiben. Keine Registry, damit `core/` plattformneutral bleibt.
+
+## 2026-11-17 – Release-Automatik aus `main`
+
+- **Entscheid:** `portable.yml` bekommt einen Job `plan` (nur lesend): Bei einem Push auf `main`, dessen
+  `__version__` noch keinen Tag `v<version>` hat und dessen `CHANGELOG.md` einen Abschnitt
+  `## [<version>]` enthält, erstellt der Job `release` nach grünem Build + Smoke den Tag (REST-API, auf
+  `GITHUB_SHA`) und das Release im selben Lauf. Tag-Push und `workflow_dispatch` auf einem Tag bleiben;
+  `workflow_dispatch` auf einem Branch released nie. `contents: write` nur im Job `release`.
+  **Grund:** Mit `GITHUB_TOKEN` erstellte Tags lösen keinen weiteren Workflow aus; der CHANGELOG-Abschnitt
+  ist das bewusste Freigabesignal, damit gewöhnliche Pushes auf `main` nie ein Release erzeugen.

@@ -5,33 +5,42 @@ Installed copies (installer, portable ZIP and ZIP-based venv installs) update th
 than a Git tag `vX.Y.Z` plus a GitHub release; the workflow `.github/workflows/portable.yml` builds and
 attaches the assets.
 
-## Steps
+## Steps (automatic release from `main`)
 
-1. **Bump the version** in `app/__init__.py` (`__version__ = "X.Y.Z"`, SemVer). This is the only place;
-   `pyproject.toml` and `build_portable.ps1` read it.
+1. On a branch: **bump the version** in `app/__init__.py` (`__version__ = "X.Y.Z"`, SemVer). This is
+   the only place; `pyproject.toml` and `build_portable.ps1` read it.
 2. **Changelog:** move the entries under `## [Unreleased]` in `CHANGELOG.md` into a new section
-   `## [X.Y.Z] - YYYY-MM-DD`. The self-update shows this text (or the release notes) to the user.
-3. Commit (`chore: release vX.Y.Z`), merge to `main` via PR, wait for green CI.
-4. **Tag and push** from `main`:
-   ```
-   git tag vX.Y.Z
-   git push origin vX.Y.Z
-   ```
-5. The `Portable` workflow runs on the tag: portable build, installer build and smoke tests on
-   Windows (job `portable`), then the `release` job
-   - checks that the tag matches `__version__`,
-   - creates the GitHub release if it does not exist yet (notes = the CHANGELOG section; tags with a
-     `-` such as `v0.4.0-rc1` become pre-releases, which the updater ignores); a release you already
-     created in the UI is kept and only gets the assets,
-   - uploads `HCLoader-Setup-X.Y.Z.exe`, `HCLoader-portable-X.Y.Z-win64.zip`,
-     `HCLoader-X.Y.Z-source.zip` (`git archive`) and `SHA256SUMS` over all of them
-     (`gh release upload --clobber`, `GITHUB_TOKEN`, `contents: write` only in this job).
-6. Optionally edit the release notes on GitHub. Mark it as "latest" (default for the newest
-   non-pre-release).
+   `## [X.Y.Z] - YYYY-MM-DD`. The release notes and the self-update show this text.
+3. Commit (`chore: release vX.Y.Z`), open a PR, wait for **green CI** (`ci.yml`, `portable.yml`).
+4. **Merge to `main`** (Claude prepares, the user gives the go). That's all - the push to `main`
+   runs the `Portable` workflow:
+   - job `plan` (read-only) reads `__version__`; a release is due if there is **no tag `vX.Y.Z`**
+     yet **and** `CHANGELOG.md` has a section `## [X.Y.Z]`. Without the section nothing happens
+     (a notice in the run), so ordinary pushes to `main` never release;
+   - job `portable` builds the portable ZIP and the installer and smoke-tests both on Windows;
+   - only if both succeed, job `release` (the only job with `contents: write`)
+     - creates the lightweight tag `vX.Y.Z` on the pushed commit (`GITHUB_SHA`, via the REST API;
+       a tag that already points to that commit is fine, one on another commit fails the job),
+     - creates the GitHub release: title `HCLoader X.Y.Z`, notes = the CHANGELOG section plus the
+       code signing policy link; a version with `-` (`0.4.0-rc1`) becomes a **pre-release**, which
+       the updater ignores,
+     - uploads `HCLoader-Setup-X.Y.Z.exe`, `HCLoader-portable-X.Y.Z-win64.zip`,
+       `HCLoader-X.Y.Z-source.zip` (`git archive` of the commit) and `SHA256SUMS` over all of them
+       (`gh release upload --clobber`).
 
-You can also create the release in the GitHub UI first ("Draft a new release" → new tag `vX.Y.Z`);
-publishing it pushes the tag and the workflow attaches the assets to that release. Drafts are never
-offered to users.
+   A tag created with `GITHUB_TOKEN` starts no further workflow run, so everything above happens in
+   this one run. If the build or a smoke test fails, no tag and no release are created; fix it on a
+   branch and merge again (the version still has no tag, so the next push to `main` releases it).
+5. Optionally edit the release notes on GitHub. The newest non-pre-release is marked "latest".
+
+### Manual paths (still supported)
+
+- **Push a tag** `vX.Y.Z` yourself (`git tag vX.Y.Z && git push origin vX.Y.Z`), or create the
+  release in the GitHub UI ("Draft a new release" → new tag; publishing pushes the tag): the workflow
+  runs on the tag, checks that it matches `__version__`, creates the release if it does not exist
+  (a release you created is kept) and attaches the assets. Drafts are never offered to users.
+- **Re-run for a tag:** "Run workflow" (`workflow_dispatch`) on the tag `vX.Y.Z` builds again and
+  re-uploads the assets (`--clobber`). `workflow_dispatch` on a branch never releases.
 
 ## The installer
 
@@ -110,9 +119,9 @@ it is kept as `_previous-<timestamp>`. Manual restore: close HCLoader, delete th
 
 ## Checklist
 
-- [ ] `__version__` bumped, CHANGELOG section written
-- [ ] CI green on `main`
-- [ ] tag `vX.Y.Z` pushed, `Portable` workflow green (both jobs)
+- [ ] `__version__` bumped, CHANGELOG section `## [X.Y.Z]` written (on a branch)
+- [ ] CI green on the PR, merged to `main`
+- [ ] `Portable` workflow on `main` green (jobs `plan`, `portable`, `release`), tag `vX.Y.Z` created
 - [ ] release shows four assets: `HCLoader-Setup-X.Y.Z.exe`, portable ZIP, source ZIP, `SHA256SUMS`
 - [ ] the setup installs on a clean Windows user (SmartScreen "More info" › "Run anyway"), starts, and
       uninstalls without touching `%APPDATA%\HCLoader`
