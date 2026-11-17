@@ -1172,3 +1172,45 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
   `sources.item_count` (Grösse aus `playlist_count` der letzten Prüfung, ohne Zusatzanfrage). Die
   Schätzung im Bestätigungsdialog braucht so kein Netzwerk; ohne bekannte Grösse wird vorsichtig mit dem
   Maximum gerechnet.
+
+## 2026-11-17 – Review v0.4.0: Tempo ohne Lock, Ökonomie des Fortsetzens, Headless ohne Run-Lock
+- **Entscheid (M1):** Die Tempo-Wartezeit eines Backfills (`Throttle.backfill_pace`, `3600 /
+  backfill_requests_per_hour`) läuft **ohne jeden Lock**; erst danach nimmt die Seitenanfrage den
+  Metadaten-Lock und darin nur `Throttle.backfill_request` (Backoff-Prüfung, `sleep_requests`, Stempel).
+  `backfill_slot` bleibt als Kombination ohne Lock. **Grund:** Bei bis zu 360 s Wartezeit (10/h) liefen
+  Suchen, In-App-Prüfungen (Timeout 60 s → `MetadataBusy` → Quellenfehler) und Download-Extraktion
+  sonst in den Lock; auch die GUI während eines Headless-Backfills (prozessübergreifender Lock).
+- **Entscheid (M2):** Ökonomie des Fortsetzens explizit: Ein Fortsetzen holt alle Seiten vor dem Cursor
+  erneut (nur «nächste Seite»-Tokens). Innerhalb eines Laufs gibt es genau **einen** seitenweisen
+  Generator – keine Seite wird in einem Lauf zweimal gelesen. Die GUI hat kein Budget und kommt immer
+  durch. Ein **Headless-Lauf übernimmt einen Backfill nur, wenn er ihn im verbleibenden Budget fertig
+  lesen kann** (`backfill.cost`: Anlauf + erneut gelesene Seiten + restliche Seiten). Passt er nicht
+  einmal ins ganze Budget, gibt es keine Anfrage, sondern die Notiz «Zu gross für einen geplanten Lauf
+  (N Anfragen …)» (mit dem nötigen Wert, falls ≤ 600/h) und er läuft in der App weiter; passt er nur
+  nicht mehr in den Rest dieses Laufs, kommt er im nächsten Lauf. Die Seitengrösse wird pro Quelle aus
+  früheren Läufen gelernt (`state.backfill_page_size:<id>`, konservativ); ein Lauf, der sein Budget nur
+  mit erneutem Lesen verbraucht hat, speichert eine obere Schranke, sodass der nächste Lauf sicher
+  zurückstellt. Der Bestätigungsdialog warnt (`headless_ok`). **Grund:** Vorher konnte jeder geplante Lauf
+  sein ganzes Budget mit denselben Seiten verbrauchen (Kanal, Cap 5000, 120/h: täglich ~120 nutzlose
+  Anfragen ohne Fortschritt) – gegen Prinzip 1. Ein Teil-Lauf im Headless spart auch nichts: das nächste
+  Fortsetzen müsste seine Seiten ohnehin erneut holen. «Mindestens eine neue Seite» als Regel hätte
+  immer noch fast das ganze Budget für Wiederholungen ausgegeben. Fortsetzungs-Tokens speichern bleibt
+  verworfen (yt-dlp-intern, nicht stabil).
+- **Entscheid (M3):** Der Headless-Lauf gibt Run- und Watchlist-Lock **vor** der Backfill-Phase frei;
+  Exklusivität kommt vom eigenen `backfill`-Lock und dem Metadaten-Lock pro Anfrage. Ein yt-dlp-Update
+  der GUI setzt `state.ytdlp_update_started`; ein Backfill eines anderen Prozesses prüft das vor jeder
+  Anfrage und hört auf (bleibt `pending`, geht später mit dem neuen yt-dlp weiter). **Grund:** Sonst
+  waren GUI-Queue, In-App-Prüfungen und Update rund eine Stunde blockiert; ein Update mitten unter einem
+  laufenden Prozess soll diesen nicht mit gemischten yt-dlp-Dateien weiterlaufen lassen.
+- **Entscheid (m1/m3):** Vor dem Speichern jeder Seite prüft der Backfill seine Zeile: nicht mehr
+  `running` (Pause/Abbruch auch aus einem anderen Prozess, Quelle gelöscht) oder Stop-Event gesetzt →
+  er hört auf, **ohne** die Seite zu speichern (sie wird beim Fortsetzen neu gelesen). `start_backfill`
+  übernimmt eine fremde `running`-Zeile nur, wenn der Backfill-Lock frei ist. **Grund:** Zähler und
+  Eingang stimmen immer überein; kein Prozess liest ungebremst weiter, nachdem der User pausiert hat.
+- **Entscheid (m4, m7):** Ein Weiterleitungs-Ergebnis (`url`/`url_transparent`) wird erneut mit
+  `process=False` aufgelöst (Cursor pro Seite bleibt erhalten). Skript-Downloads der SoundCloud-
+  Client-ID-Suche (`*.sndcdn.com`) werden gezählt und gespaced, aber nicht getaktet.
+- **Akzeptiert (m5, m6):** Der Backfill legt auch neue Uploads einer Auto-Download-Quelle in den Eingang
+  (nicht in die Queue) – dokumentiert, «Prüfen» vorher lädt sie automatisch. Der Cursor ist ein Index:
+  gelöschte/private Videos vor dem Cursor können beim Fortsetzen ebenso viele Einträge überspringen –
+  für ein einmaliges Einlesen hinnehmbar, dokumentiert im Wiki.

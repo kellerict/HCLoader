@@ -34,9 +34,23 @@ in the portable build).
 3. Checks all enabled sources incrementally.
 4. Downloads the queued videos sequentially through the normal queue; the per-run and per-day limits
    still apply and the rest stays queued.
-5. Continues an interrupted [«Read everything (once)»](Watchlist-and-Inbox#read-everything-once)
-   for at most `watchlist.backfill_requests_per_hour` requests (default 120, about one hour); the
-   rest follows in the next run. Paused backfills are left alone.
+5. Releases the run and watchlist locks, then continues an interrupted
+   [«Read everything (once)»](Watchlist-and-Inbox#read-everything-once) with a budget of
+   `watchlist.backfill_requests_per_hour` requests (default 120, about one hour). Paused backfills
+   are left alone. While it reads, an open app window keeps working normally: downloads, watchlist
+   checks and searches run in between (the pacing wait blocks nothing), and a yt-dlp update stops
+   the scheduled backfill before its next request (it continues later).
+
+   **Only backfills that fit.** A scheduled run only takes on a backfill it can *finish* within its
+   budget: setup requests + the pages before the saved position (they have to be requested again,
+   YouTube and SoundCloud only know "next page") + the remaining pages. HCLoader learns the real
+   page size from earlier runs. A backfill that does not fit is not touched at all (no request);
+   its note says «Too large for a scheduled run (N requests …)» and it continues in the app,
+   which has no budget. Raising «Requests per hour» to at least N lets scheduled runs finish it.
+   Example: a YouTube channel with a cap of 5000 entries needs about 168 requests – with 120 per
+   hour it is read in the app; with the default cap of 2000 (68 requests) a scheduled run finishes
+   it. A partial scheduled run would not help: the next continuation would have to request all its
+   pages again.
 6. Writes one `headless` entry into the run history (Protokoll, shown as "Aufgabenplanung").
 
 ### Exit codes

@@ -63,9 +63,20 @@ most 100 results anyway).
 **Interruptions are harmless.** The position is saved after every page. A backoff (HTTP 429 / bot
 check), closing the app or a network error only interrupts the backfill; it continues automatically
 at the next app start (after about 90 s), after the next watchlist check and in scheduled
-(headless) runs – there for at most one hour's worth of requests per run. Continuing has to request
-the pages already read once more (YouTube and SoundCloud only know "next page"), which is included
-in the estimate. After three errors in a row the backfill pauses with the error as a note.
+(headless) runs. Continuing has to request the pages already read once more (YouTube and SoundCloud
+only know "next page"), which is included in the estimate; within one run every page is read only
+once. A scheduled run only continues a backfill it can finish within one hour's worth of requests –
+otherwise it leaves it to the app and says so in the note (see
+[Scheduled checks](Scheduled-Checks#what-a-headless-run-does)); the dialog warns about this up
+front. After three errors in a row the backfill pauses with the error as a note.
+
+**Order of the listing.** The position is an index into the listing. New uploads in the meantime
+only cause a few entries to be read again; videos deleted or made private before the position
+shift it back, so up to that many entries after it may be skipped – acceptable for a one-time read.
+
+**Auto-download sources.** Everything the backfill reads goes to the inbox, including uploads that
+appeared since the last check: they are then known and are not queued automatically by the next
+check. Run **Check** first if you want the newest uploads of an auto-download source loaded.
 
 **Pause** keeps the position until you click **Resume** (no automatic continuation). **Cancel**
 discards the position; hits already in the inbox stay. Only one source is read at a time.
