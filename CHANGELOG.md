@@ -51,6 +51,9 @@ appears after «Show all changes» (`docs/RELEASING.md`).
   backup.
 - The watchlist check and the backfill share one ingestion step (`watchlist.Ingest`).
 
+### Fixed
+- Uninstall could hang while removing the scheduled task; the cleanup now gives up after 60 s. Installer messages respect silent mode.
+
 ## [0.3.0] - 2026-11-18
 
 ### Highlights
