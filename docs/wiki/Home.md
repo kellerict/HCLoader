@@ -9,7 +9,7 @@
 
 HCLoader is a Windows 10/11 desktop app that finds, filters and downloads **Hardstyle, Rawstyle,
 Hardcore and Uptempo DJ mixes** as tagged MP3s for a local library, with as little load on the
-source platform as possible. YouTube is supported today; SoundCloud is in development.
+source platform as possible. Sources: YouTube and SoundCloud.
 
 <p align="center">
   <a href="https://github.com/kellerict/HCLoader/releases/latest"><img alt="Download the latest release" src="https://img.shields.io/badge/Download-latest%20release-ff1f1f?style=for-the-badge&labelColor=08080a"></a>
