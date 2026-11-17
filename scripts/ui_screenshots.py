@@ -149,7 +149,7 @@ class Shooter:
         self.page.click(f'.menu [data-k="{key}"]')
 
     def soundcloud_scenes(self) -> None:
-        """Phase 7a: Suche auf SoundCloud, Namensvorschlag im Quellen-Dialog, Backoff pro Plattform."""
+        """Phase 7a: SoundCloud-Suche, Namensvorschlag im Quellen-Dialog, Backoff pro Plattform."""
         page = self.page
         page.evaluate("HC.mock.api.clear_backoff(); HC.mock.demo.local(null)")
         self.go("discover")
