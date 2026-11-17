@@ -8,7 +8,12 @@ The script fails (exit code 1) on JavaScript errors, ``console.error`` output
 or any request that leaves the local file system – the UI must work offline.
 
 Usage:
-    python scripts/ui_screenshots.py [--reduced] [--out DIR] [--only NAME ...] [--viewport 1100x700]
+    python scripts/ui_screenshots.py [--lang CODE] [--reduced] [--out DIR] [--only NAME ...]
+                                     [--viewport 1100x700]
+
+``--lang`` (default ``en``) sets the UI language via ``?lang=`` in mock mode; other languages
+than English go to ``docs/screenshots/<lang>/`` unless ``--out`` is given. Mock data and the
+mock's simulated backend messages stay English (docs/TRANSLATING.md).
 
 Chromium: set ``HCLOADER_CHROMIUM`` to an executable, otherwise a bundled
 Playwright Chromium (``playwright install chromium``) or Microsoft Edge is used.
@@ -43,6 +48,11 @@ CHROMIUM_OFFLINE_ARGS = [
     "--no-first-run",
     "--no-pings",
 ]
+
+# app/core/i18n.SUPPORTED (not imported: the script runs without the app package on sys.path)
+LANGUAGES = ["en", "de", "zh-CN", "hi", "es", "ar", "fr", "bn", "pt", "ru", "id"]
+# browser locale = Intl formatting of the mock page (dates, numbers) and the fatal screen
+BROWSER_LOCALE = {"en": "en-US", "de": "de-CH", "pt": "pt-BR"}
 
 VIEWS = ["discover", "inbox", "watchlist", "downloads", "library", "log", "settings"]
 SETTINGS_TABS = [
@@ -80,7 +90,10 @@ def launch(pw: Playwright) -> Browser:
 
 
 class Shooter:
-    def __init__(self, page: Page, out: Path, reduced: bool, only: set[str]) -> None:
+    def __init__(
+        self, page: Page, out: Path, reduced: bool, only: set[str], lang: str = "en"
+    ) -> None:
+        self.lang = lang
         self.page = page
         self.out = out
         self.reduced = reduced
@@ -249,7 +262,7 @@ class Shooter:
         self.go("watchlist")
         # Quelle 1 findet etwas, Quelle 2 schlägt fehl, Quelle 3 bleibt im Zustand «prüft …»
         page.evaluate(
-            "HC.mock.demo.sourceError(2, 'Kanal nicht gefunden (HTTP 404) – URL prüfen');"
+            "HC.mock.demo.sourceError(2, 'Channel not found (HTTP 404) – check the URL');"
             " HC.mock.demo.checkHold(3)"
         )
         page.click("#wl-check")
@@ -371,7 +384,7 @@ class Shooter:
         # ein Lauf endet -> Event «run» trägt ihn live nach
         page.evaluate(
             "HC.mock.demo.run({kind: 'headless', found: 4, downloaded: 2,"
-            " note: 'Limit pro Lauf erreicht (2/2) – Rest bleibt in der Warteschlange'})"
+            " note: 'Run limit reached (2/2) – the rest stays in the queue'})"
         )
         page.click('#runs-view [data-v="table"]')
         self.settle()
@@ -404,7 +417,7 @@ class Shooter:
     # -- scenes ------------------------------------------------------------
     def run(self) -> None:
         page = self.page
-        page.goto(INDEX.as_uri() + "?mock=1&nosim=1")
+        page.goto(INDEX.as_uri() + f"?mock=1&nosim=1&lang={self.lang}")
         page.wait_for_function("document.body.classList.contains('ready')")
         if self.reduced:
             page.evaluate(
@@ -600,6 +613,12 @@ def main() -> int:
         "--reduced", action="store_true", help="mit reduzierten Effekten (body.reduced)"
     )
     parser.add_argument("--out", type=Path, default=None, help="Zielordner")
+    parser.add_argument(
+        "--lang",
+        default="en",
+        choices=LANGUAGES,
+        help="UI-Sprache (Standard en; andere unter docs/screenshots/<lang>/)",
+    )
     parser.add_argument("--only", nargs="*", default=[], help="nur diese Namen speichern")
     parser.add_argument(
         "--viewport",
@@ -618,7 +637,8 @@ def main() -> int:
         viewport = {"width": width, "height": height}
         if not args.out:
             parser.error("--viewport nur zusammen mit --out (docs/screenshots bleibt 1440x900)")
-    out = args.out or (DEFAULT_OUT / "reduced" if args.reduced else DEFAULT_OUT)
+    base = DEFAULT_OUT if args.lang == "en" else DEFAULT_OUT / args.lang
+    out = args.out or (base / "reduced" if args.reduced else base)
     out.mkdir(parents=True, exist_ok=True)
     problems: list[str] = []
 
@@ -627,7 +647,7 @@ def main() -> int:
         context = browser.new_context(
             viewport=viewport,
             device_scale_factor=1,
-            locale="de-CH",
+            locale=BROWSER_LOCALE.get(args.lang, args.lang),
             timezone_id="Europe/Zurich",
             reduced_motion="reduce" if args.reduced else "no-preference",
         )
@@ -655,7 +675,7 @@ def main() -> int:
         page.route("**/*", on_route)
 
         print(f"Screenshots -> {out.relative_to(ROOT) if out.is_relative_to(ROOT) else out}")
-        shooter = Shooter(page, out, args.reduced, set(args.only))
+        shooter = Shooter(page, out, args.reduced, set(args.only), args.lang)
         try:
             shooter.run()
         except Error as exc:

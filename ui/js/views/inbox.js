@@ -35,7 +35,7 @@
     const showChips = keys.length > 1 || (keys.length === 1 && keys[0] !== 'none') || filter != null;
     const chips = showChips ? chip(null, t('inbox.src_all'), all.length) + keys.map((k) => chip(k, k === 'none' ? t('inbox.src_none') : srcName(k), groups.get(k))).join('') : '';
     const allSel = list.length > 0 && list.every((v) => sel.has(v.id));
-    const count = filter != null ? t('inbox.count_of', { n: `<b>${list.length}</b>`, total: all.length }) : t('inbox.count', { n: `<b>${list.length}</b>` });
+    const count = filter != null ? t('inbox.count_of', { n: `<b>${list.length}</b>`, total: all.length }) : t('inbox.count', { n: `<b>${util.fmtNum(list.length)}</b>`, count: list.length });
     const bar = $('#inbox-bar', el);
     bar.hidden = !all.length;
     bar.innerHTML = `${chips}<span class="meta"><span>${count}${sel.size ? ` · ${t('inbox.selected', { n: `<b>${sel.size}</b>` })}` : ''}</span>
@@ -43,7 +43,7 @@
   }
   function renderHead(all, list) {
     const n = sel.size;
-    $('#inbox-sub', el).textContent = !all.length ? t('inbox.sub') : all.length === 1 ? t('inbox.sub_one') : t('inbox.sub_n', { n: all.length });
+    $('#inbox-sub', el).textContent = !all.length ? t('inbox.sub') : t('inbox.sub_n', { n: all.length });
     const dl = $('#inbox-all', el), ig = $('#inbox-ignore', el);
     dl.disabled = ig.disabled = !list.length;
     dl.innerHTML = `${I.download}${t(n ? 'inbox.download_sel' : 'inbox.download_all')}${n ? ` (${n})` : ''}`;
@@ -109,7 +109,7 @@
     const res = await Promise.all(list.map((v) => HC.bridge.safe('set_video_status', v.id, 'ignored')));
     const n = res.filter((r) => r && r.ok).length;
     const bad = res.find((r) => r && !r.ok);
-    if (n) ui.toast(n === 1 ? t('toast.ignored_one') : t('toast.ignored_n', { n }), 'info');
+    if (n) ui.toast(t('toast.ignored_n', { n }), 'info');
     if (bad) ui.toast(bad.error || t('err.generic'), 'err');
     HC.app.refreshStatus();
   }

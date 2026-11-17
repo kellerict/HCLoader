@@ -30,6 +30,8 @@
   const SC_ON = (w) => !!(w.soundcloud && w.soundcloud.enabled);
   const TABS = [
     { id: 'general', fields: [
+      { k: 'general.language', type: 'select', options: ['auto', ...HC.i18n.SUPPORTED],
+        optLabel: (v) => (v === 'auto' ? t('opt.general.language.auto') : HC.i18n.meta(v).name) },
       { k: 'general.start_view', type: 'select', options: ['discover', 'inbox', 'watchlist', 'downloads', 'library', 'log'], optLabel: (v) => t('nav.' + v) },
       { k: 'general.log_level', type: 'select', options: ['DEBUG', 'INFO', 'WARNING', 'ERROR'] },
       { k: 'general.confirm_delete', type: 'bool' },
@@ -180,7 +182,7 @@
     if (def.type === 'select' || def.type === 'seg') return optLabel(def, v);
     if (def.type === 'chips') return v.length ? (v.length > 5 ? `${v.slice(0, 5).join(', ')} … (+${v.length - 5})` : v.join(', ')) : t('common.empty_list');
     if ((def.type === 'int' || def.type === 'float') && def.zeroEmpty && !v) return t('set.not_set');
-    if (def.type === 'int' || def.type === 'float') return `${util.trimNum(v / (def.scale || 1))}${def.unit ? ' ' + t(def.unit) : ''}`;
+    if (def.type === 'int' || def.type === 'float') return `${util.showNum(v / (def.scale || 1))}${def.unit ? ' ' + t(def.unit) : ''}`;
     if (def.type === 'date') return v ? util.fmtDate(v) : t('common.empty');
     return v === '' ? t('common.empty') : String(v);
   }
@@ -188,8 +190,8 @@
   function rangeText(def) {
     if (def.rangeKey) return t(def.rangeKey);
     const s = def.scale || 1, max = maxOf(def);
-    if (def.min != null && max != null) return `${util.trimNum(def.min / s)}–${util.trimNum(max / s)}`;
-    if (def.min != null) return `≥ ${util.trimNum(def.min / s)}`;
+    if (def.min != null && max != null) return `${util.showNum(def.min / s)}–${util.showNum(max / s)}`;
+    if (def.min != null) return `≥ ${util.showNum(def.min / s)}`;
     return '';
   }
 
@@ -448,7 +450,7 @@
         const bo = HC.platform.backoff(p);
         const level = (bo && bo.level) || 0;
         host.innerHTML = row('set.ladder', steps.length
-          ? `<div class="ph-list" style="align-items:center">${steps.map((h, i) => `${i ? `<span class="unit">›</span>` : ''}<span class="tag" style="padding:1px 8px;${i + 1 === level ? 'border-color:var(--warn);color:var(--warn);background:var(--warn-soft)' : ''}"><span>${util.trimNum(h)} h</span></span>`).join('')}<span class="unit">· ${t('set.ladder.reset')}</span></div>`
+          ? `<div class="ph-list" style="align-items:center">${steps.map((h, i) => `${i ? `<span class="unit">›</span>` : ''}<span class="tag" style="padding:1px 8px;${i + 1 === level ? 'border-color:var(--warn);color:var(--warn);background:var(--warn-soft)' : ''}"><span>${util.showNum(h)} ${t('unit.h')}</span></span>`).join('')}<span class="unit">· ${t('set.ladder.reset')}</span></div>`
           : `<span class="unit">${t('set.ladder.invalid')}</span>`);
       };
       host._update();
@@ -489,7 +491,7 @@
       host._update = () => {
         const sc = HC.settings.values.schedule, n = HC.schedule.next();
         const bo = HC.status && HC.status.backoff;
-        const h = util.trimNum(+sc.watchlist_interval_hours || 0);
+        const h = util.showNum(+sc.watchlist_interval_hours || 0);
         const dirty = ['in_app_check', 'watchlist_interval_hours', 'task_scheduler_enabled', 'task_time'].some((k) => isDirtyKey('schedule.' + k));
         let extra = bo && bo.active && (n.at || sc.in_app_check || sc.task_scheduler_enabled) ? ui.notice('warn', t('set.next.backoff', { t: esc(util.fmtWhen(bo.until)) })) : '';
         if (dirty) extra += ui.notice('info', t('set.next.unsaved'));
@@ -642,7 +644,7 @@
           <div class="fc"><div class="fc-main"><button class="btn" data-db="backup">${I.db}${t('set.db.backup')}</button>
             <button class="btn ghost" data-db="data" title="${esc(t('set.db.open_title'))}">${I.folder}${t('set.db.open')}</button>
             <button class="btn ghost" data-db="logs" title="${esc(t('set.db.open_logs_title'))}">${I.folder}${t('set.db.open_logs')}</button>
-            <div class="dbinfo" title="${esc(t('set.db.keep'))}"><span>${v ? t('set.db.info', { n: util.fmtNum(v.db_entries), mb: v.db_size_mb }) : '–'}</span>
+            <div class="dbinfo" title="${esc(t('set.db.keep'))}"><span>${v ? t('set.db.info', { n: util.fmtNum(v.db_entries), count: v.db_entries, mb: v.db_size_mb }) : '–'}</span>
               <span>${t('set.db.last')}: <b title="${esc(util.fmtFull(last))}">${last ? esc(util.fmtRel(last)) : t('set.db.never')}</b></span></div>
             ${shown.length ? `<div class="backups"><div class="lbl">${t('set.db.backups')}</div>
               ${shown.map((b) => `<div class="bk${b.name === cache.freshBackup ? ' fresh' : ''}" title="${esc(b.path || b.name || '')}">${I.db}<span class="name">${esc(b.name || '')}${b.name === cache.freshBackup ? `<span class="rtag ok">${t('set.db.fresh')}</span>` : ''}</span>
@@ -688,7 +690,7 @@
         if (!s) return;
         HC.settings.defaults = s.defaults;
         adopt(s.values);
-        HC.app.settingsSaved(s.values);
+        HC.app.settingsSaved(s.values, s.language);
         ui.toast(t('toast.reset_all'), 'warn');
         render();
       });
@@ -789,7 +791,7 @@
     const bar = $('#savebar', el);
     bar.classList.toggle('dirty', n > 0 && !nErr);
     bar.classList.toggle('errors', nErr > 0);
-    $('#save-state', el).innerHTML = `<span class="led ${nErr || n ? '' : 'off'}"></span><span>${nErr ? t(nErr === 1 ? 'set.state_error' : 'set.state_errors', { n: nErr }) : n ? t(n === 1 ? 'set.state_dirty_one' : 'set.state_dirty', { n }) : t('set.state_clean')}</span>`;
+    $('#save-state', el).innerHTML = `<span class="led ${nErr || n ? '' : 'off'}"></span><span>${nErr ? t('set.state_errors', { n: nErr }) : n ? t('set.state_dirty', { n }) : t('set.state_clean')}</span>`;
     $('#btn-save', el).disabled = !n;
     $('#btn-discard', el).disabled = !n;
     const tab = TABS.find((x) => x.id === cur);
@@ -843,7 +845,7 @@
     if (r.ok) {
       saved = clone(work);
       errors = {};
-      HC.app.settingsSaved(saved);
+      HC.app.settingsSaved(saved, r.language);
       ui.toast(t('toast.settings_saved'));
       render(false);
       return;
@@ -851,7 +853,7 @@
     errors = r.errors || {};
     const firstTab = TABS.find((tab) => errorsOf(tab).length);
     const n = Object.keys(errors).length;
-    ui.toast(t(n === 1 ? 'toast.settings_error' : 'toast.settings_errors', { n }), 'err');
+    ui.toast(t('toast.settings_errors', { n }), 'err');
     if (firstTab && !errorsOf(TABS.find((x) => x.id === cur)).length) cur = firstTab.id;
     render(false);
     const bad = $('.field.has-error, .genre-row.has-error, [data-gerr] .notice', el);

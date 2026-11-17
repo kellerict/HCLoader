@@ -309,7 +309,7 @@
         if (ui.canLoad(v)) HC.bridge.emit('video', { id, status: 'queued' });
       });
       if (!done.length) ui.toast(t('toast.enqueued_none'), 'info');
-      else ui.toast(t(done.length === 1 ? 'toast.enqueued_one' : 'toast.enqueued', { n: done.length }) + (skipped > 0 ? ` · ${t('toast.enqueued_skipped', { n: skipped })}` : ''));
+      else ui.toast(t('toast.enqueued', { n: done.length }) + (skipped > 0 ? ` · ${t('toast.enqueued_skipped', { n: skipped })}` : ''));
     },
     async ignore(v, on) {
       const r = await HC.bridge.safe('set_video_status', v.id, on ? 'ignored' : 'new');

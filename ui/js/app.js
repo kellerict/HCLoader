@@ -93,8 +93,18 @@
   function applyI18n() {
     $$('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
     $$('[data-i18n-title]').forEach((el) => { el.title = t(el.dataset.i18nTitle); });
-    $$('[data-icon]').forEach((el) => { el.insertAdjacentHTML('afterbegin', HC.icons[el.dataset.icon] || ''); });
+    $$('[data-i18n-aria]').forEach((el) => { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });
     document.title = t('app.title');
+  }
+  function applyIcons() {
+    $$('[data-icon]').forEach((el) => { el.insertAdjacentHTML('afterbegin', HC.icons[el.dataset.icon] || ''); });
+  }
+  /** Language from the settings: the backend resolves 'auto' (Windows UI language) and sends it as
+      `language`; without it (old backend) the browser languages decide. Sets <html lang/dir>. */
+  function applyLanguage(s) {
+    const g = s && s.values && s.values.general;
+    HC.i18n.set((s && s.language) || (g && g.language) || 'auto');
+    applyI18n();
   }
 
   /* ---------- Navigation ---------- */
@@ -229,8 +239,8 @@
       const found = +d.found || 0, errors = wlErrors;
       wlErrors = 0;
       if (!d.checked && !found && !errors) return; // nichts geprüft (z.B. anderer Lauf aktiv) – das Backend meldet den Grund selbst
-      let msg = found ? t(found === 1 ? 'toast.wl_done_found_one' : 'toast.wl_done_found', { found }) : t(d.checked === 1 ? 'toast.wl_done_one' : 'toast.wl_done', { n: d.checked });
-      if (errors) msg += ` · ${t(errors === 1 ? 'toast.wl_errors_one' : 'toast.wl_errors', { n: errors })}`;
+      let msg = found ? t('toast.wl_done_found', { n: found }) : t('toast.wl_done', { n: d.checked });
+      if (errors) msg += ` · ${t('toast.wl_errors', { n: errors })}`;
       HC.ui.toast(msg, errors ? 'warn' : found ? 'ok' : 'info', errors ? 5200 : 0);
     });
   }
@@ -248,6 +258,7 @@
     }
     HC.settings.values = s.values;
     HC.settings.defaults = s.defaults;
+    if (!inited) applyLanguage(s);
     applyAppearance();
     if (!inited) {
       wireEvents(); // vor den Ansichten: der Store ist aktuell, wenn sie auf Events reagieren
@@ -281,7 +292,9 @@
   }
 
   async function boot() {
+    HC.i18n.set('auto'); // until the settings arrive (fatal screen, boot errors)
     applyI18n();
+    applyIcons();
     wireNav();
     const mode = await HC.bridge.ready();
     if (mode === 'error') { showBackendError(true); return; }
@@ -299,8 +312,22 @@
     /** Status neu holen (z.B. Eingang-Zähler nach einer Aktion, falls das Backend kein Event schickt). */
     refreshStatus: util.debounce(async () => setStatus(await HC.bridge.safe('get_status')), 250),
     /** Nach dem Speichern: neue Werte übernehmen und alles Abhängige auffrischen. */
-    settingsSaved(values) {
+    settingsSaved(values, language) {
+      const g0 = HC.settings.values && HC.settings.values.general;
+      const before = g0 && g0.language;
       HC.settings.values = util.clone(values);
+      const now = values.general && values.general.language;
+      if (now !== before && HC.i18n.resolve(language || now) !== HC.i18n.lang) {
+        /* New language: rebuild the whole UI in place (no app restart; queue and runs live in the backend). */
+        HC.i18n.set(language || now);
+        let url = null;
+        try { url = new URL(location.href); } catch (e) { /* egal */ }
+        if (url && url.searchParams.has('lang')) { // mock/screenshots: ?lang= must not win again
+          url.searchParams.delete('lang');
+          location.replace(url.href);
+        } else location.reload();
+        return;
+      }
       applyAppearance();
       renderStatus();
       HC.bridge.emit('settings_changed', HC.settings.values);

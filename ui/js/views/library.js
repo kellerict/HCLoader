@@ -57,8 +57,8 @@
     const tail = parts.slice(-3);
     return `${parts.length > tail.length ? '…' + sep : ''}${tail.join(sep)}${sep}`;
   }
-  const fmtSize = (mb) => (!mb ? '–' : mb >= 1024 ? `${(mb / 1024).toFixed(2)} ${t('library.unit_gb')}` : mb < 1 ? `${Math.max(1, Math.round(mb * 1024))} ${t('library.unit_kb')}` : `${Math.round(mb)} ${t('library.unit_mb')}`);
-  const fmtTotal = (sec) => { const h = sec / 3600; return h >= 1 ? `${h.toFixed(1)} ${t('library.unit_h')}` : `${Math.round(sec / 60)} ${t('library.unit_min')}`; };
+  const fmtSize = (mb) => util.fmtSize(mb);
+  const fmtTotal = (sec) => { const h = sec / 3600; return h >= 1 ? `${util.fmtDec(h, 1, true)} ${t('library.unit_h')}` : `${util.fmtNum(sec / 60)} ${t('library.unit_min')}`; };
   const genreOrder = () => {
     const known = HC.genres.names();
     const extra = [...new Set(items.map((l) => l.genre))].filter((g) => g && !known.includes(g)).sort();
@@ -134,7 +134,7 @@
     if (!prefs.group) return [{ genre: null, list }];
     return genreOrder().map((g) => ({ genre: g, list: list.filter((l) => l.genre === g) })).filter((x) => x.list.length);
   }
-  const groupMeta = (all) => t(all.length === 1 ? 'library.group_meta_one' : 'library.group_meta', { n: all.length, dur: fmtTotal(all.reduce((a, b) => a + (b.duration || 0), 0)) });
+  const groupMeta = (all) => t('library.group_meta', { n: all.length, dur: fmtTotal(all.reduce((a, b) => a + (b.duration || 0), 0)) });
   function emptyHtml() {
     if (!items.length) {
       const bars = Array.from({ length: 28 }, (_, i) => `<i style="--h:${Math.round((Math.abs(Math.sin(i * 0.55 + 1)) * 0.75 + 0.2) * 100)}%;--i:${i}"></i>`).join('');
@@ -179,7 +179,7 @@
     }
     $('#lib-sub', el).textContent = !items.length ? '' : all.length !== items.length
       ? t('library.sub_shown', { n: util.fmtNum(all.length), total: util.fmtNum(items.length) })
-      : t(items.length === 1 ? 'library.sub_one' : 'library.sub', { n: util.fmtNum(items.length) });
+      : t('library.sub', { n: util.fmtNum(items.length), count: items.length });
     $('#lib-clear', el).hidden = !filtersActive();
     if (animate) $$(prefs.view === 'grid' ? '.lib-grid' : 'tbody', body).forEach((c) => fx.stagger(c));
   }
@@ -192,8 +192,8 @@
     const inGb = mb >= 1024, inKb = mb > 0 && mb < 1;
     const counters = [
       ['#ls-count', n, (v) => util.fmtNum(v)],
-      ['#ls-dur', sec / 3600, (v) => v.toFixed(1)],
-      ['#ls-size', inGb ? mb / 1024 : inKb ? mb * 1024 : mb, (v) => (inGb ? v.toFixed(1) : String(Math.round(v)))],
+      ['#ls-dur', sec / 3600, (v) => util.fmtDec(v, 1, true)],
+      ['#ls-size', inGb ? mb / 1024 : inKb ? mb * 1024 : mb, (v) => (inGb ? util.fmtDec(v, 1, true) : util.fmtNum(v))],
     ];
     counters.forEach(([sel, to, fmt]) => {
       const node = $(sel, el);
@@ -227,7 +227,7 @@
     chip.hidden = !miss;
     chip.classList.toggle('on', onlyMissing);
     chip.setAttribute('aria-pressed', onlyMissing);
-    $('span', chip).textContent = t(miss === 1 ? 'library.missing_chip_one' : 'library.missing_chip', { n: miss });
+    $('span', chip).textContent = t('library.missing_chip', { n: miss });
   }
 
   function fillSelects() {

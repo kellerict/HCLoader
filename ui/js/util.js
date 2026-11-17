@@ -45,22 +45,26 @@
       const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = Math.floor(sec % 60);
       return h ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
     },
-    /** 1234567 → 1’234’567 (de-CH) */
-    fmtNum: (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '’'),
+    /** 1234567 → 1’234’567 (de-CH) / 1,234,567 (en) – Intl with the active locale */
+    fmtNum: (n) => HC.i18n.nf({ maximumFractionDigits: 0 }).format(Math.round(n)),
+    /** Number with up to `d` decimals (fixed when `fixed`), locale separators */
+    fmtDec: (n, d, fixed) => HC.i18n.nf({ maximumFractionDigits: d, minimumFractionDigits: fixed ? d : 0 }).format(n),
+    /** 12345 → «12K views» (compact, plural-aware) */
     fmtViews(v) {
       if (v == null) return '';
-      if (v >= 1e6) return HC.t('fmt.views_m', { n: (v / 1e6).toFixed(1) });
-      if (v >= 1e3) return HC.t('fmt.views_k', { n: (v / 1e3).toFixed(v >= 1e5 ? 0 : 1) });
-      return HC.t('fmt.views', { n: v });
+      const compact = v >= 1e3 ? HC.i18n.nf({ notation: 'compact', maximumFractionDigits: 1 }).format(v) : util.fmtNum(v);
+      return HC.t('fmt.views', { count: v, v: compact });
     },
+    /** Relative day distance with Intl.RelativeTimeFormat: «heute», «gestern», «vor 3 Tagen», «vor 5 Monaten» */
     fmtAgo(dateStr) {
       const d = util.daysAgo(dateStr);
       if (d == null) return '';
       if (d === 0) return HC.t('fmt.today');
       if (d === 1) return HC.t('fmt.yesterday');
-      if (d < 30) return HC.t('fmt.days_ago', { n: d });
-      if (d < 365) return HC.t('fmt.months_ago', { n: Math.round(d / 30) });
-      return HC.t('fmt.years_ago', { n: Math.round(d / 365) });
+      const rtf = HC.i18n.rtf({ numeric: 'always', style: 'short' });
+      if (d < 30) return rtf.format(-d, 'day');
+      if (d < 365) return rtf.format(-Math.round(d / 30), 'month');
+      return rtf.format(-Math.round(d / 365), 'year');
     },
     /** Upload-Datum einer Karte: genau → «vor 3 T.», aus der flachen Suche (date_approx) → «~vor 5 Mt.» / «~2013».
         -> {text, approx, known} */
@@ -107,26 +111,27 @@
         return null;
       }
     },
-    /** 2026-11-14 → 14.11.2026 */
+    /** 2026-11-14 → 14.11.2026 (de-CH) / 11/14/2026 (en) */
     fmtDate(s) {
       const d = parseDate(s);
-      return d ? `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}` : '–';
+      return d ? HC.i18n.df({ day: '2-digit', month: '2-digit', year: 'numeric' }).format(d) : '–';
     },
+    /** → 03:00 (24 h in de, 3:00 AM in en – as the locale prefers) */
     fmtTime(s) {
       const d = parseDate(s);
-      return d ? `${pad(d.getHours())}:${pad(d.getMinutes())}` : '–';
+      return d ? HC.i18n.df({ hour: '2-digit', minute: '2-digit' }).format(d) : '–';
     },
     /** ISO → «heute 03:00» / «morgen 03:00» / «14.11. 03:00» */
     fmtWhen(s) {
       const d = parseDate(s);
       if (!d) return HC.t('fmt.never');
       const diff = Math.round((startOfDay(d) - startOfDay(new Date())) / DAY);
-      const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      const time = util.fmtTime(d);
       if (diff === 0) return HC.t('fmt.today_at', { t: time });
       if (diff === 1) return HC.t('fmt.tomorrow_at', { t: time });
       if (diff === -1) return HC.t('fmt.yesterday_at', { t: time });
-      if (diff < 0 && diff > -30) return HC.t('fmt.days_ago', { n: -diff });
-      return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}. ${time}`;
+      if (diff < 0 && diff > -30) return HC.i18n.rtf({ numeric: 'always', style: 'short' }).format(diff, 'day');
+      return HC.i18n.df({ day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }).format(d);
     },
     /** ISO → «gerade eben» / «vor 12 Min.» / «vor 6 Std.», älter wie fmtWhen («gestern 03:00», «vor 6 T.») */
     fmtRel(s) {
@@ -135,24 +140,38 @@
       const sec = (Date.now() - d) / 1000;
       if (sec < 0 || sec >= 86400) return util.fmtWhen(s);
       if (sec < 90) return HC.t('fmt.just_now');
-      if (sec < 3600) return HC.t('fmt.min_ago', { n: Math.round(sec / 60) });
-      return HC.t('fmt.hours_ago', { n: Math.floor(sec / 3600) });
+      const rtf = HC.i18n.rtf({ numeric: 'always', style: 'short' });
+      if (sec < 3600) return rtf.format(-Math.round(sec / 60), 'minute');
+      return rtf.format(-Math.floor(sec / 3600), 'hour');
     },
     /** ISO → «16.11.2026 03:00» (für Tooltips) */
     fmtFull(s) {
       const d = parseDate(s);
-      return d ? `${util.fmtDate(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}` : '';
+      return d ? `${util.fmtDate(d)} ${util.fmtTime(d)}` : '';
     },
-    /** Sekunden → «5 h 12 min» / «42 s» */
+    /** Sekunden → «5 h 12 min» / «42 s» (Intl unit names of the active locale) */
     fmtSpan(sec) {
       sec = Math.max(0, Math.round(sec));
       const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
-      if (h) return `${h} h ${pad(m)} min`;
-      if (m) return `${m} min ${pad(sec % 60)} s`;
-      return `${sec} s`;
+      const u = (n, unit) => HC.i18n.nf({ style: 'unit', unit, unitDisplay: 'narrow' }).format(n);
+      if (h) return `${u(h, 'hour')} ${u(m, 'minute')}`;
+      if (m) return `${u(m, 'minute')} ${u(sec % 60, 'second')}`;
+      return u(sec, 'second');
     },
-    /** Zahl ohne unnötige Nachkommastellen */
+    /** Zahl ohne unnötige Nachkommastellen – raw ("1.5"), for <input type=number> values */
     trimNum: (n) => (Number.isInteger(n) ? String(n) : String(+n.toFixed(2))),
+    /** 42.4 → «42 %» / «42%» (locale percent format) */
+    fmtPct: (p) => HC.i18n.nf({ style: 'percent', maximumFractionDigits: 0 }).format(Math.floor(p) / 100),
+    /** Same for display: locale digits/separators, no grouping («1,5» in de) */
+    showNum: (n) => HC.i18n.nf({ useGrouping: false, maximumFractionDigits: 2 }).format(n),
+    /** File size in MB → «1.4 GB» / «512 MB» / «12 kB» (Intl units) */
+    fmtSize(mb) {
+      if (!mb) return '–';
+      const u = (n, unit, d) => HC.i18n.nf({ style: 'unit', unit, unitDisplay: 'short', maximumFractionDigits: d }).format(n);
+      if (mb >= 1024) return u(mb / 1024, 'gigabyte', 2);
+      if (mb < 1) return u(Math.max(1, Math.round(mb * 1024)), 'kilobyte', 0);
+      return u(Math.round(mb), 'megabyte', 0);
+    },
     /** Normalisieren wie core/filters.py: Kleinbuchstaben, Akzente/Umlaute entfernt */
     norm: (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ß/g, 'ss'),
     kwMatch(text, kw) {

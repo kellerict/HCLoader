@@ -33,7 +33,7 @@
 
   /* ---------- Einstellungen (docs/settings-schema.md) ---------- */
   const DEFAULTS = {
-    general: { start_view: 'discover', log_level: 'INFO', confirm_delete: true },
+    general: { language: 'en', start_view: 'discover', log_level: 'INFO', confirm_delete: true },
     search: { results_count: 30, append_year: true },
     filters: {
       min_duration: 600, max_duration: 0, upload_period: 'all', upload_year: 0, upload_from: '', upload_to: '',
@@ -73,16 +73,28 @@
     maintenance: { check_updates_on_start: true, check_app_updates_on_start: true, apply_update_on_exit: true, update_repo: 'kellerict/HCLoader' },
   };
   let settings = clone(DEFAULTS);
+  /* Language survives the UI reload after a language change (sessionStorage); ?lang=xx wins (screenshots). */
+  const LANG_KEY = 'hc.mock.language';
+  const langChoices = () => ['auto', ...HC.i18n.SUPPORTED];
+  (function initLanguage() {
+    let lang = null;
+    try { lang = new URLSearchParams(location.search).get('lang') || sessionStorage.getItem(LANG_KEY); } catch (e) { /* file:// without storage */ }
+    if (lang && langChoices().includes(lang)) settings.general.language = lang;
+  })();
+  const rememberLanguage = () => { try { sessionStorage.setItem(LANG_KEY, settings.general.language); } catch (e) { /* egal */ } };
+  /** Like the backend: 'auto' resolved (here from navigator.languages). */
+  const resolvedLanguage = () => HC.i18n.resolve(settings.general.language);
 
   /* Stellvertreter für die pydantic-Validierung */
   const M = {
-    num: 'Zahl erwartet.',
-    int: 'Ganze Zahl erwartet.',
-    range: (a, b) => `Wert muss zwischen ${a} und ${b} liegen.`,
-    min: (a) => `Wert muss mindestens ${a} sein.`,
-    oneOf: (l) => `Erlaubt: ${l.map((x) => x || '«leer»').join(', ')}.`,
+    num: 'Number expected.',
+    int: 'Whole number expected.',
+    range: (a, b) => `Value must be between ${a} and ${b}.`,
+    min: (a) => `Value must be at least ${a}.`,
+    oneOf: (l) => `Allowed: ${l.map((x) => x || '(empty)').join(', ')}.`,
   };
   const RULES = {
+    'general.language': { oneOf: ['auto', 'en', 'de', 'zh-CN', 'hi', 'es', 'ar', 'fr', 'bn', 'pt', 'ru', 'id'] },
     'general.start_view': { oneOf: ['discover', 'inbox', 'watchlist', 'downloads', 'library', 'log'] },
     'general.log_level': { oneOf: ['DEBUG', 'INFO', 'WARNING', 'ERROR'] },
     'general.confirm_delete': { bool: 1 },
@@ -150,19 +162,19 @@
     Object.entries(RULES).forEach(([key, r]) => {
       const val = get(key);
       const fail = (msg) => { errors[key] = msg; };
-      if (r.bool) { if (typeof val !== 'boolean') fail('Ja/Nein erwartet.'); return; }
+      if (r.bool) { if (typeof val !== 'boolean') fail('Yes/no expected.'); return; }
       if (r.oneOf) { if (!r.oneOf.includes(val)) fail(M.oneOf(r.oneOf)); return; }
       if (r.list) {
-        if (!Array.isArray(val)) return fail('Liste erwartet.');
+        if (!Array.isArray(val)) return fail('List expected.');
         if (r.regex) {
           for (const p of val) {
-            try { new RegExp(p); } catch (e) { return fail(`Ungültiger regulärer Ausdruck: ${p}`); }
+            try { new RegExp(p); } catch (e) { return fail(`Invalid regular expression: ${p}`); }
           }
         }
         return;
       }
-      if (r.str) { if (typeof val !== 'string' || (r.required && !val.trim())) fail('Darf nicht leer sein.'); return; }
-      if (r.time) { if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(val || '')) fail('Uhrzeit im Format HH:MM erwartet.'); return; }
+      if (r.str) { if (typeof val !== 'string' || (r.required && !val.trim())) fail('Must not be empty.'); return; }
+      if (r.time) { if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(val || '')) fail('Time expected as HH:MM.'); return; }
       if (typeof val !== 'number' || !isFinite(val)) return fail(M.num);
       if (r.int && !Number.isInteger(val)) return fail(M.int);
       if (r.min != null && r.max != null && (val < r.min || val > r.max)) return fail(M.range(r.min, r.max));
@@ -172,37 +184,37 @@
     ['throttle', 'soundcloud'].forEach((sec) => {
       const x = v[sec] || {};
       if (!errors[`${sec}.max_sleep_interval`] && !errors[`${sec}.sleep_interval`] && x.max_sleep_interval < x.sleep_interval)
-        errors[`${sec}.max_sleep_interval`] = `Muss mindestens so gross sein wie das Minimum (${x.sleep_interval} s).`;
+        errors[`${sec}.max_sleep_interval`] = `Must be at least the minimum (${x.sleep_interval} s).`;
       if (!errors[`${sec}.backoff_max_hours`] && !errors[`${sec}.backoff_initial_hours`] && x.backoff_max_hours < x.backoff_initial_hours)
-        errors[`${sec}.backoff_max_hours`] = `Muss mindestens so gross sein wie der Startwert (${x.backoff_initial_hours} h).`;
+        errors[`${sec}.backoff_max_hours`] = `Must be at least the initial value (${x.backoff_initial_hours} h).`;
     });
     if (!errors['filters.max_duration'] && !errors['filters.min_duration'] && f.max_duration > 0 && f.max_duration < f.min_duration)
-      errors['filters.max_duration'] = 'Maximum liegt unter der Mindestlänge (0 = unbegrenzt).';
+      errors['filters.max_duration'] = 'Maximum is below the minimum length (0 = unlimited).';
     if (!errors['storage.path_template']) {
       const bad = (s.path_template.match(/\{([^}]*)\}/g) || []).map((x) => x.slice(1, -1)).filter((x) => !PLACEHOLDERS.includes(x));
-      if (bad.length) errors['storage.path_template'] = `Unbekannter Platzhalter: {${bad[0]}}`;
-      else if (!s.path_template.includes('{id}')) errors['storage.path_template'] = 'Der Platzhalter {id} muss enthalten sein (eindeutige Dateinamen).';
+      if (bad.length) errors['storage.path_template'] = `Unknown placeholder: {${bad[0]}}`;
+      else if (!s.path_template.includes('{id}')) errors['storage.path_template'] = 'The placeholder {id} must be included (unique file names).';
     }
     /* Jahr-/Zeitraum-Filter (docs/settings-schema.md, Phase 3) */
     const yNow = new Date().getFullYear(), isDay = (x) => /^\d{4}-\d{2}-\d{2}$/.test(x) && !isNaN(new Date(x));
     if (!Number.isInteger(f.upload_year)) errors['filters.upload_year'] = M.int;
-    else if (f.upload_year !== 0 && (f.upload_year < MIN_YEAR || f.upload_year > yNow)) errors['filters.upload_year'] = `Jahr muss zwischen ${MIN_YEAR} und ${yNow} liegen.`;
-    else if (f.upload_year === 0 && f.upload_period === 'year') errors['filters.upload_year'] = 'Jahr fehlt (Pflicht beim Zeitraum «Bestimmtes Jahr»).';
+    else if (f.upload_year !== 0 && (f.upload_year < MIN_YEAR || f.upload_year > yNow)) errors['filters.upload_year'] = `Year must be between ${MIN_YEAR} and ${yNow}.`;
+    else if (f.upload_year === 0 && f.upload_period === 'year') errors['filters.upload_year'] = 'Year missing (required for the period “Specific year”).';
     ['upload_from', 'upload_to'].forEach((k) => {
-      if (typeof f[k] !== 'string' || (f[k] && !isDay(f[k]))) errors[`filters.${k}`] = 'Ungültiges Datum (Format JJJJ-MM-TT).';
+      if (typeof f[k] !== 'string' || (f[k] && !isDay(f[k]))) errors[`filters.${k}`] = 'Invalid date (format YYYY-MM-DD).';
     });
     if (!errors['filters.upload_from'] && !errors['filters.upload_to'] && f.upload_from && f.upload_to && f.upload_to < f.upload_from)
-      errors['filters.upload_to'] = 'Bis-Datum liegt vor dem Von-Datum.';
+      errors['filters.upload_to'] = 'To date is before the from date.';
     const items = (v.genres && v.genres.items) || [];
     const seen = new Set();
     items.forEach((g, i) => {
       const name = String(g.name || '').trim();
-      if (!name) errors[`genres.items.${i}.name`] = 'Name fehlt.';
-      else if (seen.has(name.toLowerCase())) errors[`genres.items.${i}.name`] = `Name «${name}» ist doppelt vergeben.`;
+      if (!name) errors[`genres.items.${i}.name`] = 'Name missing.';
+      else if (seen.has(name.toLowerCase())) errors[`genres.items.${i}.name`] = `Name “${name}” is used twice.`;
       seen.add(name.toLowerCase());
-      if (!/^#[0-9a-f]{6}$/i.test(g.color || '')) errors[`genres.items.${i}.color`] = 'Farbe im Format #rrggbb erwartet.';
+      if (!/^#[0-9a-f]{6}$/i.test(g.color || '')) errors[`genres.items.${i}.color`] = 'Colour expected as #rrggbb.';
     });
-    if (!seen.has('unsortiert')) errors['genres.items'] = 'Das Genre «Unsortiert» muss vorhanden sein.';
+    if (!seen.has('unsortiert')) errors['genres.items'] = 'The genre “Unsortiert” must exist.';
     return errors;
   }
 
@@ -266,7 +278,7 @@
     platform: 'soundcloud', url: `https://soundcloud.com/${SCU[u][2]}/${slug}`, preview: false,
   }, extra);
   const dupOf = (id) => { const v = byId(id); return { id: v.id, platform: v.platform, title: v.title }; };
-  const PREVIEW = { preview: true, filter_reason: 'Nur Vorschau (Go+)' };
+  const PREVIEW = { preview: true, filter_reason: 'Preview only (Go+)' };
   const SC_VIDEOS = [
     S(880114201, 'raw-set-kesselhaus', 'Pulsewerk – Raw Hardstyle Set @ Kesselhaus (Full Recording)', 'pulse', 78, 12, 2, 5400, 'Hardstyle'),
     S(880114202, 'euphoric-yearmix-2026', 'Euphoric Hardstyle Yearmix 2026', 'euph', 95, 3, 39, 31200, 'Hardstyle', { duplicate_of: dupOf('eEuph0ric26') }),
@@ -434,56 +446,56 @@
     if (!ts) emit('log', line);
   };
   [
-    [1, 20, 2, 'info', 'Watchlist-Prüfung gestartet · 6 Quelle(n)'],
-    [1, 20, 3, 'ok', 'Watchlist · Kickdrum Collective: 2 neue(r) Treffer → Eingang'],
-    [1, 20, 4, 'ok', 'Watchlist-Prüfung beendet · 6 Quelle(n) · 3 neue Treffer'],
-    [1, 20, 14, 'info', '3 Mix(es) zur Warteschlange hinzugefügt'],
-    [1, 20, 14, 'info', 'Starte Download: Gabber Classics Marathon – 3 Hours Oldschool'],
-    [1, 20, 14, 'debug', 'yt-dlp: format=bestaudio · client=web · PO-Token aus Cache (Alter 12 min)'],
+    [1, 20, 2, 'info', 'Watchlist check started · 6 source(s)'],
+    [1, 20, 3, 'ok', 'Watchlist · Kickdrum Collective: 2 new hit(s) → inbox'],
+    [1, 20, 4, 'ok', 'Watchlist check finished · 6 source(s) · 3 new hits'],
+    [1, 20, 14, 'info', '3 mix(es) added to the queue'],
+    [1, 20, 14, 'info', 'Starting download: Gabber Classics Marathon – 3 Hours Oldschool'],
+    [1, 20, 14, 'debug', 'yt-dlp: format=bestaudio · client=web · PO token from cache (age 12 min)'],
     [1, 20, 31, 'debug', 'ffmpeg: MP3 320 kbps CBR · Gabber Classics Marathon – 3 Hours Oldschool'],
-    [1, 20, 32, 'ok', 'Fertig: Gabber Classics Marathon – 3 Hours Oldschool · 421.9 MB'],
-    [1, 20, 32, 'debug', 'Throttle: 74 s Pause bis zum nächsten Download'],
-    [1, 20, 34, 'info', 'Starte Download: Euphoric Hardstyle Yearmix 2026'],
-    [1, 20, 43, 'warn', 'Kapitel: keine Kapitel und keine Zeitstempel in der Beschreibung – keine .cue für «Euphoric Hardstyle Yearmix 2026»'],
-    [1, 20, 43, 'ok', 'Fertig: Euphoric Hardstyle Yearmix 2026 · 223.1 MB'],
-    [1, 20, 52, 'ok', 'Fertig: Terror Night Live Recording · 155.2 MB'],
-    [1, 20, 52, 'info', 'Download-Lauf beendet · 3 geladen · 0 Fehler'],
-    [0, 3, 0, 'info', 'Watchlist-Lauf gestartet (headless) · 6 aktive Quellen'],
+    [1, 20, 32, 'ok', 'Finished: Gabber Classics Marathon – 3 Hours Oldschool · 421.9 MB'],
+    [1, 20, 32, 'debug', 'Throttle: 74 s pause until the next download'],
+    [1, 20, 34, 'info', 'Starting download: Euphoric Hardstyle Yearmix 2026'],
+    [1, 20, 43, 'warn', 'Chapters: no chapters and no timestamps in the description – no .cue for “Euphoric Hardstyle Yearmix 2026”'],
+    [1, 20, 43, 'ok', 'Finished: Euphoric Hardstyle Yearmix 2026 · 223.1 MB'],
+    [1, 20, 52, 'ok', 'Finished: Terror Night Live Recording · 155.2 MB'],
+    [1, 20, 52, 'info', 'Download run finished · 3 downloaded · 0 errors'],
+    [0, 3, 0, 'info', 'Watchlist run started (headless) · 6 active sources'],
     [0, 3, 0, 'debug', 'Throttle: sleep_requests=3s · limit_rate=3.0 MB/s'],
-    [0, 3, 1, 'info', 'Quelle «Kickdrum Collective»: 30 Einträge flach geprüft, 2 neu'],
-    [0, 3, 1, 'info', 'Quelle «Gabber Vault»: beim ersten bekannten Video abgebrochen, 0 neu'],
-    [0, 3, 2, 'info', 'Quelle «Distortion Unit»: 1 neu'],
-    [0, 3, 3, 'info', 'Quelle «Rave Archive CH»: 2 neu'],
-    [0, 3, 4, 'warn', 'Quelle «Hard Classics Playlist» deaktiviert, übersprungen'],
-    [0, 3, 4, 'info', 'Filter: 7 Treffer geprüft · 5 bestehen · 2 verworfen (Dauer < 10 min, Exclude «aftermovie»)'],
-    [0, 3, 5, 'ok', 'Auto-Download «Raw Nation Podcast #4» fertig · 140.2 MB'],
-    [0, 3, 6, 'debug', 'Throttle: 58 s Pause bis zum nächsten Download'],
-    [0, 3, 9, 'error', 'Download fehlgeschlagen «Gabba Nation Liveset»: HTTP 403 – nur für Kanalmitglieder'],
-    [0, 3, 9, 'ok', 'Watchlist-Lauf beendet · 5 gefunden · 1 geladen · 1 Fehler'],
-    [0, 9, 12, 'info', 'HCLoader gestartet · Config %APPDATA%\\HCLoader\\config.yaml'],
+    [0, 3, 1, 'info', 'Source “Kickdrum Collective”: 30 entries checked (flat), 2 new'],
+    [0, 3, 1, 'info', 'Source “Gabber Vault”: stopped at the first known video, 0 new'],
+    [0, 3, 2, 'info', 'Source “Distortion Unit”: 1 new'],
+    [0, 3, 3, 'info', 'Source “Rave Archive CH”: 2 new'],
+    [0, 3, 4, 'warn', 'Source “Hard Classics Playlist” disabled, skipped'],
+    [0, 3, 4, 'info', 'Filter: 7 hits checked · 5 pass · 2 discarded (duration < 10 min, exclude “aftermovie”)'],
+    [0, 3, 5, 'ok', 'Auto download “Raw Nation Podcast #4” finished · 140.2 MB'],
+    [0, 3, 6, 'debug', 'Throttle: 58 s pause until the next download'],
+    [0, 3, 9, 'error', 'Download failed “Gabba Nation Liveset”: HTTP 403 – members only'],
+    [0, 3, 9, 'ok', 'Watchlist run finished · 5 found · 1 downloaded · 1 error'],
+    [0, 9, 12, 'info', 'HCLoader started · config %APPDATA%\\HCLoader\\config.yaml'],
     [0, 9, 12, 'info', 'yt-dlp 2026.11.02 · Deno 2.5.4 · ffmpeg 7.1 · bgutil-Plugin 1.3.0'],
-    [0, 9, 12, 'ok', 'PO-Token-Provider (Script/Deno) bereit'],
-    [0, 9, 12, 'warn', 'Bibliothek: 2 Dateien nicht gefunden (verschoben oder gelöscht?)'],
-    [0, 9, 13, 'info', 'yt-dlp und Plugin sind aktuell'],
-    [0, 9, 14, 'info', 'Suche «hardcore liveset 2026» · 30 Treffer (flach) · 19 nach Filter'],
-    [0, 9, 14, 'debug', 'Throttle: 4/20 Suchen diese Stunde'],
-    [0, 9, 14, 'info', 'Starte Download: Xtra Raw Liveset – Reverse Bass Only'],
+    [0, 9, 12, 'ok', 'PO token provider (script/Deno) ready'],
+    [0, 9, 12, 'warn', 'Library: 2 files not found (moved or deleted?)'],
+    [0, 9, 13, 'info', 'yt-dlp and plugin are up to date'],
+    [0, 9, 14, 'info', 'Search “hardcore liveset 2026” · 30 results (flat) · 19 after filter'],
+    [0, 9, 14, 'debug', 'Throttle: 4/20 searches this hour'],
+    [0, 9, 14, 'info', 'Starting download: Xtra Raw Liveset – Reverse Bass Only'],
   ].forEach(([d, h, m, lvl, msg]) => pushLog(lvl, msg, isoAt(d, h, m)));
 
   /* Läufe: neueste zuerst. Der oberste läuft noch (finished null) – es ist der Lauf der aktiven Warteschlange. */
   const RUNS = [
     { id: 42, kind: 'manual', started: new Date(Date.now() - 60000).toISOString(), finished: null, found: 0, downloaded: 0, errors: 0, note: '' },
-    { id: 41, kind: 'headless', started: isoAt(0, 3, 0), finished: isoAt(0, 3, 9), found: 5, downloaded: 1, errors: 1, note: '1 Download fehlgeschlagen (HTTP 403)' },
+    { id: 41, kind: 'headless', started: isoAt(0, 3, 0), finished: isoAt(0, 3, 9), found: 5, downloaded: 1, errors: 1, note: '1 download failed (HTTP 403)' },
     { id: 40, kind: 'manual', started: isoAt(1, 20, 14), finished: isoAt(1, 20, 52), found: 0, downloaded: 3, errors: 0, note: '' },
     { id: 39, kind: 'watchlist', started: isoAt(1, 20, 2), finished: isoAt(1, 20, 4), found: 3, downloaded: 0, errors: 0, note: '' },
     { id: 38, kind: 'headless', started: isoAt(1, 3, 0), finished: isoAt(1, 3, 4), found: 0, downloaded: 0, errors: 0, note: '' },
-    { id: 37, kind: 'manual', started: isoAt(2, 21, 10), finished: isoAt(2, 21, 10), found: 0, downloaded: 0, errors: 0, note: 'Backoff aktiv bis 09:01 – Rest bleibt in der Warteschlange' },
-    { id: 36, kind: 'headless', started: isoAt(2, 3, 0), finished: isoAt(2, 3, 1), found: 0, downloaded: 0, errors: 1, note: 'HTTP 429 – Backoff 6 h bis 09:01, Lauf abgebrochen' },
-    { id: 35, kind: 'manual', started: isoAt(3, 18, 40), finished: isoAt(3, 20, 51), found: 0, downloaded: 10, errors: 0, note: 'Limit pro Lauf erreicht (10/10) – Rest bleibt in der Warteschlange' },
-    { id: 34, kind: 'watchlist', started: isoAt(3, 18, 30), finished: isoAt(3, 18, 33), found: 12, downloaded: 0, errors: 2, note: '2 Quelle(n) mit Fehler' },
+    { id: 37, kind: 'manual', started: isoAt(2, 21, 10), finished: isoAt(2, 21, 10), found: 0, downloaded: 0, errors: 0, note: 'Backoff active until 09:01 – the rest stays in the queue' },
+    { id: 36, kind: 'headless', started: isoAt(2, 3, 0), finished: isoAt(2, 3, 1), found: 0, downloaded: 0, errors: 1, note: 'HTTP 429 – backoff 6 h until 09:01, run aborted' },
+    { id: 35, kind: 'manual', started: isoAt(3, 18, 40), finished: isoAt(3, 20, 51), found: 0, downloaded: 10, errors: 0, note: 'Run limit reached (10/10) – the rest stays in the queue' },
+    { id: 34, kind: 'watchlist', started: isoAt(3, 18, 30), finished: isoAt(3, 18, 33), found: 12, downloaded: 0, errors: 2, note: '2 source(s) with errors' },
     { id: 33, kind: 'headless', started: isoAt(3, 3, 0), finished: isoAt(3, 3, 22), found: 2, downloaded: 2, errors: 0, note: '' },
     { id: 32, kind: 'headless', started: isoAt(4, 3, 0), finished: isoAt(4, 3, 3), found: 0, downloaded: 0, errors: 0, note: '' },
-    { id: 31, kind: 'manual', started: isoAt(5, 19, 5), finished: isoAt(5, 19, 58), found: 0, downloaded: 4, errors: 1, note: '1 Download fehlgeschlagen' },
+    { id: 31, kind: 'manual', started: isoAt(5, 19, 5), finished: isoAt(5, 19, 58), found: 0, downloaded: 4, errors: 1, note: '1 download failed' },
   ];
   const withDuration = (r) => Object.assign(r, { duration: r.finished ? Math.round((new Date(r.finished) - new Date(r.started)) / 1000) : null });
   RUNS.forEach(withDuration);
@@ -505,10 +517,10 @@
       { id: 'kXtraRaw055', state: 'active', phase: 'download', pct: 37, speed: 2.8, eta: 46, error: null },
       { id: 'bBunkerSet3', state: 'waiting', phase: 'waiting', pct: 0, speed: 0, eta: 0, error: null },
       { id: 'tTerr0rLive', state: 'waiting', phase: 'waiting', pct: 0, speed: 0, eta: 0, error: null },
-      { id: 'cGabb4Fail1', state: 'failed', phase: 'download', pct: 12, speed: 0, eta: 0, error: 'HTTP 403 – Video nur für Kanalmitglieder verfügbar' },
+      { id: 'cGabb4Fail1', state: 'failed', phase: 'download', pct: 12, speed: 0, eta: 0, error: 'HTTP 403 – video only available to channel members' },
     ],
     counters: { downloads_run: 1, downloads_day: 3, searches_hour: 4 },
-    po: { state: 'active', detail: 'Token erzeugt vor 4 min', created: Date.now() - 4 * 60000 },
+    po: { state: 'active', detail: 'Token generated 4 min ago', created: Date.now() - 4 * 60000 },
     backoff: { active: false, until: null, level: 0 }, // YouTube
     sc: { backoff: { active: false, until: null, level: 0 }, counters: { downloads_run: 0, downloads_day: 1, searches_hour: 2 } }, // SoundCloud: eigene Zähler
     task: { registered: false },
@@ -554,7 +566,7 @@
   const hhmm = (iso) => { const d = new Date(iso); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
   const boView = (p) => {
     const b = boOf(p);
-    return { active: b.active, until: b.until, level: b.level, remaining_s: b.active ? Math.max(0, Math.round((new Date(b.until) - Date.now()) / 1000)) : 0, reason: b.active ? 'HTTP 429 – zu viele Anfragen' : '' };
+    return { active: b.active, until: b.until, level: b.level, remaining_s: b.active ? Math.max(0, Math.round((new Date(b.until) - Date.now()) / 1000)) : 0, reason: b.active ? 'HTTP 429 – too many requests' : '' };
   };
   const platformView = (p) => {
     const th = thOf(p);
@@ -568,7 +580,7 @@
     return {
       app_version: '0.2.0', ytdlp_version: state.versions.ytdlp, plugin_version: state.versions.plugin,
       deno_ok: true, deno_version: '2.5.4', ffmpeg_ok: true, ffmpeg_version: '7.1',
-      po_token: mode === 'off' ? { state: 'inactive', mode, detail: 'Provider ausgeschaltet' } : { state: state.po.state, mode, detail: state.po.detail },
+      po_token: mode === 'off' ? { state: 'inactive', mode, detail: 'Provider turned off' } : { state: state.po.state, mode, detail: state.po.detail },
       backoff: {
         active: state.backoff.active, until: state.backoff.until, level: state.backoff.level,
         remaining_s: state.backoff.active ? Math.max(0, Math.round((new Date(state.backoff.until) - Date.now()) / 1000)) : 0,
@@ -585,9 +597,9 @@
   /** Wie worker.DownloadQueue.blocked(): (code, Meldung), warum wartende Einträge nicht laufen. */
   function blockOf(p) {
     const th = thOf(p), c = cntOf(p), pre = p === 'soundcloud' ? 'SoundCloud: ' : '';
-    if (boOf(p).active) return ['backoff', p === 'soundcloud' ? `SoundCloud: Backoff bis ${hhmm(boOf(p).until)} – Rest bleibt in der Warteschlange` : 'Backoff aktiv – Rest bleibt in der Warteschlange'];
-    if (c.downloads_day >= th.max_downloads_per_day) return ['day_limit', `${pre}Tageslimit erreicht (${c.downloads_day}/${th.max_downloads_per_day}) – Rest bleibt in der Warteschlange`];
-    if (c.downloads_run >= th.max_downloads_per_run) return ['run_limit', `${pre}Limit pro Lauf erreicht (${th.max_downloads_per_run}/${th.max_downloads_per_run}) – Rest bleibt in der Warteschlange; «Fortsetzen» startet einen neuen Lauf`];
+    if (boOf(p).active) return ['backoff', p === 'soundcloud' ? `SoundCloud: backoff until ${hhmm(boOf(p).until)} – the rest stays in the queue` : 'Backoff active – the rest stays in the queue'];
+    if (c.downloads_day >= th.max_downloads_per_day) return ['day_limit', `${pre}Daily limit reached (${c.downloads_day}/${th.max_downloads_per_day}) – the rest stays in the queue`];
+    if (c.downloads_run >= th.max_downloads_per_run) return ['run_limit', `${pre}Run limit reached (${th.max_downloads_per_run}/${th.max_downloads_per_run}) – the rest stays in the queue; “Resume” starts a new run`];
     if (state.local) return state.local.slice();
     return null;
   }
@@ -630,7 +642,7 @@
       q.phase = 'download'; q.state = 'active';
       if (!openRun()) RUNS.unshift({ id: ++runSeq, kind: 'manual', started: new Date().toISOString(), finished: null, found: 0, downloaded: 0, errors: 0, note: '', duration: null });
       setStatus(v, 'downloading');
-      pushLog('info', `Starte Download: ${v.title}`);
+      pushLog('info', `Starting download: ${v.title}`);
       emit('queue', {});
     } else if (q.phase === 'sleep') {
       state.sleepLeft = Math.max(0, state.sleepLeft - SLEEP_STEP); q.eta = state.sleepLeft;
@@ -658,16 +670,16 @@
       });
       if (openRun()) openRun().downloaded++;
       setStatus(v, 'done');
-      pushLog('ok', `Fertig: ${v.title} · ${LIBRARY[0].size_mb} MB`);
+      pushLog('ok', `Finished: ${v.title} · ${LIBRARY[0].size_mb} MB`);
       if (activeQueue().length && !limitHit(plat)) {
         const th = thOf(plat);
         state.sleepTotal = state.sleepLeft = Math.round(th.sleep_interval + rnd() * Math.max(0, th.max_sleep_interval - th.sleep_interval));
-        if (state.sleepLeft) pushLog('debug', `Throttle: ${state.sleepLeft} s Pause bis zum nächsten Download`);
+        if (state.sleepLeft) pushLog('debug', `Throttle: ${state.sleepLeft} s pause until the next download`);
       } else state.sleepLeft = 0;
-      if (activeQueue().length && limitHit(plat)) pushLog('warn', 'Download-Limit erreicht – der Rest bleibt in der Warteschlange');
+      if (activeQueue().length && limitHit(plat)) pushLog('warn', 'Download limit reached – the rest stays in the queue');
       emit('done', { id: v.id, title: v.title });
       if (!activeQueue().length) closeRun();
-      else if (limitHit(plat)) closeRun('Download-Limit erreicht – Rest bleibt in der Warteschlange');
+      else if (limitHit(plat)) closeRun('Download limit reached – the rest stays in the queue');
       emit('queue', {});
       pushStatus();
       return;
@@ -736,7 +748,7 @@
 
   /* ---------- API ---------- */
   /* ---------- App-Update (Selbst-Update, wie core/selfupdate.py) ---------- */
-  const UPD_NOTES = '### Added\n- Selbst-Update: Prüfung beim Start, Download im Hintergrund, Einspielen beim Neustart\n- Sicherung vor jeder Datenbank-Migration\n\n### Fixed\n- Kleinere Korrekturen im Mini-Player';
+  const UPD_NOTES = '### Added\n- Self-update: check on start, download in the background, install on restart\n- Backup before every database migration\n\n### Fixed\n- Minor fixes in the mini player';
   const upd = { current: '0.2.0', latest: null, state: 'idle', notes: '', url: null, progress: null, error: null, checked: null, startChecked: false, timer: null };
   const updStatus = () => ({
     current: upd.current, latest: upd.latest, available: !!upd.latest && upd.latest !== upd.current, state: upd.state,
@@ -749,7 +761,7 @@
   const updCheck = () => {
     updSet({ state: 'checking' });
     return later(700, () => {
-      pushLog('info', 'HCLoader 0.3.0 ist verfügbar (installiert: 0.2.0)');
+      pushLog('info', 'HCLoader 0.3.0 is available (installed: 0.2.0)');
       return Object.assign({ ok: true }, updSet({ state: upd.state === 'checking' ? 'idle' : upd.state, latest: '0.3.0', notes: UPD_NOTES, url: 'https://github.com/kellerict/HCLoader/releases/tag/v0.3.0', checked: new Date().toISOString(), error: null }));
     });
   };
@@ -766,29 +778,31 @@
       clearInterval(upd.timer);
       upd.progress = { phase: 'prepare', pct: null, bytes: 0, total: 0 };
       emit('update_progress', clone(upd.progress));
-      upd.timer = setTimeout(() => { pushLog('ok', 'HCLoader 0.3.0 ist bereit'); updSet({ state: 'ready', progress: null }); }, 900 * speed.factor);
+      upd.timer = setTimeout(() => { pushLog('ok', 'HCLoader 0.3.0 is ready'); updSet({ state: 'ready', progress: null }); }, 900 * speed.factor);
     }, 120 * speed.factor);
   };
 
   const api = {
     /* Einstellungen */
-    get_settings: () => later(30, () => ({ values: clone(settings), defaults: clone(DEFAULTS) })),
+    get_settings: () => later(30, () => ({ values: clone(settings), defaults: clone(DEFAULTS), language: resolvedLanguage() })),
     save_settings(values) {
       return later(220, () => {
         const errors = validate(values);
         if (Object.keys(errors).length) return { ok: false, errors };
         settings = clone(values);
         settings.genres.items.forEach((g, i) => { g.priority = i + 1; });
-        pushLog('info', 'Einstellungen gespeichert');
+        rememberLanguage();
+        pushLog('info', 'Settings saved');
         pushStatus();
-        return { ok: true };
+        return { ok: true, values: clone(settings), language: resolvedLanguage() };
       });
     },
     reset_settings(section) {
       return later(120, () => {
         if (section) settings[section] = clone(DEFAULTS[section]);
         else settings = clone(DEFAULTS);
-        pushLog('warn', section ? `Einstellungen «${section}» auf Standard zurückgesetzt` : 'Alle Einstellungen auf Standard zurückgesetzt');
+        rememberLanguage();
+        pushLog('warn', section ? `Settings “${section}” reset to defaults` : 'All settings reset to defaults');
         pushStatus();
         return { ok: true };
       });
@@ -819,12 +833,12 @@
         'Requirement already satisfied: yt-dlp[default,curl-cffi] in .venv\\lib\\site-packages (2026.11.14)',
         'Requirement already satisfied: bgutil-ytdlp-pot-provider in .venv\\lib\\site-packages (1.3.1)',
       ]);
-      pushLog('info', 'yt-dlp & Plugin werden aktualisiert …');
+      pushLog('info', 'Updating yt-dlp & plugin …');
       out.forEach((line, i) => setTimeout(() => pushLog('info', line), (150 + i * (2100 / out.length)) * speed.factor));
       return later(2400, () => {
         state.versions = { ytdlp: '2026.11.14', plugin: '1.3.1' };
         if (fresh) state.restart = true;
-        pushLog('ok', `Aktualisierung fertig: yt-dlp ${state.versions.ytdlp}, Plugin ${state.versions.plugin}${fresh ? ' (neu)' : ' (bereits aktuell)'}`);
+        pushLog('ok', `Update finished: yt-dlp ${state.versions.ytdlp}, plugin ${state.versions.plugin}${fresh ? ' (new)' : ' (already up to date)'}`);
         pushStatus();
         return Object.assign({ ok: true, ytdlp: state.versions.ytdlp, plugin: state.versions.plugin, changed: fresh, output: out.join('\n') }, fresh ? { restart_required: true } : {});
       });
@@ -837,11 +851,11 @@
       }
       return later(15, updStatus);
     },
-    check_update: () => (['checking', 'downloading', 'applying'].includes(upd.state) ? later(10, () => Object.assign({ ok: false, error: 'Update läuft bereits' }, updStatus())) : updCheck()),
+    check_update: () => (['checking', 'downloading', 'applying'].includes(upd.state) ? later(10, () => Object.assign({ ok: false, error: 'Update already running' }, updStatus())) : updCheck()),
     download_update() {
       return later(40, () => {
-        if (!upd.latest || upd.latest === upd.current) return Object.assign({ ok: false, error: 'Kein neueres Update bekannt – bitte zuerst prüfen' }, updStatus());
-        if (upd.state !== 'idle' && upd.state !== 'error') return Object.assign({ ok: false, error: upd.state === 'ready' ? 'Das Update ist schon bereit' : 'Das Update wird bereits heruntergeladen' }, updStatus());
+        if (!upd.latest || upd.latest === upd.current) return Object.assign({ ok: false, error: 'No newer update known – please check first' }, updStatus());
+        if (upd.state !== 'idle' && upd.state !== 'error') return Object.assign({ ok: false, error: upd.state === 'ready' ? 'The update is already ready' : 'The update is already being downloaded' }, updStatus());
         updDownload();
         return Object.assign({ ok: true }, updStatus());
       });
@@ -851,12 +865,12 @@
     },
     apply_update_now() {
       return later(60, () => {
-        if (upd.state !== 'ready') return { ok: false, error: 'Kein Update bereit' };
+        if (upd.state !== 'ready') return { ok: false, error: 'No update ready' };
         updSet({ state: 'applying' });
         /* Mock: kein echter Neustart – nach einer Pause «neu gestartet» melden */
         setTimeout(() => {
           updSet({ state: 'idle', current: upd.latest, progress: null });
-          emit('toast', { msg: `HCLoader aktualisiert auf v${upd.current}`, kind: 'ok' });
+          emit('toast', { msg: `HCLoader updated to v${upd.current}`, kind: 'ok' });
         }, 2500 * speed.factor);
         return { ok: true };
       });
@@ -868,7 +882,7 @@
         const name = `hcloader-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}.db`;
         const path = `%APPDATA%\\HCLoader\\backups\\${name}`;
         state.backups.unshift({ name, size_mb: 1.8, created: state.lastBackup });
-        pushLog('ok', `Datenbank gesichert: ${path}`);
+        pushLog('ok', `Database backed up: ${path}`);
         return { ok: true, path };
       });
     },
@@ -876,11 +890,11 @@
     pick_folder: () => later(300, { path: 'D:\\Musik\\HCLoader' }),
     test_po_token() {
       return later(1300, () => {
-        if (settings.network.po_token_mode === 'off') return { ok: false, state: 'inactive', detail: 'Provider ist ausgeschaltet.', error: 'Provider ist ausgeschaltet.', ms: 0 };
-        state.po = { state: 'active', detail: 'Token erzeugt vor wenigen Sekunden', created: Date.now() };
+        if (settings.network.po_token_mode === 'off') return { ok: false, state: 'inactive', detail: 'Provider is turned off.', error: 'Provider is turned off.', ms: 0 };
+        state.po = { state: 'active', detail: 'Token generated a few seconds ago', created: Date.now() };
         pushLog('ok', 'PO-Token-Test erfolgreich (840 ms)');
         pushStatus();
-        return { ok: true, state: 'active', detail: 'Neuer Token erzeugt und von YouTube akzeptiert.', ms: 840 };
+        return { ok: true, state: 'active', detail: 'New token generated and accepted by YouTube.', ms: 840 };
       });
     },
     clear_backoff(platform) {
@@ -888,13 +902,13 @@
         if (platform && !['youtube', 'soundcloud'].includes(platform)) return { ok: false, error: 'Unbekannte Plattform.' };
         if (!platform || platform === 'youtube') state.backoff = { active: false, until: null, level: 0 };
         if (!platform || platform === 'soundcloud') state.sc.backoff = { active: false, until: null, level: 0 };
-        pushLog('warn', `Backoff${platform === 'soundcloud' ? ' (SoundCloud)' : platform === 'youtube' ? ' (YouTube)' : ''} manuell aufgehoben`);
+        pushLog('warn', `Backoff${platform === 'soundcloud' ? ' (SoundCloud)' : platform === 'youtube' ? ' (YouTube)' : ''} lifted manually`);
         emit('queue', {});
         pushStatus();
         return { ok: true };
       });
     },
-    get_task_status: () => later(60, () => (state.task.unknown ? { registered: null, name: '\\HCLoader\\Watchlist', time: settings.schedule.task_time, next_run: null, error: 'schtasks antwortet nicht (Zeitüberschreitung nach 20 s)', path_mismatch: false, task_command: null } : {
+    get_task_status: () => later(60, () => (state.task.unknown ? { registered: null, name: '\\HCLoader\\Watchlist', time: settings.schedule.task_time, next_run: null, error: 'schtasks does not respond (timeout after 20 s)', path_mismatch: false, task_command: null } : {
       registered: state.task.registered, name: '\\HCLoader\\Watchlist', time: settings.schedule.task_time,
       next_run: state.task.registered ? nextTask() : null, error: null,
       path_mismatch: !!(state.task.registered && state.task.moved),
@@ -902,12 +916,12 @@
     })),
     create_task(time) {
       return later(600, () => {
-        if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time || '')) return { ok: false, error: 'Uhrzeit im Format HH:MM erwartet.' };
+        if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time || '')) return { ok: false, error: 'Time expected as HH:MM.' };
         state.task.registered = true;
         state.task.moved = false;
         settings.schedule.task_scheduler_enabled = true;
         settings.schedule.task_time = time;
-        pushLog('ok', `Aufgabenplanung: \\HCLoader\\Watchlist täglich ${time} angelegt`);
+        pushLog('ok', `Task Scheduler: \\HCLoader\\Watchlist created daily at ${time}`);
         pushStatus();
         return { ok: true, registered: true, name: '\\HCLoader\\Watchlist', time, next_run: nextTask(), path_mismatch: false, task_command: '"C:\\Tools\\HCLoader\\python\\pythonw.exe" "C:\\Tools\\HCLoader\\scripts\\run_watchlist.pyw"' };
       });
@@ -916,7 +930,7 @@
       return later(400, () => {
         state.task.registered = false;
         settings.schedule.task_scheduler_enabled = false;
-        pushLog('info', 'Aufgabenplanung: \\HCLoader\\Watchlist entfernt');
+        pushLog('info', 'Task Scheduler: \\HCLoader\\Watchlist removed');
         pushStatus();
         return { ok: true, registered: false };
       });
@@ -938,14 +952,14 @@
         const o = Object.assign({ genre: null, year: null, platform: 'youtube' }, opts);
         const p = o.platform, sc = p === 'soundcloud';
         if (!['youtube', 'soundcloud'].includes(p)) return { ok: false, error: 'Unbekannte Plattform.' };
-        if (sc && !settings.soundcloud.enabled) return { ok: false, error: 'SoundCloud ist ausgeschaltet (Einstellungen › SoundCloud)' };
-        if (boOf(p).active) return { ok: false, error: sc ? `Backoff (SoundCloud) aktiv bis ${hhmm(boOf(p).until)} – Suche gesperrt` : 'Backoff aktiv – Suche ist gesperrt.' };
-        if (cntOf(p).searches_hour >= thOf(p).max_searches_per_hour) return { ok: false, error: 'Limit «Suchen pro Stunde» erreicht.' };
+        if (sc && !settings.soundcloud.enabled) return { ok: false, error: 'SoundCloud is turned off (Settings › SoundCloud)' };
+        if (boOf(p).active) return { ok: false, error: sc ? `Backoff (SoundCloud) active until ${hhmm(boOf(p).until)} – search blocked` : 'Backoff active – search is blocked.' };
+        if (cntOf(p).searches_hour >= thOf(p).max_searches_per_hour) return { ok: false, error: 'Limit “searches per hour” reached.' };
         const effective = effectiveQuery(query, o);
         const ids = sc ? SC_SEARCH_IDS : o.year ? yearHits(o.year) : SEARCH_IDS;
         lastSearch = { query, effective_query: effective, genre: o.genre, year: o.year || null, ids, platform: p };
         cntOf(p).searches_hour++;
-        pushLog('info', `Suche${sc ? ' (SoundCloud)' : ''} «${effective}» · ${ids.length} Treffer (flach)`);
+        pushLog('info', `Search${sc ? ' (SoundCloud)' : ''} “${effective}” · ${ids.length} results (flat)`);
         pushStatus();
         return { ok: true, results: ids.map((id) => asSearchHit(byId(id))), effective_query: effective, query, genre: o.genre, year: o.year || null, hidden_count: 0, platform: p };
       });
@@ -964,7 +978,7 @@
           setStatus(v, 'queued');
           done.push(id);
         });
-        if (done.length) pushLog('info', `${done.length} Mix(es) zur Warteschlange hinzugefügt`);
+        if (done.length) pushLog('info', `${done.length} mix(es) added to the queue`);
         emit('queue', {});
         pushStatus();
         return Object.assign({ ok: true, ids: done }, done.length < ids.length ? { skipped: ids.length - done.length } : {});
@@ -977,8 +991,8 @@
       return later(40, () => {
         const v = byId(id);
         const l = LIBRARY.find((x) => x.id === id);
-        if (!v && !l) return { ok: false, error: 'Ungültige Video-ID' };
-        if (!settings.genres.items.some((g) => g.name === genre)) return { ok: false, error: 'Dieses Genre gibt es nicht (mehr).' };
+        if (!v && !l) return { ok: false, error: 'Invalid video ID' };
+        if (!settings.genres.items.some((g) => g.name === genre)) return { ok: false, error: 'This genre does not exist (any more).' };
         if (v) { v.genre = genre; v.genre_manual = true; emit('video', { id, status: v.status, genre }); }
         if (l) { l.genre = genre; l.genre_manual = true; } // die Datei zieht erst mit retag() in den Ordner des Genres um
         return { ok: true };
@@ -989,10 +1003,10 @@
       return later(80, () => {
         const sc = String(channelId).startsWith('sc:');
         const user = sc && Object.values(SCU).find((u) => u[0] === channelId);
-        if (sc && !user) return { ok: false, error: 'SoundCloud-Nutzer unbekannt (keine Profil-URL)' };
+        if (sc && !user) return { ok: false, error: 'SoundCloud user unknown (no profile URL)' };
         const url = sc ? `https://soundcloud.com/${user[2]}` : `https://www.youtube.com/channel/${channelId}`;
         let s = SOURCES.find((x) => x.name === channelName || x.url_or_query === url);
-        if (s) return { ok: false, error: 'Kanal ist bereits in der Watchlist', source: sourceView(s) };
+        if (s) return { ok: false, error: 'Channel is already in the watchlist', source: sourceView(s) };
         s = { id: nextSourceId++, type: 'channel', name: channelName, url_or_query: url, default_genre: null, enabled: true, auto_download: false, max_entries: null, last_checked: null, platform: sc ? 'soundcloud' : 'youtube', name_auto: false };
         SOURCES.push(s);
         return { ok: true, source: sourceView(s) };
@@ -1014,19 +1028,19 @@
         const url = String(src.url_or_query || '').trim();
         const name = String(src.name || '').trim();
         if (!['channel', 'playlist', 'search'].includes(src.type)) errors.type = 'Unbekannter Typ.';
-        if (!name) errors.name = 'Name fehlt.';
-        else if (SOURCES.some((x) => x.id !== src.id && x.name.toLowerCase() === name.toLowerCase())) errors.name = 'Eine Quelle mit diesem Namen gibt es bereits.';
-        if (!url) errors.url_or_query = src.type === 'search' ? 'Suchbegriff fehlt.' : 'URL fehlt.';
-        else if (src.type !== 'search' && !/^https?:\/\/((www\.|music\.|m\.)?youtube\.com|(www\.|m\.)?soundcloud\.com)\//.test(url)) errors.url_or_query = 'Nicht unterstützte URL – erwartet wird eine YouTube-URL (https://www.youtube.com/…) oder eine SoundCloud-URL (https://soundcloud.com/…).';
-        else if (src.type !== 'search' && /soundcloud\.com/.test(url) && !settings.soundcloud.enabled) errors.url_or_query = 'SoundCloud ist ausgeschaltet (Einstellungen › SoundCloud).';
-        else if (src.type === 'channel' && /soundcloud\.com\/[^/]+\/sets\//.test(url)) errors.url_or_query = 'Für ein Set den Typ «Playlist» wählen.';
-        else if (src.type === 'playlist' && /soundcloud\.com/.test(url) && !/\/sets\/[^/]+/.test(url)) errors.url_or_query = 'SoundCloud-Playlist-URL erwartet (…/<nutzer>/sets/<set>).';
-        else if (src.type === 'channel' && /\/(playlists|releases|featured|shorts|community|podcasts|about)\/?$/.test(url)) errors.url_or_query = 'Nur die Kanal-URL selbst, /videos oder /streams – andere Tabs werden nicht unterstützt.';
-        else if (src.type === 'playlist' && !/soundcloud\.com/.test(url) && !/[?&]list=[\w-]+/.test(url)) errors.url_or_query = 'Playlist-URL erwartet (…/playlist?list=…).';
-        if (src.type === 'search' && src.platform != null && !['youtube', 'soundcloud'].includes(src.platform)) errors.platform = 'Plattform muss YouTube oder SoundCloud sein.';
+        if (!name) errors.name = 'Name missing.';
+        else if (SOURCES.some((x) => x.id !== src.id && x.name.toLowerCase() === name.toLowerCase())) errors.name = 'A source with this name already exists.';
+        if (!url) errors.url_or_query = src.type === 'search' ? 'Search term missing.' : 'URL missing.';
+        else if (src.type !== 'search' && !/^https?:\/\/((www\.|music\.|m\.)?youtube\.com|(www\.|m\.)?soundcloud\.com)\//.test(url)) errors.url_or_query = 'Unsupported URL – expected a YouTube URL (https://www.youtube.com/…) or a SoundCloud URL (https://soundcloud.com/…).';
+        else if (src.type !== 'search' && /soundcloud\.com/.test(url) && !settings.soundcloud.enabled) errors.url_or_query = 'SoundCloud is turned off (Settings › SoundCloud).';
+        else if (src.type === 'channel' && /soundcloud\.com\/[^/]+\/sets\//.test(url)) errors.url_or_query = 'Choose the type “Playlist” for a set.';
+        else if (src.type === 'playlist' && /soundcloud\.com/.test(url) && !/\/sets\/[^/]+/.test(url)) errors.url_or_query = 'SoundCloud playlist URL expected (…/<user>/sets/<set>).';
+        else if (src.type === 'channel' && /\/(playlists|releases|featured|shorts|community|podcasts|about)\/?$/.test(url)) errors.url_or_query = 'Only the channel URL itself, /videos or /streams – other tabs are not supported.';
+        else if (src.type === 'playlist' && !/soundcloud\.com/.test(url) && !/[?&]list=[\w-]+/.test(url)) errors.url_or_query = 'Playlist URL expected (…/playlist?list=…).';
+        if (src.type === 'search' && src.platform != null && !['youtube', 'soundcloud'].includes(src.platform)) errors.platform = 'Platform must be YouTube or SoundCloud.';
         const cap = src.type === 'search' ? 100 : 200; // leer (null) = Standard schedule.entries_per_source
-        if (src.max_entries != null && !(Number.isInteger(src.max_entries) && src.max_entries >= 1 && src.max_entries <= cap)) errors.max_entries = `Ganze Zahl zwischen 1 und ${cap} erwartet (leer = Standard).`;
-        if (src.default_genre && !settings.genres.items.some((g) => g.name === src.default_genre)) errors.default_genre = 'Dieses Genre gibt es nicht (mehr).';
+        if (src.max_entries != null && !(Number.isInteger(src.max_entries) && src.max_entries >= 1 && src.max_entries <= cap)) errors.max_entries = `Whole number between 1 and ${cap} expected (empty = default).`;
+        if (src.default_genre && !settings.genres.items.some((g) => g.name === src.default_genre)) errors.default_genre = 'This genre does not exist (any more).';
         if (Object.keys(errors).length) return { ok: false, errors };
         const platform = src.type === 'search' ? src.platform || 'youtube' : /soundcloud\.com/.test(url) ? 'soundcloud' : 'youtube';
         const fields = { type: src.type, name, url_or_query: url, default_genre: src.default_genre || null, enabled: !!src.enabled, auto_download: !!src.auto_download, max_entries: src.max_entries == null ? null : src.max_entries, newest_last: src.type === 'playlist' && !!src.newest_last, platform, name_auto: !!src.name_auto };
@@ -1040,20 +1054,20 @@
       return later(60, () => { SOURCES = SOURCES.filter((s) => s.id !== id); return { ok: true }; });
     },
     check_sources(ids) {
-      if (state.checking) return later(30, { ok: false, error: 'Die Watchlist wird bereits geprüft.' });
+      if (state.checking) return later(30, { ok: false, error: 'The watchlist is already being checked.' });
       const list = SOURCES.filter((s) => s.enabled && (!ids || ids.includes(s.id)));
       if (!list.length) return later(30, { ok: true, started: 0 });
       /* Abgelehnt nur, wenn JEDE Plattform mit aktiver Quelle im Backoff ist. */
-      if (list.every((s) => boOf(s.platform).active)) return later(30, { ok: false, error: 'Backoff aktiv – die Watchlist-Prüfung ist gesperrt.' });
+      if (list.every((s) => boOf(s.platform).active)) return later(30, { ok: false, error: 'Backoff active – the watchlist check is blocked.' });
       state.checking = true;
-      pushLog('info', `Watchlist-Prüfung gestartet · ${list.length} Quelle(n)`);
+      pushLog('info', `Watchlist check started · ${list.length} source(s)`);
       (async () => {
         let found = 0, errors = 0, queued = 0;
         for (const s of list) {
           if (!SOURCES.includes(s)) continue; // inzwischen gelöscht
           if (boOf(s.platform).active) {
             errors++;
-            emit('source', { id: s.id, checking: false, error: `Backoff (${s.platform === 'soundcloud' ? 'SoundCloud' : 'YouTube'}) aktiv bis ${hhmm(boOf(s.platform).until)} – übersprungen` });
+            emit('source', { id: s.id, checking: false, error: `Backoff (${s.platform === 'soundcloud' ? 'SoundCloud' : 'YouTube'}) active until ${hhmm(boOf(s.platform).until)} – skipped` });
             continue;
           }
           emit('source', { id: s.id, checking: true });
@@ -1081,7 +1095,7 @@
           });
           found += hits.length;
           s.last_checked = new Date().toISOString();
-          if (hits.length) pushLog('ok', `Watchlist · ${s.name}: ${hits.length} neue(r) Treffer${s.auto_download ? ' → Warteschlange' : ' → Eingang'}`);
+          if (hits.length) pushLog('ok', `Watchlist · ${s.name}: ${hits.length} new hit(s)${s.auto_download ? ' → queue' : ' → inbox'}`);
           /* name_auto: der Vorschlag aus der URL wird durch den echten Namen ersetzt. */
           if (s.name_auto && REAL_NAMES[s.url_or_query]) { s.name = REAL_NAMES[s.url_or_query]; s.name_auto = false; }
           emit('source', { id: s.id, checking: false, name: s.name, last_checked: s.last_checked, new_count: sourceView(s).new_count });
@@ -1089,10 +1103,10 @@
         }
         state.checking = false;
         if (!ids) state.appNext = new Date(Date.now() + settings.schedule.watchlist_interval_hours * 3600000).toISOString();
-        const run = { id: ++runSeq, kind: 'watchlist', started: new Date(Date.now() - list.length * 900).toISOString(), finished: new Date().toISOString(), found, downloaded: 0, errors, note: errors ? `${errors} Quelle(n) mit Fehler` : '' };
+        const run = { id: ++runSeq, kind: 'watchlist', started: new Date(Date.now() - list.length * 900).toISOString(), finished: new Date().toISOString(), found, downloaded: 0, errors, note: errors ? `${errors} source(s) with errors` : '' };
         RUNS.unshift(withDuration(run));
         emit('run', clone(run));
-        pushLog(errors ? 'warn' : 'ok', `Watchlist-Prüfung beendet · ${list.length} Quelle(n) · ${found} neue Treffer${errors ? ` · ${errors} Fehler` : ''}`);
+        pushLog(errors ? 'warn' : 'ok', `Watchlist check finished · ${list.length} source(s) · ${found} new hits${errors ? ` · ${errors} errors` : ''}`);
         emit('watchlist_done', { checked: list.length, found });
         pushStatus();
       })();
@@ -1105,8 +1119,8 @@
       return later(40, () => {
         state.paused = !!paused;
         /* «Fortsetzen» nach dem Lauf-Limit = neuer Lauf (Zähler des Laufs beginnt neu). */
-        if (!paused && state.counters.downloads_run >= settings.throttle.max_downloads_per_run) { state.counters.downloads_run = 0; pushLog('info', 'Neuer Download-Lauf gestartet'); }
-        pushLog('info', paused ? 'Warteschlange pausiert' : 'Warteschlange fortgesetzt');
+        if (!paused && state.counters.downloads_run >= settings.throttle.max_downloads_per_run) { state.counters.downloads_run = 0; pushLog('info', 'New download run started'); }
+        pushLog('info', paused ? 'Queue paused' : 'Queue resumed');
         emit('queue', {});
         pushStatus();
         return { ok: true, paused: state.paused };
@@ -1162,14 +1176,14 @@
     open_folder(id) {
       return later(30, () => {
         const l = LIBRARY.find((x) => x.id === id);
-        return l ? { ok: true } : { ok: false, error: 'Keine Datei zu diesem Eintrag' };
+        return l ? { ok: true } : { ok: false, error: 'No file for this entry' };
       });
     },
     get_media(id) {
       return later(60, () => {
         const l = LIBRARY.find((x) => x.id === id);
-        if (!l) return { ok: false, error: 'Eintrag ist nicht in der Bibliothek' };
-        if (l.missing) return { ok: false, error: 'Datei fehlt' };
+        if (!l) return { ok: false, error: 'Entry is not in the library' };
+        if (l.missing) return { ok: false, error: 'File missing' };
         /* Kurze synthetische Tonfolge statt einer echten Datei: ein Abschnitt pro Kapitel. */
         const chapters = l.has_cue ? CHAPTERS.map(([title, performer], i) => ({ start: i * CHAPTER_S, title, performer })) : [];
         return { ok: true, id, src: demoTone(), title: l.title, artist: l.artist, genre: l.genre, platform: l.platform || 'youtube', duration: CHAPTERS.length * CHAPTER_S, cover: null, chapters };
@@ -1178,17 +1192,17 @@
     play_external(id) {
       return later(60, () => {
         const l = LIBRARY.find((x) => x.id === id);
-        if (!l) return { ok: false, error: 'Eintrag ist nicht in der Bibliothek' };
-        if (l.missing) return { ok: false, error: 'Datei fehlt' };
-        pushLog('info', `Im Standardplayer geöffnet: ${l.title}`);
+        if (!l) return { ok: false, error: 'Entry is not in the library' };
+        if (l.missing) return { ok: false, error: 'File missing' };
+        pushLog('info', `Opened in the default player: ${l.title}`);
         return { ok: true };
       });
     },
     retag(id) {
       return later(900, () => {
         const l = LIBRARY.find((x) => x.id === id);
-        if (!l) return { ok: false, error: 'Eintrag nicht gefunden' };
-        if (l.missing) return { ok: false, error: `Datei fehlt: ${l.file_path}` };
+        if (!l) return { ok: false, error: 'Entry not found' };
+        if (l.missing) return { ok: false, error: `File missing: ${l.file_path}` };
         /* Zielpfad nach dem aktuellen Genre: ein geändertes Genre (set_genre) verschiebt die Datei. */
         const parts = l.file_path.split('\\');
         const want = STALE[id] ? libPath(l.genre, l.artist, l.upload_date, l.title, l.id) : parts.map((x, i) => (i === parts.length - 4 ? l.genre : x)).join('\\');
@@ -1198,18 +1212,18 @@
           l.file_path = want;
           pushLog('info', `Verschoben (Ablage-Muster): ${l.file_path}`);
         }
-        pushLog('ok', `Neu getaggt: ${l.title}`);
+        pushLog('ok', `Retagged: ${l.title}`);
         return { ok: true, path: l.file_path, moved, genre: l.genre, cue: !!l.has_cue, sidecar: true };
       });
     },
     delete_library_item(id, deleteFile) {
       return later(160, () => {
         const l = LIBRARY.find((x) => x.id === id);
-        if (!l) return { ok: false, error: 'Eintrag nicht gefunden' };
-        if (targetDown) return { ok: false, error: `Zielordner nicht erreichbar: ${TARGET}`, unreachable: true };
+        if (!l) return { ok: false, error: 'Entry not found' };
+        if (targetDown) return { ok: false, error: `Target folder unreachable: ${TARGET}`, unreachable: true };
         const file = deleteFile !== false && !l.missing;
         LIBRARY = LIBRARY.filter((x) => x.id !== id);
-        pushLog('warn', file ? `Gelöscht: ${l.file_path}` : `Eintrag entfernt (Datei bleibt bzw. fehlte): ${l.title}`);
+        pushLog('warn', file ? `Deleted: ${l.file_path}` : `Entry removed (file kept or missing): ${l.title}`);
         const v = byId(id);
         if (v) setStatus(v, 'ignored'); // wird nicht erneut geladen
         const name = l.file_path.split('\\').pop();
@@ -1234,7 +1248,7 @@
         clearInterval(upd.timer);
         const base = { latest: '0.3.0', notes: UPD_NOTES, url: 'https://github.com/kellerict/HCLoader/releases/tag/v0.3.0', checked: new Date().toISOString(), error: null, progress: null };
         if (state === 'downloading') base.progress = { phase: 'download', pct: pct == null ? 42 : pct, bytes: 1032192, total: 2457600 };
-        if (state === 'error') base.error = 'Prüfsumme stimmt nicht (HCLoader-0.3.0.zip)';
+        if (state === 'error') base.error = 'Checksum mismatch (HCLoader-0.3.0.zip)';
         updSet(Object.assign(base, { state: state || 'idle' }));
       },
       /** Backoff einer Plattform auslösen (platform: "youtube" (Standard) | "soundcloud"). */
@@ -1283,13 +1297,13 @@
       checkHold(id) { state.hold = { id, release: null }; },
       checkRelease() { const h = state.hold; state.hold = null; if (h && h.release) h.release(); },
       /** Die nächste Prüfung dieser Quelle schlägt mit der Meldung fehl. */
-      sourceError(id, msg) { state.sourceErrors[id] = msg || 'Kanal nicht gefunden (HTTP 404)'; },
+      sourceError(id, msg) { state.sourceErrors[id] = msg || 'Channel not found (HTTP 404)'; },
       /** Lokale Sperre der Warteschlange (code "pot" | "target" | "error", null = aufheben). */
       local(code, msg) {
         const texts = {
-          pot: 'PO-Token-Server nicht bereit – Downloads warten, bis er läuft – Rest bleibt in der Warteschlange',
-          target: 'Zielordner nicht erreichbar oder nicht beschreibbar (M:\\Musik\\HCLoader): Das Gerät ist nicht bereit – Rest bleibt in der Warteschlange',
-          error: 'Download-Modul (yt-dlp) konnte nicht geladen werden: No module named yt_dlp.extractor – neuer Versuch nach «Fortsetzen», neuen Einträgen oder dem Speichern der Einstellungen',
+          pot: 'PO token server not ready – downloads wait until it runs – the rest stays in the queue',
+          target: 'Target folder unreachable or not writable (M:\\Music\\HCLoader): The device is not ready – the rest stays in the queue',
+          error: 'The download module (yt-dlp) could not be loaded: No module named yt_dlp.extractor – next attempt after “Resume”, new entries or saving the settings',
         };
         state.local = code ? [code, msg || texts[code] || ''] : null;
         if (code) {
@@ -1303,7 +1317,7 @@
         pushStatus();
       },
       poError() {
-        state.po = { state: 'error', detail: 'Deno-Script lieferte keinen Token (Timeout nach 15 s)', created: 0 };
+        state.po = { state: 'error', detail: 'Deno script returned no token (timeout after 15 s)', created: 0 };
         pushStatus();
       },
       /** Der laufende Download ist fertig, der nächste wartet in der Throttle-Pause. */
@@ -1329,7 +1343,7 @@
         state.sleepLeft = 0;
         if (kind === 'day') { state.counters.downloads_day = th.max_downloads_per_day; state.counters.downloads_run = Math.min(th.max_downloads_per_run, 7); }
         else { state.counters.downloads_run = th.max_downloads_per_run; state.counters.downloads_day = Math.max(state.counters.downloads_day, th.max_downloads_per_run + 2); }
-        pushLog('warn', 'Download-Limit erreicht – der Rest bleibt in der Warteschlange');
+        pushLog('warn', 'Download limit reached – the rest stays in the queue');
         emit('queue', {});
         pushStatus();
       },

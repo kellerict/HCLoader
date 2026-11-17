@@ -16,8 +16,10 @@
    AUFRUFE  UI -> Python        HC.bridge.call('name', ...args) -> Promise
    ---------------------------------------------------------------------
    Einstellungen
-     get_settings()                     -> {values, defaults}            (Struktur: docs/settings-schema.md)
-     save_settings(values)              -> {ok:true} | {ok:false, errors:{"section.key": "Meldung"}}
+     get_settings()                     -> {values, defaults, language}  (Struktur: docs/settings-schema.md;
+                                           language = general.language aufgelöst, z.B. "de")
+     save_settings(values)              -> {ok:true, values, language} | {ok:false, errors:{"section.key": "Meldung"}}
+                                           Meldungen kommen fertig übersetzt (aktive Sprache, docs/TRANSLATING.md)
                                            Genres: Schlüssel "genres.items" oder "genres.items.<index>.<feld>"
      reset_settings(section?)           -> {ok:true}                     (ohne Argument: alles)
 
@@ -322,10 +324,10 @@
         if (bridge.failed) throw new Error(HC.t ? HC.t('err.no_backend') : 'no backend');
         if (bridge.live) {
           const fn = window.pywebview.api[name];
-          if (typeof fn !== 'function') throw new Error(`api.${name} fehlt`);
+          if (typeof fn !== 'function') throw new Error(`api.${name} missing`);
           return await fn(...args);
         }
-        if (!HC.mock || typeof HC.mock.api[name] !== 'function') throw new Error(`mock.${name} fehlt`);
+        if (!HC.mock || typeof HC.mock.api[name] !== 'function') throw new Error(`mock.${name} missing`);
         return await HC.mock.api[name](...args);
       } finally {
         bridge.pending--;

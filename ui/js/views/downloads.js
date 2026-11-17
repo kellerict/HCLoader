@@ -99,7 +99,7 @@
       const step = STEPS.indexOf(q.phase);
       info = `<span class="phase">${esc(t('phase.' + q.phase))}</span>
         <span class="steps" title="${esc(t('downloads.steps'))}">${STEPS.map((s, k) => `<i class="${k <= step ? 'on' : ''}"></i>`).join('')}</span>
-        <span><b data-f="pct"></b></span><span data-w="speed"><b data-f="speed"></b> MB/s</span><span data-w="eta">${t('downloads.eta')} <b data-f="eta"></b></span>`;
+        <span><b data-f="pct"></b></span><span data-w="speed"><b data-f="speed"></b> ${t('unit.mbs')}</span><span data-w="eta">${t('downloads.eta')} <b data-f="eta"></b></span>`;
     } else if (q.phase === 'sleep') {
       const th = thOf(v);
       info = `<span class="phase" title="${esc(t('downloads.sleep_why', { min: th.sleep_interval, max: th.max_sleep_interval }))}">${I.clock}${t('phase.sleep')}</span><span class="countdown">${t('downloads.sleep_left')} <b data-f="eta"></b></span>`;
@@ -125,8 +125,8 @@
     /* Der Balken ist immer 100 % breit und wird nur verschoben (--p -> transform, kein Layout). */
     if (q.state === 'active' && bar) bar.style.setProperty('--p', q.pct);
     else if (sleeping && bar) bar.style.setProperty('--p', sleep && sleep.id === q.id ? Math.min(100, (sleepLeft() / sleep.total) * 100) : 0);
-    set('pct', `${Math.floor(q.pct)}%`);
-    set('speed', (q.speed || 0).toFixed(1));
+    set('pct', util.fmtPct(q.pct));
+    set('speed', util.fmtDec(q.speed || 0, 1, true));
     set('eta', sleeping ? util.fmtDur(q.eta || 0) : util.fmtSpan(q.eta || 0));
     const dl = q.phase === 'download';
     node.querySelectorAll('[data-w]').forEach((e) => { e.hidden = !dl; });
@@ -208,12 +208,12 @@
     let html = '';
     const bo = s && s.backoff && s.backoff.active ? s.backoff : null;
     if (bo && (reason === 'backoff' || !rest)) {
-      html = ui.notice('error', t(rest ? 'downloads.backoff_rest' : 'downloads.backoff', { t: esc(util.fmtWhen(bo.until)), rest: esc(util.fmtSpan(bo.remaining_s)), n: `<b>${rest}</b>` }));
+      html = ui.notice('error', t(rest ? 'downloads.backoff_rest' : 'downloads.backoff', { t: esc(util.fmtWhen(bo.until)), rest: esc(util.fmtSpan(bo.remaining_s)), n: `<b>${rest}</b>`, count: rest }));
     } else if (reason === 'day_limit' && s) {
-      html = ui.notice('warn', `${t(rest ? 'downloads.limit_day_rest' : 'downloads.limit_day', { n: s.counters.downloads_day, max: th.max_downloads_per_day, rest: `<b>${rest}</b>` })} ${link}`);
+      html = ui.notice('warn', `${t(rest ? 'downloads.limit_day_rest' : 'downloads.limit_day', { n: s.counters.downloads_day, max: th.max_downloads_per_day, rest: `<b>${rest}</b>`, count: rest })} ${link}`);
     } else if (reason === 'run_limit' && s) {
       /* «Fortsetzen» (set_queue_paused(false)) startet im Backend einen neuen Lauf. */
-      html = ui.notice('warn', `<div class="notice-row"><span>${t(rest ? 'downloads.limit_run_rest' : 'downloads.limit_run', { max: th.max_downloads_per_run, rest: `<b>${rest}</b>` })} ${link}</span>
+      html = ui.notice('warn', `<div class="notice-row"><span>${t(rest ? 'downloads.limit_run_rest' : 'downloads.limit_run', { max: th.max_downloads_per_run, rest: `<b>${rest}</b>`, count: rest })} ${link}</span>
         <button class="btn sm" data-newrun ${queue.paused ? 'disabled' : ''}>${I.play}${t('downloads.new_run')}</button></div>`);
     } else if (reason === 'restart') {
       html = ui.notice('error', t('downloads.need_restart'));
@@ -221,7 +221,7 @@
       /* Lokales Problem (kein YouTube-Request): Einträge bleiben wartend; Details vom Backend. */
       const fix = `<button class="linkbtn" data-goto="${LOCAL[reason]}">${t('downloads.local_link_' + reason)}</button>`;
       const detail = queue.blocked_reason ? `<br>${esc(queue.blocked_reason)}` : '';
-      html = ui.notice(reason === 'error' ? 'error' : 'warn', `${t('downloads.local_' + reason, { rest: `<b>${rest}</b>` })} ${fix}${detail}`);
+      html = ui.notice(reason === 'error' ? 'error' : 'warn', `${t('downloads.local_' + reason, { rest: `<b>${rest}</b>`, count: rest })} ${fix}${detail}`);
     } else if (reason) {
       /* busy, Backoff ohne Status-Details oder künftige Gründe: Text des Backends, sonst eigener. */
       html = ui.notice(reason === 'backoff' ? 'error' : 'info', queue.blocked_reason ? esc(queue.blocked_reason) : t('downloads.busy'));
@@ -271,7 +271,7 @@
     fx.count($('#l-day', el), s.counters.downloads_day);
     $('#l-day-max', el).textContent = `/ ${th.max_downloads_per_day}`;
     meter('#m-day', s.counters.downloads_day, th.max_downloads_per_day);
-    $('#l-rate', el).innerHTML = th.limit_rate_mb ? `${th.limit_rate_mb.toFixed(1)} <small>MB/s</small>` : `<small>${t('downloads.unlimited')}</small>`;
+    $('#l-rate', el).innerHTML = th.limit_rate_mb ? `${util.fmtDec(th.limit_rate_mb, 1, true)} <small>${t('unit.mbs')}</small>` : `<small>${t('downloads.unlimited')}</small>`;
     const sc = HC.platform.scEnabled() ? HC.platform.state('soundcloud') : null;
     $('#q-summary', el).textContent = t('downloads.summary', { day: s.counters.downloads_day, day_max: th.max_downloads_per_day, run: s.counters.downloads_run, run_max: th.max_downloads_per_run })
       + (sc ? ` · ${t('downloads.summary_sc', { day: sc.counters.downloads_day || 0, day_max: sc.limits.downloads_day })}` : '');

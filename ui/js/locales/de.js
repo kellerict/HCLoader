@@ -1,0 +1,1306 @@
+/* HCLoader UI texts – German (de-CH: «ss» instead of ß, guillemets «»).
+   Guide: docs/TRANSLATING.md. Both arguments must stay strict JSON
+   (double quotes, no comments, no trailing commas) – tests parse them with Python.
+*/
+HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"}, {
+  "app": {
+    "title": "HCLoader",
+    "tagline": "HARD MUSIC ARCHIVE",
+    "mock": "MOCK-MODUS"
+  },
+  "nav": {
+    "discover": "Entdecken",
+    "inbox": "Eingang",
+    "watchlist": "Watchlist",
+    "downloads": "Downloads",
+    "library": "Bibliothek",
+    "log": "Protokoll",
+    "settings": "Einstellungen"
+  },
+  "navfoot": {
+    "today": "HEUTE",
+    "next": "NÄCHSTE PRÜFUNG"
+  },
+  "common": {
+    "ok": "OK",
+    "cancel": "Abbrechen",
+    "save": "Speichern",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "remove": "Entfernen",
+    "reset": "Zurücksetzen",
+    "on": "an",
+    "off": "aus",
+    "current": "aktuell",
+    "loading": "lädt …",
+    "add_chip": "+ hinzufügen",
+    "empty": "«leer»",
+    "empty_list": "«keine»"
+  },
+  "fmt": {
+    "today": "heute",
+    "yesterday": "gestern",
+    "never": "noch nie",
+    "no_date": "Datum unbekannt",
+    "just_now": "gerade eben",
+    "today_at": "heute {t}",
+    "tomorrow_at": "morgen {t}",
+    "yesterday_at": "gestern {t}",
+    "views": {
+      "one": "{v} Aufruf",
+      "other": "{v} Aufrufe"
+    }
+  },
+  "unit": {
+    "s": "s",
+    "h": "h",
+    "minutes": "Minuten",
+    "mbs": "MB/s",
+    "bpm": "BPM",
+    "chars": "Zeichen",
+    "results": "Treffer",
+    "entries": "Einträge",
+    "clock": "Uhr"
+  },
+  "range": {
+    "ge_sleep": "≥ Minimum",
+    "ge_initial": "≥ Startwert"
+  },
+  "status": {
+    "new": "Neu",
+    "inbox": "Im Eingang",
+    "queued": "In Queue",
+    "downloading": "Lädt",
+    "done": "Geladen",
+    "ignored": "Ignoriert",
+    "failed": "Fehler"
+  },
+  "period": {
+    "all": "Alle",
+    "7d": "Letzte 7 Tage",
+    "30d": "Letzte 30 Tage",
+    "1y": "Letzte 12 Monate",
+    "year": "Bestimmtes Jahr",
+    "custom": "Benutzerdefiniert"
+  },
+  "source_type": {
+    "channel": "Kanal",
+    "playlist": "Playlist",
+    "search": "Suche"
+  },
+  "platform": {
+    "youtube": "YouTube",
+    "soundcloud": "SoundCloud",
+    "label": "Plattform",
+    "sc_off": "SoundCloud ist ausgeschaltet – einschalten unter Einstellungen › SoundCloud."
+  },
+  "genre": {
+    "change": "Genre ändern",
+    "manual": "Genre manuell gesetzt",
+    "change_manual": "Genre ändern (manuell gesetzt)"
+  },
+  "run_kind": {
+    "watchlist": "Watchlist",
+    "headless": "Aufgabenplanung",
+    "manual": "Manuell"
+  },
+  "phase": {
+    "waiting": "Wartet",
+    "sleep": "Pause bis zum nächsten Download",
+    "download": "Laden",
+    "convert": "Konvertieren",
+    "tag": "Taggen",
+    "failed": "Fehlgeschlagen"
+  },
+  "po_mode": {
+    "off": "Aus",
+    "script": "Script",
+    "http": "HTTP"
+  },
+  "po_mode_long": {
+    "off": "Aus",
+    "script": "Script (Deno)",
+    "http": "HTTP-Server (lokal)"
+  },
+  "statusbar": {
+    "ok": "OK",
+    "missing": "fehlt",
+    "po": "PO-Token",
+    "po_active": "aktiv ({mode})",
+    "po_inactive": "inaktiv",
+    "po_error": "Fehler",
+    "backoff": "Backoff",
+    "backoff_none": "keiner",
+    "backoff_until": "bis {t} · noch {rest}",
+    "queue": "Queue",
+    "queue_empty": "leer",
+    "queue_active": "aktiv",
+    "queue_paused": "pausiert",
+    "today": "Heute",
+    "next": "Nächste Prüfung",
+    "next_off": "aus",
+    "backoff_until_short": "bis {t}",
+    "sc_backoff": "Backoff bis {t}",
+    "sc_today": "{n} / {max}",
+    "yt_tip": "YouTube · heute {day}/{day_max} geladen · {s}/{s_max} Suchen diese Stunde",
+    "sc_tip": "SoundCloud · heute {day}/{day_max} geladen · {s}/{s_max} Suchen diese Stunde",
+    "backoff_tip": "{p}: Backoff bis {t} (noch {rest})"
+  },
+  "schedule": {
+    "due": "fällig",
+    "kind_app": "App",
+    "kind_task": "Aufgabe",
+    "tip_app": "Nächste Watchlist-Prüfung in der App: {t} (solange HCLoader läuft).",
+    "tip_task": "Nächste Watchlist-Prüfung über die Windows-Aufgabenplanung: {t}.",
+    "tip_any": "Nächste Watchlist-Prüfung: {t}.",
+    "tip_off": "Keine automatische Prüfung – weder in der App noch über die Windows-Aufgabenplanung.",
+    "tip_backoff": "Solange der Backoff aktiv ist, wird nicht geprüft."
+  },
+  "card": {
+    "source": "Gefunden über die Watchlist-Quelle «{name}»",
+    "select": "Auswählen",
+    "open": "Auf {p} öffnen",
+    "ignore": "Ignorieren",
+    "unignore": "Nicht mehr ignorieren",
+    "more": "Weitere Aktionen",
+    "download": "Herunterladen",
+    "watch": "Kanal zur Watchlist",
+    "block": "Kanal blockieren",
+    "set_genre": "Genre setzen",
+    "date_approx": "Ungefähres Datum – YouTube liefert in der Suche nur «vor X Jahren»",
+    "date_unknown": "Kein Upload-Datum geliefert",
+    "duplicate": "Vermutlich bereits geladen ({p})",
+    "duplicate_title": "Sehr ähnlicher Titel und gleiche Dauer wie «{title}» von {p} – dort schon geladen oder eingereiht. Laden ist trotzdem möglich.",
+    "preview": "Nur Vorschau (Go+) – nicht ladbar",
+    "preview_title": "SoundCloud liefert für diesen Track nur eine 30-Sekunden-Vorschau (Go+). Er kann nicht geladen werden."
+  },
+  "discover": {
+    "placeholder": "Suche nach Mix, Liveset, DJ, Event …",
+    "search": "Suchen",
+    "searching_btn": "Suche …",
+    "searching": "Suche läuft – flache Abfrage, schont YouTube …",
+    "sort": "Sortierung",
+    "sort_rel": "Relevanz",
+    "sort_date": "Neueste zuerst",
+    "sort_dur": "Längste zuerst",
+    "sort_views": "Meiste Aufrufe",
+    "quota": "Suchen diese Stunde: {n} / {max}",
+    "quota_sc": "SoundCloud-Suchen diese Stunde: {n} / {max}",
+    "placeholder_sc": "Auf SoundCloud suchen: Mix, Set, DJ, Podcast …",
+    "platform_title": "Wo gesucht wird",
+    "searching_sc": "Suche läuft – flache Abfrage, schont SoundCloud …",
+    "ready_text_sc": "Suchbegriff eingeben und mit Enter auf SoundCloud suchen.",
+    "previews": "{n} nur Vorschau (Go+)",
+    "previews_title": "Go+-Vorschauen sind nie ladbar. Sichtbar, wenn «Geladene & ignorierte ausblenden» aus ist.",
+    "filters": "Filter",
+    "toggle_filters": "Filter-Panel ein-/ausblenden",
+    "f_duration": "Dauer (Minuten)",
+    "f_min": "Minimum",
+    "f_max": "Maximum (leer = offen)",
+    "f_max_ph": "max",
+    "f_period": "Upload-Zeitraum",
+    "f_year": "Jahr",
+    "f_year_prev": "Ein Jahr zurück",
+    "f_year_next": "Ein Jahr vor",
+    "f_from": "Von",
+    "f_to": "Bis",
+    "f_hint_year": "YouTube liefert das Datum in der Suche nur ungefähr («vor 13 Jahren»). Darum zählt ±1 Jahr – und ebenso jeder Mix mit «{year}» im Titel.",
+    "f_hint_custom": "YouTube liefert das Datum in der Suche nur ungefähr. Bei ungefährem Datum gilt an beiden Rändern ±1 Jahr Toleranz.",
+    "chip_title": "Klick: Genre ein-/ausblenden · Doppelklick: nur dieses Genre (seine Begriffe werden an die Suche angehängt)",
+    "scope": "Suche ergänzt um",
+    "scope_title": "Diese Begriffe hängt die nächste Suche an deinen Suchtext an.",
+    "searched": "Gesucht mit",
+    "stale": "Filter seither geändert",
+    "re_search": "Neu suchen",
+    "re_search_title": "Die Treffer stammen aus der letzten Suche. Neu suchen, damit Genre und Jahr in den Suchbegriff einfliessen (zählt als eine Suche).",
+    "need_query": "Bitte zuerst einen Suchbegriff eingeben.",
+    "f_inc": "Include-Keywords",
+    "f_exc": "Exclude-Keywords",
+    "f_show": "Anzeige",
+    "f_hide": "Geladene & ignorierte ausblenden",
+    "f_blacklist": "Kanal-Blacklist anwenden",
+    "count": {
+      "one": "{n} Treffer · {hidden} herausgefiltert",
+      "other": "{n} Treffer · {hidden} herausgefiltert"
+    },
+    "selected": "{n} ausgewählt",
+    "select_all": "Alle wählen",
+    "download_sel": "Auswahl laden",
+    "ready_title": "Bereit",
+    "ready_text": "Suchbegriff eingeben und mit Enter starten.",
+    "none_title": "Nichts gefunden",
+    "none_text": "Filter lockern oder andere Suchbegriffe probieren.",
+    "none_year": "Kein Treffer aus {year}. Neu suchen, damit die Jahreszahl in den Suchbegriff einfliesst – oder das Jahr ändern."
+  },
+  "inbox": {
+    "title": "Eingang",
+    "sub": "Neue Treffer aus der Watchlist, die alle Filter bestehen",
+    "sub_n": {
+      "one": "{n} neuer Treffer aus der Watchlist, der alle Filter besteht",
+      "other": "{n} neue Treffer aus der Watchlist, die alle Filter bestehen"
+    },
+    "ignore_all": "Alle ignorieren",
+    "download_all": "Alle laden",
+    "ignore_sel": "Auswahl ignorieren",
+    "download_sel": "Auswahl laden",
+    "select_all": "Alle wählen",
+    "select_none": "Auswahl aufheben",
+    "src_all": "Alle Quellen",
+    "src_none": "Ohne Quelle",
+    "src_title": "Nur Treffer dieser Quelle zeigen",
+    "count": {
+      "one": "{n} Treffer",
+      "other": "{n} Treffer"
+    },
+    "count_of": "{n} von {total} Treffern",
+    "selected": "{n} ausgewählt",
+    "empty_title": "Eingang leer",
+    "empty_text": "Die Watchlist hat keine neuen Mixes gefunden.",
+    "empty_nosrc": "Noch keine Quellen in der Watchlist – Kanal, Playlist oder Suche hinzufügen, dann landen neue Mixes hier.",
+    "empty_next": "Nächste Prüfung: {t}.",
+    "to_watchlist": "Zur Watchlist"
+  },
+  "watchlist": {
+    "title": "Watchlist",
+    "sub_n": {
+      "one": "{n} Quelle · {active} aktiv",
+      "other": "{n} Quellen · {active} aktiv"
+    },
+    "sub_next": "nächste Prüfung {t}",
+    "add": "Quelle",
+    "check_all": "Alle jetzt prüfen",
+    "check": "Prüfen",
+    "checking": "prüft …",
+    "queued": "wartet …",
+    "running": "Prüft …",
+    "running_n": "Prüft {i} / {n} …",
+    "col_active": "Aktiv",
+    "col_name": "Name",
+    "col_type": "Typ",
+    "col_genre": "Genre",
+    "col_auto": "Neue Treffer",
+    "col_max": "Max.",
+    "col_last": "Zuletzt geprüft",
+    "col_new": "Neu",
+    "genre_auto": "automatisch",
+    "genre_auto_long": "Automatisch (aus Keywords)",
+    "auto_on": "laden",
+    "auto_off": "Eingang",
+    "auto_title_on": "Neue Treffer werden automatisch heruntergeladen",
+    "auto_title_off": "Neue Treffer landen nur im Eingang",
+    "new_title": "Im Eingang anzeigen",
+    "check_title": "Diese Quelle jetzt prüfen",
+    "why_off": "Quelle ist nicht aktiv",
+    "why_running": "Eine Prüfung läuft bereits",
+    "why_backoff": "Backoff aktiv – Prüfen ist gesperrt",
+    "why_backoff_p": "Backoff ({p}) aktiv – Prüfen ist gesperrt",
+    "why_sc_off": "SoundCloud ist ausgeschaltet",
+    "error_title": "Letzte Prüfung fehlgeschlagen",
+    "backoff": "<b>Backoff aktiv bis {t}</b> (noch {rest}). Die Watchlist kann nicht geprüft werden – auch geplante Prüfungen setzen so lange aus.",
+    "backoff_p": "<b>Backoff ({p}) aktiv bis {t}</b> (noch {rest}). Quellen von {p} werden so lange übersprungen – {other} läuft weiter.",
+    "backoff_link_sc": "SoundCloud öffnen",
+    "backoff_link": "Schonung öffnen",
+    "none_active": "Keine aktive Quelle zum Prüfen",
+    "empty_title": "Keine Quellen",
+    "empty_text": "Kanal, Playlist oder gespeicherte Suche hinzufügen.",
+    "add_title": "Quelle hinzufügen",
+    "edit_title": "Quelle bearbeiten",
+    "f_type": "Typ",
+    "f_name": "Name",
+    "f_url": "URL",
+    "f_query": "Suchbegriff",
+    "f_genre": "Standard-Genre",
+    "f_max": "Max. Einträge",
+    "f_newest_last": "Neueste stehen hinten (Playlist rückwärts lesen)",
+    "hint_newest_last": "YouTube hängt neue Videos bei vielen Playlists hinten an. Liest die ganze Playlist (ca. 1 Abfrage pro 100 Videos, max. 2000 Einträge).",
+    "rev_title": "Neueste stehen hinten – die Playlist wird von hinten gelesen",
+    "rev_short": "rückwärts",
+    "f_enabled": "Aktiv – bei «Alle prüfen» und im Zeitplan berücksichtigen",
+    "f_hits": "Neue Treffer",
+    "hits_inbox": "In den Eingang",
+    "hits_auto": "Automatisch laden",
+    "hint_inbox": "Treffer warten im Eingang, bis du sie lädst oder ignorierst.",
+    "hint_auto": "Treffer, die alle Filter bestehen, gehen direkt in die Warteschlange.",
+    "hint_channel": "YouTube-Kanal (…/@name oder …/channel/UC…, wahlweise /videos oder /streams) oder SoundCloud-Profil (soundcloud.com/name).",
+    "hint_playlist": "YouTube-Playlist mit «list=…» oder SoundCloud-Set (soundcloud.com/name/sets/set). Geprüft werden die neuesten Einträge.",
+    "f_platform": "Suchen auf",
+    "detected": "erkannt: {p} · {type}",
+    "not_detected": "URL nicht erkannt",
+    "suggested": "Vorschlag",
+    "suggested_title": "Aus der URL vorgeschlagen. Unverändert ersetzt ihn die erste Prüfung durch den echten Namen – oder einfach überschreiben.",
+    "hint_name_auto": "Vorschlag aus der URL – frei änderbar. Unverändert setzt die erste Prüfung den echten Namen.",
+    "hint_name_later": "Name kommt bei der ersten Prüfung – oder hier selbst eintragen.",
+    "name_auto_title": "Vorläufiger Name – die nächste Prüfung setzt den echten",
+    "hint_search": "Gespeicherte Suche, wie unter «Entdecken» – zählt bei jeder Prüfung als eine Suche.",
+    "hint_max": "pro Prüfung",
+    "max_default": "(Standard)",
+    "max_default_title": "Kein eigener Wert: es gilt «Einträge pro Quelle» aus Einstellungen › Zeitplan",
+    "max_title": "Leer = Standard aus Einstellungen › Zeitplan. Höchstens 200, bei Suchquellen 100.",
+    "ph_name": "z.B. Gabber Vault",
+    "ph_name_later": "kommt bei der ersten Prüfung",
+    "ph_channel": "https://www.youtube.com/@kanal  oder  https://soundcloud.com/name",
+    "ph_playlist": "https://www.youtube.com/playlist?list=…  oder  https://soundcloud.com/name/sets/…",
+    "ph_search": "z.B. frenchcore liveset",
+    "form_error": "Die Quelle konnte nicht gespeichert werden."
+  },
+  "downloads": {
+    "title": "Downloads",
+    "sub": "Sequenziell, ein Download gleichzeitig",
+    "pause": "Pausieren",
+    "resume": "Fortsetzen",
+    "cancel": "Abbrechen",
+    "retry": "Wiederholen",
+    "remove": "Entfernen",
+    "up": "Nach oben",
+    "down": "Nach unten",
+    "eta": "ETA",
+    "position": "Position {n}",
+    "sleep_left": "weiter in",
+    "sleep_why": "Schonung: zufällige Pause von {min}–{max} s zwischen zwei Downloads",
+    "next_up": "Als Nächstes",
+    "sleeping": "Pause läuft",
+    "sleep_range": "von {min}–{max} s",
+    "blocked_wait": "Wartet – {why}",
+    "why_backoff": "Backoff",
+    "why_day": "Tageslimit",
+    "why_run": "Lauf-Limit",
+    "why_paused": "pausiert",
+    "why_restart": "Neustart nötig",
+    "why_busy": "anderer Lauf aktiv",
+    "why_pot": "PO-Token-Server nicht bereit",
+    "why_target": "Zielordner nicht erreichbar",
+    "why_error": "Download-Modul fehlt",
+    "summary": "Heute {day}/{day_max} · Lauf {run}/{run_max}",
+    "summary_sc": "SoundCloud {day}/{day_max}",
+    "platform_blocked": "{reason}",
+    "platform_other": "{p} lädt weiter.",
+    "steps": "Laden · Konvertieren · Taggen",
+    "unlimited": "unbegrenzt",
+    "l_run": "Dieser Lauf",
+    "l_day": "Heute",
+    "l_rate": "Rate-Limit",
+    "l_sleep": "Pause zw. Downloads",
+    "sec_queue": "Warteschlange",
+    "sec_failed": "Fehlgeschlagen",
+    "empty_title": "Warteschlange leer",
+    "empty_text": "Mixes unter «Entdecken» oder im «Eingang» auswählen.",
+    "paused": "<b>Warteschlange pausiert.</b> Der laufende Download wird angehalten, bis du fortsetzt.",
+    "backoff": "<b>Backoff aktiv bis {t}</b> (noch {rest}). Downloads, Suche und Watchlist sind gesperrt.",
+    "backoff_rest": {
+      "one": "<b>Backoff aktiv bis {t}</b> (noch {rest}). Downloads, Suche und Watchlist sind gesperrt – {n} bleibt in der Warteschlange.",
+      "other": "<b>Backoff aktiv bis {t}</b> (noch {rest}). Downloads, Suche und Watchlist sind gesperrt – {n} bleiben in der Warteschlange."
+    },
+    "limit_day": "<b>Tageslimit erreicht ({n}/{max}).</b> Der Rest bleibt in der Warteschlange und läuft morgen weiter.",
+    "limit_day_rest": {
+      "one": "<b>Tageslimit erreicht ({n}/{max}).</b> {rest} bleibt in der Warteschlange und läuft morgen weiter.",
+      "other": "<b>Tageslimit erreicht ({n}/{max}).</b> {rest} bleiben in der Warteschlange und laufen morgen weiter."
+    },
+    "limit_run": "<b>Limit erreicht – {max}/{max} in diesem Lauf.</b> Der Rest bleibt in der Warteschlange und läuft im nächsten Lauf weiter.",
+    "limit_run_rest": {
+      "one": "<b>Limit erreicht – {max}/{max} in diesem Lauf.</b> {rest} bleibt in der Warteschlange und läuft im nächsten Lauf weiter.",
+      "other": "<b>Limit erreicht – {max}/{max} in diesem Lauf.</b> {rest} bleiben in der Warteschlange und laufen im nächsten Lauf weiter."
+    },
+    "limits_link": "Limits ändern",
+    "new_run": "Neuen Lauf starten",
+    "need_restart": "<b>Neustart nötig.</b> yt-dlp wurde aktualisiert – bitte HCLoader neu starten. Die Warteschlange bleibt erhalten.",
+    "busy": "Ein anderer Download-Lauf ist aktiv (z.B. die geplante Prüfung). Die Warteschlange wartet, bis er fertig ist.",
+    "local_pot": {
+      "one": "<b>PO-Token-Server nicht bereit.</b> {rest} bleibt in der Warteschlange und läuft weiter, sobald er läuft.",
+      "other": "<b>PO-Token-Server nicht bereit.</b> {rest} bleiben in der Warteschlange und laufen weiter, sobald er läuft."
+    },
+    "local_target": {
+      "one": "<b>Zielordner nicht erreichbar oder nicht beschreibbar.</b> {rest} bleibt in der Warteschlange und läuft weiter, sobald er wieder verfügbar ist.",
+      "other": "<b>Zielordner nicht erreichbar oder nicht beschreibbar.</b> {rest} bleiben in der Warteschlange und laufen weiter, sobald er wieder verfügbar ist."
+    },
+    "local_error": {
+      "one": "<b>Download-Modul (yt-dlp) konnte nicht geladen werden.</b> {rest} bleibt in der Warteschlange. Neuer Versuch nach «Fortsetzen», neuen Einträgen oder dem Speichern der Einstellungen.",
+      "other": "<b>Download-Modul (yt-dlp) konnte nicht geladen werden.</b> {rest} bleiben in der Warteschlange. Neuer Versuch nach «Fortsetzen», neuen Einträgen oder dem Speichern der Einstellungen."
+    },
+    "local_link_pot": "Netzwerk-Einstellungen",
+    "local_link_target": "Speicherort ändern",
+    "local_link_error": "Wartung"
+  },
+  "library": {
+    "title": "Bibliothek",
+    "sub": {
+      "one": "{n} Mix",
+      "other": "{n} Mixes"
+    },
+    "sub_shown": "{n} von {total} angezeigt",
+    "search": "Titel, Kanal oder Pfad …",
+    "all_genres": "Alle Genres",
+    "all_channels": "Alle Kanäle",
+    "all_years": "Alle Jahre",
+    "f_genre": "Genre",
+    "f_channel": "Kanal",
+    "f_year": "Jahr",
+    "f_sort": "Sortierung",
+    "sort_newest": "Neueste zuerst",
+    "sort_title": "Titel A–Z",
+    "sort_channel": "Kanal A–Z",
+    "sort_duration": "Längste zuerst",
+    "group": "Nach Genre",
+    "group_title": "Einträge nach Genre gruppieren",
+    "view_list": "Liste",
+    "view_grid": "Kacheln",
+    "clear": "Filter zurücksetzen",
+    "col_title": "Titel",
+    "col_channel": "Kanal",
+    "col_genre": "Genre",
+    "col_year": "Jahr",
+    "col_duration": "Dauer",
+    "col_size": "Grösse",
+    "col_loaded": "Geladen",
+    "play": "Abspielen",
+    "pause": "Pause",
+    "play_external": "Im Standardplayer öffnen",
+    "play_internal": "Im App-Player abspielen",
+    "play_missing": "Datei fehlt – Abspielen nicht möglich",
+    "more": "Weitere {n} anzeigen",
+    "now_playing": "Läuft gerade",
+    "retag_short": "Neu taggen",
+    "genre_working": "Genre wird gesetzt …",
+    "open_folder": "Ordner öffnen",
+    "retag": "Neu taggen (Tags, Cover und Ablageort nach den aktuellen Einstellungen)",
+    "delete": "Datei löschen",
+    "remove": "Eintrag entfernen",
+    "retagging": "Wird neu getaggt …",
+    "cue_title": "Tracklist als .cue-Datei neben der MP3",
+    "missing": "Datei fehlt",
+    "missing_title": "Die Datei wurde am gespeicherten Ort nicht gefunden (verschoben oder gelöscht?)",
+    "missing_chip": {
+      "one": "{n} fehlt",
+      "other": "{n} fehlen"
+    },
+    "missing_chip_title": "Nur Einträge zeigen, deren Datei fehlt",
+    "stat_count": "Mixes",
+    "stat_duration": "Gesamtdauer",
+    "stat_size": "Grösse",
+    "stat_genres": "Nach Genre",
+    "unit_h": "Std.",
+    "unit_min": "Min.",
+    "unit_gb": "GB",
+    "unit_mb": "MB",
+    "unit_kb": "KB",
+    "group_meta": {
+      "one": "{n} Mix · {dur}",
+      "other": "{n} Mixes · {dur}"
+    },
+    "empty_title": "Noch nichts geladen",
+    "empty_text": "Hier landet jeder Mix, sobald er fertig geladen und getaggt ist – mit Cover, Genre und Ablageort.",
+    "empty_discover": "Mixes entdecken",
+    "empty_watchlist": "Watchlist einrichten",
+    "target_down": "Zielordner nicht erreichbar: {path}",
+    "target_down_hint": "Laufwerk oder Netzfreigabe prüfen. Solange er fehlt, ist der Zustand der Dateien unbekannt: «Neu taggen» und «Eintrag entfernen» sind gesperrt.",
+    "unknown_title": "Zielordner nicht erreichbar – Zustand der Datei unbekannt",
+    "none_title": "Keine Treffer",
+    "none_text": "Kein Eintrag passt zu Suche und Filtern."
+  },
+  "player": {
+    "label": "Mini-Player",
+    "play": "Abspielen (Leertaste)",
+    "pause": "Pause (Leertaste)",
+    "back": "30 Sekunden zurück",
+    "fwd": "30 Sekunden vor",
+    "prev": "Vorheriger Track",
+    "next": "Nächster Track",
+    "seek": "Position",
+    "mute": "Stumm",
+    "unmute": "Ton ein",
+    "volume": "Lautstärke",
+    "close": "Player schliessen",
+    "tracks": "Trackliste",
+    "tracks_n": {
+      "one": "{n} Track",
+      "other": "{n} Tracks"
+    },
+    "tracks_toggle": "Trackliste ein-/ausblenden",
+    "no_tracks": "Keine Kapitel in dieser Datei",
+    "total": "Gesamtdauer {t}",
+    "keys": "Leertaste: Play/Pause · ←/→: 10 s",
+    "err_load": "Abspielen nicht möglich",
+    "err_src": "Abspielen nicht möglich: ungültige Dateiadresse",
+    "err_play": "Die Datei kann nicht abgespielt werden: {title}",
+    "external": "Wird im Standardplayer geöffnet …"
+  },
+  "log": {
+    "title": "Protokoll",
+    "sub": "Live-Log und Lauf-Historie",
+    "live": "Live-Log",
+    "history": "Lauf-Historie",
+    "lvl_debug": "Debug",
+    "lvl_info": "Info",
+    "lvl_warn": "Warn",
+    "lvl_error": "Fehler",
+    "lvl_title": "Stufe «{lvl}» ein-/ausblenden",
+    "search": "Im Log suchen …",
+    "following": "Live",
+    "paused": "Pausiert",
+    "follow_title": "Automatisch zur neuesten Zeile scrollen (pausiert beim Hochscrollen)",
+    "jump": "Zum Ende",
+    "jump_new": {
+      "one": "{n} neue Zeile",
+      "other": "{n} neue Zeilen"
+    },
+    "copy": "Kopieren",
+    "copy_title": "Sichtbare Zeilen in die Zwischenablage kopieren",
+    "open_logs": "Log-Ordner",
+    "open_logs_title": "Ordner mit den vollständigen Log-Dateien öffnen",
+    "lines": {
+      "one": "{n} Zeile",
+      "other": "{n} Zeilen"
+    },
+    "lines_of": "{n} von {total} Zeilen",
+    "empty": "Keine Zeilen für diese Stufen.",
+    "empty_search": "Keine Zeile enthält «{q}».",
+    "no_runs": "Noch keine Läufe.",
+    "no_runs_kind": "Keine Läufe dieser Art.",
+    "found": "gefunden",
+    "downloaded": "geladen",
+    "errors": "Fehler",
+    "running": "läuft …",
+    "kind_all": "Alle",
+    "timeline": "Zeitachse",
+    "table": "Tabelle",
+    "view_title": "Darstellung der Lauf-Historie",
+    "col_kind": "Art",
+    "col_start": "Start",
+    "col_duration": "Dauer",
+    "col_found": "Gefunden",
+    "col_downloaded": "Geladen",
+    "col_errors": "Fehler",
+    "col_note": "Notiz",
+    "backoff": "Backoff",
+    "runs_sum": {
+      "one": "{n} Lauf · {dl} geladen · {err} Fehler",
+      "other": "{n} Läufe · {dl} geladen · {err} Fehler"
+    },
+    "today": "Heute",
+    "yesterday": "Gestern"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "sub": "Alles, was die App tut, ist hier einstellbar"
+  },
+  "tabs": {
+    "general": "Allgemein",
+    "filters": "Filter & Keywords",
+    "genres": "Genres",
+    "download": "Download & Qualität",
+    "storage": "Ablage & Tags",
+    "throttle": "Schonung",
+    "soundcloud": "SoundCloud",
+    "network": "Netzwerk & PO-Token",
+    "schedule": "Zeitplan",
+    "appearance": "Darstellung",
+    "maintenance": "Wartung"
+  },
+  "tabs_hint": {
+    "general": "Grundlegendes Verhalten der App.",
+    "filters": "Standardfilter für Suche und Watchlist. Im Filter-Panel unter «Entdecken» temporär überschreibbar.",
+    "genres": "Reihenfolge = Priorität. Das erste Genre, dessen Keyword im Titel vorkommt, gewinnt. Manuell gesetzte Genres und das Standard-Genre einer Quelle gehen vor.",
+    "download": "YouTube liefert meist Opus mit ca. 130–160 kbps. MP3 ist eine Umwandlung und klingt nicht besser als die Quelle – ist aber überall abspielbar.",
+    "storage": "Wohin die Dateien kommen und wie sie heissen. Die Struktur ist auf Medienserver wie Plex oder Jellyfin ausgelegt.",
+    "throttle": "Begrenzt die Last auf YouTube. Diese Werte gelten für Suche, Watchlist und Downloads gemeinsam. SoundCloud hat eigene Werte im Tab «SoundCloud».",
+    "soundcloud": "SoundCloud als zweite Quelle für Suche, Watchlist und Downloads – mit eigenen Limits, eigenen Zählern und eigenem Backoff, unabhängig von YouTube.",
+    "network": "Der PO-Token weist Requests als echten Browser aus und senkt das Risiko von Bot-Sperren.",
+    "schedule": "Wann die Watchlist automatisch geprüft wird – in der App und über die Windows-Aufgabenplanung.",
+    "appearance": "Look & Feel. Änderungen sind sofort als Vorschau sichtbar und gelten erst nach dem Speichern dauerhaft.",
+    "maintenance": "Versionen, Updates, Datenbank."
+  },
+  "set": {
+    "default": "Standard",
+    "range": "Bereich",
+    "browse": "Wählen",
+    "not_set": "nicht gesetzt",
+    "saving": "Speichert …",
+    "discard": "Verwerfen",
+    "tab_reset": "Tab auf Standard",
+    "tab_reset_title": "Alle Felder dieses Tabs auf die Standardwerte setzen (wird erst mit «Speichern» wirksam)",
+    "state_clean": "Alles gespeichert",
+    "state_dirty": {
+      "one": "{n} ungespeicherte Änderung",
+      "other": "{n} ungespeicherte Änderungen"
+    },
+    "state_errors": {
+      "one": "{n} Fehler – bitte korrigieren",
+      "other": "{n} Fehler – bitte korrigieren"
+    },
+    "h": {
+      "search": "Suche",
+      "duration": "Dauer & Zeitraum",
+      "keywords": "Keywords",
+      "display": "Anzeige",
+      "cover": "Cover",
+      "chapters": "Kapitel & Tracklist",
+      "tags": "Tags",
+      "soundcloud": "SoundCloud",
+      "playback": "Wiedergabe",
+      "pauses": "Pausen & Bandbreite",
+      "limits": "Limits",
+      "backoff": "Backoff bei Sperre",
+      "po": "PO-Token-Provider",
+      "fallback": "Notlösungen",
+      "in_app": "In der App",
+      "task": "Windows-Aufgabenplanung",
+      "updates": "Updates",
+      "app_update": "App-Update",
+      "database": "Datenbank",
+      "reset": "Zurücksetzen"
+    },
+    "general": {
+      "start_view": {
+        "label": "Startansicht",
+        "help": "Welche Ansicht nach dem Start geöffnet wird."
+      },
+      "log_level": {
+        "label": "Log-Stufe",
+        "help": "Wie ausführlich die Log-Datei und das Live-Log sind. DEBUG nur zur Fehlersuche."
+      },
+      "confirm_delete": {
+        "label": "Löschen bestätigen",
+        "help": "Vor dem Löschen eines Mixes aus der Bibliothek (Eintrag + Datei) nachfragen."
+      },
+      "language": {
+        "label": "Sprache",
+        "help": "Sprache der Oberfläche und der Meldungen. «Automatisch» übernimmt die Windows-Sprache (sonst Englisch). Die Ansicht wird nach dem Speichern sofort neu aufgebaut."
+      }
+    },
+    "player": {
+      "mode": {
+        "label": "Abspielen mit",
+        "help": "Womit ▶ in der Bibliothek abspielt. Der eingebaute Player zeigt Kapitel als Sprungmarken und spielt beim Ansichtswechsel weiter. Die andere Variante steht pro Eintrag im Menü."
+      }
+    },
+    "search": {
+      "results_count": {
+        "label": "Treffer pro Suche",
+        "help": "Anzahl Ergebnisse, die eine Suche flach abfragt. Mehr Treffer = mehr Last für YouTube."
+      },
+      "append_year": {
+        "label": "Jahreszahl an Suche anhängen",
+        "help": "Beim Upload-Zeitraum «Bestimmtes Jahr» wird die Jahreszahl an den Suchbegriff angehängt (z.B. «hardcore liveset 2013»). So findet YouTube mehr Mixes aus diesem Jahr."
+      }
+    },
+    "filters": {
+      "min_duration": {
+        "label": "Mindestlänge",
+        "help": "Kürzere Videos werden nie als Mix behandelt."
+      },
+      "max_duration": {
+        "label": "Maximallänge",
+        "help": "0 = unbegrenzt."
+      },
+      "upload_period": {
+        "label": "Upload-Zeitraum",
+        "help": "Welche Uploads standardmässig angezeigt werden. «Bestimmtes Jahr» zeigt nur Mixes aus einem Jahr, «Benutzerdefiniert» einen Bereich von/bis."
+      },
+      "upload_year": {
+        "label": "Jahr",
+        "help": "Ein Mix zählt, wenn das Upload-Jahr passt oder die Jahreszahl im Titel steht. YouTube liefert das Datum in der Suche nur ungefähr – dort gilt ±1 Jahr."
+      },
+      "upload_from": {
+        "label": "Von",
+        "help": "Frühestes Upload-Datum. Leer = offen."
+      },
+      "upload_to": {
+        "label": "Bis",
+        "help": "Spätestes Upload-Datum. Leer = offen. Bei ungefährem Datum gilt an beiden Rändern ±1 Jahr Toleranz."
+      },
+      "include_keywords": {
+        "label": "Include-Keywords",
+        "help": "Mindestens eines muss im Titel vorkommen. Leer = alles zulassen. Enter oder Komma fügt hinzu."
+      },
+      "exclude_keywords": {
+        "label": "Exclude-Keywords",
+        "help": "Kommt eines davon im Titel vor, wird das Video verworfen."
+      },
+      "match_description": {
+        "label": "Beschreibung durchsuchen",
+        "help": "Keywords auch in der Videobeschreibung prüfen. Flache Abfragen liefern sie oft nicht."
+      },
+      "hide_done_ignored": {
+        "label": "Geladene & ignorierte ausblenden",
+        "help": "Bereits geladene und ignorierte Videos in den Treffern verstecken."
+      },
+      "apply_channel_blacklist": {
+        "label": "Kanal-Blacklist anwenden",
+        "help": "Videos blockierter Kanäle nie anzeigen."
+      },
+      "hide_cross_platform_duplicates": {
+        "label": "Plattform-Duplikate ausblenden",
+        "help": "Treffer verstecken, die vermutlich schon von der anderen Plattform (YouTube bzw. SoundCloud) geladen oder eingereiht sind – gleiche Dauer (±5 s) und sehr ähnlicher Titel. Aus: sie erscheinen mit dem Hinweis «Vermutlich bereits geladen»."
+      }
+    },
+    "blacklist": {
+      "label": "Blockierte Kanäle",
+      "help": "Kanäle blockierst du über das Menü einer Karte. Hier lassen sie sich wieder freigeben.",
+      "none": "Keine Kanäle blockiert",
+      "unblock": "Freigeben"
+    },
+    "genres": {
+      "add": "Genre",
+      "up": "Höhere Priorität",
+      "down": "Tiefere Priorität",
+      "delete": "Genre löschen",
+      "color": "Farbe wählen",
+      "name_ph": "Name",
+      "kw_ph": "+ Keyword",
+      "fallback": "Fallback – greift, wenn kein Keyword passt. Immer vorhanden, immer zuletzt."
+    },
+    "download": {
+      "audio_format": {
+        "label": "Ausgabeformat",
+        "help": "MP3 oder das Original von YouTube ohne Umwandlung behalten."
+      },
+      "mp3_quality": {
+        "label": "MP3-Qualität",
+        "help": "320 kbps CBR ist am kompatibelsten, V0 VBR spart etwas Platz."
+      },
+      "embed_cover": {
+        "label": "Cover einbetten",
+        "help": "Thumbnail quadratisch zugeschnitten als Cover in die Datei schreiben."
+      },
+      "write_cover_jpg": {
+        "label": "cover.jpg zusätzlich speichern",
+        "help": "Für Medienserver, die Ordner-Cover lesen."
+      },
+      "write_cue": {
+        "label": ".cue-Datei schreiben",
+        "help": "Tracklist aus Kapiteln oder Zeitstempeln der Beschreibung, neben der Audiodatei."
+      },
+      "write_id3_chapters": {
+        "label": "ID3-Kapitel schreiben",
+        "help": "Kapitelmarken (CHAP/CTOC) direkt in die MP3 einbetten."
+      },
+      "keep_original_soundcloud": {
+        "label": "SoundCloud-Original behalten",
+        "help": "SoundCloud-Audio unverändert speichern (AAC 160 kbps als .m4a, MP3 128 kbps als .mp3) – keine zweite verlustbehaftete Umwandlung. Aus: wie «Ausgabeformat»."
+      }
+    },
+    "storage": {
+      "target_dir": {
+        "label": "Zielordner",
+        "help": "Wurzel der Musikablage. Temporäre Dateien liegen in «.tmp» darunter. In der Portable-Version wird ein relativer Pfad wie «.\\Music» relativ zum App-Ordner aufgelöst (z.B. auf dem USB-Stick)."
+      },
+      "path_template": {
+        "label": "Pfadmuster",
+        "help": "Relativ zum Zielordner, ohne Dateiendung. «/» trennt Ordner. {id} muss enthalten sein (bei SoundCloud «sc-<id>»). {platform} ergibt «YouTube» bzw. «SoundCloud» – z.B. als oberster Ordner, um die Quellen zu trennen."
+      },
+      "max_title_length": {
+        "label": "Max. Titellänge",
+        "help": "Längere Titel werden im Dateinamen gekürzt."
+      },
+      "max_path_length": {
+        "label": "Max. Pfadlänge",
+        "help": "Gesamtpfad inklusive Zielordner. Windows erlaubt ohne Zusatzeinstellung 259 Zeichen."
+      },
+      "artist_from_title": {
+        "label": "Artist aus Titel lesen",
+        "help": "Muster «ARTIST @ EVENT» und «ARTIST - TITEL» erkennen, sonst den Kanalnamen verwenden."
+      },
+      "title_cleanup_patterns": {
+        "label": "Titel bereinigen",
+        "help": "Reguläre Ausdrücke, deren Treffer aus dem Titel entfernt werden. Enter fügt hinzu.",
+        "ph": "+ Regex"
+      }
+    },
+    "path_preview": {
+      "label": "Vorschau",
+      "help": "Platzhalter anklicken, um sie ins Pfadmuster einzufügen."
+    },
+    "throttle": {
+      "sleep_requests": {
+        "label": "Pause zwischen Requests",
+        "help": "Wartezeit zwischen Metadaten-Abfragen (Suche, Watchlist)."
+      },
+      "sleep_interval": {
+        "label": "Download-Pause – Minimum",
+        "help": "Nach jedem Download wird zufällig zwischen Minimum und Maximum gewartet."
+      },
+      "max_sleep_interval": {
+        "label": "Download-Pause – Maximum",
+        "help": "Obere Grenze der zufälligen Pause."
+      },
+      "limit_rate_mb": {
+        "label": "Download-Rate",
+        "help": "Maximale Bandbreite. 0 = unbegrenzt (nicht empfohlen)."
+      },
+      "max_downloads_per_run": {
+        "label": "Max. Downloads pro Lauf",
+        "help": "Der Rest bleibt in der Warteschlange."
+      },
+      "max_downloads_per_day": {
+        "label": "Max. Downloads pro Tag",
+        "help": "Zähler gilt für manuelle und automatische Downloads zusammen."
+      },
+      "max_searches_per_hour": {
+        "label": "Max. Suchen pro Stunde",
+        "help": "Schützt vor versehentlichem Dauersuchen."
+      },
+      "backoff_initial_hours": {
+        "label": "Backoff – Startwert",
+        "help": "Sperrzeit nach HTTP 429 oder «confirm you’re not a bot»."
+      },
+      "backoff_max_hours": {
+        "label": "Backoff – Maximum",
+        "help": "Die Sperrzeit verdoppelt sich bei jeder weiteren Sperre bis zu diesem Wert."
+      }
+    },
+    "backoff": {
+      "none": "Kein Backoff aktiv ({p})",
+      "none_detail": "Suche, Watchlist und Downloads von {p} sind freigegeben.",
+      "active": "Backoff aktiv ({p})",
+      "active_detail": "bis {t} · noch {rest} · Stufe {level}",
+      "blocked": "{p} hat eine Sperre signalisiert. Suche, Watchlist und Downloads von {p} sind blockiert, bis die Zeit abgelaufen ist.",
+      "clear": "Manuell aufheben",
+      "sc_off": "SoundCloud ist ausgeschaltet",
+      "sc_off_detail": "Keine Suche, keine Watchlist-Prüfung und keine Downloads von SoundCloud."
+    },
+    "soundcloud": {
+      "enabled": {
+        "label": "SoundCloud verwenden",
+        "help": "Aus: keine SoundCloud-Suche, keine Prüfung von SoundCloud-Quellen und keine SoundCloud-Downloads. Bereits Geladenes bleibt in der Bibliothek."
+      },
+      "sleep_requests": {
+        "label": "Pause zwischen Requests",
+        "help": "Wartezeit zwischen Metadaten-Abfragen an SoundCloud (Suche, Watchlist)."
+      },
+      "sleep_interval": {
+        "label": "Download-Pause – Minimum",
+        "help": "Nach jedem SoundCloud-Download wird zufällig zwischen Minimum und Maximum gewartet."
+      },
+      "max_sleep_interval": {
+        "label": "Download-Pause – Maximum",
+        "help": "Obere Grenze der zufälligen Pause."
+      },
+      "limit_rate_mb": {
+        "label": "Download-Rate",
+        "help": "Maximale Bandbreite. 0 = unbegrenzt (nicht empfohlen)."
+      },
+      "max_downloads_per_run": {
+        "label": "Max. Downloads pro Lauf",
+        "help": "Eigener Zähler für SoundCloud. Der Rest bleibt in der Warteschlange."
+      },
+      "max_downloads_per_day": {
+        "label": "Max. Downloads pro Tag",
+        "help": "Eigener Zähler für SoundCloud, manuelle und automatische Downloads zusammen."
+      },
+      "max_searches_per_hour": {
+        "label": "Max. Suchen pro Stunde",
+        "help": "Eigener Zähler für SoundCloud."
+      },
+      "backoff_initial_hours": {
+        "label": "Backoff – Startwert",
+        "help": "Sperrzeit, nachdem SoundCloud zu viele Anfragen gemeldet hat (HTTP 429)."
+      },
+      "backoff_max_hours": {
+        "label": "Backoff – Maximum",
+        "help": "Die Sperrzeit verdoppelt sich bei jeder weiteren Sperre bis zu diesem Wert."
+      }
+    },
+    "ladder": {
+      "label": "Stufen",
+      "help": "So steigt die Sperrzeit mit den aktuellen Werten.",
+      "reset": "Reset nach erfolgreichem Lauf",
+      "invalid": "Ungültige Werte"
+    },
+    "network": {
+      "po_token_mode": {
+        "label": "Modus",
+        "help": "bgutil-Plugin für yt-dlp. Script startet Deno bei Bedarf, HTTP lässt einen lokalen Server mitlaufen."
+      },
+      "po_token_port": {
+        "label": "HTTP-Port",
+        "help": "Nur im HTTP-Modus. Der Server lauscht auf 127.0.0.1."
+      },
+      "po_token_ttl_hours": {
+        "label": "Token-Gültigkeit",
+        "help": "Nach dieser Zeit wird ein neuer Token erzeugt. Der Wert wird auf ganze Stunden gerundet (mindestens 1 h)."
+      },
+      "cookies_from_browser": {
+        "label": "Cookies aus Browser",
+        "help": "Meldet yt-dlp mit deinem Browser-Login an. Nur einschalten, wenn es ohne nicht mehr geht."
+      },
+      "proxy": {
+        "label": "Proxy",
+        "help": "Optional, z.B. socks5://127.0.0.1:1080. Leer = direkte Verbindung.",
+        "ph": "kein Proxy"
+      }
+    },
+    "po": {
+      "active": "PO-Token aktiv",
+      "inactive": "PO-Token inaktiv",
+      "error": "PO-Token-Fehler",
+      "mode": "Modus",
+      "test": "Testen",
+      "testing": "Testet …",
+      "test_ok": "Test erfolgreich.",
+      "test_fail": "Test fehlgeschlagen.",
+      "unsaved": "Der Test verwendet die gespeicherten Einstellungen. Änderungen zuerst speichern."
+    },
+    "cookies": {
+      "warn_off": "<b>Empfohlen: Aus.</b> PO-Token und Browser-Cookies kombiniert können Probleme machen.",
+      "warn_on": "<b>Notlösung aktiv.</b> PO-Token und Browser-Cookies kombiniert können zu Fehlern oder Sperren führen, und dein YouTube-Konto wird für die Abfragen verwendet. Sobald es ohne geht, wieder ausschalten. Cookies landen nie im Log."
+    },
+    "schedule": {
+      "in_app_check": {
+        "label": "Prüfen, während die App läuft",
+        "help": "Die Watchlist wird im eingestellten Intervall geprüft, solange das Fenster offen ist."
+      },
+      "watchlist_interval_hours": {
+        "label": "Intervall",
+        "help": "Abstand zwischen zwei Prüfungen in der App."
+      },
+      "entries_per_source": {
+        "label": "Einträge pro Quelle",
+        "help": "Wie viele neueste Einträge pro Prüfung flach abgefragt werden (Standard für neue Quellen)."
+      },
+      "task_scheduler_enabled": {
+        "label": "Aufgabenplanung verwenden",
+        "help": "Prüft die Watchlist auch bei geschlossener App (headless). Wird durch «Aufgabe anlegen» eingeschaltet."
+      },
+      "task_time": {
+        "label": "Uhrzeit",
+        "help": "Tägliche Startzeit der geplanten Aufgabe."
+      }
+    },
+    "next": {
+      "title": "Nächste Prüfung",
+      "off": "Keine automatische Prüfung",
+      "off_detail": "Weder die Prüfung in der App noch die Windows-Aufgabe ist aktiv. Die Watchlist wird nur von Hand geprüft.",
+      "app_detail": "In der App, alle {h} h – solange HCLoader läuft.",
+      "task_detail": "Über die Windows-Aufgabenplanung, täglich um {time} – auch bei geschlossener App.",
+      "any_detail": "Der frühere Termin von App-Intervall und Windows-Aufgabe.",
+      "also_task": "Zusätzlich: Windows-Aufgabe täglich um {time}.",
+      "also_app": "Zusätzlich in der App alle {h} h.",
+      "pending": "Noch nicht geplant",
+      "pending_detail": "Die App legt den nächsten Termin fest, sobald sie die Watchlist das erste Mal geprüft hat.",
+      "due": "Fällig – startet in Kürze",
+      "backoff": "<b>Backoff aktiv.</b> Bis {t} wird nicht geprüft; der Termin wird danach nachgeholt bzw. übersprungen.",
+      "unsaved": "Ungespeicherte Änderungen am Zeitplan wirken erst nach dem Speichern."
+    },
+    "task": {
+      "loading": "Aufgabe wird abgefragt …",
+      "registered": "Aufgabe registriert",
+      "registered_detail": "{name} · täglich {time} · nächster Lauf {next}",
+      "none": "Keine Aufgabe registriert",
+      "none_detail": "Legt in Windows eine tägliche Aufgabe um {time} an (schtasks).",
+      "create": "Aufgabe anlegen",
+      "remove": "Aufgabe entfernen",
+      "moved": "App wurde verschoben – Aufgabe neu anlegen",
+      "moved_detail": "Die geplante Aufgabe startet noch {cmd}. Neu anlegen übernimmt den aktuellen App-Ordner.",
+      "recreate": "Aufgabe neu anlegen",
+      "unknown": "Status der Aufgabe unbekannt",
+      "unknown_detail": "Die Windows-Aufgabenplanung hat nicht geantwortet. Die Einstellung bleibt unverändert.",
+      "recheck": "Erneut prüfen"
+    },
+    "appearance": {
+      "reduce_effects": {
+        "label": "Effekte reduzieren",
+        "help": "Schaltet Scanlines, Glitch und alle Animationen ab."
+      },
+      "scanlines": {
+        "label": "Scanlines & Rauschen",
+        "help": "Feines Overlay über der ganzen Oberfläche."
+      },
+      "pulse_bpm": {
+        "label": "Kick-Puls",
+        "help": "Takt, in dem der Fortschrittsbalken pulsiert."
+      }
+    },
+    "pulse_preview": {
+      "label": "Vorschau",
+      "help": "So pulsiert ein laufender Download.",
+      "off": "Effekte reduziert"
+    },
+    "versions": {
+      "plugin": "PO-Token-Plugin",
+      "was": "vorher {v}"
+    },
+    "update": {
+      "label": "yt-dlp & Plugin",
+      "help": "YouTube ändert sich laufend. Bei Fehlern zuerst aktualisieren (pip im venv).",
+      "button": "yt-dlp & Plugin aktualisieren",
+      "running": "Aktualisiert …",
+      "last_check": "Letzte Prüfung",
+      "restart": "<b>Neustart nötig.</b> yt-dlp wurde aktualisiert. Bis zum Neustart von HCLoader sind Suche und Downloads gesperrt, die Warteschlange bleibt erhalten.",
+      "restart_title": "Neustart nötig",
+      "restart_text": "yt-dlp wurde aktualisiert. Bitte HCLoader schliessen und neu starten – bis dahin sind Suche und Downloads gesperrt, die Warteschlange bleibt erhalten.",
+      "out_live": "Ausgabe · läuft seit {t}",
+      "out_done": "Ausgabe · fertig nach {t}",
+      "out_failed": "Ausgabe · fehlgeschlagen",
+      "out_last": "Ausgabe",
+      "waiting": "pip wird gestartet …"
+    },
+    "maintenance": {
+      "check_updates_on_start": {
+        "label": "Beim Start nach Updates suchen",
+        "help": "yt-dlp und PO-Token-Plugin, höchstens einmal pro Tag."
+      },
+      "check_app_updates_on_start": {
+        "label": "Beim Start nach HCLoader-Updates suchen",
+        "help": "Fragt einmal pro Start bei GitHub nach einer neuen Version. Geladen wird erst nach deinem Klick."
+      },
+      "apply_update_on_exit": {
+        "label": "Update beim Beenden einspielen",
+        "help": "Ein heruntergeladenes Update wird beim Schliessen von HCLoader eingespielt («Später»). Aus: es wird beim nächsten Start wieder angeboten."
+      },
+      "update_repo": {
+        "label": "Update-Quelle (GitHub)",
+        "help": "Repo im Format «besitzer/repo». Nur für Forks ändern."
+      }
+    },
+    "db": {
+      "label": "Datenbank",
+      "help": "Status aller Videos, Quellen und Läufe. Ein Backup kopiert die Datei in den Ordner «backups».",
+      "backup": "DB-Backup erstellen",
+      "backing_up": "Sichert …",
+      "open": "Datenordner",
+      "open_logs": "Log-Ordner",
+      "open_title": "Ordner mit Datenbank, Konfiguration und Backups öffnen",
+      "open_logs_title": "Ordner mit den Log-Dateien öffnen",
+      "info": {
+        "one": "{n} Eintrag · {mb} MB",
+        "other": "{n} Einträge · {mb} MB"
+      },
+      "last": "Letztes Backup",
+      "never": "noch keines",
+      "keep": "Es bleiben die 10 neuesten Backups erhalten, ältere werden beim nächsten Backup gelöscht.",
+      "backups": "Backups",
+      "backups_more": "+ {n} ältere im Ordner «backups»",
+      "fresh": "neu"
+    },
+    "reset_all": {
+      "label": "Alle Einstellungen",
+      "help": "Setzt sämtliche Tabs auf die Standardwerte. Datenbank und Musikdateien bleiben unberührt.",
+      "button": "Alles auf Standard"
+    }
+  },
+  "opt": {
+    "general": {
+      "log_level": {
+        "DEBUG": "DEBUG",
+        "INFO": "INFO",
+        "WARNING": "WARNING",
+        "ERROR": "ERROR"
+      },
+      "language": {
+        "auto": "Automatisch (Systemsprache)"
+      }
+    },
+    "player": {
+      "mode": {
+        "internal": "Eingebauter Player (empfohlen)",
+        "external": "Windows-Standardplayer"
+      }
+    },
+    "download": {
+      "audio_format": {
+        "mp3": "MP3",
+        "original": "Original (Opus/M4A, ohne Umwandlung)"
+      },
+      "mp3_quality": {
+        "320": "320 kbps CBR",
+        "v0": "V0 VBR"
+      }
+    },
+    "network": {
+      "cookies_from_browser": {
+        "none": "Aus",
+        "edge": "Edge",
+        "chrome": "Chrome",
+        "firefox": "Firefox",
+        "brave": "Brave"
+      }
+    }
+  },
+  "dlg": {
+    "block": {
+      "title": "Kanal blockieren",
+      "text": "Videos von «{ch}» werden künftig nicht mehr angezeigt. Rückgängig unter Einstellungen › Filter & Keywords.",
+      "ok": "Blockieren"
+    },
+    "ignore_all": {
+      "title": "Treffer ignorieren",
+      "text": {
+        "one": "{n} Treffer im Eingang als ignoriert markieren? Er wird nicht geladen und taucht im Eingang nicht mehr auf.",
+        "other": "{n} Treffer im Eingang als ignoriert markieren? Sie werden nicht geladen und tauchen im Eingang nicht mehr auf."
+      },
+      "ok": "Ignorieren"
+    },
+    "del_source": {
+      "title": "Quelle löschen",
+      "text": "«{name}» aus der Watchlist entfernen? Bereits geladene Mixes bleiben erhalten."
+    },
+    "del_mix": {
+      "title": "Mix löschen",
+      "text": "«{title}» wird aus der Bibliothek entfernt und die Datei von der Festplatte gelöscht:",
+      "ok": "Datei löschen",
+      "warn": "<b>Lässt sich nicht rückgängig machen.</b> Die Audiodatei und eine zugehörige .cue-Datei werden gelöscht. Der Mix wird als «ignoriert» markiert und <b>nicht erneut geladen</b>.",
+      "meta": "{dur} · {size}"
+    },
+    "outside_mix": {
+      "title": "Nur Eintrag entfernen",
+      "text": "Die Datei zu «{title}» liegt ausserhalb des aktuellen Zielordners und wird deshalb nicht gelöscht:",
+      "ok": "Nur Eintrag entfernen",
+      "warn": "Die Datei bleibt unberührt an ihrem Ort liegen. Der Eintrag verschwindet aus der Bibliothek, der Mix wird als «ignoriert» markiert und <b>nicht erneut geladen</b>."
+    },
+    "remove_mix": {
+      "title": "Eintrag entfernen",
+      "text": "Die Datei zu «{title}» wurde am gespeicherten Ort nicht gefunden:",
+      "ok": "Eintrag entfernen",
+      "warn": "Der Eintrag verschwindet aus der Bibliothek. Der Mix wird als «ignoriert» markiert und <b>nicht erneut geladen</b>. Liegt die Datei woanders, bleibt sie unberührt."
+    },
+    "backoff": {
+      "title": "Backoff aufheben",
+      "ok": "Trotzdem aufheben",
+      "text": "Die Sperrzeit schützt dich: {p} hat signalisiert, dass zu viele Anfragen kamen.",
+      "warn": "<b>Nur aufheben, wenn du sicher bist, dass die Sperre vorbei ist.</b> Greift die App zu früh wieder zu, kann {p} deine IP länger oder dauerhaft einschränken."
+    },
+    "reset_all": {
+      "title": "Alles auf Standard",
+      "text": "Alle Einstellungen in allen Tabs werden sofort auf die Standardwerte gesetzt und gespeichert.",
+      "ok": "Zurücksetzen"
+    }
+  },
+  "toast": {
+    "enqueued": {
+      "one": "{n} Mix zur Warteschlange hinzugefügt",
+      "other": "{n} Mixes zur Warteschlange hinzugefügt"
+    },
+    "enqueued_none": "Nichts hinzugefügt – bereits in der Warteschlange oder geladen",
+    "enqueued_skipped": "{n} übersprungen",
+    "queue_cancelled": "Abgebrochen: {title}",
+    "queue_removed": "Entfernt: {title}",
+    "queue_retry": "Erneut eingereiht: {title}",
+    "queue_paused": "Warteschlange pausiert",
+    "queue_resumed": "Warteschlange läuft weiter",
+    "new_run": "Neuer Lauf gestartet",
+    "ignored": "Ignoriert: {title}",
+    "unignored": "Wieder sichtbar: {title}",
+    "ignored_n": {
+      "one": "{n} Treffer ignoriert",
+      "other": "{n} Treffer ignoriert"
+    },
+    "opening": "Öffnet {p} im Browser …",
+    "watch_added": "Zur Watchlist hinzugefügt: {ch}",
+    "blocked": "Kanal blockiert: {ch}",
+    "genre_set": "Genre gesetzt: {genre}",
+    "done": "Geladen: {title}",
+    "failed": "Fehlgeschlagen: {title} – {error}",
+    "wl_started": {
+      "one": "Watchlist wird geprüft ({n} Quelle, mit Throttle) …",
+      "other": "Watchlist wird geprüft ({n} Quellen, mit Throttle) …"
+    },
+    "wl_started_one": "«{name}» wird geprüft …",
+    "wl_none": "Keine aktive Quelle – nichts zu prüfen",
+    "wl_done": {
+      "one": "Quelle geprüft: nichts Neues",
+      "other": "Watchlist geprüft: {n} Quellen, nichts Neues"
+    },
+    "wl_done_found": {
+      "one": "Watchlist geprüft: {n} neuer Treffer",
+      "other": "Watchlist geprüft: {n} neue Treffer"
+    },
+    "wl_errors": {
+      "one": "{n} Quelle mit Fehler",
+      "other": "{n} Quellen mit Fehler"
+    },
+    "source_added": "Quelle hinzugefügt: {name}",
+    "source_saved": "Quelle gespeichert: {name}",
+    "source_deleted": "Quelle gelöscht: {name}",
+    "retagged": "Neu getaggt: {title}",
+    "retagged_moved": "Neu getaggt und verschoben: {title} → {path}",
+    "deleted": "Gelöscht: {title}",
+    "removed": "Eintrag entfernt: {title}",
+    "folder_opening": "Ordner wird geöffnet …",
+    "copied": {
+      "one": "{n} Zeile kopiert",
+      "other": "{n} Zeilen kopiert"
+    },
+    "copy_failed": "Kopieren nicht möglich",
+    "copy_none": "Keine sichtbaren Zeilen",
+    "settings_saved": "Einstellungen gespeichert",
+    "settings_errors": {
+      "one": "{n} Eingabe ist ungültig",
+      "other": "{n} Eingaben sind ungültig"
+    },
+    "backoff_cleared": "Backoff ({p}) manuell aufgehoben",
+    "genre_moved": "Genre: {genre} – verschoben nach {path}",
+    "genre_retagged": "Genre: {genre} – Tags angepasst",
+    "genre_entry_only": "Genre: {genre} – nur der Eintrag wurde geändert, die Datei ist nicht erreichbar",
+    "genre_failed": "Genre konnte nicht gesetzt werden: {error}",
+    "task_created": "Aufgabe in der Windows-Aufgabenplanung angelegt",
+    "task_removed": "Aufgabe entfernt",
+    "updated": "Aktualisiert auf yt-dlp {v}",
+    "up_to_date": "Bereits aktuell (yt-dlp {v})",
+    "update_failed": "Aktualisierung fehlgeschlagen",
+    "restart_required": "Aktualisiert – bitte HCLoader neu starten, damit Suche und Downloads wieder laufen",
+    "backup_done": "Backup erstellt: {path}",
+    "reset_all": "Alle Einstellungen zurückgesetzt"
+  },
+  "upd": {
+    "available": "Version {v} verfügbar",
+    "available_sub": "Installiert: {cur}",
+    "download": "Herunterladen",
+    "notes": "Änderungen",
+    "later": "Später",
+    "close": "Schliessen",
+    "cancel": "Abbrechen",
+    "retry": "Erneut versuchen",
+    "downloading": "Update {v} wird geladen",
+    "phase_download": "Download",
+    "phase_verify": "Prüfen",
+    "phase_prepare": "Vorbereiten",
+    "ready": "Update {v} bereit",
+    "ready_sub": "Zum Einspielen wird HCLoader kurz geschlossen und neu gestartet.",
+    "restart_now": "Jetzt neu starten",
+    "on_exit": "Beim Beenden",
+    "applying": "Update wird eingespielt …",
+    "applying_sub": "HCLoader schliesst sich und startet gleich neu.",
+    "error": "App-Update fehlgeschlagen",
+    "blocked": "Automatisches Update nicht möglich",
+    "notes_title": "Änderungen in Version {v}",
+    "notes_empty": "Keine Änderungsnotizen vorhanden.",
+    "notes_link": "Release auf GitHub",
+    "confirm_title": "Jetzt neu starten?",
+    "confirm_ok": "Neu starten",
+    "confirm_text": "HCLoader wird geschlossen, das Update eingespielt und die App neu gestartet. Ein laufender Download wird abgebrochen und bleibt in der Warteschlange. Musik, Einstellungen und Datenbank bleiben unverändert.",
+    "on_exit_toast": "Das Update wird beim Beenden von HCLoader eingespielt.",
+    "later_toast": "Das Update bleibt bereit und wird beim nächsten Start wieder angeboten.",
+    "section_label": "HCLoader-Version",
+    "section_help": "Neue Versionen kommen von GitHub. Daten, Einstellungen und die Musik bleiben beim Update unberührt; vor einer Datenbank-Migration wird automatisch eine Sicherung angelegt.",
+    "current": "Installiert",
+    "latest": "Neueste",
+    "checked": "Letzte Prüfung",
+    "check_now": "Jetzt prüfen",
+    "checking": "Prüft …",
+    "st_idle": "Aktuell",
+    "st_available": "Neue Version verfügbar",
+    "st_checking": "Prüfung läuft …",
+    "st_downloading": "Wird geladen …",
+    "st_ready": "Bereit zum Einspielen",
+    "st_applying": "Wird eingespielt …",
+    "st_error": "Fehler",
+    "st_unknown": "Noch nicht geprüft",
+    "up_to_date": "HCLoader ist aktuell (v{v})",
+    "portable": "Portable-Version",
+    "installed": "Installiert (Setup)",
+    "git": "Git-Checkout",
+    "from_repo": "aus {repo} (nicht die offizielle Quelle)",
+    "unverified": "ohne Prüfsumme (nur ZIP-Integrität geprüft)"
+  },
+  "err": {
+    "generic": "Unbekannter Fehler",
+    "bridge": "Fehler bei «{name}»: {msg}",
+    "boot": "Start fehlgeschlagen: {msg}",
+    "no_backend": "Keine Verbindung zum Backend"
+  },
+  "fatal": {
+    "title": "Verbindung zum Backend fehlgeschlagen",
+    "text": "Die Oberfläche hat keine Antwort vom Python-Teil von HCLoader erhalten. Es wird nichts angezeigt oder gespeichert, was nicht echt ist.",
+    "waiting": "Wartet weiter auf das Backend …",
+    "reload": "Neu laden"
+  }
+});

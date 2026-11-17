@@ -92,7 +92,7 @@
     $('span:last-child', b).textContent = t(follow ? 'log.following' : 'log.paused');
     const jump = $('#log-jump', el);
     jump.hidden = follow;
-    $('span', jump).textContent = unseen ? t(unseen === 1 ? 'log.jump_new_one' : 'log.jump_new', { n: unseen }) : t('log.jump');
+    $('span', jump).textContent = unseen ? t('log.jump_new', { n: unseen }) : t('log.jump');
     jump.classList.toggle('has-new', unseen > 0);
   }
   const toEnd = () => { box.scrollTop = box.scrollHeight; };
@@ -140,7 +140,7 @@
     const n = lines.filter(visible).length;
     if (!n) { ui.toast(t('toast.copy_none'), 'info', 1800); return; }
     const ok = await util.copyText(plainText());
-    if (ok) { ui.toast(t(n === 1 ? 'toast.copied_one' : 'toast.copied', { n }), 'ok', 2200); fx.pop($('#log-copy', el), 'done'); }
+    if (ok) { ui.toast(t('toast.copied', { n }), 'ok', 2200); fx.pop($('#log-copy', el), 'done'); }
     else ui.toast(t('toast.copy_failed'), 'err');
   }
 
@@ -149,9 +149,11 @@
     const a = util.parseDate(r.started), b = util.parseDate(r.finished);
     if (typeof r.duration !== 'number' && (!a || !b)) return null;
     const sec = Math.max(0, Math.round(typeof r.duration === 'number' ? r.duration : (b - a) / 1000));
-    return sec < 60 ? `${sec} s` : sec < 3600 ? `${Math.round(sec / 60)} min` : `${Math.floor(sec / 3600)} h ${pad(Math.round((sec % 3600) / 60))} min`;
+    if (sec < 60) return util.fmtSpan(sec);
+    if (sec < 3600) return HC.i18n.nf({ style: 'unit', unit: 'minute', unitDisplay: 'narrow' }).format(Math.round(sec / 60));
+    return util.fmtSpan(Math.round(sec / 60) * 60);
   }
-  const isBackoff = (r) => /backoff|429|bot-pr/i.test(r.note || '');
+  const isBackoff = (r) => /backoff|429|bot-pr|bot.check/i.test(r.note || '');
   const runCls = (r) => (!r.finished ? 'live' : r.errors ? (r.downloaded || r.found ? 'warn' : 'error') : r.note ? 'warn' : 'ok');
   const num = (n, bad) => `<b class="${!n ? 'zero' : bad ? 'bad' : ''}">${util.fmtNum(n || 0)}</b>`;
   const kindLabel = (r) => esc(t('run_kind.' + (KINDS.includes(r.kind) ? r.kind : 'manual')));
@@ -171,7 +173,7 @@
     }).join('');
   }
   /** «16.11. 03:00» – das Jahr steht im Tooltip. */
-  const shortStamp = (iso) => { const d = util.parseDate(iso); return d ? `${pad(d.getDate())}.${pad(d.getMonth() + 1)}. ${pad(d.getHours())}:${pad(d.getMinutes())}` : '–'; };
+  const shortStamp = (iso) => { const d = util.parseDate(iso); return d ? HC.i18n.df({ day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(d) : '–'; };
   function tableHtml(list) {
     return `<table class="runs-table"><thead><tr><th>${t('log.col_kind')}</th><th>${t('log.col_start')}</th><th class="num">${t('log.col_duration')}</th>
       <th class="num">${t('log.col_found')}</th><th class="num">${t('log.col_downloaded')}</th><th class="num">${t('log.col_errors')}</th><th class="c-note">${t('log.col_note')}</th></tr></thead>
@@ -189,7 +191,7 @@
     host.classList.toggle('timeline', !wide);
     host.innerHTML = list.length ? (wide ? tableHtml(list) : timelineHtml(list))
       : `<div class="log-none">${t(runs.length ? 'log.no_runs_kind' : 'log.no_runs')}</div>`;
-    $('#runs-sum', el).textContent = list.length ? t(list.length === 1 ? 'log.runs_sum_one' : 'log.runs_sum', {
+    $('#runs-sum', el).textContent = list.length ? t('log.runs_sum', {
       n: list.length, dl: util.fmtNum(list.reduce((a, r) => a + (r.downloaded || 0), 0)), err: util.fmtNum(list.reduce((a, r) => a + (r.errors || 0), 0)),
     }) : '';
     $('#runs-sum', el).title = $('#runs-sum', el).textContent;

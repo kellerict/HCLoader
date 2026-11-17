@@ -150,11 +150,11 @@
     if (st.state === 'downloading') {
       const p = st.progress || {};
       const pct = p.pct == null ? null : Math.max(0, Math.min(100, p.pct));
-      const mb = (n) => `${(Number(n || 0) / 1048576).toFixed(1)} MB`;
+      const mb = (n) => util.fmtSize(Number(n || 0) / 1048576);
       const phase = t(`upd.phase_${p.phase || 'download'}`);
       return `<div class="upd-title">${I.download}${esc(t('upd.downloading', { v }))}</div>
         <div class="upd-prog"><div class="progress"><div class="bar" style="--p:${pct == null ? 100 : pct}${pct == null ? ';opacity:.45' : ''}"></div></div>
-          <div class="upd-num"><span>${esc(phase)}</span><span>${pct == null ? esc(mb(p.bytes)) : `${pct.toFixed(0)} % · ${esc(mb(p.bytes))}${p.total ? ` / ${esc(mb(p.total))}` : ''}`}</span></div></div>
+          <div class="upd-num"><span>${esc(phase)}</span><span>${pct == null ? esc(mb(p.bytes)) : `${util.fmtPct(pct)} · ${esc(mb(p.bytes))}${p.total ? ` / ${esc(mb(p.total))}` : ''}`}</span></div></div>
         <div class="upd-actions">${btn('cancel', t('upd.cancel'), 'ghost')}</div>`;
     }
     if (st.state === 'ready') {
@@ -221,7 +221,7 @@
     if (s.latest && s.notes) actions += btn('notes', t('upd.notes'), 'ghost');
     const p = s.progress;
     const prog = s.state === 'downloading' && p ? `<div class="upd-prog" style="max-width:420px"><div class="progress"><div class="bar" style="--p:${p.pct == null ? 100 : p.pct}"></div></div>
-      <div class="upd-num"><span>${esc(t(`upd.phase_${p.phase || 'download'}`))}</span><span>${p.pct == null ? '' : `${Number(p.pct).toFixed(0)} %`}</span></div></div>` : '';
+      <div class="upd-num"><span>${esc(t(`upd.phase_${p.phase || 'download'}`))}</span><span>${p.pct == null ? '' : util.fmtPct(Number(p.pct))}</span></div></div>` : '';
     const note = s.blocked ? ui.notice('warn', esc(s.blocked)) : s.state === 'error' && s.error ? ui.notice('error', esc(s.error)) : '';
     return `<div class="field plain"><div class="fl"><b>${esc(t('upd.section_label'))}</b><span class="help">${esc(t('upd.section_help'))}</span></div>
       <div class="fc"><div class="fc-main" style="flex-direction:column;align-items:flex-start;gap:8px">

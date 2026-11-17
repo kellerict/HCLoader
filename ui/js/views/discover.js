@@ -177,7 +177,7 @@
     const prev = results ? results.filter((v) => v.preview).length : 0;
     $('#count', el).innerHTML = searching ? t(platform === 'soundcloud' ? 'discover.searching_sc' : 'discover.searching')
       : !results ? ''
-        : t('discover.count', { n: `<b>${n}</b>`, hidden }) + (prev ? ` · <span class="prevcount" title="${util.esc(t('discover.previews_title'))}">${t('discover.previews', { n: prev })}</span>` : '')
+        : t('discover.count', { n: `<b>${util.fmtNum(n)}</b>`, count: n, hidden }) + (prev ? ` · <span class="prevcount" title="${util.esc(t('discover.previews_title'))}">${t('discover.previews', { n: prev })}</span>` : '')
           + (sel.size ? ` · ${t('discover.selected', { n: `<b>${sel.size}</b>` })}` : '');
     $('#dl-sel', el).disabled = !sel.size;
     $('#dl-sel-n', el).textContent = sel.size ? ` (${sel.size})` : '';
