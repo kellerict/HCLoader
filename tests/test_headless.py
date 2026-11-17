@@ -225,3 +225,47 @@ def test_successful_soundcloud_check_resets_its_backoff_level(env):
     assert sc_th.backoff_level() == 1
     assert run(env, throttle=th) == EXIT_OK
     assert sc_th.backoff_level() == 0
+
+
+@pytest.mark.parametrize("lang", ["en", "zh-CN", "ru", "de"])
+def test_backoff_note_is_not_duplicated_in_any_language(env, monkeypatch, lang):
+    """Review v0.2.0 m2: the dedup uses the block code, not the (translated) note text."""
+    from app.core import i18n, watchlist
+
+    settings, db = env
+    monkeypatch.setattr(i18n, "_active", lang)
+    db.upsert_video({"id": "vidAAAAAAA1", "title": "Mix", "status": "queued"})
+    db.enqueue(["vidAAAAAAA1"])
+    throttle = Throttle(db, settings.throttle)
+    monkeypatch.setattr(watchlist, "check_all", lambda **kw: watchlist.WatchlistResult(checked=1))
+
+    class FakeQueue:
+        paused = False
+
+        def __init__(self, *a, **kw):
+            self.last_session = {}
+
+        def run_pending(self):
+            throttle.trigger_backoff("429")  # 429 during the download
+            code, msg = queue_block()
+            self.last_session = {"downloaded": 0, "errors": 0, "note": msg, "note_code": code}
+
+        def blocked(self):
+            return queue_block()
+
+    def queue_block():
+        until = throttle.backoff_until()
+        return "backoff", i18n.tr("queue.backoff_rest", prefix="", until=until.isoformat())
+
+    monkeypatch.setattr(headless, "DownloadQueue", FakeQueue)
+    code = headless.run_watchlist(
+        settings=settings,
+        db=db,
+        throttle=throttle,
+        configure_logging=False,
+        client_factory=NullClient,
+        watchdog=FakeWatchdog(),
+    )
+    assert code == EXIT_BLOCKED
+    note = db.list_runs()[0]["note"]
+    assert note.count("; ") == 0, note  # exactly one backoff note

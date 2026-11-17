@@ -266,6 +266,8 @@ def _run(
         found, errors = res.found, res.errors
         if res.note:
             notes.append(res.note)
+        # Review v0.2.0 m2: dedup via a flag, never via the (translated) note text
+        backoff_noted = res.backoff and not res.cancelled and bool(res.note)
 
         if not res.backoff and db.next_queued() is not None:
             if queue.paused:
@@ -281,8 +283,11 @@ def _run(
                 errors += session["errors"]
                 if session["note"]:
                     notes.append(session["note"])
+                    backoff_noted = backoff_noted or session.get("note_code") == "backoff"
                 elif db.next_queued() is not None and queue.blocked()[1]:
-                    notes.append(queue.blocked()[1])
+                    block_code, block_note = queue.blocked()
+                    notes.append(block_note)
+                    backoff_noted = backoff_noted or block_code == "backoff"
         # SPEC §5: a successful run resets the backoff escalation (never lifts an active
         # backoff). Review m5: per platform - every platform whose sources were checked
         # without a 429/bot check (SoundCloud's level was never reset by watchlist checks)
@@ -308,7 +313,7 @@ def _run(
             until_now = throttle.backoff_until()
         if until_now is not None or res.backoff:
             code = EXIT_BLOCKED
-            if until_now is not None and not any(n.startswith("Backoff") for n in notes):
+            if until_now is not None and not backoff_noted:
                 notes.append(tr("headless.backoff_until", until=format_until(until_now)))
         elif errors:
             code = EXIT_FAILED

@@ -756,7 +756,7 @@ class DownloadQueue:
         """One scheduling step: start a run if entries wait and nothing blocks (also tests)."""
         if self._stop.is_set():
             return
-        self.last_session = {"downloaded": 0, "errors": 0, "note": ""}
+        self.last_session = {"downloaded": 0, "errors": 0, "note": "", "note_code": None}
         if self._paused or self._db.next_queued() is None:
             self._note_block(None)
             return
@@ -829,6 +829,7 @@ class DownloadQueue:
         run_id = self._db.start_run("manual") if self._record_run else None
         downloaded = errors = 0
         note = ""
+        note_code: str | None = None  # stable block code of `note` (language-independent)
         log.info(tr("queue.run_started"))
         first = True
         refused: set[str] = set()  # platforms that refused a download in this run (7a)
@@ -837,16 +838,18 @@ class DownloadQueue:
                 if self._db.next_queued() is None:
                     break
                 if self._restart_required:
-                    note = self.blocked()[1] or ""
+                    note_code, note = self._block_note()
                     break
                 excluded = self._blocked_platforms() | refused
                 row = self._db.next_queued(exclude_platforms=sorted(excluded))
                 if row is None:  # every waiting platform is blocked
-                    note = self.blocked()[1] or self._first_block_message(excluded)
+                    note_code, note = self._block_note()
+                    if not note:
+                        note_code, note = self._first_block(excluded)
                     log.warning(tr("queue.halted", reason=note))
                     break
                 if not first and self._check_local(0):  # run_pending just checked the first
-                    note = self.blocked()[1] or ""
+                    note_code, note = self._block_note()
                     break
                 first = False
                 platform = row.get("platform") or "youtube"
@@ -862,11 +865,16 @@ class DownloadQueue:
                     continue
                 elif outcome in ("blocked", "stopped"):
                     self._blocked_platforms()
-                    note = self.blocked()[1] or ""
+                    note_code, note = self._block_note()
                     break
         finally:
             self._set_current(None)
-            self.last_session = {"downloaded": downloaded, "errors": errors, "note": note}
+            self.last_session = {
+                "downloaded": downloaded,
+                "errors": errors,
+                "note": note,
+                "note_code": note_code if note else None,
+            }
             if run_id is not None:
                 self._db.finish_run(run_id, downloaded=downloaded, errors=errors, note=note or None)
             log.info(tr("queue.run_finished", n=downloaded, errors=errors))
@@ -885,13 +893,19 @@ class DownloadQueue:
             out.add(platform)
         return out
 
-    def _first_block_message(self, platforms: set[str]) -> str:
+    def _block_note(self) -> tuple[str | None, str]:
+        """`blocked()` as (code, message) with "" instead of None for the message."""
+        code, msg = self.blocked()
+        return (code, msg) if msg else (None, "")
+
+    def _first_block(self, platforms: set[str]) -> tuple[str | None, str]:
+        """(code, message) of the first waiting platform in `platforms` that is blocked."""
         for platform in self._waiting_platforms():
             if platform in platforms:
                 block = self._platform_block(platform)
                 if block:
-                    return block[1]
-        return ""
+                    return block[0], block[1]
+        return None, ""
 
     def _process(self, client: Any, row: dict[str, Any]) -> str:
         """One entry. Returns done | failed | cancelled | skipped | slept | blocked | stopped."""
