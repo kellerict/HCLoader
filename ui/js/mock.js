@@ -506,7 +506,8 @@
     ],
     counters: { downloads_run: 1, downloads_day: 3, searches_hour: 4 },
     po: { state: 'active', detail: 'Token erzeugt vor 4 min', created: Date.now() - 4 * 60000 },
-    backoff: { active: false, until: null, level: 0 },
+    backoff: { active: false, until: null, level: 0 }, // YouTube
+    sc: { backoff: { active: false, until: null, level: 0 }, counters: { downloads_run: 0, downloads_day: 1, searches_hour: 2 } }, // SoundCloud: eigene Zähler
     task: { registered: false },
     appNext: isoAt(0, 21, 45), // nächste In-App-Prüfung = letzte Prüfung + Intervall
     checking: false, // läuft gerade eine Watchlist-Prüfung?
@@ -542,6 +543,23 @@
     return c.length ? c.sort()[0] : null;
   };
   const activeQueue = () => state.queue.filter((q) => q.state !== 'failed');
+  /* Pro Plattform getrennt: Backoff, Zähler, Limits (throttle = YouTube, soundcloud = SoundCloud). */
+  const platOf = (x) => { const v = byId(x.id || x); return v && v.platform === 'soundcloud' ? 'soundcloud' : 'youtube'; };
+  const boOf = (p) => (p === 'soundcloud' ? state.sc.backoff : state.backoff);
+  const cntOf = (p) => (p === 'soundcloud' ? state.sc.counters : state.counters);
+  const thOf = (p) => (p === 'soundcloud' ? settings.soundcloud : settings.throttle);
+  const hhmm = (iso) => { const d = new Date(iso); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+  const boView = (p) => {
+    const b = boOf(p);
+    return { active: b.active, until: b.until, level: b.level, remaining_s: b.active ? Math.max(0, Math.round((new Date(b.until) - Date.now()) / 1000)) : 0, reason: b.active ? 'HTTP 429 – zu viele Anfragen' : '' };
+  };
+  const platformView = (p) => {
+    const th = thOf(p);
+    return {
+      enabled: p === 'youtube' || !!settings.soundcloud.enabled, backoff: boView(p), counters: clone(cntOf(p)),
+      limits: { downloads_run: th.max_downloads_per_run, downloads_day: th.max_downloads_per_day, searches_hour: th.max_searches_per_hour },
+    };
+  };
   function status() {
     const mode = settings.network.po_token_mode;
     return {
@@ -556,41 +574,55 @@
       queue_length: activeQueue().length, queue_paused: state.paused,
       inbox_count: VIDEOS.filter((v) => v.status === 'inbox').length,
       counters: clone(state.counters),
+      platforms: { youtube: platformView('youtube'), soundcloud: platformView('soundcloud') },
     };
   }
   const pushStatus = () => emit('status', status());
   const targetOf = (v) => `${v.genre}\\${v.channel_name}\\${(v.upload_date || '').slice(0, 4)}\\`;
   /** Wie worker.DownloadQueue.blocked(): (code, Meldung), warum wartende Einträge nicht laufen. */
-  function blocked() {
-    const th = settings.throttle, c = state.counters;
-    if (!state.queue.some((q) => q.state === 'waiting')) return [null, null];
-    if (state.backoff.active) return ['backoff', 'Backoff aktiv – Rest bleibt in der Warteschlange'];
-    if (c.downloads_day >= th.max_downloads_per_day) return ['day_limit', `Tageslimit erreicht (${c.downloads_day}/${th.max_downloads_per_day}) – Rest bleibt in der Warteschlange`];
-    if (c.downloads_run >= th.max_downloads_per_run) return ['run_limit', `Limit pro Lauf erreicht (${th.max_downloads_per_run}/${th.max_downloads_per_run}) – Rest bleibt in der Warteschlange; «Fortsetzen» startet einen neuen Lauf`];
+  function blockOf(p) {
+    const th = thOf(p), c = cntOf(p), pre = p === 'soundcloud' ? 'SoundCloud: ' : '';
+    if (boOf(p).active) return ['backoff', p === 'soundcloud' ? `SoundCloud: Backoff bis ${hhmm(boOf(p).until)} – Rest bleibt in der Warteschlange` : 'Backoff aktiv – Rest bleibt in der Warteschlange'];
+    if (c.downloads_day >= th.max_downloads_per_day) return ['day_limit', `${pre}Tageslimit erreicht (${c.downloads_day}/${th.max_downloads_per_day}) – Rest bleibt in der Warteschlange`];
+    if (c.downloads_run >= th.max_downloads_per_run) return ['run_limit', `${pre}Limit pro Lauf erreicht (${th.max_downloads_per_run}/${th.max_downloads_per_run}) – Rest bleibt in der Warteschlange; «Fortsetzen» startet einen neuen Lauf`];
     if (state.local) return state.local.slice();
-    return [null, null];
+    return null;
+  }
+  /* blocked_code/-reason nur, wenn ALLE wartenden Einträge stehen; sonst platform_blocked pro Plattform. */
+  function blocked() {
+    const waiting = state.queue.filter((q) => q.state === 'waiting');
+    const per = {};
+    ['youtube', 'soundcloud'].forEach((p) => {
+      const b = waiting.some((q) => platOf(q) === p) ? blockOf(p) : null;
+      if (b) per[p] = { code: b[0], reason: b[1] };
+    });
+    const all = waiting.length > 0 && waiting.every((q) => per[platOf(q)]);
+    const first = all ? per[platOf(waiting[0])] : null;
+    return [first ? first.code : null, first ? first.reason : null, all ? {} : per];
   }
   const queueView = () => {
-    const [code, msg] = blocked();
+    const [code, msg, per] = blocked();
     return {
       paused: state.paused,
       items: state.queue.map((q) => Object.assign({}, q, { video: clone(byId(q.id)), target: targetOf(byId(q.id)) })),
-      blocked_code: code, blocked_reason: msg,
+      blocked_code: code, blocked_reason: msg, platform_blocked: per,
     };
   };
   const setStatus = (v, st) => { v.status = st; emit('video', { id: v.id, status: st, genre: v.genre }); };
 
   /* ---------- Simulation von worker.py ---------- */
-  const limitHit = () => state.counters.downloads_day >= settings.throttle.max_downloads_per_day || state.counters.downloads_run >= settings.throttle.max_downloads_per_run;
+  const limitHit = (p) => cntOf(p || 'youtube').downloads_day >= thOf(p || 'youtube').max_downloads_per_day || cntOf(p || 'youtube').downloads_run >= thOf(p || 'youtube').max_downloads_per_run;
   const unsleep = (except) => state.queue.forEach((x) => { if (x !== except && x.phase === 'sleep') { x.phase = 'waiting'; x.eta = 0; } });
   function tick() {
-    if (state.paused || state.backoff.active) return;
-    const q = state.queue.find((x) => x.state !== 'failed');
-    if (!q) return;
+    if (state.paused) return;
+    /* Eine Plattform im Backoff/Limit hält nur ihre eigenen Einträge an – die andere lädt weiter. */
+    const q = state.queue.find((x) => x.state === 'active') || state.queue.find((x) => x.state !== 'failed' && !boOf(platOf(x)).active && !limitHit(platOf(x)));
+    if (!q || boOf(platOf(q)).active) return;
     const v = byId(q.id);
+    const plat = platOf(q);
     unsleep(q);
     if (q.phase === 'waiting') {
-      if (limitHit()) return; // Rest bleibt in der Warteschlange
+      if (limitHit(plat)) return; // Rest bleibt in der Warteschlange
       if (state.sleepLeft > 0) { q.phase = 'sleep'; q.eta = state.sleepLeft; q.sleep_total = state.sleepTotal; emit('queue', {}); return; }
       q.phase = 'download'; q.state = 'active';
       if (!openRun()) RUNS.unshift({ id: ++runSeq, kind: 'manual', started: new Date().toISOString(), finished: null, found: 0, downloaded: 0, errors: 0, note: '', duration: null });
@@ -613,7 +645,7 @@
       if (--state.convertTicks <= 0) q.phase = 'tag';
     } else if (q.phase === 'tag') {
       state.queue = state.queue.filter((x) => x.id !== q.id);
-      state.counters.downloads_run++; state.counters.downloads_day++;
+      cntOf(plat).downloads_run++; cntOf(plat).downloads_day++;
       const artist = v.channel_name;
       LIBRARY.unshift({
         id: v.id, title: v.title, artist, channel_id: v.channel_id, genre: v.genre, duration: v.duration, upload_date: v.upload_date, year: +v.upload_date.slice(0, 4),
@@ -624,15 +656,15 @@
       if (openRun()) openRun().downloaded++;
       setStatus(v, 'done');
       pushLog('ok', `Fertig: ${v.title} · ${LIBRARY[0].size_mb} MB`);
-      if (activeQueue().length && !limitHit()) {
-        const th = settings.throttle;
+      if (activeQueue().length && !limitHit(plat)) {
+        const th = thOf(plat);
         state.sleepTotal = state.sleepLeft = Math.round(th.sleep_interval + rnd() * Math.max(0, th.max_sleep_interval - th.sleep_interval));
         if (state.sleepLeft) pushLog('debug', `Throttle: ${state.sleepLeft} s Pause bis zum nächsten Download`);
       } else state.sleepLeft = 0;
-      if (activeQueue().length && limitHit()) pushLog('warn', 'Download-Limit erreicht – der Rest bleibt in der Warteschlange');
+      if (activeQueue().length && limitHit(plat)) pushLog('warn', 'Download-Limit erreicht – der Rest bleibt in der Warteschlange');
       emit('done', { id: v.id, title: v.title });
       if (!activeQueue().length) closeRun();
-      else if (limitHit()) closeRun('Download-Limit erreicht – Rest bleibt in der Warteschlange');
+      else if (limitHit(plat)) closeRun('Download-Limit erreicht – Rest bleibt in der Warteschlange');
       emit('queue', {});
       pushStatus();
       return;
@@ -645,6 +677,59 @@
     stop() { clearInterval(timer); timer = null; },
     tick(n) { for (let i = 0; i < (n || 1); i++) tick(); },
   };
+
+  /* ---------- Watchlist: Namensvorschlag aus der URL (wie core/watchlist.suggest_source, ohne Netzwerk) ---------- */
+  const titleCase = (t) => (t && t === t.toLowerCase() && /[a-zäöü]/.test(t) ? t.split(' ').map((w) => w.slice(0, 1).toUpperCase() + w.slice(1)).join(' ') : t);
+  const fromSlug = (slug) => titleCase(decodeURIComponent(slug).replace(/[-_]+/g, ' ').trim());
+  function suggest(input, hint) {
+    const text = String(input || '').replace(/\s+/g, ' ').trim();
+    const out = { type: '', platform: 'youtube', name: '', url_normalized: '' };
+    if (!text) { out.type = hint || ''; return out; }
+    const looksUrl = /^(https?:\/\/|www\.|m\.|youtube\.com|soundcloud\.com|youtu\.be)/i.test(text);
+    if (hint === 'search' || !looksUrl) return Object.assign(out, { type: 'search', name: text });
+    const url = /^https?:\/\//i.test(text) ? text : `https://${text}`;
+    let u;
+    try { u = new URL(url); } catch (e) { return out; }
+    const host = u.hostname.replace(/^(www|m|music)\./, ''), parts = u.pathname.split('/').filter(Boolean);
+    out.url_normalized = `https://${host === 'soundcloud.com' ? '' : 'www.'}${host}${u.pathname.replace(/\/$/, '')}${host === 'youtube.com' && u.searchParams.get('list') ? `?list=${u.searchParams.get('list')}` : ''}`;
+    if (host === 'soundcloud.com') {
+      out.platform = 'soundcloud';
+      if (parts.length >= 3 && parts[1] === 'sets') return Object.assign(out, { type: 'playlist', name: `${fromSlug(parts[0])} – ${fromSlug(parts[2])}` });
+      if (parts.length === 1 || (parts.length === 2 && parts[1] === 'tracks')) return Object.assign(out, { type: 'channel', name: fromSlug(parts[0]) });
+      return out;
+    }
+    if (host !== 'youtube.com') return out;
+    if (u.searchParams.get('list')) return Object.assign(out, { type: 'playlist' });
+    if (parts[0] && parts[0].startsWith('@')) return Object.assign(out, { type: 'channel', name: decodeURIComponent(parts[0].slice(1)) });
+    if (parts[0] === 'channel' && parts[1]) return Object.assign(out, { type: 'channel' });
+    if ((parts[0] === 'c' || parts[0] === 'user') && parts[1]) return Object.assign(out, { type: 'channel', name: decodeURIComponent(parts[1]) });
+    return out;
+  }
+
+  /* ---------- Mini-Player: synthetische Audioquelle (data:-WAV, 8 Bit mono, < 50 KB) ---------- */
+  const CHAPTER_S = 1.5, TONE_RATE = 4000;
+  const CHAPTERS = [
+    ['Intro – Countdown to Zero', ''], ['Concrete Pressure', 'Kernschmelze'], ['Warehouse Anthem (Raw Edit)', 'Pulsewerk'], ['Static Overdrive', 'Distortion Unit'],
+    ['No Sleep Till Sunrise', 'Hardfloor Zürich'], ['Bassdrum Ritual', 'Bunker 303 & NRG Tapes'], ['Terror Transmission 303', 'Overdrive'], ['Outro – Last Kick Standing', ''],
+  ];
+  let toneUrl = null;
+  function demoTone() {
+    if (toneUrl) return toneUrl;
+    const per = Math.round(TONE_RATE * CHAPTER_S), n = per * CHAPTERS.length;
+    const b = new Uint8Array(44 + n), dv = new DataView(b.buffer);
+    const str = (o, t) => { for (let i = 0; i < t.length; i++) b[o + i] = t.charCodeAt(i); };
+    str(0, 'RIFF'); dv.setUint32(4, 36 + n, true); str(8, 'WAVEfmt '); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
+    dv.setUint32(24, TONE_RATE, true); dv.setUint32(28, TONE_RATE, true); dv.setUint16(32, 1, true); dv.setUint16(34, 8, true); str(36, 'data'); dv.setUint32(40, n, true);
+    const notes = [110, 131, 147, 165, 131, 175, 196, 220];
+    for (let i = 0; i < n; i++) {
+      const k = i % per, env = Math.min(1, k / 200, (per - k) / 400); // leise, weich ein- und ausgeblendet
+      b[44 + i] = 128 + Math.round(Math.sin((2 * Math.PI * notes[Math.floor(i / per)] * i) / TONE_RATE) * 9 * env);
+    }
+    let bin = '';
+    for (let i = 0; i < b.length; i += 8192) bin += String.fromCharCode.apply(null, b.subarray(i, i + 8192));
+    toneUrl = `data:audio/wav;base64,${btoa(bin)}`;
+    return toneUrl;
+  }
 
   /* ---------- API ---------- */
   const api = {
@@ -682,9 +767,9 @@
     update_ytdlp() {
       const before = state.versions.ytdlp, fresh = before !== '2026.11.14';
       /* Wie das Backend: jede Zeile der pip-Ausgabe kommt als «log»-Event, die Antwort erst am Schluss. */
-      const out = ['> python -m pip install -U "yt-dlp[default]" bgutil-ytdlp-pot-provider'].concat(fresh ? [
-        'Requirement already satisfied: yt-dlp[default] in .venv\\lib\\site-packages (2026.11.2)',
-        'Collecting yt-dlp[default]',
+      const out = ['> python -m pip install -U "yt-dlp[default,curl-cffi]" bgutil-ytdlp-pot-provider'].concat(fresh ? [
+        'Requirement already satisfied: yt-dlp[default,curl-cffi] in .venv\\lib\\site-packages (2026.11.2)',
+        'Collecting yt-dlp[default,curl-cffi]',
         '  Downloading yt_dlp-2026.11.14-py3-none-any.whl (3.3 MB)',
         'Collecting bgutil-ytdlp-pot-provider',
         '  Downloading bgutil_ytdlp_pot_provider-1.3.1-py3-none-any.whl (18 kB)',
@@ -693,7 +778,7 @@
         '      Successfully uninstalled yt-dlp-2026.11.2',
         'Successfully installed bgutil-ytdlp-pot-provider-1.3.1 yt-dlp-2026.11.14',
       ] : [
-        'Requirement already satisfied: yt-dlp[default] in .venv\\lib\\site-packages (2026.11.14)',
+        'Requirement already satisfied: yt-dlp[default,curl-cffi] in .venv\\lib\\site-packages (2026.11.14)',
         'Requirement already satisfied: bgutil-ytdlp-pot-provider in .venv\\lib\\site-packages (1.3.1)',
       ]);
       pushLog('info', 'yt-dlp & Plugin werden aktualisiert …');
@@ -728,10 +813,13 @@
         return { ok: true, state: 'active', detail: 'Neuer Token erzeugt und von YouTube akzeptiert.', ms: 840 };
       });
     },
-    clear_backoff() {
+    clear_backoff(platform) {
       return later(150, () => {
-        state.backoff = { active: false, until: null, level: 0 };
-        pushLog('warn', 'Backoff manuell aufgehoben');
+        if (platform && !['youtube', 'soundcloud'].includes(platform)) return { ok: false, error: 'Unbekannte Plattform.' };
+        if (!platform || platform === 'youtube') state.backoff = { active: false, until: null, level: 0 };
+        if (!platform || platform === 'soundcloud') state.sc.backoff = { active: false, until: null, level: 0 };
+        pushLog('warn', `Backoff${platform === 'soundcloud' ? ' (SoundCloud)' : platform === 'youtube' ? ' (YouTube)' : ''} manuell aufgehoben`);
+        emit('queue', {});
         pushStatus();
         return { ok: true };
       });
@@ -771,21 +859,25 @@
     /* Entdecken / Eingang */
     get_last_search: () => later(60, () => ({
       query: lastSearch.query, effective_query: lastSearch.effective_query, genre: lastSearch.genre, year: lastSearch.year,
+      platform: lastSearch.platform, hidden_count: 0,
       results: lastSearch.ids.map((id) => asSearchHit(byId(id))),
     })),
     /* opts = {genre: <Name>|null, year: <int>|null} – das Backend hängt die Begriffe an (siehe bridge.js). */
     search(query, opts) {
       return later(1100, () => {
-        const o = Object.assign({ genre: null, year: null }, opts);
-        if (state.backoff.active) return { ok: false, error: 'Backoff aktiv – Suche ist gesperrt.' };
-        if (state.counters.searches_hour >= settings.throttle.max_searches_per_hour) return { ok: false, error: 'Limit «Suchen pro Stunde» erreicht.' };
+        const o = Object.assign({ genre: null, year: null, platform: 'youtube' }, opts);
+        const p = o.platform, sc = p === 'soundcloud';
+        if (!['youtube', 'soundcloud'].includes(p)) return { ok: false, error: 'Unbekannte Plattform.' };
+        if (sc && !settings.soundcloud.enabled) return { ok: false, error: 'SoundCloud ist ausgeschaltet (Einstellungen › SoundCloud)' };
+        if (boOf(p).active) return { ok: false, error: sc ? `Backoff (SoundCloud) aktiv bis ${hhmm(boOf(p).until)} – Suche gesperrt` : 'Backoff aktiv – Suche ist gesperrt.' };
+        if (cntOf(p).searches_hour >= thOf(p).max_searches_per_hour) return { ok: false, error: 'Limit «Suchen pro Stunde» erreicht.' };
         const effective = effectiveQuery(query, o);
-        const ids = o.year ? yearHits(o.year) : SEARCH_IDS;
-        lastSearch = { query, effective_query: effective, genre: o.genre, year: o.year || null, ids };
-        state.counters.searches_hour++;
-        pushLog('info', `Suche «${effective}» · ${ids.length} Treffer (flach)`);
+        const ids = sc ? SC_SEARCH_IDS : o.year ? yearHits(o.year) : SEARCH_IDS;
+        lastSearch = { query, effective_query: effective, genre: o.genre, year: o.year || null, ids, platform: p };
+        cntOf(p).searches_hour++;
+        pushLog('info', `Suche${sc ? ' (SoundCloud)' : ''} «${effective}» · ${ids.length} Treffer (flach)`);
         pushStatus();
-        return { ok: true, results: ids.map((id) => asSearchHit(byId(id))), effective_query: effective, query, genre: o.genre, year: o.year || null, hidden_count: 0 };
+        return { ok: true, results: ids.map((id) => asSearchHit(byId(id))), effective_query: effective, query, genre: o.genre, year: o.year || null, hidden_count: 0, platform: p };
       });
     },
     get_inbox: () => later(40, () => clone(VIDEOS.filter((v) => v.status === 'inbox'))),
@@ -794,7 +886,7 @@
         const done = [];
         ids.forEach((id) => {
           const v = byId(id);
-          if (!v || !['new', 'inbox', 'failed'].includes(v.status)) return;
+          if (!v || v.preview || !['new', 'inbox', 'failed'].includes(v.status)) return;
           state.queue = state.queue.filter((q) => q.id !== id);
           const failedAt = state.queue.findIndex((q) => q.state === 'failed');
           const item = { id, state: 'waiting', phase: 'waiting', pct: 0, speed: 0, eta: 0, error: null };
@@ -821,11 +913,14 @@
     open_video: () => later(30, { ok: true }),
     add_channel_source(channelId, channelName) {
       return later(80, () => {
-        let s = SOURCES.find((x) => x.name === channelName);
-        if (!s) {
-          s = { id: nextSourceId++, type: 'channel', name: channelName, url_or_query: `https://www.youtube.com/channel/${channelId}`, default_genre: null, enabled: true, auto_download: false, max_entries: null, last_checked: null };
-          SOURCES.push(s);
-        }
+        const sc = String(channelId).startsWith('sc:');
+        const user = sc && Object.values(SCU).find((u) => u[0] === channelId);
+        if (sc && !user) return { ok: false, error: 'SoundCloud-Nutzer unbekannt (keine Profil-URL)' };
+        const url = sc ? `https://soundcloud.com/${user[2]}` : `https://www.youtube.com/channel/${channelId}`;
+        let s = SOURCES.find((x) => x.name === channelName || x.url_or_query === url);
+        if (s) return { ok: false, error: 'Kanal ist bereits in der Watchlist', source: sourceView(s) };
+        s = { id: nextSourceId++, type: 'channel', name: channelName, url_or_query: url, default_genre: null, enabled: true, auto_download: false, max_entries: null, last_checked: null, platform: sc ? 'soundcloud' : 'youtube', name_auto: false };
+        SOURCES.push(s);
         return { ok: true, source: sourceView(s) };
       });
     },
@@ -838,6 +933,7 @@
 
     /* Watchlist */
     get_sources: () => later(40, () => SOURCES.map(sourceView)),
+    suggest_source: (text, hint) => later(15, () => suggest(text, hint)),
     save_source(src) {
       return later(120, () => {
         const errors = {};
@@ -847,14 +943,19 @@
         if (!name) errors.name = 'Name fehlt.';
         else if (SOURCES.some((x) => x.id !== src.id && x.name.toLowerCase() === name.toLowerCase())) errors.name = 'Eine Quelle mit diesem Namen gibt es bereits.';
         if (!url) errors.url_or_query = src.type === 'search' ? 'Suchbegriff fehlt.' : 'URL fehlt.';
-        else if (src.type !== 'search' && !/^https?:\/\/(www\.|music\.)?youtube\.com\//.test(url)) errors.url_or_query = 'YouTube-URL erwartet (https://www.youtube.com/…).';
+        else if (src.type !== 'search' && !/^https?:\/\/((www\.|music\.|m\.)?youtube\.com|(www\.|m\.)?soundcloud\.com)\//.test(url)) errors.url_or_query = 'Nicht unterstützte URL – erwartet wird eine YouTube-URL (https://www.youtube.com/…) oder eine SoundCloud-URL (https://soundcloud.com/…).';
+        else if (src.type !== 'search' && /soundcloud\.com/.test(url) && !settings.soundcloud.enabled) errors.url_or_query = 'SoundCloud ist ausgeschaltet (Einstellungen › SoundCloud).';
+        else if (src.type === 'channel' && /soundcloud\.com\/[^/]+\/sets\//.test(url)) errors.url_or_query = 'Für ein Set den Typ «Playlist» wählen.';
+        else if (src.type === 'playlist' && /soundcloud\.com/.test(url) && !/\/sets\/[^/]+/.test(url)) errors.url_or_query = 'SoundCloud-Playlist-URL erwartet (…/<nutzer>/sets/<set>).';
         else if (src.type === 'channel' && /\/(playlists|releases|featured|shorts|community|podcasts|about)\/?$/.test(url)) errors.url_or_query = 'Nur die Kanal-URL selbst, /videos oder /streams – andere Tabs werden nicht unterstützt.';
-        else if (src.type === 'playlist' && !/[?&]list=[\w-]+/.test(url)) errors.url_or_query = 'Playlist-URL erwartet (…/playlist?list=…).';
+        else if (src.type === 'playlist' && !/soundcloud\.com/.test(url) && !/[?&]list=[\w-]+/.test(url)) errors.url_or_query = 'Playlist-URL erwartet (…/playlist?list=…).';
+        if (src.type === 'search' && src.platform != null && !['youtube', 'soundcloud'].includes(src.platform)) errors.platform = 'Plattform muss YouTube oder SoundCloud sein.';
         const cap = src.type === 'search' ? 100 : 200; // leer (null) = Standard schedule.entries_per_source
         if (src.max_entries != null && !(Number.isInteger(src.max_entries) && src.max_entries >= 1 && src.max_entries <= cap)) errors.max_entries = `Ganze Zahl zwischen 1 und ${cap} erwartet (leer = Standard).`;
         if (src.default_genre && !settings.genres.items.some((g) => g.name === src.default_genre)) errors.default_genre = 'Dieses Genre gibt es nicht (mehr).';
         if (Object.keys(errors).length) return { ok: false, errors };
-        const fields = { type: src.type, name, url_or_query: url, default_genre: src.default_genre || null, enabled: !!src.enabled, auto_download: !!src.auto_download, max_entries: src.max_entries == null ? null : src.max_entries, newest_last: src.type === 'playlist' && !!src.newest_last };
+        const platform = src.type === 'search' ? src.platform || 'youtube' : /soundcloud\.com/.test(url) ? 'soundcloud' : 'youtube';
+        const fields = { type: src.type, name, url_or_query: url, default_genre: src.default_genre || null, enabled: !!src.enabled, auto_download: !!src.auto_download, max_entries: src.max_entries == null ? null : src.max_entries, newest_last: src.type === 'playlist' && !!src.newest_last, platform, name_auto: !!src.name_auto };
         let s = SOURCES.find((x) => x.id === src.id);
         if (s) Object.assign(s, fields);
         else { s = Object.assign({ id: nextSourceId++, last_checked: null }, fields); SOURCES.push(s); }
@@ -865,16 +966,22 @@
       return later(60, () => { SOURCES = SOURCES.filter((s) => s.id !== id); return { ok: true }; });
     },
     check_sources(ids) {
-      if (state.backoff.active) return later(30, { ok: false, error: 'Backoff aktiv – die Watchlist-Prüfung ist gesperrt.' });
       if (state.checking) return later(30, { ok: false, error: 'Die Watchlist wird bereits geprüft.' });
       const list = SOURCES.filter((s) => s.enabled && (!ids || ids.includes(s.id)));
       if (!list.length) return later(30, { ok: true, started: 0 });
+      /* Abgelehnt nur, wenn JEDE Plattform mit aktiver Quelle im Backoff ist. */
+      if (list.every((s) => boOf(s.platform).active)) return later(30, { ok: false, error: 'Backoff aktiv – die Watchlist-Prüfung ist gesperrt.' });
       state.checking = true;
       pushLog('info', `Watchlist-Prüfung gestartet · ${list.length} Quelle(n)`);
       (async () => {
         let found = 0, errors = 0, queued = 0;
         for (const s of list) {
           if (!SOURCES.includes(s)) continue; // inzwischen gelöscht
+          if (boOf(s.platform).active) {
+            errors++;
+            emit('source', { id: s.id, checking: false, error: `Backoff (${s.platform === 'soundcloud' ? 'SoundCloud' : 'YouTube'}) aktiv bis ${hhmm(boOf(s.platform).until)} – übersprungen` });
+            continue;
+          }
           emit('source', { id: s.id, checking: true });
           await later(900);
           if (state.hold && state.hold.id === s.id) await new Promise((r) => { state.hold.release = r; });
@@ -901,7 +1008,9 @@
           found += hits.length;
           s.last_checked = new Date().toISOString();
           if (hits.length) pushLog('ok', `Watchlist · ${s.name}: ${hits.length} neue(r) Treffer${s.auto_download ? ' → Warteschlange' : ' → Eingang'}`);
-          emit('source', { id: s.id, checking: false, last_checked: s.last_checked, new_count: sourceView(s).new_count });
+          /* name_auto: der Vorschlag aus der URL wird durch den echten Namen ersetzt. */
+          if (s.name_auto && REAL_NAMES[s.url_or_query]) { s.name = REAL_NAMES[s.url_or_query]; s.name_auto = false; }
+          emit('source', { id: s.id, checking: false, name: s.name, last_checked: s.last_checked, new_count: sourceView(s).new_count });
           if (hits.length) { if (queued) emit('queue', {}); pushStatus(); }
         }
         state.checking = false;
@@ -982,6 +1091,25 @@
         return l ? { ok: true } : { ok: false, error: 'Keine Datei zu diesem Eintrag' };
       });
     },
+    get_media(id) {
+      return later(60, () => {
+        const l = LIBRARY.find((x) => x.id === id);
+        if (!l) return { ok: false, error: 'Eintrag ist nicht in der Bibliothek' };
+        if (l.missing) return { ok: false, error: 'Datei fehlt' };
+        /* Kurze synthetische Tonfolge statt einer echten Datei: ein Abschnitt pro Kapitel. */
+        const chapters = l.has_cue ? CHAPTERS.map(([title, performer], i) => ({ start: i * CHAPTER_S, title, performer })) : [];
+        return { ok: true, id, src: demoTone(), title: l.title, artist: l.artist, genre: l.genre, platform: l.platform || 'youtube', duration: CHAPTERS.length * CHAPTER_S, cover: null, chapters };
+      });
+    },
+    play_external(id) {
+      return later(60, () => {
+        const l = LIBRARY.find((x) => x.id === id);
+        if (!l) return { ok: false, error: 'Eintrag ist nicht in der Bibliothek' };
+        if (l.missing) return { ok: false, error: 'Datei fehlt' };
+        pushLog('info', `Im Standardplayer geöffnet: ${l.title}`);
+        return { ok: true };
+      });
+    },
     retag(id) {
       return later(900, () => {
         const l = LIBRARY.find((x) => x.id === id);
@@ -1024,10 +1152,25 @@
     validate,
     /** Nur für Demo/Screenshots: Zustände erzwingen. */
     demo: {
-      backoff(hours) {
-        const h = hours || 6;
-        state.backoff = { active: true, until: new Date(Date.now() + h * 3600000 - 47 * 60000).toISOString(), level: 1 };
-        pushLog('error', `HTTP 429 von YouTube – Backoff ${h} h aktiviert`);
+      /** Backoff einer Plattform auslösen (platform: "youtube" (Standard) | "soundcloud"). */
+      backoff(hours, platform) {
+        const h = hours || 6, sc = platform === 'soundcloud';
+        const bo = { active: true, until: new Date(Date.now() + h * 3600000 - 47 * 60000).toISOString(), level: 1 };
+        if (sc) state.sc.backoff = bo; else state.backoff = bo;
+        pushLog('error', `HTTP 429 von ${sc ? 'SoundCloud' : 'YouTube'} – Backoff ${h} h aktiviert`);
+        emit('queue', {});
+        pushStatus();
+      },
+      /** SoundCloud-Tracks in die Warteschlange (für «platform_blocked»: SoundCloud steht, YouTube lädt weiter). */
+      scQueue() {
+        ['sc:880114203', 'sc:880114207'].forEach((id) => {
+          const v = byId(id);
+          if (state.queue.some((q) => q.id === id)) return;
+          const failedAt = state.queue.findIndex((q) => q.state === 'failed');
+          state.queue.splice(failedAt < 0 ? state.queue.length : failedAt, 0, { id, state: 'waiting', phase: 'waiting', pct: 0, speed: 0, eta: 0, error: null });
+          setStatus(v, 'queued');
+        });
+        emit('queue', {});
         pushStatus();
       },
       /** Zielordner nicht erreichbar (Banner, «Eintrag entfernen» gesperrt); on = false hebt auf. */
