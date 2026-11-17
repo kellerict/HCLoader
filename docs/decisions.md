@@ -1214,3 +1214,21 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
   (nicht in die Queue) – dokumentiert, «Prüfen» vorher lädt sie automatisch. Der Cursor ist ein Index:
   gelöschte/private Videos vor dem Cursor können beim Fortsetzen ebenso viele Einträge überspringen –
   für ein einmaliges Einlesen hinnehmbar, dokumentiert im Wiki.
+
+## 2026-11-17 – Installer-Smoke ohne Haenger (CI, portable.yml «Smoke (f)»)
+
+- **Befund:** Der Schritt hing zweimal > 20–35 Min., ohne dass `timeout-minutes` griff und ohne Log.
+  Der Schritt startete Setup und Deinstallation mit `Start-Process -Wait` (PS 5.1 wartet auf den ganzen
+  Prozessbaum, beim Uninstaller also auch auf die zweite Phase `%TEMP%\_iu*.tmp` und deren PowerShell)
+  und die Python-Prüfungen mit `& $py` – alles ohne eigene Zeitgrenze. Im Uninstaller wartet `Exec`
+  (`ewWaitUntilTerminated`) unbegrenzt auf ein PowerShell, das `Get-ScheduledTask`/`Unregister-ScheduledTask`
+  (CIM/Aufgabenplanung) aufruft – der wahrscheinlichste Hänger. Zudem stand in `NextButtonClick` ein
+  `MsgBox`, das `/SUPPRESSMSGBOXES` nicht unterdrückt (wird auch im Silent-Modus aufgerufen).
+- **Entscheid:** Im Smoke läuft jeder externe Prozess über `Invoke-Bounded` (`Start-Process -PassThru`,
+  `WaitForExit(ms)`, stdout/stderr in Dateien); bei Zeitüberschreitung Prozessliste (Name, Pfad,
+  Eltern-PID, Kommandozeile), Inno-`/LOG`-Enden, `taskkill /T /F`, klare Fehlermeldung. Setup und
+  Uninstaller bekommen immer `/LOG=`; auf die zweite Uninstaller-Phase (`_iu*`) und das Verschwinden des
+  Ordners wird begrenzt (5 Min.) gewartet. Im `.iss` läuft der Aufgaben-Teil der Aufräum-PowerShell in
+  einem Job, der nach 60 s gestoppt wird; `MsgBox` → `SuppressibleMsgBox`. **Grund:** ein Hänger muss
+  in Minuten mit Diagnose scheitern statt den Runner zu blockieren; die Deinstallation beim User darf
+  nie an der Aufgabenplanung hängen bleiben.

@@ -306,6 +306,12 @@ def test_iss_uninstall_removes_app_folder_but_never_user_data():
     assert "Get-ScheduledTask -TaskName ''{#TaskName}''" in code
     assert "Unregister-ScheduledTask" in code and "WorkingDirectory" in code
     assert "CurUninstallStepChanged" in code and "usUninstall" in code
+    # Exec waits without a limit: the task part runs in a job that is stopped after 60 s
+    assert "Start-Job -ArgumentList $d" in code and "Wait-Job -Job $j -Timeout 60" in code
+    assert "Stop-Job -Job $j" in code
+    # silent mode: no message box that could wait for a click, no app start
+    assert not re.search(r"(?<!Suppressible)MsgBox\(", code)
+    assert "SuppressibleMsgBox(Msg, mbError, MB_OK, IDOK)" in code
     # target folder checks (MAX_PATH, portable copy, foreign files) for wizard and silent mode
     assert "MaxRelPath = {#MaxRelPath};" in code and "MaxPathLen = 259;" in code
     assert "PrepareToInstall" in code and "wpSelectDir" in code
@@ -362,6 +368,17 @@ def test_workflow_builds_smokes_and_releases_the_installer():
         "HCLOADER_HOME",
     ):
         assert needle in smoke, needle
+    # nothing may hang the step (two runs hung > 20 min without a log): every external process is
+    # bounded, setup and uninstaller write an Inno log, the uninstaller's second phase is awaited
+    code_lines = [ln for ln in smoke.splitlines() if not ln.lstrip().startswith("#")]
+    starts = [ln for ln in code_lines if "Start-Process" in ln]
+    assert starts and not any(re.search(r"-Wait\b", ln) for ln in starts), starts
+    assert "WaitForExit($Seconds * 1000)" in smoke and "taskkill.exe /PID $Id /T /F" in smoke
+    assert "Get-Process" in smoke and "Show-Diag" in smoke
+    assert smoke.count('"/LOG=`"$Log`""') == 1 and '"/LOG=`"$ulog`""' in smoke
+    assert "_iu*" in smoke and "Invoke-Bounded 'Uninstaller" in smoke
+    for line in code_lines:
+        assert not line.lstrip().startswith("& $"), line  # unbounded native call
     uploads = [s for s in steps if s.get("uses", "").startswith("actions/upload-artifact")]
     assert any("steps.installer.outputs.exe" in str(s.get("with", {}).get("path")) for s in uploads)
     rel = "\n".join(s.get("run", "") for s in data["jobs"]["release"]["steps"])

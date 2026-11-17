@@ -311,7 +311,8 @@ begin
     Msg := CheckTargetDir(WizardDirValue);
     if Msg <> '' then
     begin
-      MsgBox(Msg, mbError, MB_OK);
+      // NextButtonClick also runs in silent mode: a plain MsgBox would wait for a click there
+      SuppressibleMsgBox(Msg, mbError, MB_OK, IDOK);
       Result := False;
     end;
   end;
@@ -325,7 +326,10 @@ end;
 
 // Uninstall: stop HCLoader processes started from the app folder (GUI, headless run, bgutil
 // server) and delete the scheduled task of app\core\scheduler.py if it starts this copy (a
-// portable copy may own a task with the same name). Errors are ignored.
+// portable copy may own a task with the same name). Errors are ignored. Exec waits without a
+// limit, so PowerShell bounds itself: the task part (CIM/Task Scheduler, can stall) runs in a job
+// that is stopped after 60 s, so the uninstaller always finishes (docs\decisions.md
+// "Installer-Smoke ohne Haenger").
 procedure CleanupBeforeUninstall();
 var
   AppDir, Script: String;
@@ -338,15 +342,20 @@ begin
     'Get-Process -Name pythonw,python,deno -ErrorAction SilentlyContinue | ' +
     'Where-Object { $_.Path -and $_.Path.ToLowerInvariant().StartsWith($d + [char]92) } | ' +
     'Stop-Process -Force -ErrorAction SilentlyContinue; ' +
+    '$j = Start-Job -ArgumentList $d -ScriptBlock { param($d) ' +
     'foreach ($t in @(Get-ScheduledTask -TaskName ''{#TaskName}'' -ErrorAction SilentlyContinue)) { ' +
     'foreach ($a in @($t.Actions)) { ' +
     '$e = ([string]$a.Execute).Trim([char]34).ToLowerInvariant(); ' +
     '$w = ([string]$a.WorkingDirectory).Trim([char]34).TrimEnd([char]92).ToLowerInvariant(); ' +
     'if ($e.StartsWith($d + [char]92) -or ($w -eq $d)) { ' +
-    '$t | Unregister-ScheduledTask -Confirm:$false -ErrorAction SilentlyContinue; break } } }';
-  if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+    '$t | Unregister-ScheduledTask -Confirm:$false -ErrorAction SilentlyContinue; break } } } }; ' +
+    'if (-not (Wait-Job -Job $j -Timeout 60)) { Stop-Job -Job $j }; ' +
+    'Remove-Job -Job $j -Force -ErrorAction SilentlyContinue; exit 0';
+  if Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
     '-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "' + Script + '"',
     '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+    Log('Cleanup before uninstall: PowerShell exit code ' + IntToStr(ResultCode))
+  else
     Log('Cleanup before uninstall: PowerShell could not be started');
 end;
 
