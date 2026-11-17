@@ -124,6 +124,46 @@ Aufgaben-Felder unverändert (sie spiegeln den Zustand der Windows-Aufgabe).
   kommen als `{ok:false, error:"Speichern fehlgeschlagen: …"}` (bei `save_settings` unter
   `errors.settings`), auch bei `reset_settings`.
 
+### App-Update (Selbst-Update von HCLoader)
+
+Prüft GitHub-Releases (`maintenance.update_repo`, Default `kellerict/HCLoader`), lädt das Quell-ZIP
+im Hintergrund und spielt es nach dem Beenden über `scripts/apply_update.ps1` ein. Kern:
+`app/core/selfupdate.py`; Ablauf und Begründungen: `docs/decisions.md` «Selbst-Update».
+Eigener Worker-Thread `hcloader-selfupdate` (blockiert weder Wartung noch Downloads). Kein YouTube,
+kein Throttle.
+
+| Methode | Parameter | Rückgabe |
+|---|---|---|
+| `get_update_status()` | – | `UpdateStatus` |
+| `check_update()` | – | `{ok:true, ...UpdateStatus}` \| `{ok:false, error, ...UpdateStatus}` (wartet max. 30 s) |
+| `download_update()` | – | `{ok:true, ...UpdateStatus}` (Start im Hintergrund) \| `{ok:false, error, ...UpdateStatus}` |
+| `cancel_update()` | – | `{ok:true, ...UpdateStatus}` |
+| `apply_update_now()` | – | `{ok:true}` \| `{ok:false, error}` |
+
+- **Automatik:** einmal pro GUI-Start (nach `loaded`), nur wenn `maintenance.check_app_updates_on_start`
+  an ist. Fehler/offline: nur Log (Info), kein Toast, `error` bleibt leer. Gefunden wird das neueste
+  stabile Release (`releases/latest`; Fallback `tags`, höchste SemVer-Version, Pre-Releases `-rc…` nie).
+- **Herunterladen** startet nie automatisch, nur über `download_update()` (Klick im Banner / Wartung).
+  Refusals (deutsch): Git-Checkout («Git-Checkout – bitte «git pull» …»), nicht Windows, «Kein neueres
+  Update bekannt – bitte zuerst prüfen», «… wird bereits heruntergeladen», «… ist schon bereit».
+- **Ablauf:** `downloading` (Events `update_progress` mit `phase: download → verify → prepare`) →
+  `ready` (Staging unter `<app_home>/update/staging/`, `manifest.json`) bzw. `error`. Ein `ready` aus
+  einer früheren Sitzung ist nach dem Start wieder `ready`.
+- `cancel_update()`: bricht einen Download ab (Teil-Datei weg, Zustand `idle`) bzw. verwirft ein
+  bereitgelegtes Update (wird dann auch beim Beenden nicht eingespielt).
+- `apply_update_now()`: nur bei `ready`. Antwortet sofort, schliesst nach 0.3 s das Fenster; danach
+  läuft das normale Beenden (`shutdown`: Queue gestoppt, laufender Download abgebrochen und wieder
+  `queued`, DB zu), dann startet `main.py` über `Api.finish_update()` den Updater **mit Neustart**.
+- **Beim Beenden:** Ist ein Update `ready` und `maintenance.apply_update_on_exit` an, startet
+  `finish_update()` den Updater **ohne Neustart**. Sonst bleibt es bereit und wird beim nächsten
+  Start wieder angeboten.
+- **Nach dem Update** (nächster Start): `<app_home>/update/result.json` → Toast «HCLoader aktualisiert
+  auf v…» (ok) bzw. «App-Update fehlgeschlagen: … – die bisherige Version wurde wiederhergestellt» (err).
+  Protokoll des Updaters: `<app_home>/logs/update.log`.
+- Während der Updater arbeitet, liegt `<app_home>/update/update.lock`; ein Start (GUI oder
+  `--headless --run-watchlist`) zeigt «HCLoader wird gerade aktualisiert …» und endet mit Code 4
+  (`EXIT_BUSY`). Ein Lock älter als 30 min gilt als verwaist und wird entfernt.
+
 ### Entdecken / Eingang
 
 | Methode | Parameter | Rückgabe | Phase |
@@ -356,13 +396,36 @@ Status). Ergänzungen der Python-Seite:
 - `LogLine.level`: `DEBUG→debug`, `INFO→info`, `WARNING→warn`, `ERROR/CRITICAL→error`;
   `ok` für Erfolgsmeldungen (`log.info(..., extra={"ui_level": "ok"})`, Helfer `worker.log_ok`).
 
+### UpdateStatus (App-Update)
+
+```
+{current, latest, available, state, notes, url, progress, error, checked, portable, git_checkout,
+ blocked, apply_on_exit}
+```
+- `current`: installierte Version (`app.__version__`); `latest`: neueste gefundene (null = noch nicht
+  geprüft); `available` = `latest` > `current` (SemVer, numerisch).
+- `state`: `idle` | `checking` | `downloading` | `ready` | `applying` | `error`.
+- `notes`: Release-Text bzw. Abschnitt aus `CHANGELOG.md` (Markdown, **als Text escapen**); `url`:
+  Release-Seite.
+- `progress`: `{phase: "download"|"verify"|"prepare", pct (0–100 | null = Grösse unbekannt), bytes,
+  total}` oder null.
+- `error`: deutscher Text (nur bei `state: "error"` oder nach manueller Prüfung); `checked`: ISO der
+  letzten erfolgreichen Prüfung.
+- `portable`: Portable-Version; `git_checkout`: App-Ordner enthält `.git` → kein Selbst-Update.
+- `blocked`: Grund, warum sich diese Installation nicht selbst aktualisiert (Git-Checkout, nicht
+  Windows) oder null.
+- `apply_on_exit`: Setting `maintenance.apply_update_on_exit` (Beschriftung «Beim Beenden» / «Später»).
+
+`get_versions().backups[]` hat zusätzlich `kind`: `"manual"` (Knopf/`backup_db`) oder `"premigrate"`
+(automatisch vor einer DB-Migration, `hcloader-premigrate-v<alt>-to-v<neu>-<ts>.db`).
+
 ## Events (Python → UI)
 
 | Event | Daten | Sender | Phase |
 |---|---|---|---|
 | `status` | `Status` | nach `save/reset_settings`, `update_ytdlp`, `test_po_token`, `clear_backoff`, `create/remove_task`, `set_video_status`, `search`, jeder Queue-Änderung, Start/Stopp des PO-Token-Servers, sonst alle 30 s | 2/3 |
 | `log` | `LogLine` | jede Logzeile (ausser Logger `pywebview*`, `app.worker.events`, `urllib3*`) | 2/3 |
-| `toast` | `{msg, kind?}` (`ok`/`info`/`warn`/`err`) | Update verfügbar, „yt-dlp aktualisiert – bitte HCLoader neu starten“ (warn), „HCLoader wurde verschoben – …“ (warn, Phase 6), Platzhalter „Folgt in Phase N“ | 2/3 |
+| `toast` | `{msg, kind?}` (`ok`/`info`/`warn`/`err`) | Ergebnis des letzten App-Updates (ok/err), Update verfügbar, „yt-dlp aktualisiert – bitte HCLoader neu starten“ (warn), „HCLoader wurde verschoben – …“ (warn, Phase 6), Platzhalter „Folgt in Phase N“ | 2/3 |
 | `video` | `{id, status, genre}` | `set_video_status`, `set_genre`, `enqueue`, Start/Ende/Abbruch eines Downloads, Download vom Throttle abgelehnt oder lokal gesperrt (zurück auf `queued`) | 2/3 |
 | `progress` | `{id, phase, pct, speed, eta}` (+ `sleep_total` bei `sleep`) | Download-Queue: `sleep` einmal zu Beginn der Pause, `download` höchstens ca. 2×/s (Phasenwechsel und 100 % immer), `convert`, `tag` | 3 |
 | `done` | `{id, title}` | Download fertig getaggt und verschoben | 3 |
@@ -370,6 +433,8 @@ Status). Ergänzungen der Python-Seite:
 | `queue` | `{}` | Warteschlange geändert (auch Sperre/Freigabe) → UI ruft `get_queue()` | 3 |
 | `source` | `{id, checking, name?, last_checked?, new_count?, error?}` | `checking:true` vor, `checking:false` nach der Prüfung einer Quelle; `new_count` = Eingang dieser Quelle, `error` = deutscher Text; `name` (7a) = aktueller Name (bei `name_auto` evtl. ersetzt). Übersprungene Quellen (Plattform im Backoff, SoundCloud aus) nur `{id, checking:false, error}` | 4/7a |
 | `run` | `Run` (inkl. `duration`) | ein Lauf ist zu Ende (`DB.finish_run`: GUI-Watchlist-Prüfung, Download-Lauf der Warteschlange; Headless-Läufe sind ein anderer Prozess und senden nichts) | 5 |
+| `update` | `UpdateStatus` | jeder Zustandswechsel des App-Updates (Prüfung Start/Ende, Download, bereit, Fehler, Abbruch, Updater gestartet) | Selbst-Update |
+| `update_progress` | `{phase, pct, bytes, total}` | Download (höchstens ca. 4×/s, 100 % immer), dann einmal `verify`, einmal `prepare` | Selbst-Update |
 | `watchlist_done` | `{checked, found}` | Watchlist-Lauf beendet; `checked` = bearbeitete Quellen (auch fehlerhafte), `found` = neu gespeicherte Videos | 4 |
 
 ## Download-Queue (Phase 3)

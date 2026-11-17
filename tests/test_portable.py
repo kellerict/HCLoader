@@ -537,5 +537,19 @@ def test_portable_workflow_contract():
     assert "actions/upload-artifact@v4" in wf
     assert "generate_once.ts" in wf and "--version" in wf
     assert "-m app.main --help" in wf
-    # no release upload without approval
-    assert "action-gh-release" not in wf and "gh release" not in wf and "contents: write" not in wf
+    # release upload (self-update, docs/RELEASING.md, approved by the user): only in the job
+    # `release`, only for tags, and only that job may write
+    from ruamel.yaml import YAML
+
+    data = YAML(typ="safe").load(wf)
+    assert data["permissions"] == {"contents": "read"}
+    assert "permissions" not in data["jobs"]["portable"]
+    rel = data["jobs"]["release"]
+    assert rel["if"] == "startsWith(github.ref, 'refs/tags/v')" and rel["needs"] == "portable"
+    assert rel["permissions"] == {"contents": "write"}
+    assert wf.count("contents: write") == 1
+    portable_job = wf[wf.index("  portable:") : wf.index("  release:")]
+    assert "gh release" not in portable_job and "action-gh-release" not in portable_job
+    steps = "\n".join(s.get("run", "") for s in rel["steps"])
+    assert "gh release upload" in steps and "SHA256SUMS" in steps and "git archive" in steps
+    assert "-source.zip" in steps and "__version__" in steps

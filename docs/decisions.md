@@ -758,3 +758,82 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
   `METADATA` geprüft. Es erlaubt Browser-Impersonation, die SoundCloud/Datadome bei 403 verlangt. PyPI-Wheel
   `curl_cffi-0.17.0-cp310-abi3-win_amd64.whl` existiert (abi3, passt für Python 3.12). Darum `yt-dlp[default,curl-cffi]`
   in `requirements.txt`, `pyproject.toml` und im Update-Knopf (`maintenance.PIP_SPECS`). Im dev-venv installiert.
+
+## 2026-11-17 – Selbst-Update von HCLoader (GitHub-Releases)
+
+- **Entscheid – Version:** eine Quelle der Wahrheit `app/__init__.py` `__version__` (SemVer `0.x.y`).
+  `pyproject.toml` liest sie (`dynamic = ["version"]`, `[tool.setuptools.dynamic]`), `build_portable.ps1`
+  per Regex, `maintenance.app_version()` per Import. Ein Release ist der Git-Tag `v<__version__>`; der
+  Workflow `portable.yml` bricht ab, wenn Tag und `__version__` nicht übereinstimmen.
+  **Grund:** `binaries.package_version("hcloader")` lieferte im nicht installierten Checkout/Portable nichts.
+- **Entscheid – Prüfung:** `GET https://api.github.com/repos/<repo>/releases/latest`, bei 404 (noch kein
+  Release) `…/tags?per_page=100` mit der höchsten SemVer-Version. Pre-Releases (`-rc1`, Flag `prerelease`)
+  und Drafts zählen nie. Unauthentifiziert (60 Anfragen/h pro IP reichen für 1×/Start), Timeout 5 s,
+  einmal pro GUI-Start im eigenen Worker `hcloader-selfupdate`, abschaltbar
+  (`maintenance.check_app_updates_on_start`). Repo als Setting `maintenance.update_repo` (Forks).
+  **Grund:** GitHub, nicht YouTube → kein Throttle (wie die PyPI-Prüfung). Fehler/offline nur ins Log
+  (Info), damit ein Offline-Start keine Meldung bringt; die manuelle Prüfung zeigt den Fehler.
+- **Entscheid – Download nur nach Klick:** Die UI zeigt «Version x verfügbar – Herunterladen / Änderungen /
+  Später»; erst der Klick lädt (Hintergrund). **Grund:** User-Wunsch, Kontrolle über Datenverkehr.
+- **Entscheid – Paket und Prüfsumme:** Quell-ZIP des Tags. Bevorzugt das Release-Asset
+  `HCLoader-<v>-source.zip` (von `portable.yml` per `git archive` gebaut), sonst
+  `https://codeload.github.com/<repo>/zip/refs/tags/v<x>`. GitHub veröffentlicht für Quell-ZIPs keine
+  Prüfsumme und die Bytes sind nicht garantiert stabil; darum hängt der Workflow `SHA256SUMS` (über
+  Source- und Portable-ZIP) an. Steht die geladene Datei darin, muss der Hash stimmen; ohne `SHA256SUMS`
+  bzw. ohne Eintrag wird nur die ZIP-Integrität geprüft (CRC aller Einträge, keine `..`/absoluten Pfade,
+  keine Symlinks, `app/__init__.py` + `app/main.py` vorhanden, Version im Paket = Tag, Grössenlimits).
+  Ist `requires-python` der neuen Version höher als der laufende Interpreter: Abbruch mit Hinweis
+  «Portable-ZIP neu herunterladen» bzw. «Python installieren, setup.ps1» (kein automatischer Python-Wechsel).
+- **Entscheid – Staging statt Austausch im Betrieb:** Entpackt werden nur `app/`, `ui/`, `scripts/` und
+  `config.example.yaml`, `README.md`, `LICENSE`, `CHANGELOG.md`, `requirements.txt`, `pyproject.toml` nach
+  `<app_home>/update/staging/` (+ `manifest.json`). In der Portable-Version zusätzlich die Starter aus
+  `scripts/portable/` (CRLF/ASCII wie im Build), nie `portable.txt`. Nie angefasst: `data\` (Settings,
+  DB, Archiv, Logs, Cache), `portable.txt`, `python\`, `.venv\`, `bin\` (ausser dem Provider, s.u.),
+  `licenses\`, `.git\` und die Musik im Zielordner. Die Liste `PROTECTED` steht im Manifest und wird im
+  PowerShell-Skript nochmals geprüft.
+- **Entscheid – pip/Binaries im Updater nach App-Ende, mit Rollback:** Ändert sich `requirements.txt`
+  (normalisierter Vergleich), läuft `pip install -r requirements.txt` erst im Updater, wenn HCLoader beendet
+  ist. **Grund:** `.pyd`-Dateien (pydantic-core, curl_cffi, pythonnet) sind im laufenden Prozess gesperrt,
+  und ein `--target`-Staging liesse sich im `._pth`-Python und im venv nicht sauber tauschen. Vorher kopiert
+  der Updater `site-packages` nach `_previous\site-packages` (robocopy, lange Pfade) und stellt es bei einem
+  Fehler wieder her. Portable mit `--no-build-isolation --prefer-binary` (wie der Update-Knopf).
+  `fetch_binaries.ps1 -BinDir … -Python …` läuft nur, wenn sich das Skript selbst oder die requirements
+  geändert haben (es ist idempotent: Deno/ffmpeg werden nur bei Fehlen geholt, der Provider bei anderer
+  Plugin-Version); vorher Kopie von `bin\bgutil-pot-provider`, im Portable danach `materialize_links.py`.
+- **Entscheid – Updater `scripts/apply_update.ps1`:** PowerShell 5.1, ASCII, PSModulePath-Schutz,
+  `\\?\`-Pfade, `Remove-Tree` wie die anderen Skripte. Die App kopiert das **installierte** Skript (passt zum
+  Manifest-Format dieser Version; Fallback das gestagte) nach `<app_home>/update/`, schreibt
+  `update.lock` und startet `powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File …
+  -Manifest … -WaitPid <pid> [-Restart]` mit `CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP` und, falls
+  erlaubt, `CREATE_BREAKAWAY_FROM_JOB` (überlebt das Ende der App); Arbeitsordner = Update-Ordner (kein
+  Handle auf getauschte Ordner). Ablauf: warten aufs Prozessende (180 s, sonst Abbruch ohne Änderung) →
+  betroffene Einträge per Umbenennen nach `<App>\_previous\` (gleiches Laufwerk, schnell) → Staging an ihre
+  Stelle kopieren → ggf. pip/fetch → `result.json` → Lock weg → Neustart (`python\pythonw.exe -m app.main`
+  bzw. venv-`pythonw`, Arbeitsordner = App-Ordner). Bei Fehlern Rollback aus `_previous\`, Log
+  `<app_home>/logs/update.log`, Neustart der alten Version. `_previous\` bleibt bis zum nächsten
+  erfolgreichen Start (dann gelöscht).
+- **Entscheid – Neustart vs. Beenden:** «Jetzt neu starten» schliesst das Fenster; das normale Beenden
+  (`Api.shutdown`: Queue gestoppt, Download abgebrochen und wieder `queued`) läuft zuerst, danach startet
+  `main.py` den Updater (`Api.finish_update`). «Beim Beenden»/«Später»: Setting
+  `maintenance.apply_update_on_exit` (Default an) spielt beim nächsten Schliessen ohne Neustart ein; aus =
+  das bereitgelegte Update wird beim nächsten Start wieder angeboten.
+- **Entscheid – Single-Instance während des Updates:** `<app_home>/update/update.lock`. `main.py` (GUI und
+  Headless) startet nicht, solange es jünger als 30 min ist («HCLoader wird gerade aktualisiert …»,
+  Exit 4); älter = verwaist, wird entfernt.
+- **Entscheid – Git-Checkout:** Liegt `.git` im App-Ordner, wird nur geprüft und angezeigt, nie geladen oder
+  überschrieben: «Git-Checkout – bitte «git pull» und danach «scripts\setup.ps1» ausführen». Eine
+  venv-Installation per ZIP (ohne `.git`) aktualisiert sich wie die Portable-Version, pip läuft dann mit
+  dem venv-Python. Ohne venv/Portable-Python und mit geänderten requirements: Abbruch mit Hinweis setup.ps1.
+- **Entscheid – DB-Migration ohne Datenverlust:** `db.migrate(before=…)` ruft vor dem ersten fälligen Schritt
+  einer bestehenden DB (Version ≥ 1) `maintenance.backup_before_migration` auf →
+  `<db-Ordner>/backups/hcloader-premigrate-v<alt>-to-v<neu>-<ts>.db` (sqlite3-Backup-API). Eigene
+  Aufbewahrung: die 5 neuesten; das Muster der normalen Backups (`hcloader-\d{8}-…`) erfasst sie nicht,
+  die normale Rotation löscht sie also nie. Scheitert das Backup, wird nicht migriert
+  (`MigrationBackupError`, «Daten unverändert»). Die Migration selbst bleibt pro Schritt atomar.
+  `get_versions().backups` listet beide Arten (`kind`).
+- **Entscheid – neuere DB in älterer App:** `SchemaTooNewError` (Unterklasse von `RuntimeError`, alte
+  Aufrufer bleiben gültig). `main.py` zeigt statt eines Tracebacks: «Die Datenbank stammt von einer neueren
+  HCLoader-Version (Schema vX) … bitte aktualisieren … oder eine Sicherung hcloader-premigrate-… zurückkopieren»
+  (MessageBox unter pythonw), Headless schreibt dasselbe nach stderr/Log, Exit 1. Nichts wird verändert.
+- **Nicht live getestet (kein Windows im Container):** `apply_update.ps1` nur statisch (ASCII, keine `&&`,
+  Parameter = Python-Aufruf), Prozessstart per Mock, GitHub per Fake-HTTP.

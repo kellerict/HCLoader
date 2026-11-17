@@ -1,11 +1,15 @@
 name: Portable
 # Builds the portable ZIP (scripts/build_portable.ps1) on Windows, smoke-tests it (also after
-# moving it to another drive) and uploads it as a workflow artifact. No release upload.
+# moving it to another drive) and uploads it as a workflow artifact. On a tag `v*` the job
+# `release` attaches the portable ZIP, a source ZIP and SHA256SUMS to the GitHub release
+# (self-update, docs/RELEASING.md); only that job may write.
 on:
   push:
     tags: ["v*"]
     branches: ["claude/compassionate-thompson-zgetlu"]  # working branch: test the build
   workflow_dispatch:
+permissions:
+  contents: read
 concurrency:
   # like ci.yml: a running build finishes; of the waiting runs only the newest is kept
   group: portable-${{ github.ref }}
@@ -132,3 +136,56 @@ jobs:
           if-no-files-found: error
           compression-level: 0  # already a ZIP
           retention-days: 30
+
+  release:
+    # only for tags: attach the assets to the release (create it from CHANGELOG.md if missing)
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: portable
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist-artifacts
+
+      - name: Assets (source ZIP, SHA256SUMS)
+        id: assets
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          ver="${TAG#v}"
+          app_ver=$(python3 -c "import re; print(re.search(r'__version__\s*=\s*\"([^\"]+)\"', open('app/__init__.py').read()).group(1))")
+          if [ "$ver" != "$app_ver" ]; then echo "Tag $TAG passt nicht zu app/__init__.py ($app_ver)"; exit 1; fi
+          mkdir -p out
+          find dist-artifacts -name '*.zip' -exec cp {} out/ \;
+          git archive --format=zip --prefix="HCLoader-$ver/" -o "out/HCLoader-$ver-source.zip" "$TAG"
+          (cd out && sha256sum *.zip > SHA256SUMS && cat SHA256SUMS)
+          python3 - "$ver" > out/notes.md <<'PY'
+          import re, sys
+          v = re.escape(sys.argv[1])
+          text = open("CHANGELOG.md", encoding="utf-8").read()
+          m = re.search(rf"^##[ \t]*\[?v?{v}\]?(?:[ \t].*)?$", text, re.M)
+          if m:
+              rest = text[m.end():]
+              n = re.search(r"^##\s", rest, re.M)
+              print(rest[: n.start() if n else len(rest)].strip())
+          PY
+          echo "version=$ver" >> "$GITHUB_OUTPUT"
+
+      - name: Upload to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if ! gh release view "$TAG" > /dev/null 2>&1; then
+            flags=()
+            case "$TAG" in *-*) flags+=(--prerelease) ;; esac
+            gh release create "$TAG" --verify-tag --title "HCLoader $TAG" --notes-file out/notes.md "${flags[@]}"
+          fi
+          gh release upload "$TAG" out/*.zip out/SHA256SUMS --clobber

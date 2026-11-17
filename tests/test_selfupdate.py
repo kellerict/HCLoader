@@ -533,6 +533,19 @@ def test_restore_ready_from_earlier_session(root):
     assert not (root / "data" / "update" / "staging").exists()
 
 
+def test_failed_result_drops_staging_so_it_is_not_offered_again(root):
+    zurl = f"https://codeload.github.com/{REPO}/zip/refs/tags/v0.2.0"
+    up = make_updater(root, FakeGitHub({LATEST: release(), zurl: source_zip()}))
+    up.check()
+    up.download()
+    upd = root / "data" / "update"
+    (upd / "result.json").write_text(json.dumps({"ok": False, "error": "x", "rolled_back": True}))
+    again = make_updater(root, FakeGitHub({}))
+    assert again.take_result()["ok"] is False
+    assert again.restore()["state"] == "idle"
+    assert not (upd / "staging").exists()
+
+
 def test_take_result_success_cleans_previous(root):
     upd = root / "data" / "update"
     upd.mkdir(parents=True)

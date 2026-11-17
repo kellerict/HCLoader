@@ -6,6 +6,19 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
 ## [Unreleased]
 
 ### Added
+- Selbst-Update von HCLoader über GitHub-Releases: Prüfung einmal pro Start (abschaltbar,
+  `maintenance.check_app_updates_on_start`), Banner «Version x verfügbar – Herunterladen / Änderungen /
+  Später», Download und Vorbereitung im Hintergrund erst nach Klick (Fortschritt), «Jetzt neu starten» bzw.
+  Einspielen beim Beenden (`maintenance.apply_update_on_exit`). Updater `scripts/apply_update.ps1` mit
+  Rollback, pip/`fetch_binaries.ps1` nur bei Bedarf, Daten und Musik bleiben unberührt; Git-Checkouts
+  werden nur informiert. Abschnitt «App-Update» im Wartung-Tab, Repo als Setting `maintenance.update_repo`.
+  Bridge `get_update_status`, `check_update`, `download_update`, `cancel_update`, `apply_update_now`,
+  Events `update`, `update_progress`. Release-Ablauf in `docs/RELEASING.md`; `portable.yml` hängt bei Tags
+  Portable-ZIP, Source-ZIP und `SHA256SUMS` an das Release.
+- Automatische Sicherung vor jeder Datenbank-Migration (`backups/hcloader-premigrate-v<alt>-to-v<neu>-<ts>.db`,
+  die 5 neuesten bleiben, eigene Rotation). Eine neuere Datenbank in einer älteren App zeigt eine klare
+  Meldung statt eines Absturzes.
+- Version zentral in `app/__init__.py` (`__version__`), `pyproject.toml` liest sie dynamisch.
 - Phase 8 Player (Backend): Einstellung `player.mode` (`internal`/`external`, Default `internal`), Bridge
   `get_media(id)` (prozentkodierte `file:`-URL, Cover-Cache unter `cache/covers/`, Kapitel aus Sidecar > ID3 CHAP > CUE)
   und `play_external(id)` (Standardplayer). Nur lokale Dateien innerhalb des Zielordners, kein Netzwerk.

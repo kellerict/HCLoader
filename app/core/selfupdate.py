@@ -32,7 +32,7 @@ import urllib.error
 import urllib.request
 import zipfile
 from collections.abc import Callable
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -793,7 +793,7 @@ class SelfUpdater:
 
     def take_result(self) -> dict[str, Any] | None:
         """Result of the last apply_update.ps1 run (once): {ok, from_version, to_version,
-        error, rolled_back, log}. After success the leftovers (`_previous`, staging) go."""
+        error, rolled_back, log}. The staging is dropped; after success also `_previous`."""
         p = self.update_dir / "result.json"
         try:
             res = json.loads(p.read_text(encoding="utf-8-sig"))
@@ -807,7 +807,10 @@ class SelfUpdater:
             return None
         if res.get("ok"):
             remove_tree(self.root / "_previous")
-            self.discard()
+        # also after a failure: the same staging would fail again; the next check offers the
+        # release anew and a fresh download is prepared (`_previous` stays for inspection and is
+        # cleared by the next updater run)
+        self.discard()
         with self._lock:
             self._s.result = res
         return res
@@ -1112,7 +1115,3 @@ def _reason(exc: BaseException) -> str:
     if isinstance(exc, TimeoutError):
         return "Zeitüberschreitung"
     return str(exc) or exc.__class__.__name__
-
-
-def release_dict(rel: Release) -> dict[str, Any]:
-    return asdict(rel)
