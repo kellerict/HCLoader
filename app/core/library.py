@@ -22,7 +22,7 @@ from typing import Any
 from mutagen import File as MutagenFile
 from mutagen.id3 import ID3, ID3NoHeaderError
 
-from . import paths, platforms, sidecar, tagging
+from . import paths, platforms, series, sidecar, tagging
 from .config import UNSORTED, Settings
 from .db import Database
 from .filters import normalize
@@ -158,10 +158,15 @@ def _duration(row: dict[str, Any], path: Path | None, present: bool) -> int | No
 
 
 def library_item(
-    row: dict[str, Any], *, root: Path | None = None, root_ok: bool = True
+    row: dict[str, Any],
+    *,
+    root: Path | None = None,
+    root_ok: bool = True,
+    editions: Mapping[int, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """`root_ok=False` (target folder unreachable): for files below `root` nothing is probed, the
-    state is unknown (`unknown: true`, `missing: false`) instead of «missing»."""
+    state is unknown (`unknown: true`, `missing: false`) instead of «missing».
+    `editions` (series.edition_map) fills `festival` / `festival_suggestion` (v0.3.0)."""
     fp = row.get("file_path") or ""
     path = Path(fp) if fp else None
     unknown = bool(path and root is not None and not root_ok and _under(path, root))
@@ -173,6 +178,7 @@ def library_item(
             size = round(path.stat().st_size / (1024 * 1024), 1) if present and path else 0.0
         except OSError:
             present, size = False, 0.0
+    festival, suggestion = series.festival_info(row, editions or {})
     return {
         "id": row["id"],
         "title": row.get("title") or "",
@@ -191,6 +197,8 @@ def library_item(
         "platform": row.get("platform") or platforms.platform_of(row["id"]),
         "genre_manual": bool(row.get("genre_manual")),
         "thumbnail": row.get("thumbnail") or None,
+        "festival": festival,
+        "festival_suggestion": suggestion,
     }
 
 
@@ -207,6 +215,8 @@ def list_library(
     `genre` (name), `channel` (channel id or channel name), `year` (int or "YYYY"),
     `missing` (true = only items whose file is gone). With `root_ok=False` (target folder not
     reachable, see `target_reachable`) files below `root` are neither present nor missing.
+    v0.3.0: `series_id`, `edition_id`, `event_year`, `stage`, `set_type` (assigned values) and
+    `festival` ("assigned" | "none" = no edition | "suggested" = only a suggestion).
     """
     f = filters or {}
     genre = str(f.get("genre") or "").strip()
@@ -216,9 +226,12 @@ def list_library(
     want_missing = f.get("missing")
     want_platform = str(f.get("platform") or "").strip()
     rows = db.list_videos(status="done", order_by="downloaded_at")
+    editions = series.edition_map(db)
     out: list[dict[str, Any]] = []
     for row in rows:
         if want_platform and (row.get("platform") or "youtube") != want_platform:
+            continue
+        if not _festival_filter(row, f, editions):
             continue
         if genre and (row.get("genre") or UNSORTED) != genre:
             continue
@@ -232,11 +245,37 @@ def list_library(
             )
             if search not in hay:
                 continue
-        item = library_item(row, root=root, root_ok=root_ok)
+        item = library_item(row, root=root, root_ok=root_ok, editions=editions)
         if want_missing is not None and bool(want_missing) != item["missing"]:
             continue
         out.append(item)
     return out
+
+
+def _festival_filter(
+    row: Mapping[str, Any], f: Mapping[str, Any], editions: Mapping[int, dict[str, Any]]
+) -> bool:
+    ed = editions.get(row.get("edition_id")) if row.get("edition_id") else None
+    mode = str(f.get("festival") or "").strip()
+    if mode == "assigned" and not ed:
+        return False
+    if mode == "none" and ed:
+        return False
+    if mode == "suggested" and (ed or not row.get("suggested_edition_id")):
+        return False
+    for key, value in (
+        ("series_id", ed and ed["series_id"]),
+        ("edition_id", ed and ed["edition_id"]),
+        ("event_year", ed and ed["event_year"]),
+    ):
+        want = f.get(key)
+        if want not in (None, "") and str(want) != str(value or ""):
+            return False
+    for key in ("stage", "set_type"):
+        want = f.get(key)
+        if want not in (None, "") and (not ed or str(want) != str(row.get(key) or "")):
+            return False
+    return True
 
 
 # --------------------------------------------------------------------------- reveal
@@ -386,6 +425,9 @@ def _retag(db: Database, settings: Settings, video_id: str) -> dict[str, Any]:
         "platform": platform,
         "source": (data or {}).get("source") or platforms.label(platform),
     }
+    # v0.3.0: TXXX:FESTIVAL … + album = edition (stored assignment; no re-detection here)
+    fest = series.tag_fields(db, video_id)
+    series.apply_to_tags(tag_meta, fest, settings)
     total = float(duration) if duration else None
 
     root = settings.target_dir_path()
@@ -403,6 +445,7 @@ def _retag(db: Database, settings: Settings, video_id: str) -> dict[str, Any]:
                     "channel": channel,
                     "genre": genre,
                     "upload_date": upload,
+                    **series.path_values(fest),
                 },
                 ext=path.suffix,
                 max_title_length=st.max_title_length,

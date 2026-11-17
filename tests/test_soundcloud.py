@@ -391,7 +391,7 @@ def test_migration_v5_existing_rows_become_youtube(tmp_path):
     conn.execute("INSERT INTO sources(type, name, url_or_query) VALUES ('channel','K','u')")
     conn.close()
     with Database(path) as d:
-        assert d.schema_version() == len(dbmod.MIGRATIONS) == 6
+        assert d.schema_version() == len(dbmod.MIGRATIONS) >= 6
         row = d.get_video("abcdefghijk")
         assert row["platform"] == "youtube" and row["preview"] == 0 and row["url"] is None
         src = d.list_sources()[0]
@@ -740,7 +740,7 @@ def test_geo_blocked_column_migration_and_upsert(tmp_path):
     conn.execute("INSERT INTO videos(id, title, status) VALUES ('sc:1', 'Alt', 'new')")
     conn.close()
     with Database(path) as d:
-        assert d.schema_version() == 6 and d.get_video("sc:1")["geo_blocked"] == 0
+        assert d.schema_version() >= 6 and d.get_video("sc:1")["geo_blocked"] == 0
         d.upsert_video({"id": "sc:1", "geo_blocked": True})
         assert d.get_video("sc:1")["geo_blocked"] == 1
         d.upsert_video({"id": "sc:1", "title": "Neu"})  # no flag in the dict: unchanged

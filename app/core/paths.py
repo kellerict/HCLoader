@@ -143,7 +143,30 @@ def _values(meta: Mapping[str, object], title_len: int, other_len: int | None) -
         "title": sanitize_filename(truncate(str(meta.get("title") or ""), title_len), fallback="_"),
         "id": sanitize_filename(str(meta["id"])),
         "platform": sanitize_filename(_platform_label(meta.get("platform"))),
+        # v0.3.0: may be empty (no festival/series assigned) -> cleaned away in _render
+        "festival": _optional(lim(str(meta.get("festival") or "").strip())),
+        "event_year": _optional(str(meta.get("event_year") or "").strip()),
+        "stage": _optional(lim(str(meta.get("stage") or "").strip())),
     }
+
+
+# placeholders that may render empty; a segment that only held them disappears (v0.3.0)
+OPTIONAL_PLACEHOLDERS = ("festival", "event_year", "stage")
+_EDGE_JUNK = " -–—_.,;|+&"
+_EMPTY_BRACKETS = re.compile(r"\(\s*\)|\[\s*\]|\{\s*\}")
+
+
+def _optional(value: str) -> str:
+    return sanitize_filename(value, fallback="") if value and value != "0" else ""
+
+
+def _tidy(segment: str) -> str:
+    """Clean a segment after empty optional placeholders: «Defqon.1 2024 - » -> «Defqon.1
+    2024», «() title» -> «title», doubled separators collapsed."""
+    seg = _EMPTY_BRACKETS.sub(" ", segment)
+    seg = re.sub(r"\s+([-–—_])(\s+[-–—_])+\s+", r" \1 ", seg)
+    seg = re.sub(r"\s+", " ", seg)
+    return seg.strip(_EDGE_JUNK)
 
 
 def _platform_label(value: object) -> str:
@@ -159,6 +182,13 @@ def _render(template: str, values: dict[str, str], ext: str) -> list[str]:
     for i, part in enumerate(parts):
         seg = _PLACEHOLDER.sub(lambda m: values.get(m.group(1), m.group(0)), part)
         last = i == len(parts) - 1
+        names = set(_PLACEHOLDER.findall(part))
+        if names & set(OPTIONAL_PLACEHOLDERS) and any(
+            not values.get(n) for n in names & set(OPTIONAL_PLACEHOLDERS)
+        ):
+            seg = _tidy(seg)
+            if not seg and not last:
+                continue  # folder level that only held an empty festival/stage: dropped
         seg = sanitize_filename(seg)
         if last:
             seg = sanitize_filename(seg + ext)
@@ -178,7 +208,9 @@ def build_target_path(
     """Build the final file path from the template.
 
     meta keys: id (required; the *file* id, SoundCloud `sc-<id>`), title, artist,
-    channel/channel_name, genre, upload_date/date, platform (`{platform}`).
+    channel/channel_name, genre, upload_date/date, platform (`{platform}`), and since v0.3.0
+    festival, event_year, stage (optional: empty -> the segment is tidied, an empty folder
+    level is dropped).
     Title is limited to max_title_length, then shortened further (then artist/channel/genre)
     until len(str(path)) < max_path_length. The video id is never shortened.
     """

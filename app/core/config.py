@@ -346,6 +346,8 @@ class StorageSettings(_Section):
     max_title_length: int = Field(120, ge=20, le=200)
     max_path_length: int = Field(240, ge=100, le=259)
     artist_from_title: bool = False
+    # v0.3.0: album tag = edition («Defqon.1 2024») when a festival/series is assigned
+    album_from_edition: bool = True
     title_cleanup_patterns: list[str] = Field(
         default_factory=lambda: list(DEFAULT_CLEANUP_PATTERNS)
     )
@@ -353,7 +355,10 @@ class StorageSettings(_Section):
     @field_validator("path_template")
     @classmethod
     def _template(cls, v: str) -> str:
-        allowed = {"genre", "artist", "channel", "year", "date", "title", "id", "platform"}
+        allowed = {
+            *("genre", "artist", "channel", "year", "date", "title", "id", "platform"),
+            *("festival", "event_year", "stage"),  # v0.3.0, empty -> cleaned away
+        }
         names = set(re.findall(r"\{([^{}]*)\}", v))
         unknown = sorted(names - allowed)
         if unknown:
@@ -449,6 +454,62 @@ class PlayerSettings(_Section):
     mode: Literal["internal", "external"] = "internal"
 
 
+# v0.3.0 festivals & series: codes = app/core/festivals.py SET_TYPES (UI translates them)
+SET_TYPE_CODES = (
+    "live_set",
+    "closing_ceremony",
+    "opening",
+    "endshow",
+    "full_show",
+    "warm_up",
+    "anthem",
+    "episode",
+)
+
+
+class SetTypeKeyword(BaseModel):
+    """User keyword for a set type, e.g. {keyword: "afterburner", set_type: "endshow"}."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    keyword: str = Field(min_length=1, max_length=60)
+    set_type: str
+
+    @field_validator("keyword", mode="before")
+    @classmethod
+    def _strip(cls, v: Any) -> Any:
+        return v.strip() if isinstance(v, str) else v
+
+    @field_validator("set_type")
+    @classmethod
+    def _code(cls, v: str) -> str:
+        if v not in SET_TYPE_CODES:
+            raise ValueError(tr("config.unknown_set_type", value=v))
+        return v
+
+
+class FestivalSettings(_Section):
+    """v0.3.0 «Festivals & series» tab. The series list itself lives in the database
+    (built-ins from app/data/series.yaml + user series), not here."""
+
+    detect: bool = True
+    min_confidence: float = Field(0.65, ge=0.3, le=1.0)
+    year_from_upload_date: bool = True
+    match_description: bool = True
+    extra_stages: list[str] = Field(default_factory=list)
+    extra_set_types: list[SetTypeKeyword] = Field(default_factory=list)
+
+    _clean = field_validator("extra_stages", mode="before")(_clean_list)
+
+    @field_validator("extra_stages")
+    @classmethod
+    def _stage_len(cls, v: list[str]) -> list[str]:
+        for s in v:
+            if len(s) > 40:
+                raise ValueError(tr("config.stage_too_long", name=s[:40]))
+        return v
+
+
 DEFAULT_UPDATE_REPO = "kellerict/HCLoader"
 _REPO_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/[A-Za-z0-9._-]{1,100}$")
 
@@ -492,6 +553,7 @@ class Settings(BaseModel):
     appearance: AppearanceSettings = Field(default_factory=AppearanceSettings)
     maintenance: MaintenanceSettings = Field(default_factory=MaintenanceSettings)
     player: PlayerSettings = Field(default_factory=PlayerSettings)
+    festivals: FestivalSettings = Field(default_factory=FestivalSettings)
 
     def to_dict(self) -> dict[str, Any]:
         return self.model_dump(mode="json")
@@ -639,6 +701,7 @@ SECTION_TITLES = {
     "appearance": "Darstellung",
     "maintenance": "Wartung",
     "player": "Player",
+    "festivals": "Festivals & Serien",
 }
 
 COMMENTS = {
@@ -669,10 +732,11 @@ COMMENTS = {
     "download.write_id3_chapters": "ID3-Kapitel (CHAP/CTOC) einbetten",
     "download.keep_original_soundcloud": "SoundCloud: Original behalten (meist 128-160 kbps; MP3 320 bringt nichts)",
     "storage.target_dir": "Zielordner; %USERPROFILE% wird ersetzt; relativ (z.B. .\\Music) = zum App-Ordner, nur Portable-Version",
-    "storage.path_template": "Ordner-/Dateimuster; Platzhalter: genre, artist, channel, year, date, title, id, platform (id bei SoundCloud: sc-<id>)",
+    "storage.path_template": "Ordner-/Dateimuster; Platzhalter: genre, artist, channel, year, date, title, id, platform (id bei SoundCloud: sc-<id>), festival, event_year, stage (leer = entfällt)",
     "storage.max_title_length": "Maximale Titellänge im Dateinamen (20-200)",
     "storage.max_path_length": "Maximale Gesamtpfadlänge (100-259, Windows-Limit)",
     "storage.artist_from_title": "Artist aus dem Titel ableiten (ARTIST @ EVENT / ARTIST - TITEL)",
+    "storage.album_from_edition": "Album-Tag = Ausgabe (z.B. «Defqon.1 2024»), wenn ein Festival/eine Serie zugeordnet ist",
     "storage.title_cleanup_patterns": "Reguläre Ausdrücke, die aus dem Titel entfernt werden",
     "throttle.sleep_requests": "Pause zwischen Metadaten-Requests in Sekunden (0-60)",
     "throttle.sleep_interval": "Minimale Pause zwischen Downloads in Sekunden",
@@ -711,6 +775,12 @@ COMMENTS = {
     "maintenance.check_app_updates_on_start": "Beim Start prüfen, ob eine neue HCLoader-Version da ist (GitHub)",
     "maintenance.apply_update_on_exit": "Ein heruntergeladenes App-Update beim Beenden automatisch einspielen",
     "maintenance.update_repo": "GitHub-Repo für App-Updates (besitzer/repo), für Forks änderbar",
+    "festivals.detect": "Festival/Serie, Jahr, Bühne und Set-Art aus Titel/Kanal erkennen (offline, keine Zusatzanfragen)",
+    "festivals.min_confidence": "Mindest-Sicherheit für eine automatische Zuordnung (0.3-1.0); darunter nur Vorschlag",
+    "festivals.year_from_upload_date": "Ohne Jahreszahl im Titel das Upload-Jahr nehmen",
+    "festivals.match_description": "Festivalnamen auch in der Beschreibung suchen (falls gespeichert)",
+    "festivals.extra_stages": "Zusätzliche Bühnennamen (zu RED, BLUE, BLACK, UV, Mainstage …)",
+    "festivals.extra_set_types": "Zusätzliche Begriffe für Set-Arten: keyword + set_type (live_set, closing_ceremony, opening, endshow, full_show, warm_up, anthem, episode)",
 }
 
 _HEADER = (

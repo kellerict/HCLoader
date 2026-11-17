@@ -30,7 +30,7 @@ from typing import Any
 import yt_dlp
 from yt_dlp.utils import DownloadCancelled
 
-from . import binaries, config, paths, platforms, preflight, sidecar, tagging
+from . import binaries, config, paths, platforms, preflight, series, sidecar, tagging
 from .config import UNSORTED, Settings
 from .db import Database
 from .filters import normalize
@@ -1076,6 +1076,12 @@ class YtClient:
             "platform": platform,
             "source": platforms.label(platform),
         }
+        # v0.3.0: festival/series from the full title + description (offline, manual values
+        # stay); TXXX:FESTIVAL … and album = edition, path placeholders {festival} …
+        if row:
+            series.detect_and_store(self.db, settings, [vid], descriptions={vid: description})
+        fest = series.tag_fields(self.db, vid)
+        series.apply_to_tags(tag_meta, fest, settings)
 
         cover = None
         thumb = _find_thumbnail(tmp, stem)
@@ -1111,6 +1117,7 @@ class YtClient:
                 "channel": channel,
                 "genre": genre,
                 "upload_date": meta["upload_date"],
+                **series.path_values(fest),
             },
             ext=audio.suffix,
             max_title_length=st.max_title_length,

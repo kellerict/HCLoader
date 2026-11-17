@@ -408,6 +408,14 @@ def video_dict(row: dict[str, Any]) -> dict[str, Any]:
         "url": row.get("url") or None,
         "preview": bool(row.get("preview")),
         "geo_blocked": bool(row.get("geo_blocked")),
+        # v0.3.0 festivals & series (names: get_series / get_festival_tree)
+        "edition_id": row.get("edition_id"),
+        "suggested_edition_id": row.get("suggested_edition_id"),
+        "stage": row.get("stage"),
+        "set_type": row.get("set_type"),
+        "episode": row.get("episode"),
+        "festival_manual": bool(row.get("festival_manual")),
+        "festival_confidence": row.get("festival_confidence"),
     }
 
 
@@ -643,7 +651,7 @@ class DownloadQueue:
                 "speed": 0,
                 "eta": 0,
                 "error": None,
-                "target": _target_folder(row, settings),
+                "target": _target_folder(row, settings, self._db),
             }
             if cur and cur["id"] == vid:
                 phase = cur["phase"]
@@ -1110,12 +1118,16 @@ class WatchdogPotServer:
         pass
 
 
-def _target_folder(row: dict[str, Any], settings: Any) -> str:
+def _target_folder(row: dict[str, Any], settings: Any, db: Any = None) -> str:
     """Relative target folder (QueueItem.target), e.g. 'Hardcore\\Partyraiser\\2026\\'."""
     try:
-        from .core import paths
+        from .core import paths, series
 
         st = settings.storage
+        fest: dict[str, str] = {}
+        tpl = st.path_template
+        if db is not None and any(f"{{{n}}}" in tpl for n in paths.OPTIONAL_PLACEHOLDERS):
+            fest = series.path_values(series.tag_fields(db, row["id"]))
         meta = {
             "id": file_id(row["id"]),
             "platform": row.get("platform") or platform_of(row["id"]),
@@ -1124,6 +1136,7 @@ def _target_folder(row: dict[str, Any], settings: Any) -> str:
             "channel": row.get("channel_name") or "",
             "genre": row.get("genre") or _UNSORTED,
             "upload_date": row.get("upload_date") or "",
+            **fest,
         }
         base = settings.target_dir_path()
         full = paths.build_target_path(

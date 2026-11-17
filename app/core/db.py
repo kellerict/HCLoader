@@ -172,6 +172,65 @@ def _m6_geo_blocked(conn: sqlite3.Connection) -> None:
     conn.execute("ALTER TABLE videos ADD COLUMN geo_blocked INTEGER NOT NULL DEFAULT 0")
 
 
+def _m7_festivals(conn: sqlite3.Connection) -> None:
+    """v0.3.0 festivals & series (docs/concepts/festivals.md, docs/decisions.md).
+
+    - `series`: festival, radio show or podcast. `key` is stable (built-ins from
+      app/data/series.yaml, user series `u-<slug>`); aliases/weak aliases/channels/variants are
+      JSON lists (language-neutral data, only ever read as a whole). `builtin` = shipped with the
+      app, `user_modified` = the user edited a built-in (an update never overwrites it again),
+      `hidden` = the user deleted a built-in (it is not re-added by the next sync).
+    - `editions`: series + year (0 = unknown) + variant ('' = none), e.g. Defqon.1 Australia 2019.
+    - per video: `edition_id` (assigned), `suggested_edition_id` (detected below the confidence
+      threshold, shown as a suggestion), `stage`, `set_type` (code), `episode` (radio/podcast),
+      `festival_confidence` (last detection), `festival_manual` (set by the user: detection never
+      touches the row again).
+    """
+    conn.execute(
+        """CREATE TABLE series(
+          id INTEGER PRIMARY KEY,
+          key TEXT NOT NULL UNIQUE,
+          name TEXT NOT NULL,
+          kind TEXT NOT NULL DEFAULT 'festival' CHECK(kind IN ('festival','radio','podcast')),
+          aliases TEXT NOT NULL DEFAULT '[]',
+          weak_aliases TEXT NOT NULL DEFAULT '[]',
+          channels TEXT NOT NULL DEFAULT '[]',
+          variants TEXT NOT NULL DEFAULT '[]',
+          default_genre TEXT,
+          builtin INTEGER NOT NULL DEFAULT 0,
+          user_modified INTEGER NOT NULL DEFAULT 0,
+          hidden INTEGER NOT NULL DEFAULT 0,
+          enabled INTEGER NOT NULL DEFAULT 1,
+          created TEXT,
+          updated TEXT
+        )"""
+    )
+    conn.execute(
+        """CREATE TABLE editions(
+          id INTEGER PRIMARY KEY,
+          series_id INTEGER NOT NULL REFERENCES series(id) ON DELETE CASCADE,
+          year INTEGER NOT NULL DEFAULT 0,
+          variant TEXT NOT NULL DEFAULT '',
+          UNIQUE(series_id, year, variant)
+        )"""
+    )
+    conn.execute(
+        "ALTER TABLE videos ADD COLUMN edition_id INTEGER "
+        "REFERENCES editions(id) ON DELETE SET NULL"
+    )
+    conn.execute(
+        "ALTER TABLE videos ADD COLUMN suggested_edition_id INTEGER "
+        "REFERENCES editions(id) ON DELETE SET NULL"
+    )
+    conn.execute("ALTER TABLE videos ADD COLUMN stage TEXT")
+    conn.execute("ALTER TABLE videos ADD COLUMN set_type TEXT")
+    conn.execute("ALTER TABLE videos ADD COLUMN episode INTEGER")
+    conn.execute("ALTER TABLE videos ADD COLUMN festival_confidence REAL")
+    conn.execute("ALTER TABLE videos ADD COLUMN festival_manual INTEGER NOT NULL DEFAULT 0")
+    conn.execute("CREATE INDEX idx_videos_edition ON videos(edition_id)")
+    conn.execute("CREATE INDEX idx_editions_series ON editions(series_id, year)")
+
+
 # Append new steps at the end; never edit existing ones. Step i upgrades version i -> i+1.
 MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [
     _m1_initial,
@@ -180,6 +239,7 @@ MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [
     _m4_source_videos,
     _m5_platforms,
     _m6_geo_blocked,
+    _m7_festivals,
 ]
 # statuses a user may put into the download queue (enqueue / retry)
 ENQUEUEABLE = ("new", "inbox", "failed")

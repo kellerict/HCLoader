@@ -314,7 +314,10 @@ def write_tags(
 
     meta keys: title, artist, albumartist (default artist), album (default title), genre,
     date (upload date), url, id (native id of the platform), platform ('youtube' default /
-    'soundcloud': TXXX:SOUNDCLOUD_ID instead of TXXX:YOUTUBE_ID), source (default 'YouTube').
+    'soundcloud': TXXX:SOUNDCLOUD_ID instead of TXXX:YOUTUBE_ID), source (default 'YouTube'),
+    v0.3.0 (optional, empty = frame not written / removed on re-tag): festival, event_year,
+    stage, set_type, episode -> TXXX:FESTIVAL, TXXX:EVENT_YEAR, TXXX:STAGE, TXXX:SET_TYPE,
+    TXXX:EPISODE (MP4: freeform atoms, Opus: Vorbis comments of the same name).
     """
     ext = Path(path).suffix.lower()
     chapters = list(chapters)
@@ -351,6 +354,21 @@ _OWN_FRAMES = (
     "TXXX:YOUTUBE_ID",
     "TXXX:SOUNDCLOUD_ID",
     "TXXX:SOURCE",
+    # v0.3.0 festivals & series: removed on re-tag when the assignment is gone
+    "TXXX:FESTIVAL",
+    "TXXX:EVENT_YEAR",
+    "TXXX:STAGE",
+    "TXXX:SET_TYPE",
+    "TXXX:EPISODE",
+)
+
+# meta key -> TXXX description / MP4 freeform name / Vorbis comment (lower case)
+FESTIVAL_TAGS = (
+    ("festival", "FESTIVAL"),
+    ("event_year", "EVENT_YEAR"),
+    ("stage", "STAGE"),
+    ("set_type", "SET_TYPE"),
+    ("episode", "EPISODE"),
 )
 
 
@@ -392,6 +410,9 @@ def _write_id3(
     if vid := _tag_text(meta, "id"):
         tags.add(TXXX(encoding=3, desc=_id_tag(meta), text=[vid]))
     tags.add(TXXX(encoding=3, desc="SOURCE", text=[_tag_text(meta, "source") or "YouTube"]))
+    for key, desc in FESTIVAL_TAGS:
+        if value := _tag_text(meta, key):
+            tags.add(TXXX(encoding=3, desc=desc, text=[value]))
     if cover:
         tags.add(APIC(encoding=3, mime="image/jpeg", type=3, desc="Cover", data=cover))
     if chapters:
@@ -423,6 +444,12 @@ def _write_mp4(path: Path, meta: Mapping[str, Any], cover: bytes | None) -> None
         tags[f"----:com.apple.iTunes:{_id_tag(meta)}"] = [MP4FreeForm(vid.encode("utf-8"))]
     source = (_tag_text(meta, "source") or "YouTube").encode("utf-8")
     tags["----:com.apple.iTunes:SOURCE"] = [MP4FreeForm(source)]
+    for key, desc in FESTIVAL_TAGS:
+        name = f"----:com.apple.iTunes:{desc}"
+        if value := _tag_text(meta, key):
+            tags[name] = [MP4FreeForm(value.encode("utf-8"))]
+        elif name in tags:
+            del tags[name]
     if cover:
         tags["covr"] = [MP4Cover(cover, imageformat=MP4Cover.FORMAT_JPEG)]
     audio.save()
@@ -447,9 +474,13 @@ def _write_opus(path: Path, meta: Mapping[str, Any], cover: bytes | None) -> Non
         _id_tag(meta).lower(): _tag_text(meta, "id"),
         "source": _tag_text(meta, "source") or "YouTube",
     }
+    for key, desc in FESTIVAL_TAGS:
+        values[desc.lower()] = _tag_text(meta, key)
     for key, value in values.items():
         if value:
             audio[key] = [value]
+        elif key in {d.lower() for _k, d in FESTIVAL_TAGS} and audio.tags and key in audio.tags:
+            del audio[key]
     if cover:
         pic = Picture()
         pic.type = 3

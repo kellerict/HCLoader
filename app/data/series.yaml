@@ -1,0 +1,278 @@
+# Built-in festivals and series (v0.3.0, docs/concepts/festivals.md).
+#
+# Shipped with the app and synchronised into the database (table `series`) at start-up.
+# Users edit their copy in Settings > Festivals & series; an entry the user changed, hid or added
+# is never overwritten by an update of this file (app/core/series.py `sync_builtin`).
+#
+# Language-neutral data only: names are proper names, `set_types.code` is the stable code the UI
+# translates, `label` is the language-neutral text written into tags (TXXX:SET_TYPE).
+#
+# series:
+#   key           stable id (never change it once shipped; user series get `u-<slug>`)
+#   name          display name, also always an alias
+#   kind          festival | radio | podcast
+#   aliases       strong spellings: one hit in the title is good evidence
+#   weak_aliases  common words (Rebirth, Supremacy …): count less unless directly followed by a year
+#   channels      organiser channels (channel id, channel URL or exact channel name) - boost only
+#   variants      edition variants such as «Australia»: [{name, aliases}]
+#   default_genre genre name used when the genre would otherwise be «Unsortiert» (only for
+#                 single-genre series: most festivals have hardstyle AND hardcore stages)
+#
+# Matching ignores case, accents and punctuation ("Defqon.1" = "Defqon 1" = "DEFQON1").
+version: 1
+
+series:
+  # ------------------------------------------------------------------ festivals (hardstyle)
+  - key: defqon1
+    name: Defqon.1
+    kind: festival
+    aliases: [Defqon.1, Defqon 1, Defqon One, Defqon.1 Weekend Festival, DQ1]
+    channels: [Q-dance]
+    variants:
+      - {name: Australia, aliases: [Australia, AU]}
+      - {name: Chile, aliases: [Chile]}
+      - {name: at Home, aliases: [at Home]}
+  - key: qlimax
+    name: Qlimax
+    kind: festival
+    aliases: [Qlimax]
+    channels: [Q-dance]
+  - key: x-qlusive
+    name: X-Qlusive
+    kind: festival
+    aliases: [X-Qlusive, XQlusive, X Qlusive]
+    channels: [Q-dance]
+  - key: q-base
+    name: Q-BASE
+    kind: festival
+    aliases: [Q-BASE, QBASE, Q BASE]
+    channels: [Q-dance]
+  - key: qapital
+    name: Qapital
+    kind: festival
+    aliases: [Qapital]
+    channels: [Q-dance]
+  - key: the-qontinent
+    name: The Qontinent
+    kind: festival
+    aliases: [The Qontinent, Qontinent]
+  - key: decibel-outdoor
+    name: Decibel outdoor
+    kind: festival
+    aliases: [Decibel outdoor, Decibel festival, Decibel outdoor festival]
+    weak_aliases: [Decibel]
+  - key: hard-bass
+    name: Hard Bass
+    kind: festival
+    aliases: [Hard Bass festival, Hardbass festival]
+    weak_aliases: [Hard Bass, Hardbass]
+  - key: reverze
+    name: Reverze
+    kind: festival
+    aliases: [Reverze]
+  - key: supremacy
+    name: Supremacy
+    kind: festival
+    aliases: [Supremacy festival]
+    weak_aliases: [Supremacy]
+  - key: rebirth
+    name: Rebirth Festival
+    kind: festival
+    aliases: [Rebirth Festival, REBiRTH Festival]
+    weak_aliases: [Rebirth]
+  - key: intents
+    name: Intents Festival
+    kind: festival
+    aliases: [Intents Festival]
+    weak_aliases: [Intents]
+  - key: hardshock
+    name: Hardshock
+    kind: festival
+    aliases: [Hardshock, Hardshock festival]
+  - key: loudness
+    name: Loudness
+    kind: festival
+    aliases: [Loudness festival]
+    weak_aliases: [Loudness]
+  - key: snowtopia
+    name: Snowtopia
+    kind: festival
+    aliases: [Snowtopia]
+  - key: free-festival
+    name: Free Festival
+    kind: festival
+    aliases: [Free Festival]
+  - key: wish-outdoor
+    name: Wish Outdoor
+    kind: festival
+    aliases: [Wish Outdoor]
+  - key: bassleader
+    name: Bassleader
+    kind: festival
+    aliases: [Bassleader]
+  - key: shockerz
+    name: Shockerz
+    kind: festival
+    aliases: [Shockerz]
+  # ------------------------------------------------------------------ festivals (hardcore / uptempo)
+  - key: dominator
+    name: Dominator
+    kind: festival
+    aliases: [Dominator, Dominator festival]
+    channels: [Dominator]
+  - key: masters-of-hardcore
+    name: Masters of Hardcore
+    kind: festival
+    default_genre: Hardcore
+    aliases: [Masters of Hardcore]
+    weak_aliases: [MOH]
+    channels: [Masters of Hardcore]
+  - key: thunderdome
+    name: Thunderdome
+    kind: festival
+    default_genre: Hardcore
+    aliases: [Thunderdome]
+    channels: [Thunderdome]
+  - key: ground-zero
+    name: Ground Zero
+    kind: festival
+    aliases: [Ground Zero Festival]
+    weak_aliases: [Ground Zero]
+  - key: hardcore-italia
+    name: Hardcore Italia
+    kind: festival
+    default_genre: Hardcore
+    aliases: [Hardcore Italia]
+  - key: army-of-hardcore
+    name: Army of Hardcore
+    kind: festival
+    default_genre: Hardcore
+    aliases: [Army of Hardcore]
+  - key: toxicator
+    name: Toxicator
+    kind: festival
+    aliases: [Toxicator]
+  - key: syndicate
+    name: Syndicate
+    kind: festival
+    aliases: [Syndicate Festival]
+    weak_aliases: [Syndicate]
+  - key: harmony-of-hardcore
+    name: Harmony of Hardcore
+    kind: festival
+    default_genre: Hardcore
+    aliases: [Harmony of Hardcore]
+  - key: unleashed
+    name: Unleashed
+    kind: festival
+    aliases: [Unleashed Festival]
+    weak_aliases: [Unleashed]
+  # ------------------------------------------------------------------ radio shows and podcasts
+  - key: q-dance-radio
+    name: Q-dance Radio
+    kind: radio
+    aliases: [Q-dance Radio, Qdance Radio, Q-dance Presents Radio]
+    channels: [Q-dance]
+  - key: hardstyle-mag-podcast
+    name: Hardstyle Mag Podcast
+    kind: podcast
+    default_genre: Hardstyle
+    aliases: [Hardstyle Mag Podcast, HardstyleMag Podcast, Hardstyle Magazine Podcast]
+    channels: [Hardstyle Mag]
+  - key: masters-of-hardcore-podcast
+    name: Masters of Hardcore Podcast
+    kind: podcast
+    default_genre: Hardcore
+    aliases: [Masters of Hardcore Podcast, MOH Podcast]
+    channels: [Masters of Hardcore]
+  - key: we-r-hardstyle
+    name: WE R Hardstyle
+    kind: radio
+    default_genre: Hardstyle
+    aliases: [WE R Hardstyle, We Are Hardstyle]
+  - key: hard-with-style
+    name: Hard with Style
+    kind: podcast
+    default_genre: Hardstyle
+    aliases: [Hard with Style]
+  - key: thunderdome-radio
+    name: Thunderdome Radio
+    kind: radio
+    default_genre: Hardcore
+    aliases: [Thunderdome Radio]
+    channels: [Thunderdome]
+
+# Stage names (language-neutral). Matched as a separate title segment ("… | RED | …"), as
+# "<name> stage", or as an all-caps word in a mixed-case title.
+stages:
+  - {name: RED, aliases: [Red]}
+  - {name: BLUE, aliases: [Blue]}
+  - {name: BLACK, aliases: [Black]}
+  - {name: UV, aliases: [UV]}
+  - {name: YELLOW, aliases: [Yellow]}
+  - {name: INDIGO, aliases: [Indigo]}
+  - {name: MAGENTA, aliases: [Magenta]}
+  - {name: GOLD, aliases: [Gold]}
+  - {name: SILVER, aliases: [Silver]}
+  - {name: PURPLE, aliases: [Purple]}
+  - {name: GREEN, aliases: [Green]}
+  - {name: ORANGE, aliases: [Orange]}
+  - {name: WHITE, aliases: [White]}
+  - {name: PINK, aliases: [Pink]}
+  - {name: Mainstage, aliases: [Mainstage, Main stage]}
+
+# Set types: `code` is stable (the UI translates it), `label` goes into TXXX:SET_TYPE.
+# The first matching entry wins, so specific phrases come first.
+set_types:
+  - code: closing_ceremony
+    label: Closing Ceremony
+    keywords: [closing ceremony, closing show, the closing]
+  - code: opening
+    label: Opening
+    keywords: [opening ceremony, opening show, opening]
+  - code: endshow
+    label: Endshow
+    keywords: [endshow, end show]
+  - code: full_show
+    label: Full Show
+    keywords: [live registration, full show, full event, full concert]
+  - code: warm_up
+    label: Warm-up
+    keywords: [warm up, warm-up, warmup]
+  - code: anthem
+    label: Anthem
+    keywords: [anthem, official anthem]
+  - code: live_set
+    label: Live Set
+    keywords: [live set, liveset, dj set, full set, live stream set, livestream set]
+  - code: episode
+    label: Episode
+    keywords: [episode]
+
+# Words that make a festival assignment unlikely (videos about the festival, not sets).
+negative_keywords:
+  - remake
+  - recreation
+  - bootleg
+  - cover
+  - reaction
+  - tutorial
+  - how to
+  - trailer
+  - aftermovie
+  - teaser
+  - line up
+  - lineup
+  - timetable
+  - tickets
+  - ticket
+  - announcement
+  - vlog
+  - documentary
+  - making of
+  - interview
+  - sample pack
+  - drum kit
+  - fl studio
+  - ableton
+  - unboxing

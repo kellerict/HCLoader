@@ -14,7 +14,7 @@ from collections.abc import Collection, Mapping
 from datetime import UTC, datetime
 from typing import Any
 
-from . import duplicates, filters, platforms
+from . import duplicates, filters, platforms, series
 from .config import UNSORTED, Settings
 from .db import Database
 from .genre import detect_genre
@@ -202,6 +202,13 @@ def store_results(
             data["genre"] = _genre_for(e, row, settings, genre_hint, source_default)
         db.upsert_video(data)
         ids.append(vid)
+    # v0.3.0: festival/series detection on the stored rows (offline; manual values stay)
+    descriptions = {
+        str(e["id"]): str(e["description"])
+        for e in entries
+        if e.get("id") and isinstance(e.get("description"), str) and e.get("description")
+    }
+    series.detect_and_store(db, settings, ids, descriptions=descriptions)
     return ids
 
 

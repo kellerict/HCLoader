@@ -25,7 +25,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
 
-from . import duplicates, filters, platforms
+from . import duplicates, filters, platforms, series
 from .config import UNSORTED, Settings
 from .db import Database, now_iso
 from .discover import format_until
@@ -418,6 +418,15 @@ def _entry_row(entry: Mapping[str, Any], source_id: int, genre: str, status: str
     }
 
 
+def _descriptions(entries: Sequence[Mapping[str, Any]]) -> dict[str, str]:
+    """Descriptions a flat listing happened to deliver (often none) for festival detection."""
+    return {
+        str(e["id"]): str(e["description"])
+        for e in entries
+        if e.get("id") and isinstance(e.get("description"), str) and e.get("description")
+    }
+
+
 def effective_max_entries(source: Mapping[str, Any], settings: Settings) -> int:
     """`max_entries` of a source; NULL = `schedule.entries_per_source` (n7). Searches are capped
     at 100 (SPEC §3.1), everything else at 200 (m4)."""
@@ -469,6 +478,7 @@ def check_source(
     blacklist = db.blacklist_ids()
     hide_dups = settings.filters.hide_cross_platform_duplicates
     to_queue: list[str] = []
+    touched: list[str] = []
     _maybe_rename(source, entries, db, res)
     for entry in entries:
         vid = entry.get("id")
@@ -496,6 +506,7 @@ def check_source(
             with db.transaction():
                 db.upsert_video(_entry_row(entry, sid, genre, "inbox" if ok else "new"))
                 db.link_source_video(sid, vid)
+            touched.append(vid)
             res.new += 1
             if dup:
                 res.duplicates += 1
@@ -525,12 +536,15 @@ def check_source(
             db.link_source_video(sid, vid)
             if promote:
                 db.set_status(vid, "inbox")
+        touched.append(vid)
         if promote:
             res.adopted += 1
             if auto and not dup:
                 to_queue.append(vid)
             else:
                 res.inbox += 1
+    # v0.3.0: festival/series detection on the stored flat rows (offline, before queueing)
+    series.detect_and_store(db, settings, touched, descriptions=_descriptions(entries))
     if to_queue:
         accepted = enqueue(to_queue) if enqueue else []
         res.queued = len(accepted)

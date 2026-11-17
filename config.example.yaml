@@ -131,7 +131,7 @@ download:
 storage:
   # Zielordner; %USERPROFILE% wird ersetzt; relativ (z.B. .\Music) = zum App-Ordner, nur Portable-Version
   target_dir: '%USERPROFILE%\Music\HCLoader'
-  # Ordner-/Dateimuster; Platzhalter: genre, artist, channel, year, date, title, id, platform (id bei SoundCloud: sc-<id>)
+  # Ordner-/Dateimuster; Platzhalter: genre, artist, channel, year, date, title, id, platform (id bei SoundCloud: sc-<id>), festival, event_year, stage (leer = entfällt)
   path_template: '{genre}/{artist}/{year}/{date} - {title} [{id}]'
   # Maximale Titellänge im Dateinamen (20-200)
   max_title_length: 120
@@ -139,6 +139,8 @@ storage:
   max_path_length: 240
   # Artist aus dem Titel ableiten (ARTIST @ EVENT / ARTIST - TITEL)
   artist_from_title: false
+  # Album-Tag = Ausgabe (z.B. «Defqon.1 2024»), wenn ein Festival/eine Serie zugeordnet ist
+  album_from_edition: true
   # Reguläre Ausdrücke, die aus dem Titel entfernt werden
   title_cleanup_patterns:
     - \(Official[^)]*\)
@@ -242,3 +244,18 @@ maintenance:
 player:
   # Abspielen: internal (eingebauter Player) oder external (Standardplayer von Windows)
   mode: internal
+
+# --- Festivals & Serien ---
+festivals:
+  # Festival/Serie, Jahr, Bühne und Set-Art aus Titel/Kanal erkennen (offline, keine Zusatzanfragen)
+  detect: true
+  # Mindest-Sicherheit für eine automatische Zuordnung (0.3-1.0); darunter nur Vorschlag
+  min_confidence: 0.65
+  # Ohne Jahreszahl im Titel das Upload-Jahr nehmen
+  year_from_upload_date: true
+  # Festivalnamen auch in der Beschreibung suchen (falls gespeichert)
+  match_description: true
+  # Zusätzliche Bühnennamen (zu RED, BLUE, BLACK, UV, Mainstage …)
+  extra_stages: []
+  # Zusätzliche Begriffe für Set-Arten: keyword + set_type (live_set, closing_ceremony, opening, endshow, full_show, warm_up, anthem, episode)
+  extra_set_types: []
