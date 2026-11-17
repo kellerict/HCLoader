@@ -50,14 +50,17 @@ such as Plex or Jellyfin.
 
 ## Requirements
 
-- Windows 10 or 11, x64
-- Microsoft Edge **WebView2 Runtime** (preinstalled on Windows 11 and most up-to-date Windows 10;
-  otherwise install the Evergreen runtime from Microsoft)
-- Internet access
-- For the venv install only: **Python 3.12+** (and optionally git)
-- No admin rights for any of the three ways
+**Installer and portable ZIP: nothing to install.** Python, Deno, ffmpeg/ffprobe and the PO-token
+provider are already included.
 
-Everything else (Deno, ffmpeg, ffprobe, the PO-token provider) is fetched or bundled for you.
+- Windows 10 or 11, 64-bit
+- Microsoft Edge **WebView2 Runtime** – preinstalled on Windows 11 and up-to-date Windows 10;
+  otherwise install the Evergreen runtime from Microsoft
+- Internet access
+- No admin rights needed
+
+Only if you run HCLoader **from source** (developers, `scripts/setup.ps1`): Python 3.12+ and
+optionally git.
 
 ## Quick start
 

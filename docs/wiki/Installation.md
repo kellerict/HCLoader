@@ -16,15 +16,17 @@ There are three ways to run HCLoader. All give you the same app.
 
 ## Requirements
 
-- Windows 10 or 11, x64
+> ✅ **Installer and portable build: nothing else to install.** Python, Deno, ffmpeg/ffprobe and
+> the PO-token provider are included.
+
+- Windows 10 or 11, 64-bit
 - **Microsoft Edge WebView2 Runtime**: preinstalled on Windows 11 and most up-to-date Windows 10.
   If the window stays blank or an error mentions WebView2, install the Evergreen runtime from
   Microsoft.
 - Internet access
-- venv install only: Python 3.12+ (`py -3.12` or `python` on PATH); git is optional
 
-You do not need to install Deno, ffmpeg or the PO-token provider yourself. They are bundled in the
-installer and the portable build and fetched by `setup.ps1` into `bin\`.
+Only the **venv install** (from source, for developers) needs Python 3.12+ (`py -3.12` or `python`
+on PATH); git is optional. `setup.ps1` fetches Deno, ffmpeg and the PO-token provider into `bin\`.
 
 ## Option A: installer (recommended)
 
