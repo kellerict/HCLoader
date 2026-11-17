@@ -140,7 +140,7 @@ def min_python(pyproject_text: str) -> tuple[int, int] | None:
 def changelog_section(text: str, version: str) -> str:
     """The `## [x.y.z]` (or `## x.y.z` / `## vx.y.z`) section of a Keep-a-Changelog file."""
     v = re.escape(version.lstrip("v"))
-    head = re.compile(rf"^##\s*\[?v?{v}\]?(?:\s|$).*$", re.M)
+    head = re.compile(rf"^##[ \t]*\[?v?{v}\]?(?:[ \t]|$).*$", re.M)
     m = head.search(text or "")
     if not m:
         return ""
@@ -827,7 +827,7 @@ class SelfUpdater:
         in the result (manual check); the state stays as it was."""
         with self._lock:
             if self._s.state in ("checking", "downloading", "applying"):
-                return {"ok": False, "error": "Update läuft bereits", **self.status()}
+                return {**self.status(), "ok": False, "error": "Update läuft bereits"}
             before = self._s.state
         repo = self._repo() or DEFAULT_REPO
         self._set(state="checking", error=None if manual else self._s.error)
@@ -840,12 +840,12 @@ class SelfUpdater:
             else:
                 log.info("%s", msg)
             st = self._set(state=before if before != "checking" else "idle")
-            return {"ok": False, "error": msg, **st}
+            return {**st, "ok": False, "error": msg}
         now = _now_iso()
         if rel is None:
             log.info("Keine HCLoader-Version auf GitHub gefunden (%s)", repo)
             st = self._set(state=before if before == "ready" else "idle", checked=now)
-            return {"ok": True, **st}
+            return {**st, "ok": True}
         keep_ready = before == "ready" and self._s.manifest is not None
         if keep_ready:
             st = self._set(state="ready", checked=now)
@@ -863,7 +863,7 @@ class SelfUpdater:
             log.info("HCLoader %s ist verfügbar (installiert: %s)", rel.version, self.current)
         else:
             log.info("HCLoader ist aktuell (%s)", self.current)
-        return {"ok": True, **st}
+        return {**st, "ok": True}
 
     # -- download + prepare
 
@@ -904,7 +904,7 @@ class SelfUpdater:
             if self._s.state != "downloading":
                 refusal = self.begin_download()
                 if refusal:
-                    return {"ok": False, "error": refusal, **self.status()}
+                    return {**self.status(), "ok": False, "error": refusal}
                 rel = self._s.release
         assert rel is not None
         self.update_dir.mkdir(parents=True, exist_ok=True)
@@ -944,13 +944,13 @@ class SelfUpdater:
             log.info("App-Update abgebrochen")
             self.discard()
             st = self._set(state="idle", progress=None)
-            return {"ok": False, "cancelled": True, "error": "Abgebrochen", **st}
+            return {**st, "ok": False, "cancelled": True, "error": "Abgebrochen"}
         except Exception as exc:
             msg = str(exc) if isinstance(exc, UpdateError) else _reason(exc)
             log.error("App-Update fehlgeschlagen: %s", msg)
             self.discard()
             st = self._set(state="error", error=msg, progress=None)
-            return {"ok": False, "error": msg, **st}
+            return {**st, "ok": False, "error": msg}
         zip_path.unlink(missing_ok=True)
         log.info(
             "HCLoader %s ist bereit (Pakete neu: %s, Binaries prüfen: %s)",
@@ -966,7 +966,7 @@ class SelfUpdater:
             with self._lock:
                 self._s.notes = notes
         st = self._set(state="ready", manifest=manifest, progress=None, error=None)
-        return {"ok": True, **st}
+        return {**st, "ok": True}
 
     def _verify_sums(self, rel: Release, zip_path: Path) -> None:
         """SHA256SUMS asset of the release: if it lists the downloaded file, it must match.

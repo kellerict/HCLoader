@@ -618,15 +618,15 @@ class Api:
         state via `update`. Returns at once."""
         refusal = self._updater.begin_download()
         if refusal:
-            return {"ok": False, "error": refusal, **self.get_update_status()}
+            return {**self.get_update_status(), "ok": False, "error": refusal}
         self._update_worker.submit("app_update_download", self._updater.download)
-        return {"ok": True, **self.get_update_status()}
+        return {**self.get_update_status(), "ok": True}
 
     def cancel_update(self) -> dict[str, Any]:
         """Abort the download, or drop a prepared update (then nothing is applied on exit)."""
         self._apply_requested = False
         self._updater.cancel()
-        return {"ok": True, **self.get_update_status()}
+        return {**self.get_update_status(), "ok": True}
 
     def apply_update_now(self) -> dict[str, Any]:
         """Close the app; after `shutdown` (queue stopped like a normal exit) `main.py` calls
