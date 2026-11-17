@@ -213,7 +213,11 @@
                   installed, blocked, apply_on_exit}
                   installed = Kopie aus dem Setup (mitgeliefertes Python, Daten in %APPDATA%\HCLoader)
                   state: "idle"|"checking"|"downloading"|"ready"|"applying"|"error"; available = latest > current;
-                  notes = Änderungen (Markdown als Text, escapen!); progress = {phase, pct, bytes, total} | null;
+                  notes = Änderungen (Markdown, nie ungeprüft ins DOM: HC.md.render); progress = {phase, pct, bytes, total} | null;
+                  optional (Backend liefert sie noch nicht, UI nutzt sie, sobald vorhanden):
+                    published = ISO-Datum des neuesten Releases;
+                    releases = [{version, published, notes, url}] alle Versionen > current, neueste zuerst
+                               (übersprungene Versionen im Notizen-Dialog); fehlt es, zeigt der Dialog nur `notes`;
                   blocked = Text, warum sich diese Installation nicht selbst aktualisiert (Git-Checkout, kein Windows) | null;
                   apply_on_exit = Setting maintenance.apply_update_on_exit
      LogLine     {ts (ISO), level: "debug"|"info"|"ok"|"warn"|"error", msg}

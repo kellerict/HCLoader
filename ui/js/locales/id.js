@@ -1234,6 +1234,8 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
   "notes_title": "Perubahan di versi {v}",
   "notes_empty": "Tidak ada catatan rilis.",
   "notes_link": "Rilis di GitHub",
+  "notes_all": "Tampilkan semua perubahan",
+  "notes_less": "Tampilkan sorotan saja",
   "confirm_title": "Mulai ulang sekarang?",
   "confirm_ok": "Mulai ulang",
   "confirm_text": "HCLoader ditutup, pembaruan dipasang, dan aplikasi dimulai ulang. Unduhan yang sedang berjalan dibatalkan dan tetap di antrean. Musik, pengaturan, dan basis data tidak berubah.",

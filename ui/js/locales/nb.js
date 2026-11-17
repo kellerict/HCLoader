@@ -1264,6 +1264,8 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "notes_title": "Endringer i versjon {v}",
     "notes_empty": "Ingen versjonsnotater tilgjengelig.",
     "notes_link": "Utgivelse på GitHub",
+    "notes_all": "Vis alle endringer",
+    "notes_less": "Vis bare høydepunkter",
     "confirm_title": "Starte på nytt nå?",
     "confirm_ok": "Start på nytt",
     "confirm_text": "HCLoader lukkes, oppdateringen installeres og appen startes på nytt. En pågående nedlasting avbrytes og blir liggende i køen. Musikk, innstillinger og database forblir uendret.",

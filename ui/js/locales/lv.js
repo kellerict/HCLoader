@@ -1294,6 +1294,8 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "notes_title": "Versijas {v} izmaiņas",
     "notes_empty": "Izlaides piezīmju nav.",
     "notes_link": "Izlaide vietnē GitHub",
+    "notes_all": "Rādīt visas izmaiņas",
+    "notes_less": "Rādīt tikai svarīgāko",
     "confirm_title": "Restartēt tagad?",
     "confirm_ok": "Restartēt",
     "confirm_text": "HCLoader tiek aizvērts, atjauninājums instalēts un lietotne restartēta. Notiekošā lejupielāde tiek pārtraukta un paliek rindā. Mūzika, iestatījumi un datubāze paliek nemainīti.",

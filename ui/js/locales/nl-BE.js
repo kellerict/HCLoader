@@ -138,6 +138,7 @@ HC.i18n.register({"code": "nl-BE", "name": "Vlaams (België)", "dir": "ltr", "in
   },
   "upd": {
     "unverified": "zonder controlesom (enkel ZIP-integriteit gecontroleerd)",
-    "ready_sub": "Om te installeren wordt HCLoader eventjes gesloten en opnieuw gestart."
+    "ready_sub": "Om te installeren wordt HCLoader eventjes gesloten en opnieuw gestart.",
+    "notes_less": "Enkel hoogtepunten tonen"
   }
 });

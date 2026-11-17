@@ -748,11 +748,57 @@
 
   /* ---------- API ---------- */
   /* ---------- App-Update (Selbst-Update, wie core/selfupdate.py) ---------- */
-  const UPD_NOTES = '### Added\n- Self-update: check on start, download in the background, install on restart\n- Backup before every database migration\n\n### Fixed\n- Minor fixes in the mini player';
-  const upd = { current: '0.2.0', latest: null, state: 'idle', notes: '', url: null, progress: null, error: null, checked: null, startChecked: false, timer: null };
+  /* Release-Notizen wie ein echtes GitHub-Release (CHANGELOG-Abschnitt + Signing-Hinweis der Release-Automatik). */
+  const UPD_NOTES = [
+    '### Highlights',
+    '- Release notes in the app: short highlights first, all details on demand',
+    '- Faster start: the library loads in pages instead of all at once',
+    '- New filter **“Only new since last visit”** in the inbox',
+    '- Watchlist runs can be paused and resumed',
+    '- Three new languages: Polish, Italian and Turkish',
+    '',
+    '### Added',
+    '- Release notes dialog with Markdown: headings, lists, tables, `code` and links ([docs](https://github.com/kellerict/HCLoader/wiki)).',
+    '- Inbox filter “Only new since last visit” (`filters.only_new`, off by default).',
+    '- Watchlist: pause and resume a running pass; the state survives a restart.',
+    '  - Paused runs show up in Log › Runs with the note “paused”.',
+    '  - A headless run is never paused.',
+    '',
+    '### Changed',
+    '- Gentler defaults for long sessions:',
+    '',
+    '| Setting | Before | Now |',
+    '|---|--:|--:|',
+    '| `throttle.sleep_min_s` | 8 | 12 |',
+    '| `throttle.sleep_max_s` | 20 | 30 |',
+    '| `throttle.max_downloads_per_day` | 40 | 30 |',
+    '',
+    '- The library reads 200 entries per page (was: everything).',
+    '',
+    '### Fixed',
+    '- Mini player: the seek tooltip no longer jumps at the right edge.',
+    '- Cover art with a transparent border is cropped correctly.',
+    '',
+    '> **Note:** Windows SmartScreen may warn about the setup. Choose “More info” › “Run anyway”.',
+    '',
+    '---',
+    '',
+    'Code signing policy: https://github.com/kellerict/HCLoader/blob/main/CODE_SIGNING.md',
+  ].join('\n');
+  const UPD_URL = 'https://github.com/kellerict/HCLoader/releases/tag/v0.3.0';
+  /* Mehrere übersprungene Versionen (0.2.0 → 0.3.0): nur über demo.update(.., .., true); das Backend
+     liefert `releases`/`published` noch nicht (siehe bridge.js «UpdateStatus»). */
+  const UPD_RELEASES = [
+    { version: '0.3.0', published: '2026-12-08T18:30:00Z', url: UPD_URL, notes: UPD_NOTES },
+    { version: '0.2.2', published: '2026-11-29T09:10:00Z', url: 'https://github.com/kellerict/HCLoader/releases/tag/v0.2.2',
+      notes: '### Highlights\n- SoundCloud: private playlists of your own account can be added as a source\n- Fewer bot checks: the PO token is reused for the whole session\n\n### Fixed\n- Scheduled runs no longer start twice after standby.' },
+    { version: '0.2.1', published: '2026-11-21T20:45:00Z', url: 'https://github.com/kellerict/HCLoader/releases/tag/v0.2.1',
+      notes: '### Fixed\n- Portable version: the update no longer fails on paths with spaces\n- Hindi and Bengali: clipped headings in the settings\n- Log: the search field keeps its text when new lines arrive' },
+  ];
+  const upd = { current: '0.2.0', latest: null, state: 'idle', notes: '', url: null, releases: null, published: null, progress: null, error: null, checked: null, startChecked: false, timer: null };
   const updStatus = () => ({
     current: upd.current, latest: upd.latest, available: !!upd.latest && upd.latest !== upd.current, state: upd.state,
-    notes: upd.notes, url: upd.url, progress: upd.progress ? clone(upd.progress) : null, error: upd.error, checked: upd.checked,
+    notes: upd.notes, url: upd.url, ...(upd.releases ? { releases: clone(upd.releases), published: upd.published } : {}), progress: upd.progress ? clone(upd.progress) : null, error: upd.error, checked: upd.checked,
     portable: false, git_checkout: false, installed: false, blocked: null, apply_on_exit: !!settings.maintenance.apply_update_on_exit,
     verified: upd.state === 'ready' ? true : null, repo: settings.maintenance.update_repo,
     foreign_repo: settings.maintenance.update_repo.toLowerCase() !== 'kellerict/hcloader',
@@ -762,7 +808,7 @@
     updSet({ state: 'checking' });
     return later(700, () => {
       pushLog('info', 'HCLoader 0.3.0 is available (installed: 0.2.0)');
-      return Object.assign({ ok: true }, updSet({ state: upd.state === 'checking' ? 'idle' : upd.state, latest: '0.3.0', notes: UPD_NOTES, url: 'https://github.com/kellerict/HCLoader/releases/tag/v0.3.0', checked: new Date().toISOString(), error: null }));
+      return Object.assign({ ok: true }, updSet({ state: upd.state === 'checking' ? 'idle' : upd.state, latest: '0.3.0', notes: UPD_NOTES, url: UPD_URL, checked: new Date().toISOString(), error: null }));
     });
   };
   const updDownload = () => {
@@ -1243,12 +1289,14 @@
     validate,
     /** Nur für Demo/Screenshots: Zustände erzwingen. */
     demo: {
-      /** App-Update-Zustand erzwingen (Screenshots): state "idle"|"downloading"|"ready"|"error", optional pct. */
-      update(state, pct) {
+      /** App-Update-Zustand erzwingen (Screenshots): state "idle"|"downloading"|"ready"|"error", optional pct;
+          skipped = true: mehrere übersprungene Versionen (`releases`, `published`). */
+      update(state, pct, skipped) {
         clearInterval(upd.timer);
-        const base = { latest: '0.3.0', notes: UPD_NOTES, url: 'https://github.com/kellerict/HCLoader/releases/tag/v0.3.0', checked: new Date().toISOString(), error: null, progress: null };
+        const base = { latest: '0.3.0', notes: UPD_NOTES, url: UPD_URL, checked: new Date().toISOString(), error: null, progress: null };
         if (state === 'downloading') base.progress = { phase: 'download', pct: pct == null ? 42 : pct, bytes: 1032192, total: 2457600 };
         if (state === 'error') base.error = 'Checksum mismatch (HCLoader-0.3.0.zip)';
+        Object.assign(base, skipped ? { releases: UPD_RELEASES, published: UPD_RELEASES[0].published } : { releases: null, published: null });
         updSet(Object.assign(base, { state: state || 'idle' }));
       },
       /** Backoff einer Plattform auslösen (platform: "youtube" (Standard) | "soundcloud"). */

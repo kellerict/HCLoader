@@ -11,6 +11,7 @@ attaches the assets.
    the only place; `pyproject.toml` and `build_portable.ps1` read it.
 2. **Changelog:** move the entries under `## [Unreleased]` in `CHANGELOG.md` into a new section
    `## [X.Y.Z] - YYYY-MM-DD`. The release notes and the self-update show this text.
+   **The section starts with `### Highlights`** – see "Writing release notes" below.
 3. Commit (`chore: release vX.Y.Z`), open a PR, wait for **green CI** (`ci.yml`, `portable.yml`).
 4. **Merge to `main`** (Claude prepares, the user gives the go). That's all - the push to `main`
    runs the `Portable` workflow:
@@ -41,6 +42,36 @@ attaches the assets.
   (a release you created is kept) and attaches the assets. Drafts are never offered to users.
 - **Re-run for a tag:** "Run workflow" (`workflow_dispatch`) on the tag `vX.Y.Z` builds again and
   re-uploads the assets (`--clobber`). `workflow_dispatch` on a branch never releases.
+
+## Writing release notes
+
+The CHANGELOG section becomes the GitHub release text, and the app shows it in the update dialog
+(«Changes»). Users read it in a small dialog, so keep it short and structured (English):
+
+```markdown
+## [X.Y.Z] - YYYY-MM-DD
+
+### Highlights
+- One line per point, what the user gets – no prose, no implementation details
+- 3 to 8 bullets
+
+### Added
+- Details, one bullet per change …
+
+### Changed
+### Fixed
+```
+
+- **`### Highlights` comes first**, with 3 to 8 one-line bullets. The dialog shows only this list
+  (at most 8 bullets, each cut after three lines); everything else appears after «Show all changes».
+  Without a Highlights heading the app falls back to the first list of the section.
+- No introductory paragraph, no running text. Use `### Added` / `### Changed` / `### Fixed` below.
+- The dialog renders a small Markdown subset: headings, bullet and numbered lists (nested), `**bold**`,
+  `*italic*`, `` `code` ``, tables, `>` quotes, `---` and `https://` links. Raw HTML is shown as text;
+  images and other link schemes are dropped. Tables are fine for before/after values (keep them to
+  three or four narrow columns).
+- Check the result in the mock: `ui/index.html?mock=1`, banner › «Changes»
+  (`python scripts/ui_screenshots.py --only update-notes update-notes-all`).
 
 ## The installer
 
@@ -119,7 +150,8 @@ it is kept as `_previous-<timestamp>`. Manual restore: close HCLoader, delete th
 
 ## Checklist
 
-- [ ] `__version__` bumped, CHANGELOG section `## [X.Y.Z]` written (on a branch)
+- [ ] `__version__` bumped, CHANGELOG section `## [X.Y.Z]` written (on a branch), starting with
+      `### Highlights` (3 to 8 one-line bullets)
 - [ ] CI green on the PR, merged to `main`
 - [ ] `Portable` workflow on `main` green (jobs `plan`, `portable`, `release`), tag `vX.Y.Z` created
 - [ ] release shows four assets: `HCLoader-Setup-X.Y.Z.exe`, portable ZIP, source ZIP, `SHA256SUMS`

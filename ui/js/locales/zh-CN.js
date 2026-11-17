@@ -1234,6 +1234,8 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "notes_title": "版本 {v} 的更新内容",
     "notes_empty": "暂无发行说明。",
     "notes_link": "GitHub 上的发行版",
+    "notes_all": "显示全部更改",
+    "notes_less": "仅显示亮点",
     "confirm_title": "立即重启？",
     "confirm_ok": "重启",
     "confirm_text": "HCLoader 将关闭，安装更新后重新启动。正在进行的下载会被取消并保留在队列中。音乐、设置和数据库保持不变。",

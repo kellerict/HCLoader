@@ -4,7 +4,25 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning follows [SemVer](https://semver.org/).
 Entries are written in English from v0.3.0 on; older entries are in German.
 
+Every version starts with `### Highlights`: 3 to 8 one-line bullets, no prose. The app shows exactly
+this list in the update dialog; everything below it (`### Added`, `### Changed`, `### Fixed` …) only
+appears after «Show all changes» (`docs/RELEASING.md`).
+
 ## [Unreleased]
+
+### Highlights
+- Release notes in the app are short and structured: highlights first, all changes on demand
+
+### Changed
+- Update dialog («Changes»): shows the version and its highlights (at most 8 bullets) instead of the
+  whole text; «Show all changes» expands the full notes, «Release on GitHub» opens the release page
+  in the browser. Skipped versions are listed newest first once the backend provides them.
+- Release notes are rendered as Markdown (headings, lists, **bold**, `code`, tables, quotes, rules,
+  `https://` links that open in the browser). All text is escaped; raw HTML and other link schemes
+  are never rendered.
+
+### Fixed
+- Dialogs: Enter on a link or button inside the dialog text no longer triggers the primary button.
 
 ## [0.2.0] - 2026-11-17
 

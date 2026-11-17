@@ -416,8 +416,12 @@ Status). Ergänzungen der Python-Seite:
 - `current`: installierte Version (`app.__version__`); `latest`: neueste gefundene (null = noch nicht
   geprüft); `available` = `latest` > `current` (SemVer, numerisch).
 - `state`: `idle` | `checking` | `downloading` | `ready` | `applying` | `error`.
-- `notes`: Release-Text bzw. Abschnitt aus `CHANGELOG.md` (Markdown, **als Text escapen**); `url`:
-  Release-Seite.
+- `notes`: Release-Text bzw. Abschnitt aus `CHANGELOG.md` (Markdown; die UI rendert ihn mit
+  `HC.md` aus `ui/js/markdown.js` – alles escaped, nur `https://`-Links); `url`: Release-Seite.
+- Optional, **vom Backend noch nicht geliefert** (die UI nutzt sie, sobald vorhanden): `published`
+  (ISO-Datum des neuesten Releases) und `releases` = `[{version, published, notes, url}]` für alle
+  Versionen > `current`, neueste zuerst – der Dialog zeigt dann die Highlights jeder übersprungenen
+  Version. Ohne `releases` zeigt er nur `notes`.
 - `progress`: `{phase: "download"|"verify"|"prepare", pct (0–100 | null = Grösse unbekannt), bytes,
   total}` oder null.
 - `error`: deutscher Text (nur bei `state: "error"` oder nach manueller Prüfung); `checked`: ISO der

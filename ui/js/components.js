@@ -65,7 +65,7 @@
       };
       const onKey = (e) => {
         if (e.key === 'Escape') { e.stopPropagation(); done(false); }
-        if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && !e.target.closest('.tags')) { e.preventDefault(); ok(); }
+        if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && !e.target.closest('.tags,.modal-body a,.modal-body button')) { e.preventDefault(); ok(); }
       };
       back.addEventListener('mousedown', (e) => { if (e.target === back) done(false); });
       back.querySelector('[data-act=cancel]').onclick = () => done(false);

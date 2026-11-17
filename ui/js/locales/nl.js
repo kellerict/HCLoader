@@ -1264,6 +1264,8 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
   "notes_title": "Wijzigingen in versie {v}",
   "notes_empty": "Geen release-opmerkingen beschikbaar.",
   "notes_link": "Release op GitHub",
+  "notes_all": "Alle wijzigingen tonen",
+  "notes_less": "Alleen hoogtepunten tonen",
   "confirm_title": "Nu herstarten?",
   "confirm_ok": "Herstarten",
   "confirm_text": "HCLoader wordt gesloten, de update geïnstalleerd en de app opnieuw gestart. Een lopende download wordt geannuleerd en blijft in de wachtrij. Muziek, instellingen en database blijven ongewijzigd.",

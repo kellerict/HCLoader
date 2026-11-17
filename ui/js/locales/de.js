@@ -1264,6 +1264,8 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "notes_title": "Änderungen in Version {v}",
     "notes_empty": "Keine Änderungsnotizen vorhanden.",
     "notes_link": "Release auf GitHub",
+    "notes_all": "Alle Änderungen anzeigen",
+    "notes_less": "Nur Highlights anzeigen",
     "confirm_title": "Jetzt neu starten?",
     "confirm_ok": "Neu starten",
     "confirm_text": "HCLoader wird geschlossen, das Update eingespielt und die App neu gestartet. Ein laufender Download wird abgebrochen und bleibt in der Warteschlange. Musik, Einstellungen und Datenbank bleiben unverändert.",

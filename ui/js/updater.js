@@ -4,7 +4,8 @@
    - Banner oben rechts: «Version x verfügbar – Herunterladen / Änderungen / Später»,
      während des Downloads Fortschrittsbalken (Acid-Grün) + «Abbrechen»,
      danach «Bereit – Jetzt neu starten / Beim Beenden».
-   - Änderungen (Release-Notizen, Markdown) als escapter Text bzw. einfache Liste im Dialog.
+   - Änderungen (Release-Notizen, Markdown): Dialog mit den Highlights je Version, «Alle Änderungen
+     anzeigen» klappt die vollständigen Notizen auf (js/markdown.js, alles escaped; Styles in components.css).
    - Abschnitt «App-Update» im Wartung-Tab (HC.updater.section(host), aus views/settings.js).
    Die Prüfung beim Start macht das Backend (Setting maintenance.check_app_updates_on_start);
    heruntergeladen wird erst nach einem Klick. Events: update (UpdateStatus), update_progress.
@@ -44,12 +45,6 @@
 .upd-x{position:absolute;top:50%;right:8px;transform:translateY(-50%);background:none;border:0;color:var(--muted);cursor:pointer;padding:2px;line-height:0}
 .upd-x svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.2}
 .upd-x:hover{color:var(--text)}
-.upd-notes{max-height:52vh;overflow:auto;font-size:13px;line-height:1.55}
-.upd-notes h4{margin:12px 0 4px;font:var(--w-head) condensed 16px/1.2 var(--f-head);text-transform:var(--tt-head);letter-spacing:calc(1px * var(--ls));text-transform:uppercase;color:var(--acid)}
-.upd-notes h4:first-child{margin-top:0}
-.upd-notes ul{margin:4px 0 8px 18px;padding:0}
-.upd-notes p{margin:4px 0}
-.upd-notes .upd-link{color:var(--muted);font:12px var(--f-mono);margin-top:10px;overflow-wrap:anywhere}
 .upd-kv{display:flex;flex-wrap:wrap;gap:6px 18px;font:12px var(--f-mono);color:var(--muted);margin:8px 0 2px}
 .upd-kv b{color:var(--text);font-weight:600}
 @media (prefers-reduced-motion:reduce){.upd-banner{transition:none}}
@@ -62,38 +57,69 @@
     document.head.appendChild(s);
   }
 
-  /* ---------- Markdown (Release-Notizen) -> sicheres HTML: alles escaped ---------- */
-  function notesHtml(md) {
-    const lines = String(md || '').replace(/\r\n/g, '\n').split('\n');
-    const out = [];
-    let list = false;
-    const inline = (s) => esc(s).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/`([^`]+)`/g, '<code>$1</code>');
-    const close = () => { if (list) { out.push('</ul>'); list = false; } };
-    lines.forEach((raw) => {
-      const line = raw.trimEnd();
-      if (!line.trim()) { close(); return; }
-      const h = /^#{1,6}\s+(.*)$/.exec(line.trim());
-      const li = /^\s*[-*+]\s+(.*)$/.exec(line);
-      if (h) { close(); out.push(`<h4>${inline(h[1])}</h4>`); return; }
-      if (li) { if (!list) { out.push('<ul>'); list = true; } out.push(`<li>${inline(li[1])}</li>`); return; }
-      if (list && /^\s{2,}\S/.test(line)) { out[out.length - 1] = out[out.length - 1].replace(/<\/li>$/, ` ${inline(line.trim())}</li>`); return; }
-      close();
-      out.push(`<p>${inline(line)}</p>`);
-    });
-    close();
-    return out.join('');
+  /* ---------- Release-Notizen: Highlights je Version, auf Wunsch alles (HC.md, escaped) ---------- */
+  /** Alt-Schnittstelle (Tests, Review): vollständige Notizen als sicheres HTML. */
+  const notesHtml = (md) => HC.md.render(md);
+
+  /** Versionen im Dialog, neueste zuerst: `releases` (übersprungene Versionen, falls das Backend
+      sie liefert), sonst nur die neueste aus `notes`/`url`/`published`. */
+  function releaseList(s) {
+    const num = (v) => String(v || '').replace(/^v/i, '').split(/[.+-]/).slice(0, 3).map((n) => parseInt(n, 10) || 0);
+    const cmp = (a, b) => { const x = num(a.version), y = num(b.version); return y[0] - x[0] || y[1] - x[1] || y[2] - x[2]; };
+    const list = (Array.isArray(s.releases) ? s.releases : [])
+      .filter((r) => r && r.version)
+      .map((r) => ({ version: String(r.version).replace(/^v/i, ''), published: r.published || null, notes: String(r.notes || ''), url: r.url || '' }))
+      .sort(cmp)
+      .slice(0, 12);
+    if (list.length) return list;
+    return [{ version: String(s.latest || s.current || '').replace(/^v/i, ''), published: s.published || null, notes: String(s.notes || ''), url: s.url || '' }];
+  }
+  const extLink = (url, html, cls) => {
+    const href = HC.md.safeUrl(url);
+    return href ? `<a class="${cls}" href="${esc(href)}" target="_blank" rel="noopener noreferrer">${html}</a>` : '';
+  };
+  function notesBody(s) {
+    const rels = releaseList(s);
+    let partial = false;
+    const sections = rels.map((r, i) => {
+      const blocks = HC.md.parse(r.notes);
+      const sum = HC.md.summary(blocks, 8);
+      if (sum && sum.partial) partial = true;
+      const date = r.published ? util.fmtDate(r.published) : '';
+      const ver = `v${esc(r.version)}`;
+      const head = `<div class="upd-rel-head"><span class="upd-ver">${(rels.length > 1 && extLink(r.url, ver, 'upd-ver-link')) || ver}</span>${
+        date ? `<span class="upd-date">${esc(date)}</span>` : ''}${
+        i === 0 && s.current ? `<span class="upd-cur">${esc(t('upd.available_sub', { cur: s.current }))}</span>` : ''}</div>`;
+      const empty = `<p class="upd-none">${esc(t('upd.notes_empty'))}</p>`;
+      return `<section class="upd-rel">${head}<div class="md upd-sum">${sum ? sum.html : empty}</div><div class="md upd-full">${blocks.length ? HC.md.render(blocks) : empty}</div></section>`;
+    }).join('');
+    const toggle = partial ? `<button type="button" class="btn sm ghost upd-toggle" data-upd-toggle aria-expanded="false"><span class="upd-chev" aria-hidden="true"></span><span data-upd-toggle-label>${esc(t('upd.notes_all'))}</span></button>` : '';
+    const link = extLink(s.url, `${esc(t('upd.notes_link'))}${I.external}`, 'upd-gh');
+    return `${trustHtml(s)}<div class="upd-notes${rels.length > 1 ? ' multi' : ''}" tabindex="0">${sections}</div>${toggle || link ? `<div class="upd-notes-foot">${toggle}${link}</div>` : ''}`;
   }
 
   function showNotes() {
     if (!st) return;
     const v = st.latest || st.current;
-    const link = st.url ? `<div class="upd-link">${esc(t('upd.notes_link'))}: ${esc(st.url)}</div>` : '';
     const canDownload = st.available && !st.blocked && (st.state === 'idle' || st.state === 'error');
     ui.modal({
       title: t('upd.notes_title', { v }),
-      body: `${trustHtml(st)}<div class="upd-notes">${st.notes ? notesHtml(st.notes) : `<p>${esc(t('upd.notes_empty'))}</p>`}${link}</div>`,
+      kind: 'upd-modal',
+      body: notesBody(st),
       okLabel: canDownload ? t('upd.download') : t('upd.close'),
       cancelLabel: t('upd.close'),
+      onOpen(el) {
+        const box = el.querySelector('.upd-notes');
+        const btn = el.querySelector('[data-upd-toggle]');
+        if (!btn) return;
+        btn.addEventListener('click', () => {
+          const all = !box.classList.contains('all');
+          box.classList.toggle('all', all);
+          btn.setAttribute('aria-expanded', String(all));
+          btn.querySelector('[data-upd-toggle-label]').textContent = t(all ? 'upd.notes_less' : 'upd.notes_all');
+          box.scrollTop = 0;
+        });
+      },
     }).then((ok) => { if (ok && canDownload) download(); });
   }
 

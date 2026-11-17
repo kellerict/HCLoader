@@ -1264,6 +1264,8 @@ HC.i18n.register({"code": "de-x-frk", "name": "Fränggisch", "dir": "ltr", "intl
     "notes_title": "Änderungen in Version {v}",
     "notes_empty": "Kane Änderungsnodizen vorhandn.",
     "notes_link": "Release auf GitHub",
+    "notes_all": "Alle Ändrunga zeing",
+    "notes_less": "Bloss die Highlights zeing",
     "confirm_title": "Etz neu starddn?",
     "confirm_ok": "Neu starddn",
     "confirm_text": "HCLoader wird zugmachd, des Update eigspield und die App neu gstarded. A laufender Download wird abgebrochn und bleibd in der Warteschlang. Musik, Einstellungen und Dadenbank bleibn unverändert.",

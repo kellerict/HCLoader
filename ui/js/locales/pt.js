@@ -1264,6 +1264,8 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "notes_title": "Alterações na versão {v}",
     "notes_empty": "Nenhuma nota de versão disponível.",
     "notes_link": "Versão no GitHub",
+    "notes_all": "Mostrar todas as alterações",
+    "notes_less": "Mostrar só os destaques",
     "confirm_title": "Reiniciar agora?",
     "confirm_ok": "Reiniciar",
     "confirm_text": "O HCLoader é fechado, a atualização instalada e o app reiniciado. Um download em andamento é cancelado e permanece na fila. Música, configurações e banco de dados permanecem inalterados.",

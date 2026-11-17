@@ -1264,6 +1264,8 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
     "notes_title": "Nouveautés de la version {v}",
     "notes_empty": "Aucune note de version disponible.",
     "notes_link": "Version sur GitHub",
+    "notes_all": "Afficher tous les changements",
+    "notes_less": "Afficher seulement l’essentiel",
     "confirm_title": "Redémarrer maintenant ?",
     "confirm_ok": "Redémarrer",
     "confirm_text": "HCLoader est fermé, la mise à jour installée et l’app redémarrée. Un téléchargement en cours est annulé et reste dans la file. La musique, les paramètres et la base de données restent inchangés.",

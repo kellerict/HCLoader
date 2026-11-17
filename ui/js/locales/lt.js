@@ -1324,6 +1324,8 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "notes_title": "Versijos {v} pakeitimai",
     "notes_empty": "Laidimo pastabų nėra.",
     "notes_link": "Laida GitHub",
+    "notes_all": "Rodyti visus pakeitimus",
+    "notes_less": "Rodyti tik svarbiausius",
     "confirm_title": "Paleisti iš naujo dabar?",
     "confirm_ok": "Paleisti iš naujo",
     "confirm_text": "HCLoader uždaromas, naujinimas įdiegiamas ir programa paleidžiama iš naujo. Vykstantis atsisiuntimas nutraukiamas ir lieka eilėje. Muzika, nustatymai ir duomenų bazė nesikeičia.",
