@@ -8,15 +8,20 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
 ### Added
 - Mehrsprachige Oberfläche (Schritt 1 von v0.2.0): Sprache unter Einstellungen › Allgemein
   (`general.language`, Standard Englisch, «Automatisch» = Windows-Anzeigesprache). Englisch und
-  Deutsch vollständig; Chinesisch (vereinfacht), Hindi, Spanisch, Arabisch, Französisch, Bengali,
-  Portugiesisch (Brasilien), Russisch und Indonesisch folgen (bis dahin englischer Rückfall).
+  18 Sprachen: Englisch, Deutsch (Schweizer Schreibweise), Chinesisch (vereinfacht), Hindi,
+  Spanisch, Französisch, Bengali, Portugiesisch (Brasilien), Russisch, Indonesisch, Niederländisch,
+  Schwedisch, Norwegisch (Bokmål), Finnisch, Litauisch, Lettisch, Estnisch und Fränggisch
+  (Spass-Dialekt; wird von «Automatisch» nie gewählt, fehlende Texte fallen auf Deutsch zurück).
   Der Wechsel wirkt sofort, ohne App-Neustart. / Multilingual UI: language picker in Settings ›
-  General, English default, German complete, nine more languages to follow.
+  General, English default, 18 languages incl. the Fränggisch fun dialect.
+- Sprachkataloge können eine Rückfallsprache angeben (`_meta.fallback`, z. B. `de-x-frk` → `de`
+  → `en`).
 - Datum, Zahlen, Dauer und Dateigrössen im Format der gewählten Sprache (Intl).
 - Meldungen des Backends (Validierung, Fehler, Toasts, Protokoll, Kommandozeile) in der gewählten
   Sprache. Leitfaden für Übersetzungen: `docs/TRANSLATING.md`.
 
 ### Changed
+- Tests lesen Navigationstexte über `textContent` (die Navigation ist per CSS in Grossbuchstaben).
 - Standardsprache ist Englisch, auch für bestehende Installationen ohne Spracheinstellung.
   Daten bleiben sprachneutral (Genre «Unsortiert», Ordner, Tags, Datenbank).
 

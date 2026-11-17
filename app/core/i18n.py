@@ -2,14 +2,17 @@
 
 Catalogs: `app/locales/<code>.json` = {"_meta": {...}, <nested keys>}. English (`en`) is the
 reference: every key exists there first. `tr("area.key", name=value)` returns the text in the
-active language, falls back to English and finally to the key itself (logged once).
+active language, falls back to the catalog's `_meta.fallback` (dialects: de-x-frk -> de),
+then to English and finally to the key itself (logged once).
 
 - Placeholders `{name}` are replaced by the keyword arguments (unknown ones stay as they are,
   so a literal `{id}` in a text needs no escaping).
 - Plurals: the value is an object with CLDR categories (`one`, `other`, for Arabic also `zero`,
   `two`, `few`, `many`); the category comes from `count=` or else `n=` (see `plural_category`).
 - The active language follows `general.language` (`set_language`); "auto" resolves the Windows
-  display language (else the process locale), unsupported -> English.
+  display language (else the process locale), unsupported -> English. Private-use dialects
+  (code with "-x-", e.g. the fun dialect de-x-frk) are only used when chosen explicitly;
+  "auto" never resolves to them.
 
 Data never depends on the language (genre names, folder names, DB values, tags) -
 docs/decisions.md "Mehrsprachigkeit". DEBUG log lines and programmer errors stay English
@@ -30,7 +33,11 @@ from typing import Any
 
 log = logging.getLogger(__name__)
 
-SUPPORTED: tuple[str, ...] = ("en", "de", "zh-CN", "hi", "es", "fr", "bn", "pt", "ru", "id", "nl")
+# Picker order (ui/js/i18n.js has the same list)
+SUPPORTED: tuple[str, ...] = (
+    *("en", "de", "zh-CN", "hi", "es", "fr", "bn", "pt", "ru", "id", "nl"),
+    *("sv", "nb", "fi", "lt", "lv", "et", "de-x-frk"),
+)
 REFERENCE = "en"
 AUTO = "auto"
 LANGUAGE_CHOICES: tuple[str, ...] = (AUTO, *SUPPORTED)
@@ -41,6 +48,7 @@ _PLACEHOLDER = re.compile(r"\{(\w+)\}")
 _lock = threading.Lock()
 _catalogs: dict[str, dict[str, Any]] = {}
 _warned: set[str] = set()
+_fallbacks: dict[str, str | None] = {}
 _active = REFERENCE
 
 
@@ -99,7 +107,31 @@ def reload_catalogs() -> None:
     """Drop the cache (tests, catalogs edited at runtime)."""
     with _lock:
         _catalogs.clear()
+        _fallbacks.clear()
         _warned.clear()
+
+
+def is_dialect(code: str) -> bool:
+    """Private-use tag (e.g. de-x-frk): selectable, never chosen by "auto"."""
+    return "-x-" in code.lower()
+
+
+def fallback_of(code: str) -> str | None:
+    """`_meta.fallback` of a catalog (de-x-frk -> de), only if it is a supported language."""
+    with _lock:
+        if code in _fallbacks:
+            return _fallbacks[code]
+    value = catalog_meta(code).get("fallback")
+    fb = value if isinstance(value, str) and value in SUPPORTED and value != code else None
+    with _lock:
+        _fallbacks[code] = fb
+    return fb
+
+
+def parent_of(code: str) -> str:
+    """Non-dialect parent of a dialect (meta fallback, else the base code, else English)."""
+    fb = fallback_of(code) or code.split("-")[0]
+    return fb if fb in SUPPORTED and not is_dialect(fb) else REFERENCE
 
 
 # --------------------------------------------------------------------------- language
@@ -116,13 +148,17 @@ def match(tag: str | None) -> str | None:
     for code in SUPPORTED:
         if code.lower() == t:
             return code
+    if is_dialect(t):  # unknown private-use tag
+        return None
     base = t.split("-")[0]
     if base == "zh":
         return None if re.search(r"hant|-tw|-hk|-mo", t) else "zh-CN"
     if base == "in":  # legacy code for Indonesian
         return "id"
+    if base in ("no", "nn"):  # Norwegian macro language / Nynorsk -> Bokmål
+        return "nb"
     for code in SUPPORTED:
-        if code.split("-")[0] == base:
+        if not is_dialect(code) and code.split("-")[0] == base:
             return code
     # Windows names from locale.getlocale(): "German_Switzerland", "Chinese (Simplified)_China"
     names = {
@@ -138,6 +174,12 @@ def match(tag: str | None) -> str | None:
         "russian": "ru",
         "indonesian": "id",
         "dutch": "nl",
+        "swedish": "sv",
+        "norwegian": "nb",
+        "finnish": "fi",
+        "lithuanian": "lt",
+        "latvian": "lv",
+        "estonian": "et",
     }
     word = re.split(r"[\s(_-]", t)[0]
     return names.get(word)
@@ -170,7 +212,7 @@ def system_language() -> str:
     for c in candidates:
         code = match(c)
         if code:
-            return code
+            return parent_of(code) if is_dialect(code) else code
     return REFERENCE
 
 
@@ -211,8 +253,41 @@ def plural_category(code: str, n: float) -> str:
     base = code.split("-")[0]
     if base in ("zh", "id"):
         return "other"
-    if base in ("en", "de", "nl"):
+    if base in ("en", "de", "nl", "sv", "fi", "et"):
         return "one" if i == 1 and v == 0 else "other"
+    if base == "nb":
+        return "one" if n == 1 else "other"
+    if base == "lt":
+        if v != 0:
+            return "many"
+        if i % 10 == 1 and not 11 <= i % 100 <= 19:
+            return "one"
+        if 2 <= i % 10 <= 9 and not 11 <= i % 100 <= 19:
+            return "few"
+        return "other"
+    if base == "lv":
+        f = _f
+        if (
+            i % 10 == 0
+            and v == 0
+            or 11 <= i % 100 <= 19
+            and v == 0
+            or v == 2
+            and 11 <= f % 100 <= 19
+        ):
+            return "zero"
+        if (
+            v == 0
+            and i % 10 == 1
+            and i % 100 != 11
+            or v == 2
+            and f % 10 == 1
+            and f % 100 != 11
+            or v not in (0, 2)
+            and f % 10 == 1
+        ):
+            return "one"
+        return "other"
     if base in ("hi", "bn"):
         return "one" if i == 0 or n == 1 else "other"
     if base in ("fr", "pt"):
@@ -270,8 +345,12 @@ def translate(key: str, lang: str | None = None, **params: Any) -> str:
     """Text of `key` in `lang` (default: active language) -> en -> the key itself."""
     code = lang or _active
     value = _lookup(code, key)
+    source = code
+    fb = fallback_of(code) if value is None else None
+    if fb and fb != REFERENCE:
+        value, source = _lookup(fb, key), fb
     if value is None and code != REFERENCE:
-        value = _lookup(REFERENCE, key)
+        value, source = _lookup(REFERENCE, key), REFERENCE
     if value is None:
         if key not in _warned:
             _warned.add(key)
@@ -281,7 +360,7 @@ def translate(key: str, lang: str | None = None, **params: Any) -> str:
         count = params.get("count", params.get("n"))
         category = "other"
         if isinstance(count, (int, float)) and not isinstance(count, bool):
-            category = plural_category(code if _lookup(code, key) is not None else REFERENCE, count)
+            category = plural_category(source, count)
         value = value.get(category) or value["other"]
     if not params:
         return value

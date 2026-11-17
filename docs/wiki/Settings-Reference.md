@@ -23,7 +23,7 @@ YAML keys (`section.key`); the tab names in the app are German, shown in parenth
 
 | Key | Default | Range / values | Description |
 |---|---|---|---|
-| `language` | `en` | auto, en, de, zh-CN, hi, es, fr, bn, pt, ru, id, nl | UI and message language (v0.2.0). `auto` follows the Windows display language; unsupported languages fall back to English. Switching applies at once (the window content reloads, no restart). Data (genre names, folders, tags) never changes with the language. |
+| `language` | `en` | auto, en, de, zh-CN, hi, es, fr, bn, pt, ru, id, nl, sv, nb, fi, lt, lv, et, de-x-frk | UI and message language (v0.2.0): English (default), German (Swiss spelling), Chinese (Simplified), Hindi, Spanish, French, Bengali, Portuguese (Brazil), Russian, Indonesian, Dutch, Swedish, Norwegian (Bokmål), Finnish, Lithuanian, Latvian, Estonian and Fränggisch (fun dialect). `auto` follows the Windows display language; unsupported languages fall back to English. `auto` never picks `de-x-frk` (Fränggisch, a fun dialect – choose it explicitly; missing texts fall back to German, then English). Switching applies at once (the window content reloads, no restart). Data (genre names, folders, tags) never changes with the language. |
 | `start_view` | `discover` | discover, inbox, watchlist, downloads, library, log | View opened at start. |
 | `log_level` | `INFO` | DEBUG, INFO, WARNING, ERROR | Verbosity of the log file and live log. Use DEBUG only for troubleshooting. |
 | `confirm_delete` | `true` | | Ask before deleting a mix (entry and file) from the library. |

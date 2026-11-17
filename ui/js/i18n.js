@@ -9,7 +9,10 @@
    - Plurals: the value is an object with CLDR categories
      ({one: '…', other: '…'}, Arabic also zero/two/few/many). The category is
      chosen with Intl.PluralRules from params.count, else params.n.
-   - Lookup: active language → en (reference) → the key itself (console.warn once).
+   - Lookup: active language → its meta.fallback (e.g. de-x-frk → de) → en (reference)
+     → the key itself (console.warn once).
+   - Private-use dialects (code with "-x-", e.g. de-x-frk) are only chosen explicitly,
+     never by 'auto'.
    - Numbers passed as params are formatted with Intl.NumberFormat (no grouping).
    ===================================================================== */
 (function () {
@@ -17,7 +20,10 @@
   const HC = (window.HC = window.HC || {});
 
   /** Supported languages in picker order. Data (genre names, folders, tags) never depends on this. */
-  const SUPPORTED = ['en', 'de', 'zh-CN', 'hi', 'es', 'fr', 'bn', 'pt', 'ru', 'id', 'nl'];
+  const SUPPORTED = ['en', 'de', 'zh-CN', 'hi', 'es', 'fr', 'bn', 'pt', 'ru', 'id', 'nl',
+    'sv', 'nb', 'fi', 'lt', 'lv', 'et', 'de-x-frk'];
+  /** Fun dialects / private-use tags: selectable, never picked by 'auto' or a base-language match. */
+  const isDialect = (c) => /-x-/i.test(c);
   const REFERENCE = 'en';
   const CATEGORIES = ['zero', 'one', 'two', 'few', 'many', 'other'];
   const PARAM_NUM = { useGrouping: false, maximumFractionDigits: 2 };
@@ -44,10 +50,12 @@
     if (!t) return null;
     const exact = SUPPORTED.find((c) => c.toLowerCase() === t);
     if (exact) return exact;
+    if (isDialect(t)) return null; // unknown private-use tag
     const base = t.split('-')[0];
     if (base === 'zh') return /hant|-tw|-hk|-mo/.test(t) ? null : 'zh-CN';
     if (base === 'in') return 'id'; // legacy code for Indonesian
-    return SUPPORTED.find((c) => c.split('-')[0] === base) || null;
+    if (base === 'no' || base === 'nn') return 'nb'; // Norwegian (macro language, Nynorsk) -> Bokmål
+    return SUPPORTED.find((c) => !isDialect(c) && c.split('-')[0] === base) || null;
   }
 
   /** 'auto' → first supported entry of `prefs` (navigator.languages by default), fallback en. */
@@ -56,9 +64,16 @@
     const list = prefs || (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language]);
     for (const p of list || []) {
       const m = match(p);
-      if (m) return m;
+      if (m) return isDialect(m) ? parentOf(m) : m;
     }
     return REFERENCE;
+  }
+
+  /** Parent language of a dialect (meta.fallback, else the base code) – used by 'auto' and lookup. */
+  function parentOf(code) {
+    const m = catalogs[code] && catalogs[code].meta;
+    const f = (m && m.fallback) || code.split('-')[0];
+    return SUPPORTED.includes(f) && !isDialect(f) ? f : REFERENCE;
   }
 
   const meta = (code) => (catalogs[code] && catalogs[code].meta) || { code, name: code, dir: 'ltr', intl: code };
@@ -66,6 +81,7 @@
   const i18n = (HC.i18n = {
     SUPPORTED,
     REFERENCE,
+    isDialect,
     register(m, dict) {
       if (!m || !m.code) throw new Error('i18n.register: meta.code missing');
       catalogs[m.code] = { meta: { dir: 'ltr', intl: m.code, ...m }, dict: dict || {} };
@@ -116,6 +132,8 @@
   /** Text for `key` in the active language. Placeholders {name}; numbers are locale-formatted. */
   HC.t = function (key, params) {
     let v = lookup(lang, key);
+    const fb = catalogs[lang] && catalogs[lang].meta.fallback;
+    if (v === undefined && fb && fb !== lang && fb !== REFERENCE) v = lookup(fb, key);
     if (v === undefined && lang !== REFERENCE) v = lookup(REFERENCE, key);
     if (v === undefined) {
       if (!warned.has(key)) { warned.add(key); console.warn(`[i18n] missing: ${key}`); }

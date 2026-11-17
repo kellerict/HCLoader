@@ -94,7 +94,7 @@
     oneOf: (l) => `Allowed: ${l.map((x) => x || '(empty)').join(', ')}.`,
   };
   const RULES = {
-    'general.language': { oneOf: ['auto', 'en', 'de', 'zh-CN', 'hi', 'es', 'fr', 'bn', 'pt', 'ru', 'id', 'nl'] },
+    'general.language': { oneOf: ['auto', ...HC.i18n.SUPPORTED] },
     'general.start_view': { oneOf: ['discover', 'inbox', 'watchlist', 'downloads', 'library', 'log'] },
     'general.log_level': { oneOf: ['DEBUG', 'INFO', 'WARNING', 'ERROR'] },
     'general.confirm_delete': { bool: 1 },

@@ -13,9 +13,12 @@ limits, so the platform sees a polite client. See [Throttling and backoff](Throt
 Yes, in Settings, Schonung. But more load means more risk of a 429 or bot check, and the backoff then
 blocks everything for hours. The defaults are a good trade-off.
 
-**Why is the interface in German?**
-The UI language is Swiss German (de-CH), with "ss" instead of "ß". The
-strings are centralized in `ui/js/i18n.js`. There is no language switch at the moment.
+**Which languages does the interface speak?**
+18 languages (from v0.2.0): English (default), German (Swiss spelling), Chinese (Simplified), Hindi, Spanish, French, Bengali, Portuguese (Brazil), Russian, Indonesian, Dutch, Swedish, Norwegian (Bokmål), Finnish, Lithuanian, Latvian, Estonian and Fränggisch (fun dialect). English is the default; pick another one in Settings ›
+General › Language, or «Automatic» to follow the Windows display language. The switch applies at
+once. «Automatic» never picks Fränggisch – it is a Franconian fun dialect you choose on purpose;
+texts it lacks fall back to German, then English. German uses Swiss spelling ("ss" instead of
+"ß"). Want to help with a translation? See `docs/TRANSLATING.md`.
 
 **Why MP3 and not the original audio?**
 MP3 plays everywhere and tags well. YouTube mostly serves Opus at about 130 to 160 kbps, so MP3 320

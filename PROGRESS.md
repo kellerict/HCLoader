@@ -52,17 +52,19 @@ Phase 6 – Portable (User-Wunsch, Variante 2: komplett portable)
 - `scripts/build_portable.ps1` + GitHub-Actions-Job (windows-latest), der ein fertiges Portable-ZIP als Artefakt baut (deno, ffmpeg, bgutil inklusive; Lizenzen beilegen).
 
 ## v0.2.0 – Mehrsprachigkeit (User-Wunsch: «in allen 10 Top-Weltsprachen erstmal»)
-Sprachen: en (Referenz + Standard), de (de-CH), zh-CN, hi, es, ar (RTL), fr, bn, pt (pt-BR), ru, id.
+Sprachen (18): en (Referenz + Standard), de (de-CH), zh-CN, hi, es, fr, bn, pt (pt-BR), ru, id, nl, sv, nb,
+fi, lt, lv, et, de-x-frk (Fränggisch, Spass-Dialekt: nie per `auto`, Rückfall de → en). ar durch nl ersetzt.
 Leitfaden `docs/TRANSLATING.md`, Entscheide `docs/decisions.md` «Mehrsprachigkeit».
 - [x] 1 Architektur + Extraktion + de/en (`integrator`): UI-Engine `ui/js/i18n.js`, Kataloge
   `ui/js/locales/<code>.js` (912 Schlüssel), Backend `app/core/i18n.py` + `app/locales/<code>.json`
   (399 Schlüssel), Setting `general.language` (Standard `en`, `auto`), Sprachwahl unter Einstellungen ›
   Allgemein, Intl-Formate, Plurale, Tests `tests/test_i18n.py`, Screenshots `--lang`; Stubs für 9 Sprachen
-- [ ] 2 Übersetzungen der 9 Sprachen (UI- und Backend-Katalog je Sprache; `pytest tests/test_i18n.py -rx`
-  zeigt pro Sprache die fehlenden Schlüssel als xfail)
-- [ ] 3 RTL-Layout (Arabisch, `[dir=rtl]`/logische CSS-Properties), Schriften mit Glyphen für
-  zh/hi/bn/ar/ru (lokal, OFL), Screenshots je Sprache (`scripts/ui_screenshots.py --lang <code>`) –
-  `ui-designer`
+- [x] 2 Übersetzungen aller 16 weiteren Sprachen (UI + Backend vollständig) und Registrierung
+  überall (SUPPORTED, `general.language`, Mock, Screenshots, Doku); Meta `fallback` für Dialekte
+- [x] 3 Schriften/Layout je Schrift (d94ead3; RTL entfällt, kein RTL-Katalog mehr)
+- [x] Installer: Datenschutz-Seite mit Abwahl der Update-Prüfung (SignPath-Bedingung),
+  `installer-defaults.json` nur für neue `config.yaml`
+- [x] Release-Automatik: Push auf `main` mit neuer Version + CHANGELOG-Abschnitt → Tag + Release (`portable.yml`, `docs/RELEASING.md`)
 - [ ] 4 QA + Review, dann CHANGELOG/Tag v0.2.0
 
 ## Geplant für v0.3.0
@@ -96,3 +98,4 @@ Leitfaden `docs/TRANSLATING.md`, Entscheide `docs/decisions.md` «Mehrsprachigke
 - 2026-11-17 – Portable-Build beim User lauffähig (Fixes: Expand-Archive/PS7-Modulpfade, MAX_PATH, file-URL-Query, relativer Starter HCLoader.cmd, Download-Fortschritt). App-Icon (Fable) und Phase 7a SoundCloud-Backend (Opus) gestartet.
 - 2026-11-17 – Windows-CI erstmals komplett grün (85c1b27; Ursachen: modale MessageBox, rekursive Windows-Mutexe, Lock-Schlüssel ohne Datenordner). QA 7a/8/Update BESTANDEN, Review-Funde behoben. → main angelegt, Tag v0.1.0.
 - 2026-11-17 – v0.2.0 Mehrsprachigkeit Schritt 1 (Architektur, de/en) fertig; Backfill/7b/7c → v0.3.0
+- 2026-11-17 – v0.2.0: 18 Sprachen registriert (inkl. sv/nb/fi/lt/lv/et/de-x-frk), Installer-Datenschutzseite, Release-Automatik; offen: QA + Review, Windows-CI (Inno-Compile, Release-Job)

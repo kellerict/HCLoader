@@ -2,7 +2,7 @@
    Guide: docs/TRANSLATING.md. Both arguments must stay strict JSON
    (double quotes, no comments, no trailing commas) – tests parse them with Python.
 */
-HC.i18n.register({"code": "de-x-frk", "name": "Fränggisch", "dir": "ltr", "intl": "de-DE"}, {
+HC.i18n.register({"code": "de-x-frk", "name": "Fränggisch", "dir": "ltr", "intl": "de-DE", "fallback": "de"}, {
   "app": {
     "title": "HCLoader",
     "tagline": "HARD MUSIC ARCHIVE",

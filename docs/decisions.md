@@ -1012,3 +1012,12 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
   bisherigen Wortlaut fest.
 - **Offen:** `config.yaml`-Kommentare (`config.COMMENTS`) und die Beschreibung der Windows-Aufgabe
   bleiben deutsch; `CLAUDE.md` nennt noch «nur de-CH in `ui/js/i18n.js`» (Änderung durch den User).
+
+## 2026-11-17 – Dialekte als Sprache (de-x-frk, v0.2.0)
+
+- **Entscheid:** Private-Use-Codes mit `-x-` (zurzeit nur `de-x-frk`, «Fränggisch») sind wählbare
+  Sprachen, werden aber nie von `auto` gewählt und nie über die Basissprache getroffen (`de-DE` → `de`).
+  Meldet das System selbst `de-x-frk`, wird `de` verwendet. Das Katalog-Meta `fallback` (`"de"`) schiebt
+  eine Stufe vor Englisch ein: Dialekt → `de` → `en` → Schlüssel; gleich in `ui/js/i18n.js` und
+  `app/core/i18n.py`. **Grund:** ein Spass-Dialekt darf niemandem ungefragt erscheinen; fehlende
+  Dialekt-Texte sollen deutsch statt englisch erscheinen.

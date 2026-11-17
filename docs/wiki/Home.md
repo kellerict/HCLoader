@@ -34,9 +34,9 @@ source platform as possible. Sources: YouTube and SoundCloud.
 
 <sub>Screenshots show mock data.</sub>
 
-> 🌐 **Language** – The app's interface is in **Swiss German (de-CH)**. This wiki is in English and
-> names the German labels where it matters, for example "Schonung" (throttle) or "Wartung"
-> (maintenance).
+> 🌐 **Language** – The app speaks 18 languages: English (default), German (Swiss spelling), Chinese (Simplified), Hindi, Spanish, French, Bengali, Portuguese (Brazil), Russian, Indonesian, Dutch, Swedish, Norwegian (Bokmål), Finnish, Lithuanian, Latvian, Estonian and Fränggisch (fun dialect). Pick one in Settings ›
+> General › Language. This wiki is in English; older pages may still name German labels, for
+> example "Schonung" (throttle) or "Wartung" (maintenance).
 
 > ⚠️ **Personal use only** – You are responsible for complying with the terms of service of the
 > platforms and with copyright law in your country. See [FAQ](FAQ).

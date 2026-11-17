@@ -38,6 +38,10 @@ such as Plex or Jellyfin.
 - **Scheduled checks** inside the app and via the Windows Task Scheduler (headless mode).
 - **Gentle by design**: central throttle, daily and per-run limits, randomized pauses,
   backoff on HTTP 429 or bot checks. See [Being nice to YouTube](#being-nice-to-youtube).
+- **18 languages** (from v0.2.0): English (default), German, Chinese (Simplified), Hindi, Spanish,
+  French, Bengali, Portuguese (Brazil), Russian, Indonesian, Dutch, Swedish, Norwegian (Bokmål),
+  Finnish, Lithuanian, Latvian, Estonian and Fränggisch (fun dialect). «Automatic» follows the
+  Windows display language; switching applies at once.
 - **Everything configurable in the GUI**, every setting with help text, default and reset.
 - **Portable or venv install**, a one-click yt-dlp/plugin update, SQLite state, DB backups.
 - **Sources**: YouTube today; SoundCloud is in development. See

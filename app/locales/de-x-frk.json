@@ -4,6 +4,7 @@
     "name": "Fränggisch",
     "dir": "ltr",
     "intl": "de-DE",
+    "fallback": "de",
     "note": "Backend messages. Guide: docs/TRANSLATING.md"
   },
   "api": {

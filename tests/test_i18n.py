@@ -38,6 +38,13 @@ REQUIRED_PLURALS = {
     "ru": {"one", "few", "many", "other"},
     "id": {"other"},
     "nl": {"one", "other"},
+    "sv": {"one", "other"},
+    "nb": {"one", "other"},
+    "fi": {"one", "other"},
+    "lt": {"one", "few", "many", "other"},
+    "lv": {"zero", "one", "other"},
+    "et": {"one", "other"},
+    "de-x-frk": {"one", "other"},
 }
 PLACEHOLDER = re.compile(r"\{(\w+)\}")
 TAG = re.compile(r"</?(?:b|i|em|strong|small|code|br)\s*/?>")
@@ -455,6 +462,16 @@ def test_backend_key_constants_exist():
         ("zh-CN", {1: "other", 2: "other"}),
         ("id", {1: "other"}),
         ("nl", {0: "other", 1: "one", 2: "other"}),
+        ("sv", {0: "other", 1: "one", 2: "other", 1.5: "other"}),
+        ("nb", {0: "other", 1: "one", 2: "other"}),
+        ("fi", {1: "one", 2: "other"}),
+        ("et", {1: "one", 2: "other"}),
+        ("de-x-frk", {1: "one", 2: "other"}),
+        (
+            "lt",
+            {1: "one", 2: "few", 9: "few", 10: "other", 11: "other", 21: "one", 1.5: "many"},
+        ),
+        ("lv", {0: "zero", 1: "one", 2: "other", 11: "zero", 21: "one", 30: "zero"}),
     ],
 )
 def test_plural_rules(code, cases):
@@ -505,6 +522,19 @@ def test_tr_follows_active_language():
         ("nl-NL", "nl"),
         ("Dutch_Netherlands", "nl"),
         ("in_ID", "id"),
+        ("sv-SE", "sv"),
+        ("Swedish_Sweden", "sv"),
+        ("nb-NO", "nb"),
+        ("no_NO", "nb"),
+        ("nn-NO", "nb"),
+        ("fi_FI", "fi"),
+        ("lt-LT", "lt"),
+        ("lv_LV", "lv"),
+        ("et-EE", "et"),
+        ("Estonian_Estonia", "et"),
+        ("de-x-frk", "de-x-frk"),
+        ("de-DE", "de"),
+        ("de-x-other", None),
         ("German_Switzerland", "de"),
         ("ja-JP", None),
         ("", None),
@@ -528,6 +558,35 @@ def test_resolve_auto_and_fallback(monkeypatch):
     assert i18n.resolve("auto") == "en"
     assert i18n.resolve("de") == "de"
     assert i18n.resolve("xx") == "en"
+    assert i18n.resolve("de-x-frk") == "de-x-frk"  # explicit choice
+
+
+def test_auto_never_picks_the_dialect(monkeypatch):
+    """de-x-frk is a fun dialect: "auto" maps it (and every German locale) to de."""
+    for var in ("LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setattr(i18n.locale, "getlocale", lambda: (None, None))
+    for tag in ("de-x-frk", "de_DE", "German_Germany", "de-AT"):
+        monkeypatch.setattr(i18n, "_windows_ui_language", lambda tag=tag: tag)
+        assert i18n.resolve("auto") == "de"
+    assert i18n.is_dialect("de-x-frk") and not i18n.is_dialect("zh-CN")
+    assert i18n.parent_of("de-x-frk") == "de"
+
+
+def test_dialect_falls_back_to_parent_before_english(monkeypatch):
+    i18n.reload_catalogs()
+    assert i18n.fallback_of("de-x-frk") == "de"
+    assert i18n.fallback_of("de") is None
+    monkeypatch.setitem(i18n._catalogs, "de-x-frk", {"api.settings_saved": "Gschbeicherd"})
+    assert i18n.translate("api.settings_saved", "de-x-frk") == "Gschbeicherd"
+    # missing in the dialect -> German, not English
+    assert i18n.translate("queue.enqueued", "de-x-frk", n=1) == (
+        "1 Mix zur Warteschlange hinzugefügt"
+    )
+    monkeypatch.setitem(i18n._catalogs, "de", {})
+    assert i18n.translate("api.settings_saved", "de") == "Settings saved"
+    assert i18n.translate("api.invalid_selection", "de-x-frk") == "Invalid selection"
+    i18n.reload_catalogs()
 
 
 # --------------------------------------------------------------------------- setting
@@ -630,7 +689,10 @@ def test_js_language_from_settings_and_html_attributes(page):
         "ltr",
     ]
     assert (
-        page.evaluate("document.querySelector('.nav-item[data-view=library]').innerText")
+        # textContent, not innerText: the nav label is uppercased by CSS (text-transform)
+        page.evaluate(
+            "document.querySelector('.nav-item[data-view=library] [data-i18n]').textContent.trim()"
+        )
         == "Bibliothek"
     )
 
@@ -657,6 +719,18 @@ def test_js_t_plural_fallback_and_escape(page):
                      HC.i18n.resolve('auto', ['ja', 'zh-TW']),
                      HC.i18n.resolve('auto', ['zh-Hans-CN']), HC.i18n.resolve('xx')];
       out.year = HC.t('discover.none_year', {year: 2013});
+      out.dialect = [HC.i18n.resolve('auto', ['de-x-frk', 'en']),
+                     HC.i18n.resolve('auto', ['de-DE']),
+                     HC.i18n.resolve('de-x-frk'), HC.i18n.resolve('auto', ['nn-NO']),
+                     HC.i18n.resolve('auto', ['lv-LV'])];
+      /* dialect: missing key -> meta.fallback (de) before en */
+      const cat = HC.i18n.catalogs();
+      const saved = cat['de-x-frk'];
+      HC.i18n.register(saved.meta, {nav: {inbox: 'Eigang'}});
+      HC.i18n.set('de-x-frk');
+      out.frk = [HC.t('nav.inbox'), HC.t('nav.library'), document.documentElement.lang];
+      cat['de-x-frk'] = saved;
+      HC.i18n.set('de');
       return out;
     }"""
     )
@@ -669,6 +743,8 @@ def test_js_t_plural_fallback_and_escape(page):
     assert r["ar"] == ["rtl", "ru-RU"]
     assert r["resolve"] == ["pt", "en", "zh-CN", "en"]
     assert "2013" in r["year"]  # no digit grouping in params
+    assert r["dialect"] == ["de", "de", "de-x-frk", "nb", "lv"]
+    assert r["frk"] == ["Eigang", "Bibliothek", "de-DE"]
     assert ("warning", "[i18n] missing: no.such.<key>") in page.messages
 
 
@@ -699,7 +775,9 @@ def test_js_language_switch_rebuilds_ui(page):
         "HC.i18n && HC.i18n.lang === 'en' && document.body.classList.contains('ready')"
     )
     assert (
-        page.evaluate("document.querySelector('.nav-item[data-view=library]').innerText")
+        page.evaluate(
+            "document.querySelector('.nav-item[data-view=library] [data-i18n]').textContent.trim()"
+        )
         == "Library"
     )
     options = page.evaluate(
@@ -707,7 +785,9 @@ def test_js_language_switch_rebuilds_ui(page):
         ".map(o => o.textContent)"
     )
     assert options[:3] == ["Automatic (system language)", "English", "Deutsch"]
-    assert "Nederlands" in options and len(options) == 12
+    assert "Nederlands" in options and "Fränggisch" in options
+    assert len(options) == 1 + len(i18n.SUPPORTED) == 19
+    assert options[-1] == "Fränggisch"
 
 
 def test_js_no_missing_keys_while_browsing(page):

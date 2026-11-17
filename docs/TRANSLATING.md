@@ -1,9 +1,21 @@
 # Translating HCLoader
 
-HCLoader speaks 11 languages from v0.2.0 on. **English (`en`) is the reference catalog**: every key
+HCLoader speaks 18 languages from v0.2.0 on. **English (`en`) is the reference catalog**: every key
 exists there first, and a missing translation falls back to English, then to the key itself.
-German (`de`, de-CH spelling) is the second complete catalog. The other nine are filled in by
-translators: `zh-CN`, `hi`, `es`, `fr`, `bn`, `pt` (Brazil), `ru`, `id`, `nl`.
+German (`de`, de-CH spelling) is the second complete catalog. The others: `zh-CN`, `hi`, `es`,
+`fr`, `bn`, `pt` (Brazil), `ru`, `id`, `nl`, `sv`, `nb` (Bokmål), `fi`, `lt`, `lv`, `et` and
+`de-x-frk` («Fränggisch», a Franconian fun dialect).
+
+Picker order (`SUPPORTED`): en, de, zh-CN, hi, es, fr, bn, pt, ru, id, nl, sv, nb, fi, lt, lv, et,
+de-x-frk.
+
+## Dialects (`-x-` codes)
+
+A code with a private-use part (`de-x-frk`) is a **dialect**: it is only used when the user picks
+it. `auto` never resolves to it (a system language `de-x-frk` maps to its parent `de`), and a
+base-language match (`de-DE` → `de`) never lands on it. Its meta names a parent with
+`"fallback": "de"`: a missing key falls back to `de`, then `en`, then the key itself. Plural rules
+and `Intl` formats come from `intl` (`de-DE`).
 
 ## File layout
 
@@ -27,6 +39,8 @@ Meta object (UI and backend `_meta`):
 
 - `name` – native name, shown in Settings › General › Language.
 - `dir` – `rtl` for right-to-left languages (none shipped at the moment); the UI sets `<html dir>` from it.
+- `fallback` – optional: a supported language that is tried before English (dialects, e.g.
+  `"fallback": "de"` for `de-x-frk`).
 - `intl` – locale for `Intl` (dates, numbers, relative times, units). Use e.g. `ar-u-nu-latn` for an RTL language if
   Latin digits are wanted, `bn` / `hi-IN` for native conventions.
 
@@ -76,9 +90,11 @@ A plural key is an object with CLDR categories instead of a string:
 
 | Language | Categories |
 |---|---|
-| en, de, nl, hi, bn | `one`, `other` |
+| en, de, nl, hi, bn, sv, nb, fi, et, de-x-frk | `one`, `other` |
 | es, fr, pt | `one`, `other` (`many` optional, only for millions) |
 | ru | `one`, `few`, `many`, `other` |
+| lt | `one`, `few`, `many` (fractions), `other` |
+| lv | `zero`, `one`, `other` |
 | zh-CN, id | `other` |
 
 - A key that is a plain string in English stays a string (no plural needed).
@@ -96,7 +112,8 @@ If a catalog declares `"dir": "rtl"`, the engine sets `<html dir="rtl">`. Layout
    `LANGUAGES` in `scripts/ui_screenshots.py`, and `REQUIRED_PLURALS` in `tests/test_i18n.py`.
 2. Create `ui/js/locales/<code>.js` and `app/locales/<code>.json` (copy a stub) and add the
    `<script>` tag in `ui/index.html`.
-3. Add the language to the `match()` name table if Windows reports it by name.
+3. Add the language to the `match()` name table if Windows reports it by name, and its plural rule
+   to `plural_category()` in `app/core/i18n.py` if it is not `one`/`other` like English.
 4. Update `docs/settings-schema.md` and `config.example.yaml`.
 
 ## Filling a stub
