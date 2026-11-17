@@ -1,0 +1,47 @@
+{
+  "labels": [
+    {"name": "roadmap", "color": "ff2e63", "description": "Planned feature from the roadmap"}
+  ],
+  "milestones": [
+    {"title": "v0.2.0 – Multilingual UI", "description": "11 languages with English as default, automated releases.", "issues": [
+      {"title": "Multilingual UI: i18n framework, language picker, English default", "body": "Move every UI and user-facing backend text into translation catalogs. Setting `general.language` (default `en`, `auto` = system language). Live switching, Intl formatting for dates/numbers, plural rules. Data (genres, folders, tags) stays language-independent."},
+      {"title": "Translations: de, zh-CN, hi, es, ar, fr, bn, pt-BR, ru, id", "body": "Complete catalogs for the ten languages next to English, with key/placeholder parity tests. See docs/TRANSLATING.md for how to help."},
+      {"title": "Right-to-left layout (Arabic) and fonts for CJK, Devanagari, Bengali, Arabic", "body": "`dir=rtl` layout with logical CSS properties, font fallbacks for non-Latin scripts, screenshots per language for visual review."},
+      {"title": "Automated GitHub releases", "body": "Pushing a new version to `main` creates the tag, the release (notes from CHANGELOG) and attaches installer, portable ZIP, source ZIP and SHA256SUMS."}
+    ]},
+    {"title": "v0.3.0 – Festivals & series", "description": "Recognise festival/series, year, stage and set type; browse the library by festival.", "issues": [
+      {"title": "Festival & series data model and offline detection", "body": "Series (festival, radio show, podcast) with aliases, editions (series + year), stage and set type per mix. Detection only from metadata already stored – no extra requests. Editable list of known festivals, manual correction by clicking the badge. See docs/concepts/festivals.md."},
+      {"title": "Library: group by festival / series / artist / year", "body": "Festival tiles with counts, years as a timeline, sets grouped by stage, filter chips."},
+      {"title": "Festival tags and path placeholders", "body": "ID3 `FESTIVAL`, `EVENT_YEAR`, `STAGE`, `SET_TYPE`; album tag = edition (switchable) for Plex/Jellyfin; placeholders `{festival}`, `{event_year}`, `{stage}` – default path template unchanged."}
+    ]},
+    {"title": "v0.4.0 – Read everything (once)", "description": "Fetch the complete back catalogue of a watchlist source.", "issues": [
+      {"title": "Watchlist: read the whole back catalogue of a source once", "body": "Paged, throttled and resumable (after backoff, restart or cancel), adjustable cap (~2000), results always go to the inbox, progress shown at the source, confirmation with the estimated number of requests."}
+    ]},
+    {"title": "v0.5.0 – Festival collector", "description": "Collect all sets of a festival edition with a checklist.", "issues": [
+      {"title": "Festival collector: checklist per edition", "body": "Expected sets (DJ, stage, day/time, set type) with status and checkboxes; only ticked and confirmed sets are queued. Missing sets are searched one by one within the throttle limits, resumable."},
+      {"title": "Timetable sources: organiser playlists, pasted timetable, shared timetable files", "body": "Organiser playlist as cheapest source, a parser for pasted timetables (text/CSV), community-curated `timetables/<series>/<year>.json`. No scraping of festival websites."}
+    ]},
+    {"title": "v0.6.0 – Tracklist search", "description": "Find out which sets play a given track.", "issues": [
+      {"title": "Extract tracklists from chapters and descriptions", "body": "Parse artist – title lines and timestamps from chapters, descriptions and CUE data already stored."},
+      {"title": "Search: which sets play track X?", "body": "Search across all tracklists in the library and jump straight to the position in the player."}
+    ]},
+    {"title": "v0.7.0 – Loudness & player", "description": "Even volume and a better player for long sets.", "issues": [
+      {"title": "Loudness normalisation (ReplayGain / EBU R128 tags)", "body": "Analyse offline with ffmpeg and write gain tags so all sets play at the same volume; no re-encoding."},
+      {"title": "Player: remember position, waveform with chapter marks, sleep timer", "body": "Resume long sets where you left off, show a waveform with chapter marks, optional sleep timer."}
+    ]},
+    {"title": "v0.8.0 – Playlists & DJ pages", "description": "Export playlists and browse by DJ.", "issues": [
+      {"title": "Playlist export (M3U per festival, genre or DJ)", "body": "Export playlists with relative paths for phones, USB sticks and car radios."},
+      {"title": "DJ pages with aliases", "body": "All sets of an artist in one place, alias handling, add to watchlist in one click."}
+    ]},
+    {"title": "v0.9.0 – Statistics & integrations", "description": "Statistics, notifications and media server integration.", "issues": [
+      {"title": "Statistics view", "body": "Hours of music, top DJs, sets per year/festival/genre."},
+      {"title": "Windows notifications for new watchlist sets", "body": "Toast when the watchlist finds new sets, optionally with a «Download now» action."},
+      {"title": "Plex / Jellyfin library scan after downloads", "body": "Optionally trigger a library scan on the media server once downloads finish."}
+    ]},
+    {"title": "v0.10.0 – Re-uploads & more sources", "description": "Audio fingerprints and additional platforms.", "issues": [
+      {"title": "Detect re-uploads via audio fingerprint", "body": "Recognise the same set uploaded under a different title before downloading it twice."},
+      {"title": "New sources: Mixcloud and hearthis.at", "body": "Search and watchlist support with their own throttle settings."},
+      {"title": "New source: archive.org (optional)", "body": "Hardcore/gabber archive collections from the Internet Archive."}
+    ]}
+  ]
+}

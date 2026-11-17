@@ -1,0 +1,55 @@
+name: Sync roadmap
+# Creates the milestones and issues from .github/roadmap.json (manual run). Idempotent: existing
+# milestones/issues (matched by title) are left untouched.
+on:
+  workflow_dispatch:
+permissions:
+  issues: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create milestones and issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        shell: python
+        run: |
+          import json, os, urllib.request, urllib.error
+          api = f"https://api.github.com/repos/{os.environ['REPO']}"
+          head = {"Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+                  "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
+          def call(method, path, data=None):
+              req = urllib.request.Request(api + path, method=method, headers=head,
+                                           data=json.dumps(data).encode() if data is not None else None)
+              with urllib.request.urlopen(req) as r:
+                  return json.loads(r.read() or b"null")
+          def all_pages(path):
+              out, page = [], 1
+              while True:
+                  sep = "&" if "?" in path else "?"
+                  batch = call("GET", f"{path}{sep}per_page=100&page={page}")
+                  out += batch
+                  if len(batch) < 100:
+                      return out
+                  page += 1
+          plan = json.load(open(".github/roadmap.json", encoding="utf-8"))
+          labels = {l["name"] for l in all_pages("/labels")}
+          for l in plan["labels"]:
+              if l["name"] not in labels:
+                  call("POST", "/labels", l); print("label", l["name"])
+          milestones = {m["title"]: m["number"] for m in all_pages("/milestones?state=all")}
+          issues = {i["title"] for i in all_pages("/issues?state=all&labels=roadmap")}
+          for m in plan["milestones"]:
+              num = milestones.get(m["title"])
+              if num is None:
+                  num = call("POST", "/milestones", {"title": m["title"], "description": m["description"]})["number"]
+                  print("milestone", m["title"])
+              for i in m["issues"]:
+                  if i["title"] in issues:
+                      continue
+                  call("POST", "/issues", {"title": i["title"], "body": i["body"],
+                                           "labels": ["roadmap", "enhancement"], "milestone": num})
+                  print("  issue", i["title"])
