@@ -82,8 +82,11 @@ def test_valid_sources_and_defaults(settings):
         "auto_download",
         "max_entries",
         "newest_last",
+        "platform",
+        "name_auto",
     }
     assert clean["newest_last"] is False
+    assert clean["platform"] == "youtube" and clean["name_auto"] is False
     for url in (
         "https://www.youtube.com/channel/UCabc123/videos",
         "https://youtube.com/c/Name",

@@ -146,7 +146,12 @@ def run_watchlist(
             db,
             client_factory,
             watchdog,
-            throttle or Throttle(db, lambda: settings.throttle),
+            throttle
+            or Throttle(
+                db,
+                lambda: settings.throttle,
+                platform_settings={"soundcloud": lambda: settings.soundcloud},
+            ),
             pot_wait,
         )
     finally:
@@ -207,7 +212,8 @@ def _run(
     watchdog = watchdog or PotWatchdog(lambda: settings)
     client: Any = None
     try:
-        until = throttle.backoff_until()
+        # 7a: blocked only if every platform with an enabled source is in backoff
+        until = watchlist.blocked_until(db, throttle)
         if until:
             notes.append(f"Backoff aktiv bis {format_until(until)} – nichts geprüft")
             log.warning(notes[-1])
@@ -270,9 +276,13 @@ def _run(
         # SPEC §5: a successful run resets the backoff escalation (never lifts an active backoff)
         throttle.finish_run(res.checked > 0 and not res.backoff)
         until_now = throttle.backoff_until()
+        if until_now is None and hasattr(throttle, "platforms"):  # 7a: e.g. SoundCloud
+            until_now = next(
+                (u for u in (t.backoff_until() for t in throttle.platforms()) if u), None
+            )
         if until_now is not None or res.backoff:
             code = EXIT_BLOCKED
-            if not any(n.startswith("Backoff") for n in notes):
+            if until_now is not None and not any(n.startswith("Backoff") for n in notes):
                 notes.append(f"Backoff bis {format_until(until_now)}")
         elif errors:
             code = EXIT_FAILED

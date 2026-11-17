@@ -817,7 +817,12 @@ def test_db_backed_reads_and_simple_actions(env):
         "status",
         "is_live",
         "source_id",
+        "platform",
+        "url",
+        "preview",
+        "duplicate_of",
     }
+    assert inbox[0]["platform"] == "youtube" and inbox[0]["duplicate_of"] is None
     assert inbox[0]["source_id"] == sid
     src = a.get_sources()[0]
     assert src["new_count"] == 1 and src["enabled"] is True
@@ -859,6 +864,7 @@ def test_library_from_db(env, tmp_path):
         "missing",
         "unknown",
         "has_cue",
+        "platform",
     }
     assert lib[0]["missing"] is False and lib[0]["has_cue"] is False
     assert a.open_folder("abcdefghijk") == {"ok": True} and env.opened == [f.parent]
@@ -900,6 +906,7 @@ def test_phase3_methods_on_empty_db(env):
         "items": [],
         "blocked_reason": None,
         "blocked_code": None,
+        "platform_blocked": {},
     }
     assert a.enqueue(["abcdefghijk"]) == {"ok": True, "ids": [], "skipped": 1}
     for name in ("queue_move", "queue_cancel", "queue_retry"):
@@ -929,6 +936,7 @@ def test_every_method_json_serializable(env):
         "block_channel": ("UC1", "x"),
         "delete_source": (1,),
         "open_folder": ("abcdefghijk",),
+        "suggest_source": ("https://soundcloud.com/dj-x",),
     }
     for name in sorted(_bridge_comment_methods()):
         res = getattr(a, name)(*args.get(name, ()))
@@ -1327,8 +1335,9 @@ def test_save_source_validates_and_persists(env):
     assert ok["ok"] and ok["source"]["max_entries"] == 12 and ok["source"]["auto_download"] is True
     assert set(ok["source"]) == {
         "id", "type", "name", "url_or_query", "default_genre", "enabled", "auto_download",
-        "max_entries", "newest_last", "last_checked", "new_count",
+        "max_entries", "newest_last", "last_checked", "new_count", "platform", "name_auto",
     }  # fmt: skip
+    assert ok["source"]["platform"] == "youtube" and ok["source"]["name_auto"] is False
     assert ok["source"]["newest_last"] is False
     pl = a.save_source(
         {

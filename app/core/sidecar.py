@@ -21,13 +21,14 @@ from pathlib import Path
 from typing import Any
 
 from . import config
+from .platforms import file_id, platform_of
 from .tagging import Chapter
 
 log = logging.getLogger(__name__)
 
 SIDECAR_VERSION = 1
 DESCRIPTION_MAX = 2000
-_ID_RE = re.compile(r"^[0-9A-Za-z_-]{1,32}$")
+_ID_RE = re.compile(r"^(?:[0-9A-Za-z_-]{1,32}|sc:\d{1,20})$")
 
 
 def meta_dir() -> Path:
@@ -41,14 +42,17 @@ def _check(video_id: str) -> None:
 
 def sidecar_path(video_id: str) -> Path:
     """`<id>.<hash>.json`: the short hash of the exact ID keeps IDs that differ only in case apart
-    on case-insensitive file systems (Windows)."""
+    on case-insensitive file systems (Windows). SoundCloud: file id `sc-<id>`, hash of the DB
+    id `sc:<id>` (so never the same name as a YouTube id `sc-…`)."""
     _check(video_id)
     digest = hashlib.sha1(video_id.encode("utf-8")).hexdigest()[:8]
-    return meta_dir() / f"{video_id}.{digest}.json"
+    return meta_dir() / f"{file_id(video_id)}.{digest}.json"
 
 
 def _legacy_path(video_id: str) -> Path:
     _check(video_id)
+    if platform_of(video_id) != "youtube":  # only YouTube sidecars ever had the old name
+        return meta_dir() / f".none.{file_id(video_id)}.json"
     return meta_dir() / f"{video_id}.json"
 
 

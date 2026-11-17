@@ -292,6 +292,12 @@ def _tag_text(meta: Mapping[str, Any], key: str) -> str:
     return str(meta.get(key) or "").strip()
 
 
+def _id_tag(meta: Mapping[str, Any]) -> str:
+    """TXXX description of the platform id: YOUTUBE_ID (default) / SOUNDCLOUD_ID (Phase 7a).
+    `meta['id']` is the native id of the platform (SoundCloud without `sc:`)."""
+    return "SOUNDCLOUD_ID" if _tag_text(meta, "platform") == "soundcloud" else "YOUTUBE_ID"
+
+
 def write_tags(
     path: Path,
     meta: Mapping[str, Any],
@@ -308,7 +314,8 @@ def write_tags(
     key, rating, ReplayGain, lyrics ...); a first download starts from an empty tag.
 
     meta keys: title, artist, albumartist (default artist), album (default title), genre,
-    date (upload date), url, id, source (default 'YouTube').
+    date (upload date), url, id (native id of the platform), platform ('youtube' default /
+    'soundcloud': TXXX:SOUNDCLOUD_ID instead of TXXX:YOUTUBE_ID), source (default 'YouTube').
     """
     ext = Path(path).suffix.lower()
     chapters = list(chapters)
@@ -343,6 +350,7 @@ _OWN_FRAMES = (
     "TDRC",
     "COMM::eng",
     "TXXX:YOUTUBE_ID",
+    "TXXX:SOUNDCLOUD_ID",
     "TXXX:SOURCE",
 )
 
@@ -383,7 +391,7 @@ def _write_id3(
     if url := _tag_text(meta, "url"):
         tags.add(COMM(encoding=3, lang="eng", desc="", text=[url]))
     if vid := _tag_text(meta, "id"):
-        tags.add(TXXX(encoding=3, desc="YOUTUBE_ID", text=[vid]))
+        tags.add(TXXX(encoding=3, desc=_id_tag(meta), text=[vid]))
     tags.add(TXXX(encoding=3, desc="SOURCE", text=[_tag_text(meta, "source") or "YouTube"]))
     if cover:
         tags.add(APIC(encoding=3, mime="image/jpeg", type=3, desc="Cover", data=cover))
@@ -413,7 +421,7 @@ def _write_mp4(path: Path, meta: Mapping[str, Any], cover: bytes | None) -> None
     if url := _tag_text(meta, "url"):
         tags["\xa9cmt"] = [url]
     if vid := _tag_text(meta, "id"):
-        tags["----:com.apple.iTunes:YOUTUBE_ID"] = [MP4FreeForm(vid.encode("utf-8"))]
+        tags[f"----:com.apple.iTunes:{_id_tag(meta)}"] = [MP4FreeForm(vid.encode("utf-8"))]
     source = (_tag_text(meta, "source") or "YouTube").encode("utf-8")
     tags["----:com.apple.iTunes:SOURCE"] = [MP4FreeForm(source)]
     if cover:
@@ -437,7 +445,7 @@ def _write_opus(path: Path, meta: Mapping[str, Any], cover: bytes | None) -> Non
         "genre": _tag_text(meta, "genre"),
         "date": normalize_date(_tag_text(meta, "date")),
         "comment": _tag_text(meta, "url"),
-        "youtube_id": _tag_text(meta, "id"),
+        _id_tag(meta).lower(): _tag_text(meta, "id"),
         "source": _tag_text(meta, "source") or "YouTube",
     }
     for key, value in values.items():

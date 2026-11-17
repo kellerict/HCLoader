@@ -38,7 +38,8 @@
      pick_folder(current?)              -> {path} | null                 (nativer Ordnerdialog)
      test_po_token()                    -> {ok, state, detail, ms}       state: "active" | "inactive" | "error"
                                            Fehler: {ok:false, state:"error", detail, error, ms:0}
-     clear_backoff()                    -> {ok}
+     clear_backoff(platform?)           -> {ok} | {ok:false, error}   platform: "youtube" | "soundcloud";
+                                           ohne Argument: alle Plattformen (Phase 7a)
      get_task_status()                  -> {registered, name, next_run, time, error, path_mismatch, task_command}
                                            registered: true | false | null (= unbekannt, error sagt warum)
                                            path_mismatch: true = Aufgabe startet einen anderen App-Ordner (App
@@ -56,7 +57,10 @@
                                            daraus zeigt die UI «Gesucht mit …» und den Hinweis «neu suchen»
      search(query, opts)                -> {ok:true, results:[Video], effective_query, query, genre, year,
                                             hidden_count} | {ok:false, error}
-                                           opts = {genre: <Genre-Name>|null, year: <int>|null}
+                                           opts = {genre: <Genre-Name>|null, year: <int>|null,
+                                                   platform?: "youtube" (Standard) | "soundcloud"}
+                                           Antwort zusätzlich platform. SoundCloud ausgeschaltet ->
+                                           {ok:false, error}. Genre/Jahr werden auch bei SoundCloud angehängt.
                                            genre: genau ein aktiver Genre-Chip (sonst null); year: nur beim
                                            Upload-Zeitraum «Jahr». Das Backend hängt die Begriffe an
                                            (Genre-Suchbegriffe, Jahr bei search.append_year) und meldet den
@@ -65,15 +69,29 @@
      enqueue(ids)                       -> {ok:true, ids:[übernommen], skipped?: n}
      set_video_status(id, status)       -> {ok}       status: "ignored" | "new"
      set_genre(id, genre)               -> {ok}
-     open_video(id)                     -> {ok}       öffnet YouTube im Standardbrowser
+     open_video(id)                     -> {ok}       öffnet YouTube bzw. die SoundCloud-Trackseite (Video.url)
      add_channel_source(channel_id, channel_name) -> {ok, source} | {ok:false, error, source?}
+                                           SoundCloud: channel_id "sc:<nutzer-id>" (aus Video.channel_id);
+                                           die Profil-URL kennt das Backend aus gespeicherten Tracks.
+                                           Name = channel_name, name_auto false.
      block_channel(channel_id, channel_name)      -> {ok}
 
    Watchlist
      get_sources()                      -> [Source]
+     suggest_source(url_or_query, type_hint?) -> {type, platform, name, url_normalized}
+                                           ohne Netzwerk, nur aus der URL (beim Tippen, entprellt).
+                                           type: "channel"|"playlist"|"search"|"" ("" = nicht erkannt);
+                                           name "" = kein guter Name aus der URL (z.B. /channel/UC…,
+                                           Playlist) -> die erste Prüfung setzt den echten Namen.
+                                           type_hint "search" -> Text = Suchbegriff = Name.
      save_source(source)                -> {ok, source} | {ok:false, errors:{feld: "Meldung"}}   (id fehlt = neu)
                                            Die UI schickt nur {id?, type, name, url_or_query, default_genre,
-                                           enabled, auto_download, max_entries, newest_last} (ohne last_checked/new_count).
+                                           enabled, auto_download, max_entries, newest_last, platform?, name_auto}
+                                           (ohne last_checked/new_count). platform zählt nur bei type "search"
+                                           (bei URLs erkennt das Backend die Plattform selbst).
+                                           name_auto: true, wenn der Name der unveränderte Vorschlag
+                                           (suggest_source) ist; die nächste Prüfung ersetzt ihn dann durch
+                                           den echten Kanal-/Nutzer-/Playlist-Namen (Event "source" mit name).
                                            errors: Schlüssel = diese Feldnamen -> Meldung am Feld; andere
                                            Schlüssel und ein optionales error (Text) stehen oben im Dialog.
      delete_source(id)                  -> {ok} | {ok:false, error}
@@ -85,7 +103,11 @@
                                            "source" / "watchlist_done"; die UI sperrt «Prüfen» bis "watchlist_done".
 
    Downloads
-     get_queue()                        -> {paused, items:[QueueItem], blocked_code, blocked_reason}
+     get_queue()                        -> {paused, items:[QueueItem], blocked_code, blocked_reason, platform_blocked}
+                                           platform_blocked (7a): {<platform>: {code, reason}} für Plattformen,
+                                           deren wartende Einträge gerade gesperrt sind (Backoff, Limits),
+                                           während die andere Plattform weiterlädt. blocked_code/-reason
+                                           gelten nur, wenn ALLE wartenden Einträge stehen.
                                            blocked_code: "restart" | "backoff" | "day_limit" | "run_limit" |
                                            "busy" | "pot" | "target" | "error" | null – warum wartende
                                            Einträge gerade nicht laufen (pot/target/error = lokales
@@ -103,7 +125,7 @@
      get_library(filters?)              -> [LibraryItem]   neueste Downloads zuerst
                                            Item: missing = Datei fehlt; unknown = Zielordner nicht erreichbar (Zustand unbekannt, missing false).
      get_library_status()               -> {target_ok, target}   Ergebnis der Zielordner-Prüfung des letzten get_library (Timeout 3 s)
-                                           filters = {search?, genre?, channel?, year?, missing?} (UND-verknüpft).
+                                           filters = {search?, genre?, channel?, year?, missing?, platform?} (UND-verknüpft).
                                            Die UI ruft OHNE Filter auf und sucht/filtert/sortiert/gruppiert selbst
                                            (sofortige Reaktion; Auswahllisten und Kennzahlen brauchen ohnehin alles).
      open_folder(id)                    -> {ok} | {ok:false, error}      Explorer mit markierter Datei bzw. Ordner
@@ -136,9 +158,17 @@
                   status: "new"|"inbox"|"queued"|"downloading"|"done"|"ignored"|"failed",
                   source_id (int|null, optional: Watchlist-Quelle, über die das Video gefunden wurde = Source.id;
                   die UI zeigt damit im Eingang das Quelle-Badge und den Filter pro Quelle. Fehlt das Feld oder
-                  gibt es die Quelle nicht mehr: kein Badge, Gruppe «Ohne Quelle»)}
+                  gibt es die Quelle nicht mehr: kein Badge, Gruppe «Ohne Quelle»),
+                  platform: "youtube"|"soundcloud" (7a; id bei SoundCloud "sc:<zahl>", channel_id "sc:<zahl>"),
+                  url (Seite des Videos/Tracks|null), preview (bool: SoundCloud-Go+-Vorschau, nie ladbar,
+                  filter_reason «Nur Vorschau (Go+)»), duplicate_of ({id, platform, title}|null, nur Suchtreffer
+                  und Eingang: vermutlich schon von der anderen Plattform geladen/eingereiht – Hinweis
+                  «Vermutlich bereits geladen (YouTube)»; ausgeblendet nur mit filters.hide_cross_platform_duplicates).
+                  Thumbnails von SoundCloud: https://*.sndcdn.com}
      Source      {id, type: "channel"|"playlist"|"search", name, url_or_query, default_genre|null,
-                  enabled, auto_download, max_entries (int|null), newest_last (bool), last_checked (ISO|null), new_count}
+                  enabled, auto_download, max_entries (int|null), newest_last (bool), last_checked (ISO|null), new_count,
+                  platform: "youtube"|"soundcloud", name_auto (bool)}
+                  SoundCloud: channel = soundcloud.com/<nutzer> oder …/tracks, playlist = …/<nutzer>/sets/<set>.
                   max_entries: null (Feld im Dialog leer) = Standard schedule.entries_per_source zum Zeitpunkt der
                   Prüfung; die Liste zeigt dann «30 (Standard)», das Feld den Standard als Platzhalter. Obergrenze
                   200, bei Suchquellen 100. Kanal-URL: nur Kanal-Root, /videos oder /streams (andere Tabs -> Fehler).
@@ -151,7 +181,7 @@
                   phase "sleep" = Throttle-Pause vor diesem Eintrag (state bleibt "waiting"),
                   eta = Restsekunden der Pause; optional sleep_total (s) für den Balken.
      LibraryItem {id, title, artist, channel_id, genre, duration (s|null), upload_date, year, downloaded_at (ISO),
-                  file_path, size_mb, missing, has_cue}
+                  file_path, size_mb, missing, has_cue, platform}
                   artist = Kanalname (Spalte/Filter «Kanal»); file_path absolut; missing:true = Datei nicht mehr
                   am Ort (size_mb 0) -> «Datei fehlt», nur «Eintrag entfernen» und «Ordner öffnen» möglich.
                   has_cue -> kleines «CUE»-Kennzeichen. Cover: generiert aus id + Genre-Farbe (kein Bildfeld).
@@ -165,7 +195,11 @@
                   po_token: {state: "active"|"inactive"|"error", mode: "off"|"script"|"http", detail},
                   backoff: {active, until (ISO|null), level, remaining_s},
                   next_check (ISO|null), queue_length, queue_paused, inbox_count,
-                  counters: {downloads_run, downloads_day, searches_hour}}
+                  counters: {downloads_run, downloads_day, searches_hour},
+                  platforms: {youtube: P, soundcloud: P}}   (7a; backoff/counters oben = YouTube)
+                  P = {enabled, backoff: {active, until, level, remaining_s, reason},
+                       counters: {downloads_run, downloads_day, searches_hour},
+                       limits: {downloads_run, downloads_day, searches_hour}}
                   next_check = der frühere Termin von In-App-Intervall und Windows-Aufgabe (null = beides aus
                   bzw. noch nichts geplant). Woher er stammt («App»/«Aufgabe»), leitet die UI aus
                   schedule.in_app_check / task_scheduler_enabled / task_time ab (HC.schedule in app.js).
@@ -189,7 +223,8 @@
      run             Run                               ein Lauf ist zu Ende (GUI-Watchlist-Prüfung, Download-Lauf der
                      Warteschlange). Die UI fügt ihn in die Lauf-Historie ein bzw. ersetzt den laufenden Eintrag
                      gleicher id. Headless-Läufe (anderer Prozess) erscheinen beim nächsten get_log().
-     source          {id, checking, last_checked?, new_count?, error?}   Watchlist-Quelle wird/wurde geprüft
+     source          {id, checking, name?, last_checked?, new_count?, error?}   Watchlist-Quelle wird/wurde geprüft
+                     name (7a): aktueller Name nach der Prüfung (bei name_auto ggf. ersetzt) -> übernehmen.
                      Start: {id, checking:true}. Ende: {id, checking:false, last_checked, new_count} oder bei
                      Fehler {id, checking:false, error:"Meldung"} – die UI zeigt die Meldung an der Quelle, bis
                      sie wieder geprüft wird (nur im Speicher der UI, Source kennt kein Fehlerfeld).

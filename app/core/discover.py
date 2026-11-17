@@ -14,7 +14,7 @@ from collections.abc import Collection, Mapping
 from datetime import UTC, datetime
 from typing import Any
 
-from . import filters
+from . import duplicates, filters, platforms
 from .config import UNSORTED, Settings
 from .db import Database
 from .genre import detect_genre
@@ -52,6 +52,36 @@ def clean_options(
     if year is not None and not (MIN_YEAR <= year <= datetime.now().year + 1):
         year = None
     return genre, year
+
+
+def clean_platform(opts: Mapping[str, Any] | None) -> str | None:
+    """`opts.platform` of a search: 'youtube' (default) | 'soundcloud'; None = invalid."""
+    value = (opts or {}).get("platform") or platforms.YOUTUBE
+    return value if platforms.valid(value) else None
+
+
+def soundcloud_page(db: Database, video_id: str) -> str | None:
+    """Web page of a stored SoundCloud track (`open_video`), only https://soundcloud.com."""
+    if not platforms.is_valid_db_id(video_id) or platforms.platform_of(video_id) != "soundcloud":
+        return None
+    row = db.get_video(video_id) or {}
+    url = str(row.get("url") or "")
+    return url if _sc_web_url(url) else None
+
+
+def soundcloud_channel_page(db: Database, channel_id: str) -> str | None:
+    """Profile URL of a SoundCloud uploader known from stored tracks (`add_channel_source`)."""
+    row = db.query_one(
+        "SELECT channel_url FROM videos WHERE channel_id=? AND channel_url IS NOT NULL "
+        "AND channel_url != '' ORDER BY first_seen DESC LIMIT 1",
+        (channel_id,),
+    )
+    url = str((row or {}).get("channel_url") or "").rstrip("/")
+    return url if _sc_web_url(url) else None
+
+
+def _sc_web_url(url: str) -> bool:
+    return url.startswith("https://") and platforms.url_platform(url) == platforms.SOUNDCLOUD
 
 
 def filter_reason(
@@ -100,11 +130,33 @@ def _result(
     live: bool,
     year: int | None,
     video_dict: Any,
+    db: Database | None = None,
 ) -> dict[str, Any]:
     out = video_dict(dict(row))
     out["is_live"] = bool(live)  # n1: the UI uses this flag, not the German filter text
     probe = {**out, "live_status": "is_live" if live else None}
     out["filter_reason"] = filter_reason(probe, settings, out["status"], blacklist, year=year)
+    annotate_duplicate(out, db, settings, set_reason=True)
+    return out
+
+
+def annotate_duplicate(
+    out: dict[str, Any], db: Database | None, settings: Settings, *, set_reason: bool = False
+) -> dict[str, Any]:
+    """Phase 7a: `duplicate_of: {id, platform, title} | None` (same mix probably already loaded
+    from the other platform). With `filters.hide_cross_platform_duplicates` and `set_reason`,
+    an otherwise passing hit gets the filter reason «Vermutlich bereits geladen (…)»."""
+    dup = None
+    if db is not None and out.get("status") not in ("done", "ignored"):
+        dup = duplicates.find_duplicate(db, out)
+    out["duplicate_of"] = dup
+    if (
+        dup
+        and set_reason
+        and settings.filters.hide_cross_platform_duplicates
+        and not out.get("filter_reason")
+    ):
+        out["filter_reason"] = duplicates.reason(dup)
     return out
 
 
@@ -135,6 +187,10 @@ def store_results(
             "date_approx": bool(e.get("date_approx")),
             "view_count": e.get("view_count"),
             "thumbnail": e.get("thumbnail"),
+            "platform": e.get("platform") or platforms.platform_of(vid),
+            "url": e.get("url") or None,
+            "channel_url": e.get("channel_url") or None,
+            "preview": bool(e.get("preview")),
         }
         if not row or row.get("status") not in GENRE_LOCKED_STATUSES:
             source_default = None
@@ -158,19 +214,27 @@ def run_search(
     year: int | None,
     effective_query: str,
     video_dict: Any,
+    platform: str = platforms.YOUTUBE,
 ) -> dict[str, Any]:
-    """Search (through the client = throttle), store, annotate. Bridge response shape."""
+    """Search (through the client = throttle of `platform`), store, annotate. Bridge response
+    shape. Fake clients without a `platform` argument keep working for YouTube."""
+    name = platforms.label(platform)
+    pth = throttle.platform(platform) if hasattr(throttle, "platform") else throttle
+    kwargs: dict[str, Any] = {"genre": genre, "year": year}
+    if platform != platforms.YOUTUBE:
+        kwargs["platform"] = platform
     try:
-        entries = client.search(query, genre=genre, year=year)
+        entries = client.search(query, **kwargs)
     except BackoffActive as exc:
+        what = "Backoff" if platform == platforms.YOUTUBE else f"Backoff ({name})"
         return {
             "ok": False,
-            "error": f"Backoff aktiv bis {format_until(exc.until)} – Suche gesperrt",
+            "error": f"{what} aktiv bis {format_until(exc.until)} – Suche gesperrt",
         }
     except MetadataBusy as exc:  # a download is extracting right now (m4)
         return {"ok": False, "error": str(exc)}
     except LimitReached as exc:
-        at = throttle.search_available_at()
+        at = pth.search_available_at()
         when = f" – wieder möglich ab {format_until(at)}" if at else ""
         return {
             "ok": False,
@@ -178,9 +242,9 @@ def run_search(
         }
     except Exception as exc:
         if getattr(exc, "rate_limited", False):
-            until = throttle.backoff_until()
+            until = pth.backoff_until()
             tail = f" – Backoff bis {format_until(until)}" if until else ""
-            return {"ok": False, "error": f"YouTube blockiert gerade (429/Bot-Prüfung){tail}"}
+            return {"ok": False, "error": f"{name} blockiert gerade (429/Bot-Prüfung){tail}"}
         text = redact(exc)  # n4: proxy credentials never reach the UI or the log
         log.error("Suche fehlgeschlagen: %s", text)
         return {"ok": False, "error": f"Suche fehlgeschlagen: {text}"}
@@ -194,6 +258,7 @@ def run_search(
                 "effective_query": effective_query,
                 "genre": genre,
                 "year": year,
+                "platform": platform,
                 "ids": ids,
                 "live": live,
                 "ts": datetime.now(UTC).isoformat(timespec="seconds"),
@@ -202,7 +267,13 @@ def run_search(
     )
     results = _annotated(db, ids, set(live), settings, year=year, video_dict=video_dict)
     hidden = sum(1 for r in results if r["filter_reason"])
-    log.info("Suche «%s»: %d Treffer, %d davon ausgefiltert", effective_query, len(results), hidden)
+    log.info(
+        "Suche «%s» (%s): %d Treffer, %d davon ausgefiltert",
+        effective_query,
+        name,
+        len(results),
+        hidden,
+    )
     return {
         "ok": True,
         "results": results,
@@ -210,6 +281,7 @@ def run_search(
         "query": query,
         "genre": genre,
         "year": year,
+        "platform": platform,
         "hidden_count": hidden,
     }
 
@@ -230,7 +302,13 @@ def _annotated(
         if row:
             out.append(
                 _result(
-                    row, settings, blacklist, live=vid in live, year=year, video_dict=video_dict
+                    row,
+                    settings,
+                    blacklist,
+                    live=vid in live,
+                    year=year,
+                    video_dict=video_dict,
+                    db=db,
                 )
             )
     return out
@@ -259,6 +337,7 @@ def last_search(db: Database, settings: Settings, *, video_dict: Any) -> dict[st
         "effective_query": data.get("effective_query") or data.get("query") or "",
         "genre": data.get("genre"),
         "year": year,
+        "platform": data.get("platform") or platforms.YOUTUBE,
         "results": results,
         "hidden_count": sum(1 for r in results if r["filter_reason"]),
     }

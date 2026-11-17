@@ -39,6 +39,7 @@ from .core import status as status_mod
 from .core.config import Settings
 from .core.db import Database
 from .core.logging_setup import setup_logging
+from .core.platforms import file_id
 from .core.redact import redact
 from .core.throttle import Throttle
 from .worker import (
@@ -80,6 +81,7 @@ _TASK_MOVED = (
     "HCLoader wurde verschoben – die geplante Aufgabe startet noch den alten Ordner. "
     "Einstellungen › Zeitplan › «Aufgabe neu anlegen»."
 )
+_SC_OFF = "SoundCloud ist ausgeschaltet (Einstellungen › SoundCloud)"
 _UPDATE_BUSY = "Wartung läuft gerade (Update) – bitte später erneut"
 _VIDEO_ID_RE = re.compile(r"^[0-9A-Za-z_-]{11}$")
 
@@ -126,7 +128,11 @@ class Api:
         self._lock = threading.RLock()
         self._own_db = db is None
         self._db = db or Database(config.db_path())
-        self._throttle = throttle or Throttle(self._db, lambda: self._settings.throttle)
+        self._throttle = throttle or Throttle(
+            self._db,
+            lambda: self._settings.throttle,
+            platform_settings={"soundcloud": lambda: self._settings.soundcloud},
+        )
         self._bus = bus or EventBus()
         self._worker = worker or Worker()
         self._search_worker = Worker("hcloader-search")
@@ -252,7 +258,10 @@ class Api:
         self._queue.wake()
 
     def _cleanup_partials(self) -> int:
-        keep = {v["id"] for v in self._db.list_videos(status=("queued", "downloading", "failed"))}
+        keep = {
+            file_id(v["id"])
+            for v in self._db.list_videos(status=("queued", "downloading", "failed"))
+        }
         return maintenance.cleanup_stale_partials(paths.tmp_dir(self._cfg.target_dir_path()), keep)
 
     def _push(self) -> None:
@@ -596,8 +605,14 @@ class Api:
         self._push()
         return res
 
-    def clear_backoff(self) -> dict[str, Any]:
-        self._throttle.clear_backoff_manual()
+    def clear_backoff(self, platform: str | None = None) -> dict[str, Any]:
+        """Lift the backoff of `platform` ('youtube' | 'soundcloud'); none = every platform."""
+        if platform not in (None, "", "youtube", "soundcloud"):
+            return {"ok": False, "error": "Unbekannte Plattform"}
+        targets = [self._throttle.platform(platform)] if platform else self._throttle.platforms()
+        for th in targets:
+            if th is self._throttle or th.backoff_until() is not None:
+                th.clear_backoff_manual()
         self._queue.wake()
         self._push()
         return {"ok": True}
@@ -699,27 +714,41 @@ class Api:
             return {"ok": False, "error": "Neustart nötig – yt-dlp wurde aktualisiert"}
         if self._ytdlp_gate.updating:
             return {"ok": False, "error": _UPDATE_BUSY}
-        genre, year = discover.clean_options(opts if isinstance(opts, dict) else None, self._cfg)
+        clean = opts if isinstance(opts, dict) else None
+        genre, year = discover.clean_options(clean, self._cfg)
+        platform = discover.clean_platform(clean)
+        if platform is None:
+            return {"ok": False, "error": "Unbekannte Plattform"}
+        if platform == "soundcloud" and not self._cfg.soundcloud.enabled:
+            return {
+                "ok": False,
+                "error": "SoundCloud ist ausgeschaltet (Einstellungen › SoundCloud)",
+            }
         try:
             return self._search_worker.run(
-                f"search:{query}|{genre}|{year}",
+                f"search:{platform}|{query}|{genre}|{year}",
                 self._do_search,
                 query,
                 genre,
                 year,
+                platform,
                 timeout=SEARCH_TIMEOUT_S,
             )
         except FutureTimeout:
             return {"ok": False, "error": "Suche dauert zu lange – bitte später erneut versuchen"}
 
-    def _do_search(self, query: str, genre: str | None, year: int | None) -> dict[str, Any]:
+    def _do_search(
+        self, query: str, genre: str | None, year: int | None, platform: str = "youtube"
+    ) -> dict[str, Any]:
         try:
             with self._ytdlp_gate.search():  # n2: checked and registered atomically
-                return self._do_search_locked(query, genre, year)
+                return self._do_search_locked(query, genre, year, platform)
         except GateBusy:
             return {"ok": False, "error": _UPDATE_BUSY}
 
-    def _do_search_locked(self, query: str, genre: str | None, year: int | None) -> dict[str, Any]:
+    def _do_search_locked(
+        self, query: str, genre: str | None, year: int | None, platform: str = "youtube"
+    ) -> dict[str, Any]:
         from .core.ytclient import build_search_query  # lazy: loads yt-dlp (m2)
 
         settings = self._cfg
@@ -736,6 +765,7 @@ class Api:
                 year=year,
                 effective_query=effective,
                 video_dict=video_dict,
+                platform=platform,
             )
         finally:
             client.close()
@@ -743,7 +773,10 @@ class Api:
         return res
 
     def get_inbox(self) -> list[dict[str, Any]]:
-        return [video_dict(v) for v in self._db.list_videos(status="inbox")]
+        return [
+            discover.annotate_duplicate(video_dict(v), self._db, self._cfg)
+            for v in self._db.list_videos(status="inbox")
+        ]
 
     def enqueue(self, ids: list[str]) -> dict[str, Any]:
         if not isinstance(ids, (list, tuple)):
@@ -780,21 +813,40 @@ class Api:
         return {"ok": True}
 
     def open_video(self, video_id: str) -> dict[str, Any]:
-        if not _VIDEO_ID_RE.match(str(video_id or "")):
+        vid = str(video_id or "")
+        if _VIDEO_ID_RE.match(vid):
+            self._browser(f"https://www.youtube.com/watch?v={vid}")
+            return {"ok": True}
+        url = discover.soundcloud_page(self._db, vid)
+        if url is None:
             return {"ok": False, "error": "Ungültige Video-ID"}
-        self._browser(f"https://www.youtube.com/watch?v={video_id}")
+        self._browser(url)
         return {"ok": True}
+
+    def suggest_source(self, url_or_query: str, type_hint: str | None = None) -> dict[str, Any]:
+        """Name/type/platform for a new source from the URL only (no network); the UI asks
+        while typing (debounced)."""
+        return watchlist.suggest_source(str(url_or_query or ""), type_hint or None)
 
     def add_channel_source(self, channel_id: str, channel_name: str = "") -> dict[str, Any]:
         cid = str(channel_id or "").strip()
-        if not re.fullmatch(r"[0-9A-Za-z_-]{3,64}", cid):
+        platform = "soundcloud" if cid.startswith("sc:") else "youtube"
+        if platform == "soundcloud":
+            url = discover.soundcloud_channel_page(self._db, cid)
+            if url is None:
+                return {"ok": False, "error": "SoundCloud-Nutzer unbekannt (keine Profil-URL)"}
+        elif re.fullmatch(r"[0-9A-Za-z_-]{3,64}", cid):
+            url = f"https://www.youtube.com/channel/{cid}"
+        else:
             return {"ok": False, "error": "Ungültige Kanal-ID"}
-        url = f"https://www.youtube.com/channel/{cid}"
         for s in self.get_sources():
-            if s["url_or_query"].rstrip("/") == url:
+            if s["url_or_query"].rstrip("/").lower() == url.lower():
                 return {"ok": False, "error": "Kanal ist bereits in der Watchlist", "source": s}
         name = str(channel_name or "").strip() or cid
-        sid = self._db.add_source("channel", name, url)  # n7: max_entries NULL = default
+        # the known channel name from the search: no automatic renaming (name_auto false)
+        sid = self._db.add_source(
+            "channel", name, url, platform=platform, name_auto=not str(channel_name or "").strip()
+        )  # n7: max_entries NULL = default
         log.info("Kanal zur Watchlist hinzugefügt: %s", name)
         source = next(s for s in self.get_sources() if s["id"] == sid)
         return {"ok": True, "source": source}
@@ -819,6 +871,8 @@ class Api:
             "auto_download": bool(s.get("auto_download")),
             "max_entries": s.get("max_entries"),
             "newest_last": bool(s.get("newest_last")),
+            "platform": s.get("platform") or "youtube",
+            "name_auto": bool(s.get("name_auto")),
             "last_checked": s.get("last_checked"),
             "new_count": self._db.count_videos(status="inbox", source_id=s["id"]),
         }
@@ -879,7 +933,7 @@ class Api:
             return "Neustart nötig – yt-dlp wurde aktualisiert"
         if self._ytdlp_gate.updating:
             return _UPDATE_BUSY
-        until = self._throttle.backoff_until()
+        until = watchlist.blocked_until(self._db, self._throttle)
         if until:
             return f"Backoff aktiv bis {discover.format_until(until)} – Prüfung gesperrt"
         return None

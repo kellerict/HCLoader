@@ -65,6 +65,8 @@ filters:
   hide_done_ignored: true
   # Kanal-Blacklist anwenden
   apply_channel_blacklist: true
+  # Vermutlich schon von der anderen Plattform geladene Mixes ausblenden (gleiche Dauer +-5 s, ähnlicher Titel)
+  hide_cross_platform_duplicates: false
 
 # --- Genres ---
 genres:
@@ -120,12 +122,14 @@ download:
   write_cue: true
   # ID3-Kapitel (CHAP/CTOC) einbetten
   write_id3_chapters: true
+  # SoundCloud: Original behalten (meist 128-160 kbps; MP3 320 bringt nichts)
+  keep_original_soundcloud: true
 
 # --- Ablage & Tags ---
 storage:
   # Zielordner; %USERPROFILE% wird ersetzt; relativ (z.B. .\Music) = zum App-Ordner, nur Portable-Version
   target_dir: '%USERPROFILE%\Music\HCLoader'
-  # Ordner-/Dateimuster; Platzhalter: genre, artist, channel, year, date, title, id
+  # Ordner-/Dateimuster; Platzhalter: genre, artist, channel, year, date, title, id, platform (id bei SoundCloud: sc-<id>)
   path_template: '{genre}/{artist}/{year}/{date} - {title} [{id}]'
   # Maximale Titellänge im Dateinamen (20-200)
   max_title_length: 120
@@ -175,6 +179,29 @@ network:
   cookies_from_browser: ''
   # Optionaler Proxy, z.B. http://127.0.0.1:8080
   proxy: ''
+
+# --- SoundCloud ---
+soundcloud:
+  # SoundCloud: Pause zwischen Metadaten-Requests in Sekunden (0-60)
+  sleep_requests: 3.0
+  # SoundCloud: minimale Pause zwischen Downloads in Sekunden
+  sleep_interval: 30
+  # SoundCloud: maximale Pause zwischen Downloads (>= minimal)
+  max_sleep_interval: 120
+  # SoundCloud: Download-Tempo in MB/s, 0 = unbegrenzt
+  limit_rate_mb: 3.0
+  # SoundCloud: maximale Downloads pro Lauf (1-100)
+  max_downloads_per_run: 10
+  # SoundCloud: maximale Downloads pro Tag (1-500)
+  max_downloads_per_day: 25
+  # SoundCloud: maximale Suchen pro Stunde (1-200)
+  max_searches_per_hour: 20
+  # SoundCloud: Sperrzeit nach HTTP 429 in Stunden (0.5-168)
+  backoff_initial_hours: 6.0
+  # SoundCloud: Obergrenze der Sperrzeit (Verdopplung bis hierhin)
+  backoff_max_hours: 48.0
+  # SoundCloud als zweite Plattform nutzen (Suche, Watchlist, Downloads)
+  enabled: true
 
 # --- Zeitplan ---
 schedule:

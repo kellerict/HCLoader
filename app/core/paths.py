@@ -140,7 +140,15 @@ def _values(meta: Mapping[str, object], title_len: int, other_len: int | None) -
         "date": date or "0000-00-00",
         "title": sanitize_filename(truncate(str(meta.get("title") or ""), title_len), fallback="_"),
         "id": sanitize_filename(str(meta["id"])),
+        "platform": sanitize_filename(_platform_label(meta.get("platform"))),
     }
+
+
+def _platform_label(value: object) -> str:
+    """`{platform}` placeholder: «YouTube» / «SoundCloud» (default YouTube)."""
+    from .platforms import label
+
+    return label(str(value or "youtube").lower())
 
 
 def _render(template: str, values: dict[str, str], ext: str) -> list[str]:
@@ -167,7 +175,8 @@ def build_target_path(
 ) -> Path:
     """Build the final file path from the template.
 
-    meta keys: id (required), title, artist, channel/channel_name, genre, upload_date/date.
+    meta keys: id (required; the *file* id, SoundCloud `sc-<id>`), title, artist,
+    channel/channel_name, genre, upload_date/date, platform (`{platform}`).
     Title is limited to max_title_length, then shortened further (then artist/channel/genre)
     until len(str(path)) < max_path_length. The video id is never shortened.
     """

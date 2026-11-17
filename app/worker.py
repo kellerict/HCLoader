@@ -27,13 +27,14 @@ import time
 from collections.abc import Callable, Iterator
 from concurrent.futures import Future
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from .core import binaries, locks, preflight, watchlist
 from .core.discover import format_until
 from .core.logging_setup import live_handler
+from .core.platforms import file_id, platform_of
 from .core.preflight import LocalError
 from .core.redact import redact
 from .core.throttle import ThrottleError, WaitCancelled
@@ -343,6 +344,8 @@ class RunBusy(Exception):
 @dataclass
 class RunSession:
     success: bool = False
+    # Phase 7a: platforms with at least one successful download in this run
+    platforms: set[str] = field(default_factory=set)
 
 
 @contextmanager
@@ -366,7 +369,10 @@ def run_session(
         yield session
     finally:
         try:
-            throttle.finish_run(session.success)
+            if session.platforms - {"youtube"}:
+                throttle.finish_run(session.success, platforms=sorted(session.platforms))
+            else:
+                throttle.finish_run(session.success)
         finally:
             lock.release()
 
@@ -396,6 +402,10 @@ def video_dict(row: dict[str, Any]) -> dict[str, Any]:
         "status": row.get("status") or "new",
         "source_id": row.get("source_id"),
         "is_live": False,  # only search results know it (discover sets True), Review n1
+        # Phase 7a
+        "platform": row.get("platform") or platform_of(row["id"]),
+        "url": row.get("url") or None,
+        "preview": bool(row.get("preview")),
     }
 
 
@@ -455,7 +465,8 @@ class DownloadQueue:
         self._cancel_target: str | None = None
         self._current: dict[str, Any] | None = None
         self._paused = db.get_state(K_QUEUE_PAUSED) == "1"
-        self._run_limit_hit = False
+        # platforms whose per-run limit was reached in the current run (Phase 7a: per platform)
+        self._run_limit_hit: set[str] = set()
         self._restart_required = False
         self._busy = False
         self._last_block: str | None = None
@@ -546,34 +557,35 @@ class DownloadQueue:
             log.warning("yt-dlp wurde aktualisiert – Downloads erst nach einem Neustart")
         self._changed()
 
-    def blocked(self) -> tuple[str | None, str | None]:
-        """(code, German message) why waiting entries do not run, or (None, None).
-
-        code: restart | backoff | day_limit | run_limit | error | pot | target | busy
-        (not: paused, see `paused`). The throttle verdicts come first: while one of them
-        holds, local preconditions are not even checked.
-        """
-        if self._restart_required:
-            return "restart", (
-                "Neustart nötig – yt-dlp wurde aktualisiert. Bitte HCLoader neu starten, "
-                "die Warteschlange bleibt erhalten"
-            )
+    def _th(self, platform: str) -> Any:
         th = self._throttle
+        return th.platform(platform) if hasattr(th, "platform") else th
+
+    def _waiting_platforms(self) -> list[str]:
+        getter = getattr(self._db, "queued_platforms", None)
+        return (getter() if getter else None) or ["youtube"]
+
+    def _platform_block(self, platform: str) -> tuple[str, str] | None:
+        """Throttle verdict of one platform: (code, German message) or None. Messages of
+        SoundCloud start with «SoundCloud: »; YouTube keeps the texts of Phase 3."""
+        th = self._th(platform)
+        prefix = "" if platform == "youtube" else f"{getattr(th, 'label', platform)}: "
         until = th.backoff_until()
         if until:
             return "backoff", (
-                f"Backoff aktiv bis {format_until(until)} – Rest bleibt in der Warteschlange"
+                f"{prefix}Backoff aktiv bis {format_until(until)} – "
+                "Rest bleibt in der Warteschlange"
             )
         cfg = th.cfg
         today = th.downloads_today()
         if today >= cfg.max_downloads_per_day:
             return "day_limit", (
-                f"Tageslimit erreicht ({today}/{cfg.max_downloads_per_day}) – "
+                f"{prefix}Tageslimit erreicht ({today}/{cfg.max_downloads_per_day}) – "
                 "Rest bleibt in der Warteschlange"
             )
-        if self._run_limit_hit:
+        if platform in self._run_limit_hit:
             head = (
-                f"Limit pro Lauf erreicht ({cfg.max_downloads_per_run}/"
+                f"{prefix}Limit pro Lauf erreicht ({cfg.max_downloads_per_run}/"
                 f"{cfg.max_downloads_per_run}) – "
             )
             if not self._record_run:  # headless: no «Fortsetzen» button (QA Phase 4)
@@ -581,6 +593,34 @@ class DownloadQueue:
             return "run_limit", (
                 head + "Rest bleibt in der Warteschlange; «Fortsetzen» startet einen neuen Lauf"
             )
+        return None
+
+    def platform_blocked(self) -> dict[str, dict[str, str]]:
+        """{platform: {code, reason}} of blocked platforms with waiting entries (7a)."""
+        out: dict[str, dict[str, str]] = {}
+        for platform in self._waiting_platforms():
+            block = self._platform_block(platform)
+            if block:
+                out[platform] = {"code": block[0], "reason": block[1]}
+        return out
+
+    def blocked(self) -> tuple[str | None, str | None]:
+        """(code, German message) why waiting entries do not run, or (None, None).
+
+        code: restart | backoff | day_limit | run_limit | error | pot | target | busy
+        (not: paused, see `paused`). The throttle verdicts come first: while one of them
+        holds, local preconditions are not even checked. Phase 7a: a throttle verdict blocks
+        the queue only if it holds for every platform with waiting entries (the first one's
+        message is returned); otherwise see `platform_blocked`.
+        """
+        if self._restart_required:
+            return "restart", (
+                "Neustart nötig – yt-dlp wurde aktualisiert. Bitte HCLoader neu starten, "
+                "die Warteschlange bleibt erhalten"
+            )
+        verdicts = [self._platform_block(p) for p in self._waiting_platforms()]
+        if verdicts and all(verdicts):
+            return verdicts[0]  # type: ignore[return-value]
         if self._client_error:
             return "error", self._client_error
         local = self._local_block
@@ -634,6 +674,7 @@ class DownloadQueue:
             "items": items,
             "blocked_reason": msg,
             "blocked_code": code,
+            "platform_blocked": self.platform_blocked() if waiting and not code else {},
         }
 
     # ------------------------------------------------------------------ user actions
@@ -647,7 +688,7 @@ class DownloadQueue:
         if accepted:
             log.info("%d Mix(es) zur Warteschlange hinzugefügt", len(accepted))
             if not auto:
-                self._run_limit_hit = False  # explicit user action = new run
+                self._run_limit_hit = set()  # explicit user action = new run
         self._changed()
         if auto:
             self.wake()
@@ -667,7 +708,7 @@ class DownloadQueue:
                     self._cancel.set()
             log.info("Warteschlange pausiert (laufender Download wird fertig geladen)")
         else:
-            self._run_limit_hit = False
+            self._run_limit_hit = set()
             log.info("Warteschlange fortgesetzt")
         self._changed()
         if paused:
@@ -798,31 +839,38 @@ class DownloadQueue:
         note = ""
         log.info("Download-Lauf gestartet")
         first = True
+        refused: set[str] = set()  # platforms that refused a download in this run (7a)
         try:
             while not self._stop.is_set() and not self._paused:
-                row = self._db.next_queued()
-                if row is None:
+                if self._db.next_queued() is None:
                     break
                 if self._restart_required:
                     note = self.blocked()[1] or ""
                     break
-                block = self._download_block()
-                if block:
-                    note = block
+                excluded = self._blocked_platforms() | refused
+                row = self._db.next_queued(exclude_platforms=sorted(excluded))
+                if row is None:  # every waiting platform is blocked
+                    note = self.blocked()[1] or self._first_block_message(excluded)
                     log.warning("Warteschlange angehalten: %s", note)
                     break
                 if not first and self._check_local(0):  # run_pending just checked the first
                     note = self.blocked()[1] or ""
                     break
                 first = False
+                platform = row.get("platform") or "youtube"
                 outcome = self._process(client, row)
                 if outcome == "done":
                     downloaded += 1
                     run.success = True
+                    run.platforms.add(platform)
                 elif outcome == "failed":
                     errors += 1
+                elif outcome == "blocked" and self._local_block is None:
+                    refused.add(platform)  # throttle refusal: the other platform may go on
+                    continue
                 elif outcome in ("blocked", "stopped"):
-                    note = self._download_block() or self.blocked()[1] or ""
+                    self._blocked_platforms()
+                    note = self.blocked()[1] or ""
                     break
         finally:
             self._set_current(None)
@@ -832,14 +880,26 @@ class DownloadQueue:
             log.info("Download-Lauf beendet: %d geladen, %d Fehler", downloaded, errors)
             self._changed()
 
-    def _download_block(self) -> str | None:
-        """Throttle verdict incl. the per-run counter of this run; message or None."""
-        block = self._throttle.download_block()
-        if block is None:
-            return None
-        if getattr(block, "kind", "") == "downloads_per_run":
-            self._run_limit_hit = True
-        return self.blocked()[1] or str(block)
+    def _blocked_platforms(self) -> set[str]:
+        """Platforms with waiting entries whose throttle refuses downloads right now; notes a
+        reached per-run limit (shown as run_limit until the next user action)."""
+        out: set[str] = set()
+        for platform in self._waiting_platforms():
+            block = self._th(platform).download_block()
+            if block is None:
+                continue
+            if getattr(block, "kind", "") == "downloads_per_run":
+                self._run_limit_hit.add(platform)
+            out.add(platform)
+        return out
+
+    def _first_block_message(self, platforms: set[str]) -> str:
+        for platform in self._waiting_platforms():
+            if platform in platforms:
+                block = self._platform_block(platform)
+                if block:
+                    return block[1]
+        return ""
 
     def _process(self, client: Any, row: dict[str, Any]) -> str:
         """One entry. Returns done | failed | cancelled | skipped | slept | blocked | stopped."""
@@ -851,7 +911,8 @@ class DownloadQueue:
         if self._stop.is_set():
             return "stopped"
 
-        wait = self._throttle.download_wait()
+        th = self._th(row.get("platform") or "youtube")
+        wait = th.download_wait()
         if wait >= 1.0:  # shorter rests are left to before_request (no countdown needed)
             total = int(wait + 0.999)
             self._set_current(
@@ -870,7 +931,7 @@ class DownloadQueue:
             )
             self._changed()
             try:
-                self._throttle.wait_between_downloads(self._cancel)
+                th.wait_between_downloads(self._cancel)
             except WaitCancelled:
                 if self._cancel_target == vid:
                     self._remove_cancelled(vid, title)
@@ -1050,7 +1111,8 @@ def _target_folder(row: dict[str, Any], settings: Any) -> str:
 
         st = settings.storage
         meta = {
-            "id": row["id"],
+            "id": file_id(row["id"]),
+            "platform": row.get("platform") or platform_of(row["id"]),
             "title": row.get("title") or row["id"],
             "artist": row.get("channel_name") or "",
             "channel": row.get("channel_name") or "",
@@ -1354,7 +1416,7 @@ class WatchlistScheduler:
             due = max(due, running + timedelta(seconds=self._grace))
         if self._deferred is not None:
             due = max(due, self._deferred)
-        until = self._throttle.backoff_until()
+        until = watchlist.blocked_until(self._db, self._throttle)  # 7a: all platforms
         return max(due, until) if until else due
 
     @staticmethod

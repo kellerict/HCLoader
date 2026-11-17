@@ -141,6 +141,24 @@ def is_live(video: Mapping[str, Any]) -> bool:
     return bool(video.get("is_live")) or video.get("live_status") in {"is_live", "is_upcoming"}
 
 
+PREVIEW_REASON = "Nur Vorschau (Go+)"
+# SoundCloud Go+ snippets are 30 s long; flat results may lack the policy flag
+PREVIEW_SECONDS = (29, 31)
+
+
+def is_preview(video: Mapping[str, Any]) -> bool:
+    """SoundCloud Go+ preview: flag `preview` (API policy SNIP / only preview formats) or a
+    SoundCloud track of 29-31 s (Phase 7a)."""
+    if video.get("preview"):
+        return True
+    duration = video.get("duration")
+    return (
+        video.get("platform") == "soundcloud"
+        and isinstance(duration, (int, float))
+        and PREVIEW_SECONDS[0] <= duration <= PREVIEW_SECONDS[1]
+    )
+
+
 def _period_reason(upload_date: str | None, period: str) -> str:
     if parse_upload_date(upload_date) is None:
         return "Upload-Datum unbekannt"
@@ -156,6 +174,8 @@ def passes(
     """Check all SPEC §4 rules. Returns (ok, reason); reason is '' on success (German text)."""
     if is_live(video):
         return False, "Livestream"
+    if is_preview(video):
+        return False, PREVIEW_REASON
     reason = check_duration(video.get("duration"), settings.min_duration, settings.max_duration)
     if reason:
         return False, reason

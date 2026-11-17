@@ -35,8 +35,8 @@ from .db import Database
 from .filters import normalize
 from .genre import detect_genre, genre_search_terms
 from .library import FS_LOCK
-from .redact import redact
 from .platforms import SOUNDCLOUD, YOUTUBE
+from .redact import redact
 from .throttle import (
     MetadataBusy,
     Throttle,
@@ -267,8 +267,10 @@ def _normalize_sc(entry: Mapping[str, Any]) -> dict[str, Any]:
         entry.get("timestamp") or entry.get("release_timestamp")
     )
     url = entry.get("webpage_url") or ""
-    if not url and "soundcloud.com/" in str(entry.get("url") or "") and "api" not in str(
-        entry.get("url")
+    if (
+        not url
+        and "soundcloud.com/" in str(entry.get("url") or "")
+        and "api" not in str(entry.get("url"))
     ):
         url = entry["url"]
     uploader_id = str(entry.get("uploader_id") or "")
@@ -835,22 +837,29 @@ class YtClient:
             log.error("Download abgelehnt: %s (%s)", msg, (url_or_id or "")[:100])
             return DownloadResult("", "failed", error=msg)
         url = watch_url(vid)
+        platform = platforms.platform_of(vid)
+        stem = platforms.file_id(vid)
 
         skipped = self._skip_result(vid)
         if skipped:
             return skipped
-        self.throttle.check_download()
+        if platform == SOUNDCLOUD and not settings.soundcloud.enabled:
+            return DownloadResult(
+                vid, "failed", error="SoundCloud ist in den Einstellungen ausgeschaltet"
+            )
+        th = self.throttle.platform(platform)
+        th.check_download()
 
         target_dir = settings.target_dir_path()
         tmp = paths.tmp_dir(target_dir)
-        self.check_local(settings, target_dir)
+        self.check_local(settings, target_dir, platform)
         config.archive_path().parent.mkdir(parents=True, exist_ok=True)
         previous = self.db.get_video(vid)
         prev_status = previous["status"] if previous else "new"
         prev_error = previous.get("error") if previous else None
         self.db.upsert_video({"id": vid})
         self.db.set_status(vid, "downloading")
-        _cleanup_tmp(tmp, vid, keep_partial=True)
+        _cleanup_tmp(tmp, stem, keep_partial=True)
 
         emit = on_progress or (lambda _d: None)
         phase = {"value": PHASE_DOWNLOAD}
@@ -872,12 +881,15 @@ class YtClient:
         opts = build_ydl_opts(
             settings,
             "download",
+            platform,
             progress_hook=progress_hook,
             postprocessor_hook=pp_hook,
             target_dir=target_dir,
         )
         try:
-            info = self._download_with_retry(url, opts, settings, check_cancel, cancel_event)
+            info = self._download_with_retry(
+                url, opts, settings, check_cancel, cancel_event, platform
+            )
             check_cancel()
             emit({**normalize_progress({}, PHASE_TAG), "percent": None})
             return self._finish(info, vid, settings, target_dir, tmp, check_cancel, on_commit)
@@ -886,8 +898,11 @@ class YtClient:
         except (ThrottleError, LocalError):
             self._restore_status(vid, prev_status, prev_error)
             raise
+        except PreviewOnly as exc:
+            self.db.upsert_video({"id": vid, "preview": True})
+            return self._fail(vid, tmp, str(exc))
         except Exception as exc:
-            limited = self.throttle.handle_error(exc)
+            limited = th.handle_error(exc)
             msg = _clean_error(exc)
             if not isinstance(exc, (yt_dlp.utils.YoutubeDLError, OSError, YtClientError)):
                 log.exception("Unerwarteter Fehler beim Download von %s", vid)
@@ -898,12 +913,17 @@ class YtClient:
             )
             return self._fail(vid, tmp, msg, rate_limited=limited, keep_partial=keep)
 
-    def check_local(self, settings: Settings | None = None, target_dir: Path | None = None) -> None:
-        """Local preconditions of a download (m2): PO-token server ready, target writable.
-        Raises LocalError('pot' | 'target'); makes no request."""
+    def check_local(
+        self,
+        settings: Settings | None = None,
+        target_dir: Path | None = None,
+        platform: str = YOUTUBE,
+    ) -> None:
+        """Local preconditions of a download (m2): PO-token server ready (YouTube only), target
+        writable. Raises LocalError('pot' | 'target'); makes no request."""
         settings = settings or self.settings
         target_dir = target_dir or settings.target_dir_path()
-        self._prepare(settings)
+        self._prepare(settings, platform)
         err = preflight.check_target(target_dir)
         if err is not None:
             raise LocalError(err.code, str(err))
@@ -931,6 +951,7 @@ class YtClient:
         settings: Settings,
         check_cancel: Callable[[], None],
         cancel_event: threading.Event | None = None,
+        platform: str = YOUTUBE,
     ) -> dict[str, Any]:
         attempt = 0
         # set by _extract right before the first request: local errors (PO-token server,
@@ -952,8 +973,9 @@ class YtClient:
                         cancel_event=cancel_event,
                         retry=attempt > 0,
                         on_request=mark_request,
+                        platform=platform,
                     )
-                except (ThrottleError, WaitCancelled, DownloadCancelled, LocalError):
+                except (ThrottleError, WaitCancelled, DownloadCancelled, LocalError, PreviewOnly):
                     raise
                 except Exception as exc:
                     if not reached["network"]:
@@ -971,7 +993,7 @@ class YtClient:
                     raise
         finally:
             if reached["network"]:
-                self.throttle.mark_download_end()
+                self.throttle.platform(platform).mark_download_end()
 
     def _finish(
         self,
@@ -985,10 +1007,12 @@ class YtClient:
     ) -> DownloadResult:
         dl = settings.download
         st = settings.storage
-        audio = _find_audio(info, tmp, vid)
+        platform = platforms.platform_of(vid)
+        stem = platforms.file_id(vid)
+        audio = _find_audio(info, tmp, stem)
         if audio is None:
             raise YtClientError("Audiodatei nach dem Download nicht gefunden")
-        meta = normalize_entry(info)
+        meta = normalize_entry(info, platform)
         row = self.db.get_video(vid) or {}
         manual = row.get("genre") if row.get("genre_manual") else None
         source_default = None
@@ -1014,7 +1038,7 @@ class YtClient:
         artist = channel
         if st.artist_from_title:
             artist = paths.parse_artist_from_title(title) or channel
-        url = info.get("webpage_url") or watch_url(vid)
+        url = info.get("webpage_url") or row.get("url") or watch_url(vid)
         tag_meta = {
             "title": title,
             "artist": artist,
@@ -1023,12 +1047,13 @@ class YtClient:
             "genre": genre,
             "date": meta["upload_date"],
             "url": url,
-            "id": vid,
-            "source": "YouTube",
+            "id": platforms.native_id(vid),
+            "platform": platform,
+            "source": platforms.label(platform),
         }
 
         cover = None
-        thumb = _find_thumbnail(tmp, vid)
+        thumb = _find_thumbnail(tmp, stem)
         if thumb and (dl.embed_cover or dl.write_cover_jpg):
             try:
                 cover = tagging.make_square_cover(thumb, ffmpeg=binaries.ffmpeg_path())
@@ -1054,7 +1079,8 @@ class YtClient:
             target_dir,
             st.path_template,
             {
-                "id": vid,
+                "id": stem,
+                "platform": platform,
                 "title": title,
                 "artist": artist,
                 "channel": channel,
@@ -1083,7 +1109,7 @@ class YtClient:
                     cover_file.write_bytes(cover)
             except OSError as exc:
                 log.warning("cover.jpg nicht geschrieben (%s): %s", vid, exc)
-        _cleanup_tmp(tmp, vid)
+        _cleanup_tmp(tmp, stem)
 
         self.db.upsert_video(
             {
@@ -1096,22 +1122,28 @@ class YtClient:
                 "view_count": meta["view_count"],
                 "thumbnail": meta["thumbnail"],
                 "genre": genre,
+                "url": url,
+                "channel_url": meta.get("channel_url") or None,
             }
         )
         self.db.set_status(vid, "done", file_path=str(target))
         sidecar.write(
             vid,
-            sidecar.build(meta, chapters=chapters, description=description, genre=genre),
+            sidecar.build(
+                {**meta, "url": url},
+                chapters=chapters,
+                description=description,
+                genre=genre,
+                source=platforms.label(platform),
+            ),
         )
         self._record_archive(vid)  # only after `done`: no crash window blocks a video forever
         log.info("Geladen: %s -> %s", vid, target)
-        return DownloadResult(
-            vid, "done", target, title, cue_path=cue_path, info=normalize_entry(info)
-        )
+        return DownloadResult(vid, "done", target, title, cue_path=cue_path, info=meta)
 
     def _cancelled(self, vid: str, tmp: Path, prev_status: str) -> DownloadResult:
         """Abort: keep resumable `.part` files, put the video back to its previous status."""
-        _cleanup_tmp(tmp, vid, keep_partial=True)
+        _cleanup_tmp(tmp, platforms.file_id(vid), keep_partial=True)
         self._restore_status(vid, prev_status, "Abgebrochen")
         log.info("Download cancelled: %s", vid)
         return DownloadResult(vid, "cancelled", error="Abgebrochen")
@@ -1126,11 +1158,198 @@ class YtClient:
         keep_partial: bool = False,
     ) -> DownloadResult:
         """`keep_partial`: network errors keep `.part` so a manual retry resumes (m3)."""
-        _cleanup_tmp(tmp, vid, keep_partial=keep_partial)
+        _cleanup_tmp(tmp, platforms.file_id(vid), keep_partial=keep_partial)
         if self.db.is_known(vid):
             self.db.set_status(vid, "failed", error=message)
         log.error("Download failed: %s (%s)", vid, message)
         return DownloadResult(vid, "failed", error=message, rate_limited=rate_limited)
+
+
+# --------------------------------------------------------------------------- listings
+
+
+class SourceListing(list):
+    """Entries of `list_source` plus the name of the listed channel/playlist/user as yt-dlp
+    reported it on playlist level (`source_name`, may be ''). Used to replace an automatically
+    suggested source name without an extra request (watchlist `name_auto`)."""
+
+    def __init__(self, entries: Any = (), *, source_name: str = "") -> None:
+        super().__init__(entries)
+        self.source_name = source_name
+
+
+_SC_RESOURCE_SUFFIX = re.compile(
+    r"\s*\((?:All|Tracks|Albums|Sets|Reposts|Likes|Spotlight|Comments)\)$"
+)
+_YT_TAB_SUFFIX = re.compile(r"\s+-\s+(?:Videos|Live|Streams|Home|Shorts|Playlists)$")
+
+
+def listing_name(info: Mapping[str, Any], url: str, platform: str = YOUTUBE) -> str:
+    """Name of a listed source from the playlist-level fields of a flat extraction.
+
+    YouTube channel tab: `channel` / `uploader` (the `title` is «<Kanal> - Videos»);
+    YouTube playlist: `title`. SoundCloud user: `title` «<Name> (Tracks)» without the suffix;
+    SoundCloud set: «<uploader> – <title>»."""
+    title = str(info.get("title") or "").strip()
+    if platform == SOUNDCLOUD:
+        parts = soundcloud_source_parts(url)
+        if parts and parts[1] == "sets":
+            uploader = str(info.get("uploader") or "").strip()
+            return f"{uploader} – {title}" if uploader and title else title or uploader
+        return _SC_RESOURCE_SUFFIX.sub("", title).strip() or str(info.get("uploader") or "")
+    if "list=" in url:
+        return title
+    name = str(info.get("channel") or info.get("uploader") or "").strip()
+    return name or _YT_TAB_SUFFIX.sub("", title).strip()
+
+
+def _only_previews(ie_result: Mapping[str, Any]) -> bool:
+    """SoundCloud: every format yt-dlp found is a Go+ preview (`…_preview`, 30 s)."""
+    formats = [f for f in ie_result.get("formats") or [] if isinstance(f, Mapping)]
+    return bool(formats) and all("preview" in str(f.get("format_id") or "") for f in formats)
+
+
+# --------------------------------------------------------------------------- SoundCloud flat
+
+
+_SC_FLAT_CLASSES: list[type] | None = None
+
+
+def _sc_flat_extractor_classes() -> list[type]:
+    """Subclasses of yt-dlp's SoundCloud search/user/set extractors for *flat* listings.
+
+    Same `ie_key()` as the originals (class name), so `YoutubeDL.add_info_extractor` replaces
+    them in place for one YoutubeDL instance only. They change three things (yt-dlp 2026.10.26,
+    `yt_dlp/extractor/soundcloud.py`):
+    1. `_extract_thumbnails`: no HEAD request for the «original» artwork (one request per entry
+       otherwise, each after `sleep_interval_requests`); the t500x500 URL is built directly.
+    2. `_call_api` remembers full track objects of every API answer and `url_result` merges
+       their metadata (duration, date, uploader, policy) into user/set entries, which yt-dlp
+       reduces to id + title. No extra request: the data was already received.
+    3. Sets: stub tracks (only `id`, everything after the first few) inside the wanted window
+       (`head`/`tail`, n) are fetched in batches of 50 (`tracks?ids=`), like yt-dlp does for
+       private sets, so the entries have a duration. Cost: ceil(stubs / 50) requests.
+    Plus `sc_policy` (SNIP = Go+ preview) in every flat entry. If yt-dlp renames one of these
+    internals, the override is simply not used (the stock behaviour stays).
+    """
+    global _SC_FLAT_CLASSES
+    if _SC_FLAT_CLASSES is not None:
+        return _SC_FLAT_CLASSES
+    from yt_dlp.extractor import soundcloud as sc
+
+    class _Mixin:
+        _hc_window: tuple[str, int] | None = None
+
+        def _hc_store(self) -> dict[str, dict]:
+            store = self.__dict__.get("_hc_tracks")
+            if store is None:
+                store = self.__dict__["_hc_tracks"] = {}
+            return store
+
+        def _hc_remember(self, res: Any) -> None:
+            items: list[Any] = []
+            if isinstance(res, list):
+                items = res
+            elif isinstance(res, dict):
+                if isinstance(res.get("collection"), list):
+                    items = res["collection"]
+                elif isinstance(res.get("tracks"), list):
+                    items = res["tracks"]
+            store = self._hc_store()
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                for cand in (item, item.get("track")):
+                    if (
+                        isinstance(cand, dict)
+                        and cand.get("id") is not None
+                        and cand.get("kind", "track") == "track"
+                        and cand.get("duration") is not None
+                    ):
+                        store[str(cand["id"])] = cand
+
+        def _call_api(self, *args: Any, **kwargs: Any) -> Any:
+            res = super()._call_api(*args, **kwargs)  # type: ignore[misc]
+            self._hc_remember(res)
+            return res
+
+        def _extract_thumbnails(self, info: Any) -> Any:
+            url = (info or {}).get("artwork_url") or ((info or {}).get("user") or {}).get(
+                "avatar_url"
+            )
+            if not url:
+                return None
+            big = re.sub(r"-[0-9a-z]+\.(?:jpg|png)", "-t500x500.jpg", str(url))
+            return [{"id": "t500x500", "url": big, "width": 500, "height": 500}]
+
+        def _extract_info_dict(self, info: Any, *args: Any, **kwargs: Any) -> Any:
+            res = super()._extract_info_dict(info, *args, **kwargs)  # type: ignore[misc]
+            if isinstance(res, dict) and isinstance(info, dict):
+                res["sc_policy"] = info.get("policy")
+            return res
+
+        def url_result(self, url: Any, ie: Any = None, video_id: Any = None, *a: Any, **kw: Any):
+            track = self._hc_store().get(str(video_id)) if video_id is not None else None
+            if track is not None and "duration" not in kw:
+                meta = self._extract_info_dict(track, extract_flat=True)
+                for key in ("formats", "__post_extractor", "id"):
+                    meta.pop(key, None)
+                kw = {**meta, **kw}
+            return super().url_result(url, ie, video_id, *a, **kw)  # type: ignore[misc]
+
+    class _SetMixin(_Mixin):
+        def _extract_set(self, playlist: Any, token: Any = None) -> Any:
+            tracks = (playlist or {}).get("tracks") or []
+            window = self._hc_window
+            if window and tracks:
+                mode, n = window
+                part = tracks[-n:] if mode == "tail" else tracks[:n]
+                stubs = [str(t["id"]) for t in part if t.get("id") and not t.get("permalink_url")]
+                full: dict[str, dict] = {}
+                for i in range(0, len(stubs), 50):
+                    got = self._call_api(
+                        self._API_V2_BASE + "tracks",
+                        str(playlist.get("id")),
+                        "Downloading tracks",
+                        query={"ids": ",".join(stubs[i : i + 50])},
+                        headers=self._HEADERS,
+                    )
+                    for t in got if isinstance(got, list) else []:
+                        if isinstance(t, dict) and t.get("id") is not None:
+                            full[str(t["id"])] = t
+                if full:
+                    playlist = {
+                        **playlist,
+                        "tracks": [full.get(str(t.get("id")), t) for t in tracks],
+                    }
+            self._hc_remember({"tracks": (playlist or {}).get("tracks") or []})
+            return super()._extract_set(playlist, token)  # type: ignore[misc]
+
+    out = []
+    for base, mixin in (
+        (sc.SoundcloudSearchIE, _Mixin),
+        (sc.SoundcloudUserIE, _Mixin),
+        (sc.SoundcloudSetIE, _SetMixin),
+    ):
+        out.append(type(base.__name__, (mixin, base), {"__module__": __name__}))
+    _SC_FLAT_CLASSES = out
+    return out
+
+
+def _install_sc_flat_extractors(ydl: Any, window: tuple[str, int] | None) -> None:
+    """Register the flat SoundCloud extractors on one YoutubeDL instance (metadata calls)."""
+    add = getattr(ydl, "add_info_extractor", None)
+    if add is None:  # test doubles
+        return
+    try:
+        classes = _sc_flat_extractor_classes()
+    except Exception:  # yt-dlp changed: stock extractors stay in use
+        log.debug("SoundCloud-Extractor-Erweiterung nicht verfügbar", exc_info=True)
+        return
+    for cls in classes:
+        ie = cls()
+        ie._hc_window = window
+        add(ie)
 
 
 # --------------------------------------------------------------------------- file helpers

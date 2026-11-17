@@ -75,4 +75,41 @@ def build_status(
             "downloads_day": th["downloads_today"],
             "searches_hour": th["searches_last_hour"],
         },
+        # Phase 7a: per platform; `backoff`/`counters` above stay = YouTube (compatibility)
+        "platforms": platform_status(settings, throttle),
+    }
+
+
+def _one(th: Any, enabled: bool) -> dict[str, Any]:
+    st = th.status()
+    until = st["backoff_until"]
+    return {
+        "enabled": bool(enabled),
+        "backoff": {
+            "active": until is not None,
+            "until": until,
+            "level": st["backoff_level"],
+            "remaining_s": st["backoff_remaining_s"] if until else 0,
+            "reason": st["backoff_reason"],
+        },
+        "counters": {
+            "downloads_run": st["downloads_this_run"],
+            "downloads_day": st["downloads_today"],
+            "searches_hour": st["searches_last_hour"],
+        },
+        "limits": {
+            "downloads_run": st["max_downloads_per_run"],
+            "downloads_day": st["max_downloads_per_day"],
+            "searches_hour": st["max_searches_per_hour"],
+        },
+    }
+
+
+def platform_status(settings: Settings, throttle: Any) -> dict[str, Any]:
+    """{youtube: {...}, soundcloud: {...}} with backoff, counters and limits of each platform."""
+    if not hasattr(throttle, "platform"):
+        return {"youtube": _one(throttle, True)}
+    return {
+        "youtube": _one(throttle.platform("youtube"), True),
+        "soundcloud": _one(throttle.platform("soundcloud"), settings.soundcloud.enabled),
     }

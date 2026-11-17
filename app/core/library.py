@@ -22,7 +22,7 @@ from typing import Any
 from mutagen import File as MutagenFile
 from mutagen.id3 import ID3, ID3NoHeaderError
 
-from . import paths, sidecar, tagging
+from . import paths, platforms, sidecar, tagging
 from .config import UNSORTED, Settings
 from .db import Database
 from .filters import normalize
@@ -187,6 +187,7 @@ def library_item(
         "missing": not present and not unknown,
         "unknown": unknown,
         "has_cue": bool(path and present and path.with_suffix(".cue").is_file()),
+        "platform": row.get("platform") or platforms.platform_of(row["id"]),
     }
 
 
@@ -210,9 +211,12 @@ def list_library(
     year = str(f.get("year") or "").strip()
     search = normalize(str(f.get("search") or ""))
     want_missing = f.get("missing")
+    want_platform = str(f.get("platform") or "").strip()
     rows = db.list_videos(status="done", order_by="downloaded_at")
     out: list[dict[str, Any]] = []
     for row in rows:
+        if want_platform and (row.get("platform") or "youtube") != want_platform:
+            continue
         if genre and (row.get("genre") or UNSORTED) != genre:
             continue
         if channel and channel not in (row.get("channel_id"), row.get("channel_name")):
@@ -361,7 +365,12 @@ def _retag(db: Database, settings: Settings, video_id: str) -> dict[str, Any]:
         artist = paths.parse_artist_from_title(title) or channel
     chapters = sidecar.chapters_of(data) if data else _chapters_from_file(path)
     cover = extract_cover(path)
-    url = (data or {}).get("url") or f"https://www.youtube.com/watch?v={video_id}"
+    platform = platforms.platform_of(video_id)
+    url = (
+        (data or {}).get("url")
+        or row.get("url")
+        or (f"https://www.youtube.com/watch?v={video_id}" if platform == platforms.YOUTUBE else "")
+    )
     tag_meta = {
         "title": title,
         "artist": artist,
@@ -370,8 +379,9 @@ def _retag(db: Database, settings: Settings, video_id: str) -> dict[str, Any]:
         "genre": genre,
         "date": upload,
         "url": url,
-        "id": video_id,
-        "source": (data or {}).get("source") or "YouTube",
+        "id": platforms.native_id(video_id),
+        "platform": platform,
+        "source": (data or {}).get("source") or platforms.label(platform),
     }
     total = float(duration) if duration else None
 
@@ -383,7 +393,8 @@ def _retag(db: Database, settings: Settings, video_id: str) -> dict[str, Any]:
                 root,
                 st.path_template,
                 {
-                    "id": video_id,
+                    "id": platforms.file_id(video_id),
+                    "platform": platform,
                     "title": title,
                     "artist": artist,
                     "channel": channel,
