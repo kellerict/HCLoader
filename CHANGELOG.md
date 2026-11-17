@@ -1,7 +1,8 @@
 # Changelog
 
-Alle relevanten Änderungen werden hier festgehalten.
-Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [SemVer](https://semver.org/lang/de/).
+All notable changes to this project are documented here.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning follows [SemVer](https://semver.org/).
+Entries are written in English from v0.3.0 on; older entries are in German.
 
 ## [Unreleased]
 
