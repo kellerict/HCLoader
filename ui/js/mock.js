@@ -39,7 +39,7 @@
       min_duration: 600, max_duration: 0, upload_period: 'all', upload_year: 0, upload_from: '', upload_to: '',
       include_keywords: ['mix', 'set', 'liveset', 'live set', 'podcast', 'continuous', 'megamix', 'yearmix', 'radio show', 'session', 'warm up', 'closing'],
       exclude_keywords: ['reaction', 'tutorial', 'how to', 'shorts', 'trailer', 'aftermovie', 'teaser', 'preview', 'lyrics', 'karaoke', 'sample pack', 'ableton', 'fl studio'],
-      match_description: false, hide_done_ignored: true, apply_channel_blacklist: true,
+      match_description: false, hide_done_ignored: true, apply_channel_blacklist: true, hide_cross_platform_duplicates: false,
     },
     genres: {
       items: [
@@ -49,7 +49,7 @@
         { name: 'Unsortiert', color: '#6b6b78', keywords: [], priority: 4 },
       ],
     },
-    download: { audio_format: 'mp3', mp3_quality: '320', embed_cover: true, write_cover_jpg: false, write_cue: true, write_id3_chapters: true },
+    download: { audio_format: 'mp3', mp3_quality: '320', embed_cover: true, write_cover_jpg: false, write_cue: true, write_id3_chapters: true, keep_original_soundcloud: true },
     storage: {
       target_dir: '%USERPROFILE%\\Music\\HCLoader',
       path_template: '{genre}/{artist}/{year}/{date} - {title} [{id}]',
@@ -62,6 +62,12 @@
       backoff_initial_hours: 6, backoff_max_hours: 48,
     },
     network: { po_token_mode: 'script', po_token_port: 4416, po_token_ttl_hours: 6, cookies_from_browser: '', proxy: '' },
+    soundcloud: {
+      enabled: true, sleep_requests: 3, sleep_interval: 30, max_sleep_interval: 120, limit_rate_mb: 3.0,
+      max_downloads_per_run: 10, max_downloads_per_day: 25, max_searches_per_hour: 20,
+      backoff_initial_hours: 6, backoff_max_hours: 48,
+    },
+    player: { mode: 'internal' },
     schedule: { watchlist_interval_hours: 24, in_app_check: true, task_scheduler_enabled: false, task_time: '03:00', entries_per_source: 30 },
     appearance: { reduce_effects: false, scanlines: true, pulse_bpm: 200 },
     maintenance: { check_updates_on_start: true },
@@ -90,12 +96,14 @@
     'filters.match_description': { bool: 1 },
     'filters.hide_done_ignored': { bool: 1 },
     'filters.apply_channel_blacklist': { bool: 1 },
+    'filters.hide_cross_platform_duplicates': { bool: 1 },
     'download.audio_format': { oneOf: ['mp3', 'original'] },
     'download.mp3_quality': { oneOf: ['320', 'v0'] },
     'download.embed_cover': { bool: 1 },
     'download.write_cover_jpg': { bool: 1 },
     'download.write_cue': { bool: 1 },
     'download.write_id3_chapters': { bool: 1 },
+    'download.keep_original_soundcloud': { bool: 1 },
     'storage.target_dir': { str: 1, required: 1 },
     'storage.path_template': { str: 1, required: 1 },
     'storage.max_title_length': { int: 1, min: 20, max: 200 },
@@ -125,8 +133,12 @@
     'appearance.scanlines': { bool: 1 },
     'appearance.pulse_bpm': { int: 1, min: 60, max: 300 },
     'maintenance.check_updates_on_start': { bool: 1 },
+    'soundcloud.enabled': { bool: 1 },
+    'player.mode': { oneOf: ['internal', 'external'] },
   };
-  const PLACEHOLDERS = ['genre', 'artist', 'channel', 'year', 'date', 'title', 'id'];
+  /* Abschnitt «soundcloud» erbt die Schonungs-Felder (gleiche Grenzen und Meldungen wie «throttle»). */
+  Object.keys(RULES).filter((k) => k.startsWith('throttle.')).forEach((k) => { RULES[k.replace('throttle.', 'soundcloud.')] = RULES[k]; });
+  const PLACEHOLDERS = ['genre', 'artist', 'channel', 'year', 'date', 'title', 'id', 'platform'];
   const MIN_YEAR = 2005;
 
   function validate(v) {
@@ -153,11 +165,14 @@
       if (r.min != null && r.max != null && (val < r.min || val > r.max)) return fail(M.range(r.min, r.max));
       if (r.min != null && val < r.min) return fail(M.min(r.min));
     });
-    const t = v.throttle || {}, f = v.filters || {}, s = v.storage || {};
-    if (!errors['throttle.max_sleep_interval'] && !errors['throttle.sleep_interval'] && t.max_sleep_interval < t.sleep_interval)
-      errors['throttle.max_sleep_interval'] = `Muss mindestens so gross sein wie das Minimum (${t.sleep_interval} s).`;
-    if (!errors['throttle.backoff_max_hours'] && !errors['throttle.backoff_initial_hours'] && t.backoff_max_hours < t.backoff_initial_hours)
-      errors['throttle.backoff_max_hours'] = `Muss mindestens so gross sein wie der Startwert (${t.backoff_initial_hours} h).`;
+    const f = v.filters || {}, s = v.storage || {};
+    ['throttle', 'soundcloud'].forEach((sec) => {
+      const x = v[sec] || {};
+      if (!errors[`${sec}.max_sleep_interval`] && !errors[`${sec}.sleep_interval`] && x.max_sleep_interval < x.sleep_interval)
+        errors[`${sec}.max_sleep_interval`] = `Muss mindestens so gross sein wie das Minimum (${x.sleep_interval} s).`;
+      if (!errors[`${sec}.backoff_max_hours`] && !errors[`${sec}.backoff_initial_hours`] && x.backoff_max_hours < x.backoff_initial_hours)
+        errors[`${sec}.backoff_max_hours`] = `Muss mindestens so gross sein wie der Startwert (${x.backoff_initial_hours} h).`;
+    });
     if (!errors['filters.max_duration'] && !errors['filters.min_duration'] && f.max_duration > 0 && f.max_duration < f.min_duration)
       errors['filters.max_duration'] = 'Maximum liegt unter der Mindestlänge (0 = unbegrenzt).';
     if (!errors['storage.path_template']) {
@@ -200,6 +215,7 @@
   const V = (id, title, ch, min, sec, days, views, genre, status) => ({
     id, title, channel_id: CH[ch][0], channel_name: CH[ch][1], duration: min * 60 + sec,
     upload_date: isoDay(days), view_count: views, thumbnail: null, genre, genre_manual: false, status: status || 'new',
+    platform: 'youtube', url: `https://www.youtube.com/watch?v=${id}`,
   });
   const VIDEOS = [
     V('kR4wPr3ss01', 'Raw Pressure – 2 Hour Rawstyle Liveset @ Warehouse Night', 'kick', 124, 12, 3, 48200, 'Hardstyle'),
@@ -234,9 +250,39 @@
   };
   const byId = (id) => VIDEOS.find((v) => v.id === id);
   const SEARCH_IDS = VIDEOS.filter((v) => v.id !== 'cGabb4Fail1').map((v) => v.id);
+
+  /* ---------- SoundCloud (Phase 7a): IDs «sc:<zahl>», Thumbnails kämen von *.sndcdn.com ---------- */
+  const SCU = {
+    pulse: ['sc:5101', 'Pulsewerk', 'pulsewerk-audio'], nrg: ['sc:5102', 'NRG Tapes', 'nrg-tapes'], kern: ['sc:5103', 'Kernschmelze', 'kernschmelze'],
+    zrh: ['sc:5104', 'Hardfloor Zürich', 'hardfloor-zrh'], bunker: ['sc:5105', 'Bunker 303', 'bunker303'], euph: ['sc:5106', 'Euphoria Sounds', 'euphoria-sounds'],
+    radio: ['sc:5107', 'Hard Dance Radio', 'harddance-radio'],
+  };
+  const S = (num, slug, title, u, min, sec, days, plays, genre, extra) => Object.assign({
+    id: `sc:${num}`, title, channel_id: SCU[u][0], channel_name: SCU[u][1], duration: min * 60 + sec,
+    upload_date: isoDay(days), view_count: plays, thumbnail: null, genre, genre_manual: false, status: 'new',
+    platform: 'soundcloud', url: `https://soundcloud.com/${SCU[u][2]}/${slug}`, preview: false,
+  }, extra);
+  const dupOf = (id) => { const v = byId(id); return { id: v.id, platform: v.platform, title: v.title }; };
+  const PREVIEW = { preview: true, filter_reason: 'Nur Vorschau (Go+)' };
+  const SC_VIDEOS = [
+    S(880114201, 'raw-set-kesselhaus', 'Pulsewerk – Raw Hardstyle Set @ Kesselhaus (Full Recording)', 'pulse', 78, 12, 2, 5400, 'Hardstyle'),
+    S(880114202, 'euphoric-yearmix-2026', 'Euphoric Hardstyle Yearmix 2026', 'euph', 95, 3, 39, 31200, 'Hardstyle', { duplicate_of: dupOf('eEuph0ric26') }),
+    S(880114203, 'nrg-tapes-014', 'NRG Tapes 014 – Uptempo Guest Mix', 'nrg', 61, 30, 5, 2100, 'Uptempo'),
+    S(880114204, 'podcast-21', 'Kernschmelze Podcast #21 – Industrial Hardcore Mix', 'kern', 64, 5, 9, 3900, 'Hardcore'),
+    S(880114205, 'frenchcore-warm-up', 'Frenchcore Warm Up Mix – Mainstage Edition', 'kern', 0, 30, 12, 18400, 'Hardcore', PREVIEW),
+    S(880114206, 'bunker-sessions-3', 'Bunker Sessions #3 – 3 Hour Hardcore Marathon Set', 'bunker', 181, 2, 4, 8700, 'Hardcore', { duplicate_of: dupOf('bBunkerSet3') }),
+    S(880114207, 'podcast-008', 'Hardfloor Zürich Podcast 008 – Rawstyle Mix', 'zrh', 58, 44, 0, 640, 'Hardstyle'),
+    S(880114208, 'terror-tape-9', 'Terror Tape Vol. 9 – 300 BPM Liveset', 'nrg', 42, 10, 21, 4400, 'Uptempo', { status: 'done' }),
+    S(880114209, 'oldschool-vinyl-session', 'Oldschool Gabber Vinyl Session 1994–1997 (Continuous Mix)', 'kern', 88, 20, 60, 12800, 'Hardcore'),
+    S(880114210, 'hdr-112', 'Hard Dance Radio Show 112 – Guest Mix', 'radio', 119, 0, 3, 1500, 'Unsortiert'),
+    S(880114211, 'millennium-anthems', 'Millennium Hardcore Anthems – Megamix', 'radio', 0, 30, 150, 96000, 'Hardcore', PREVIEW),
+    S(880114212, 'afterhour-raw', 'Pulsewerk – Afterhour Set (Raw & Uptempo Mix)', 'pulse', 66, 48, 1, 820, 'Hardstyle', { status: 'inbox', source_id: 8 }),
+  ];
+  VIDEOS.push(...SC_VIDEOS);
+  const SC_SEARCH_IDS = SC_VIDEOS.filter((v) => v.status !== 'inbox').map((v) => v.id);
   /* Die flache Suche liefert das Datum nur ungefähr («vor 3 Monaten») -> date_approx. */
   const asSearchHit = (v) => Object.assign(clone(v), v.date_approx == null && v.upload_date && (Date.now() - new Date(v.upload_date)) / 86400000 >= 30 ? { date_approx: true } : {});
-  let lastSearch = { query: 'hardcore liveset 2026', effective_query: 'hardcore liveset 2026', genre: null, year: null, ids: SEARCH_IDS };
+  let lastSearch = { query: 'hardcore liveset 2026', effective_query: 'hardcore liveset 2026', genre: null, year: null, ids: SEARCH_IDS, platform: 'youtube' };
 
   /* Treffer einer Suche mit Jahr (z.B. «hardcore liveset 2013»): Jahr im Titel, ungefähres Datum im Jahr,
      ±1 Jahr daneben, weit daneben, ohne Datum – damit der Jahr-Filter alle Fälle zeigt. */
@@ -263,6 +309,7 @@
           id, title: title(year), channel_id: CH[ch][0], channel_name: CH[ch][1], duration: min * 60 + sec,
           upload_date: date ? `${year + date[0]}-${pad(date[1] + 1)}-${pad(date[2])}` : null,
           view_count: views, thumbnail: null, genre, genre_manual: false, status: status || 'new',
+          platform: 'youtube', url: `https://www.youtube.com/watch?v=${id}`,
         };
         v.date_approx = !!approx;
         VIDEOS.push(v);
@@ -288,10 +335,16 @@
     { id: 5, type: 'search', name: 'Frenchcore Livesets', url_or_query: 'frenchcore liveset', default_genre: 'Hardcore', enabled: true, auto_download: false, max_entries: 20, last_checked: isoAt(1, 21, 44) },
     { id: 6, type: 'playlist', name: 'Hard Classics Playlist', url_or_query: 'https://www.youtube.com/playlist?list=PLhardclassics', default_genre: 'Hardcore', enabled: false, auto_download: false, max_entries: 30, newest_last: true, last_checked: isoAt(6, 3, 0) },
     { id: 7, type: 'search', name: 'Uptempo Podcasts', url_or_query: 'uptempo podcast mix', default_genre: 'Uptempo', enabled: true, auto_download: false, max_entries: 15, last_checked: isoAt(1, 21, 45) },
+    /* SoundCloud: Name ist noch der Vorschlag aus der URL (name_auto) – die nächste Prüfung setzt den echten. */
+    { id: 8, type: 'channel', name: 'Pulsewerk Audio', url_or_query: 'https://soundcloud.com/pulsewerk-audio', default_genre: null, enabled: true, auto_download: false, max_entries: null, last_checked: isoAt(1, 21, 46), platform: 'soundcloud', name_auto: true },
+    { id: 9, type: 'playlist', name: 'Hardfloor Zürich – Podcast', url_or_query: 'https://soundcloud.com/hardfloor-zrh/sets/podcast', default_genre: 'Hardstyle', enabled: true, auto_download: false, max_entries: 20, last_checked: isoAt(1, 21, 47), platform: 'soundcloud' },
   ];
+  SOURCES.forEach((s) => { s.platform = s.platform || 'youtube'; s.name_auto = !!s.name_auto; });
+  /* Echte Namen, die eine Prüfung liefert (name_auto). */
+  const REAL_NAMES = { 'https://soundcloud.com/pulsewerk-audio': 'Pulsewerk' };
   /* new_count = Treffer dieser Quelle, die noch im Eingang liegen (wie api.get_sources). */
   const sourceView = (x) => Object.assign({ newest_last: false }, clone(x), { new_count: VIDEOS.filter((v) => v.status === 'inbox' && v.source_id === x.id).length });
-  let nextSourceId = 8;
+  let nextSourceId = 10;
   let BLACKLIST = [
     { channel_id: 'UCreact0001', channel_name: 'Reaction Bros', added: isoDay(34) },
     { channel_id: 'UClab00006', channel_name: 'Producer Lab', added: isoDay(12) },
@@ -308,6 +361,7 @@
       id, title, artist, channel_id: CH[ch][0], genre, duration, upload_date: date, year: +date.slice(0, 4),
       downloaded_at: isoAt(dlDays, dlDays % 3 ? 3 : 20, 10 + (id.charCodeAt(2) % 40)),
       file_path: libPath(genre, artist, date, title, id), size_mb: sizeOf(duration), missing: false, has_cue: id.charCodeAt(3) % 3 !== 0,
+      platform: 'youtube',
     }, extra);
   };
   let LIBRARY = [
@@ -352,6 +406,13 @@
     L('tSpeedRad01', 'Speedcore Radio Show Episode 1', 'terror', 'Uptempo', 118, 790, 52),
     L('gGabber1995', 'Gabber 1995 – Rotterdam Tapes Continuous Mix', 'vault', 'Hardcore', 84, 1150, 60),
   ];
+  /* SoundCloud-Downloads: Original behalten (download.keep_original_soundcloud) -> .m4a, Dateiname mit [sc-<id>]. */
+  const scLib = (v, dlDays, kbps) => ({
+    id: v.id, title: v.title, artist: v.channel_name, channel_id: v.channel_id, genre: v.genre, duration: v.duration, upload_date: v.upload_date, year: +v.upload_date.slice(0, 4),
+    downloaded_at: isoAt(dlDays, 20, 26), size_mb: +((v.duration * kbps) / 8 / 1024).toFixed(1), missing: false, has_cue: true, platform: 'soundcloud',
+    file_path: `${TARGET}\\${v.genre}\\${v.channel_name}\\${v.upload_date.slice(0, 4)}\\${v.upload_date} - ${v.title} [${v.id.replace(':', '-')}].m4a`,
+  });
+  LIBRARY.splice(2, 0, scLib(byId('sc:880114208'), 2, 160));
   /* Diese Dateien liegen noch am Ort eines älteren Ablage-Musters: «Neu taggen» verschiebt sie (neuer Pfad in der Antwort). */
   const STALE = { cIndVol016: 'Concrete Noise', gMillClass2: 'Gabber Vault Archive' };
   Object.entries(STALE).forEach(([id, folder]) => {
@@ -558,6 +619,7 @@
         id: v.id, title: v.title, artist, channel_id: v.channel_id, genre: v.genre, duration: v.duration, upload_date: v.upload_date, year: +v.upload_date.slice(0, 4),
         downloaded_at: new Date().toISOString(),
         file_path: libPath(v.genre, artist, v.upload_date, v.title, v.id), size_mb: sizeOf(v.duration), missing: false, has_cue: true,
+        platform: v.platform || 'youtube',
       });
       if (openRun()) openRun().downloaded++;
       setStatus(v, 'done');
