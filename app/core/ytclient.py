@@ -3,6 +3,13 @@
 Every yt-dlp call passes through `Throttle.before_request(kind)` first. 429 / bot-check errors
 start the persistent backoff and are never retried; network errors get exactly one retry
 (yt-dlp's own retries are therefore set to 0).
+
+Phase 7a: two platforms, YouTube and SoundCloud. Every call goes through the throttle of its
+platform (`Throttle.platform(name)`); the platform comes from the id (`sc:` prefix), the URL
+(watchlist sources) or `search(..., platform=)`. SoundCloud flat listings use slightly
+extended copies of yt-dlp's SoundCloud extractors (`_sc_flat_extractors`): they keep the track
+metadata yt-dlp already received (duration, date, uploader) and skip one HEAD request per
+entry for the thumbnail; docs/decisions.md «SoundCloud: yt-dlp-Extractor».
 """
 
 from __future__ import annotations
@@ -22,13 +29,14 @@ from typing import Any
 import yt_dlp
 from yt_dlp.utils import DownloadCancelled
 
-from . import binaries, config, paths, preflight, sidecar, tagging
+from . import binaries, config, paths, platforms, preflight, sidecar, tagging
 from .config import UNSORTED, Settings
 from .db import Database
 from .filters import normalize
 from .genre import detect_genre, genre_search_terms
 from .library import FS_LOCK
 from .redact import redact
+from .platforms import SOUNDCLOUD, YOUTUBE
 from .throttle import (
     MetadataBusy,
     Throttle,
@@ -61,6 +69,39 @@ _HTTP_403_RE = re.compile(r"http error 403", re.I)
 METADATA_WAIT_S = 60.0
 # Review Phase 4 m4: hard limit for reading a playlist from the end (`newest_last`); ~20 pages
 NEWEST_LAST_MAX = 2000
+# SoundCloud: transcodings whose stream URL yt-dlp resolves (one API request each, see
+# `SoundcloudBaseIE._extract_info_dict`). Opus (64 kbps) is left out: never better than AAC 160
+# / MP3 128, and every extra transcoding costs a request.
+SC_FORMATS = ["http_aac", "hls_aac", "http_mp3", "hls_mp3"]
+# lossless originals (downloadable tracks) are huge and cannot be tagged: prefer streams
+SC_FORMAT = "bestaudio[ext!=wav][ext!=aiff][ext!=aif][ext!=flac]/bestaudio/best"
+PREVIEW_REASON = "Nur Vorschau (Go+)"
+_SC_USER_RESERVED = {
+    "discover",
+    "search",
+    "stream",
+    "you",
+    "charts",
+    "upload",
+    "pages",
+    "settings",
+    "messages",
+    "notifications",
+    "people",
+    "stations",
+    "terms-of-use",
+    "mobile",
+    "signin",
+    "logout",
+    "jobs",
+    "imprint",
+    "popular",
+    "tags",
+}
+_SC_USER_RE = re.compile(
+    r"^https?://(?:www\.|m\.)?soundcloud\.com/([\w-]+)(?:/(tracks|sets/([\w:-]+)))?/?(?:[?#].*)?$",
+    re.I,
+)
 
 __all__ = [
     "DownloadCancelled",
@@ -81,6 +122,13 @@ class YtClientError(RuntimeError):
     def __init__(self, message: str, *, rate_limited: bool = False) -> None:
         super().__init__(message)
         self.rate_limited = rate_limited
+
+
+class PreviewOnly(YtClientError):
+    """SoundCloud offers only the 30 s Go+ preview of this track (never downloaded)."""
+
+    def __init__(self) -> None:
+        super().__init__(f"{PREVIEW_REASON} – vollständiger Track nur mit SoundCloud Go+")
 
 
 class LocalError(YtClientError, preflight.LocalError):
@@ -114,21 +162,45 @@ class DownloadResult:
 
 
 def extract_video_id(url_or_id: str) -> str | None:
+    """DB id of a single video/track: YouTube id or URL, or a SoundCloud DB id `sc:<id>`."""
     text = (url_or_id or "").strip()
-    if _ID_RE.match(text):
+    if _ID_RE.match(text) or platforms.is_valid_db_id(text):
         return text
     m = _URL_ID_RE.search(text)
     return m.group(1) if m else None
 
 
 def watch_url(video_id: str) -> str:
+    """URL handed to yt-dlp for a single video/track, rebuilt from the DB id."""
+    if platforms.platform_of(video_id) == SOUNDCLOUD:
+        return platforms.soundcloud_track_api_url(video_id)
     return f"https://www.youtube.com/watch?v={video_id}"
 
 
+def soundcloud_source_parts(url: str) -> tuple[str, str | None, str | None] | None:
+    """(user, kind, set slug) of a SoundCloud user/tracks/set URL, else None.
+    kind: None (user root), 'tracks' or 'sets'. Reserved paths (discover, search …) -> None."""
+    m = _SC_USER_RE.match((url or "").strip())
+    if not m or m.group(1).lower() in _SC_USER_RESERVED:
+        return None
+    kind = m.group(2)
+    if kind and kind.lower().startswith("sets"):
+        return m.group(1), "sets", m.group(3)
+    return m.group(1), (kind.lower() if kind else None), None
+
+
 def normalize_source_url(url: str) -> str:
-    """Channel root URLs list only the 'Videos' tab (flat extraction of tabs is not recursive)."""
-    m = _CHANNEL_ROOT_RE.match(url.strip())
-    return f"{m.group(1)}/videos" if m else url.strip()
+    """Channel root URLs list only the 'Videos' tab (flat extraction of tabs is not recursive).
+    SoundCloud: a user root lists the user's stream incl. reposts of other users; the
+    watchlist reads `/tracks` (own uploads, newest first)."""
+    text = url.strip()
+    if platforms.url_platform(text) == SOUNDCLOUD:
+        parts = soundcloud_source_parts(text)
+        if parts and parts[1] is None:
+            return f"https://soundcloud.com/{parts[0]}/tracks"
+        return text
+    m = _CHANNEL_ROOT_RE.match(text)
+    return f"{m.group(1)}/videos" if m else text
 
 
 def _date_from_ts(ts: Any) -> str:
@@ -138,8 +210,24 @@ def _date_from_ts(ts: Any) -> str:
         return ""
 
 
-def normalize_entry(entry: Mapping[str, Any]) -> dict[str, Any]:
-    """Map a yt-dlp info/entry dict to the fields HCLoader uses (see SPEC §9)."""
+def _sc_thumbnail(entry: Mapping[str, Any]) -> str | None:
+    thumbs = [t for t in entry.get("thumbnails") or [] if isinstance(t, Mapping)]
+    for t in thumbs:
+        if t.get("id") == "t500x500" and t.get("url"):
+            return str(t["url"])
+    return entry.get("thumbnail") or (thumbs[-1].get("url") if thumbs else None)
+
+
+def is_preview_entry(entry: Mapping[str, Any]) -> bool:
+    """SoundCloud Go+ snippet: API policy SNIP (kept by `_sc_flat_extractors`)."""
+    return str(entry.get("sc_policy") or "").upper() == "SNIP"
+
+
+def normalize_entry(entry: Mapping[str, Any], platform: str = YOUTUBE) -> dict[str, Any]:
+    """Map a yt-dlp info/entry dict to the fields HCLoader uses (see SPEC §9).
+    `id` is the DB id (SoundCloud: `sc:<id>`), `channel_id` too (`sc:<user id>`)."""
+    if platform == SOUNDCLOUD:
+        return _normalize_sc(entry)
     vid = str(entry.get("id") or "")
     thumbs = entry.get("thumbnails") or []
     thumb = entry.get("thumbnail") or (thumbs[-1].get("url") if thumbs else None)
@@ -155,9 +243,11 @@ def normalize_entry(entry: Mapping[str, Any]) -> dict[str, Any]:
     duration = entry.get("duration")
     return {
         "id": vid,
+        "platform": YOUTUBE,
         "title": entry.get("title") or "",
         "channel_id": entry.get("channel_id") or entry.get("uploader_id") or "",
         "channel_name": entry.get("channel") or entry.get("uploader") or "",
+        "channel_url": entry.get("channel_url") or entry.get("uploader_url") or "",
         "duration": int(duration) if isinstance(duration, (int, float)) else None,
         "upload_date": upload or "",
         "date_approx": approx,
@@ -165,6 +255,39 @@ def normalize_entry(entry: Mapping[str, Any]) -> dict[str, Any]:
         "thumbnail": thumb,
         "url": url,
         "live_status": entry.get("live_status"),
+        "preview": False,
+    }
+
+
+def _normalize_sc(entry: Mapping[str, Any]) -> dict[str, Any]:
+    """SoundCloud: dates are exact (`created_at`), the duration comes in (float) seconds."""
+    raw = str(entry.get("id") or "")
+    vid = platforms.sc_db_id(raw) if raw and not raw.startswith(platforms.SC_PREFIX) else raw
+    upload = entry.get("upload_date") or _date_from_ts(
+        entry.get("timestamp") or entry.get("release_timestamp")
+    )
+    url = entry.get("webpage_url") or ""
+    if not url and "soundcloud.com/" in str(entry.get("url") or "") and "api" not in str(
+        entry.get("url")
+    ):
+        url = entry["url"]
+    uploader_id = str(entry.get("uploader_id") or "")
+    duration = entry.get("duration")
+    return {
+        "id": vid,
+        "platform": SOUNDCLOUD,
+        "title": entry.get("title") or entry.get("track") or "",
+        "channel_id": platforms.sc_db_id(uploader_id) if uploader_id else "",
+        "channel_name": entry.get("uploader") or "",
+        "channel_url": entry.get("uploader_url") or "",
+        "duration": int(round(duration)) if isinstance(duration, (int, float)) else None,
+        "upload_date": upload or "",
+        "date_approx": False,
+        "view_count": entry.get("view_count"),
+        "thumbnail": _sc_thumbnail(entry),
+        "url": url,
+        "live_status": None,
+        "preview": is_preview_entry(entry),
     }
 
 
@@ -222,6 +345,7 @@ class _YdlLogger:
 def build_ydl_opts(
     settings: Settings,
     purpose: str,
+    platform: str = YOUTUBE,
     *,
     progress_hook: Callable[[dict], None] | None = None,
     postprocessor_hook: Callable[[dict], None] | None = None,
@@ -242,11 +366,18 @@ def build_ydl_opts(
     `max_downloads` is deliberately not set: yt-dlp raises MaxDownloadsReached after the (only)
     successful download and drops the info dict. The single-video guarantee comes from
     `download()` (video id required, URL rebuilt) plus `playlist_items=1` and a `_type` check.
+
+    Phase 7a, `platform`: PO token, Deno (`js_runtimes`) and `youtubetab:approximate_date` only
+    for YouTube. SoundCloud gets its own request spacing / rate limit (`settings.soundcloud`),
+    the `soundcloud:formats` list (SC_FORMATS: fewer format-info requests) and, with
+    `download.keep_original_soundcloud`, no MP3 conversion.
     """
     if purpose not in PURPOSES:
         raise ValueError(f"Unbekannter Zweck: {purpose}")
+    if platform not in platforms.PLATFORMS:
+        raise ValueError(f"Unbekannte Plattform: {platform}")
     net = settings.network
-    deno = binaries.deno_path()
+    limits = settings.throttle_for(platform)
     opts: dict[str, Any] = {
         "quiet": True,
         "no_warnings": False,
@@ -256,14 +387,16 @@ def build_ydl_opts(
         "retries": 0,
         "fragment_retries": 0,
         "extractor_retries": 0,
-        "sleep_interval_requests": settings.throttle.sleep_requests,
-        "js_runtimes": {"deno": {"path": str(deno)} if deno.exists() else {}},
+        "sleep_interval_requests": limits.sleep_requests,
         "noplaylist": purpose in ("resolve", "download"),
-        "extractor_args": _extractor_args(settings, purpose),
+        "extractor_args": _extractor_args(settings, purpose, platform),
     }
+    if platform == YOUTUBE:
+        deno = binaries.deno_path()
+        opts["js_runtimes"] = {"deno": {"path": str(deno)} if deno.exists() else {}}
     if net.proxy:
         opts["proxy"] = net.proxy
-    if net.cookies_from_browser:
+    if net.cookies_from_browser and platform == YOUTUBE:
         opts["cookiesfrombrowser"] = (net.cookies_from_browser,)
         log.warning(
             "Cookies aus %s aktiv (Notlösung, kann mit PO-Token Probleme machen)",
@@ -277,7 +410,7 @@ def build_ydl_opts(
         opts["skip_download"] = True
         opts["extractor_retries"] = 1
     else:
-        _download_opts(opts, settings, target_dir)
+        _download_opts(opts, settings, target_dir, platform)
         if progress_hook:
             opts["progress_hooks"] = [progress_hook]
         if postprocessor_hook:
@@ -286,14 +419,18 @@ def build_ydl_opts(
 
 
 def _extractor_args(
-    settings: Settings, purpose: str = "resolve"
+    settings: Settings, purpose: str = "resolve", platform: str = YOUTUBE
 ) -> dict[str, dict[str, list[str]]]:
     """PO-token provider args; flat purposes also get `youtubetab:approximate_date`.
 
     yt-dlp reads `approximate_date` via `_configuration_arg(...)` as a list; a non-empty list
     (even `['']`) is truthy and makes flat entries carry a `timestamp` parsed from 'vor X Jahren'.
     The keys (youtube / youtubepot-* / youtubetab) are distinct, so merging is plain assignment.
+    SoundCloud: only `soundcloud:formats` (read with `ie_key=SoundcloudIE` for every SoundCloud
+    extractor), nothing of YouTube.
     """
+    if platform == SOUNDCLOUD:
+        return {"soundcloud": {"formats": list(SC_FORMATS)}}
     net = settings.network
     args: dict[str, dict[str, list[str]]] = {}
     if purpose in ("search", "list"):
@@ -307,18 +444,22 @@ def _extractor_args(
     return args
 
 
-def _download_opts(opts: dict[str, Any], settings: Settings, target_dir: Path | None) -> None:
+def _download_opts(
+    opts: dict[str, Any], settings: Settings, target_dir: Path | None, platform: str = YOUTUBE
+) -> None:
     dl = settings.download
     target = target_dir or settings.target_dir_path()
     tmp = paths.tmp_dir(target)
-    rate_mb = settings.throttle.limit_rate_mb
+    rate_mb = settings.throttle_for(platform).limit_rate_mb
+    sc = platform == SOUNDCLOUD
     opts.update(
         {
-            "format": "bestaudio/best",
+            "format": SC_FORMAT if sc else "bestaudio/best",
             "ratelimit": int(rate_mb * 1024 * 1024) if rate_mb and rate_mb > 0 else None,
             "playlist_items": "1",
             "paths": {"home": str(tmp), "temp": str(tmp)},
-            "outtmpl": {"default": "%(id)s.%(ext)s"},
+            # temp name = file id: `sc-<id>` never collides with a YouTube id of the same digits
+            "outtmpl": {"default": f"{platforms.SC_FILE_PREFIX if sc else ''}%(id)s.%(ext)s"},
             "writethumbnail": bool(dl.embed_cover or dl.write_cover_jpg),
             "overwrites": True,
             "continuedl": True,
@@ -327,6 +468,8 @@ def _download_opts(opts: dict[str, Any], settings: Settings, target_dir: Path | 
     ffmpeg = binaries.ffmpeg_path()
     if ffmpeg.exists():
         opts["ffmpeg_location"] = str(ffmpeg)
+    if sc and dl.keep_original_soundcloud:
+        return  # SoundCloud streams are 128-160 kbps: MP3 320 would only inflate the file
     if dl.audio_format == "mp3":
         quality = "0" if dl.mp3_quality == "v0" else "320"
         opts["postprocessors"] = [
@@ -403,7 +546,7 @@ class YtClient:
 
     # -- preparation
 
-    def _prepare(self, settings: Settings) -> None:
+    def _prepare(self, settings: Settings, platform: str = YOUTUBE) -> None:
         """Environment for the bgutil provider (token TTL, HTTP server child process).
 
         `TOKEN_TTL` is read by the provider (script mode: token cache of generate_once; HTTP
@@ -413,7 +556,7 @@ class YtClient:
         """
         net = settings.network
         os.environ["TOKEN_TTL"] = str(max(1, round(net.po_token_ttl_hours)))
-        if net.po_token_mode != "http":
+        if net.po_token_mode != "http" or platform != YOUTUBE:
             return
         if self._external_pot:
             if not self._pot_server.running():  # type: ignore[union-attr]
@@ -443,8 +586,10 @@ class YtClient:
         retry: bool = False,
         on_request: Callable[[], None] | None = None,
         handler: Callable[[Any, dict[str, Any]], dict[str, Any]] | None = None,
+        platform: str = YOUTUBE,
+        window: tuple[str, int] | None = None,
     ) -> dict[str, Any]:
-        """One yt-dlp call behind the throttle and the metadata lock (m4).
+        """One yt-dlp call behind the throttle and the metadata lock (m4) of `platform`.
 
         `handler(ydl, ie_result)` (metadata calls only): extract with `process=False` and let
         the handler build the result (used for `newest_last`, which pages itself).
@@ -457,24 +602,28 @@ class YtClient:
         The download takes the lock *after* `before_request`, so the pause between downloads
         never blocks searches. `on_request` is called right before the first YouTube request
         (m2: only then did the attempt reach the network).
+        SoundCloud metadata calls register `_sc_flat_extractors(window)` on the YoutubeDL.
         """
-        self.throttle.check_backoff()
-        self._prepare(settings)
+        th = self.throttle.platform(platform)
+        th.check_backoff()
+        self._prepare(settings, platform)
         logger = opts.get("logger")
         try:
             if download:
-                self.throttle.before_request(
+                th.before_request(
                     kind, cancel_event=cancel_event, count_attempt=not retry, retry=retry
                 )
                 with yt_dlp.YoutubeDL(opts) as ydl:
-                    with self.throttle.metadata_lock(cancel_event=cancel_event):
+                    with th.metadata_lock(cancel_event=cancel_event):
                         # R2-m1: a search may have run while we waited for the lock
-                        self.throttle.request_spacing(cancel_event)
+                        th.request_spacing(cancel_event)
                         if on_request:
                             on_request()
                         ie_result = ydl.extract_info(url, download=False, process=False)
                     if ie_result is None:
                         raise YtClientError("Keine Daten von yt-dlp erhalten")
+                    if platform == SOUNDCLOUD and _only_previews(ie_result):
+                        raise PreviewOnly
                     if ie_result.get("_type") == "playlist":
                         raise YtClientError("Keine einzelne Video-URL (Playlist erkannt)")
                     if ie_result.get("_type") not in (None, "video"):  # R2-n1: url/url_transparent
@@ -485,12 +634,14 @@ class YtClient:
                     if info is None:
                         raise YtClientError("Keine Daten von yt-dlp erhalten")
                     return ydl.sanitize_info(info)  # type: ignore[no-any-return]
-            with self.throttle.metadata_lock(timeout=METADATA_WAIT_S, cancel_event=cancel_event):
-                self.throttle.before_request(kind, cancel_event=cancel_event)
+            with th.metadata_lock(timeout=METADATA_WAIT_S, cancel_event=cancel_event):
+                th.before_request(kind, cancel_event=cancel_event)
                 if on_request:
                     on_request()
                 try:
                     with yt_dlp.YoutubeDL(opts) as ydl:
+                        if platform == SOUNDCLOUD:
+                            _install_sc_flat_extractors(ydl, window)
                         info = ydl.extract_info(url, download=False, process=handler is None)
                         if info is None:
                             raise YtClientError("Keine Daten von yt-dlp erhalten")
@@ -499,11 +650,11 @@ class YtClient:
                         return ydl.sanitize_info(info)  # type: ignore[no-any-return]
                 finally:
                     # m4: a multi-page listing ends long after its slot; space from now
-                    self.throttle.mark_request()
+                    th.mark_request()
         finally:
             hit = getattr(logger, "rate_limit_hit", None)
             if hit:
-                self.throttle.trigger_backoff(hit)
+                th.trigger_backoff(hit)
 
     def _metadata_call(
         self,
@@ -514,17 +665,26 @@ class YtClient:
         *,
         cancel_event: threading.Event | None = None,
         handler: Callable[[Any, dict[str, Any]], dict[str, Any]] | None = None,
+        platform: str = YOUTUBE,
+        window: tuple[str, int] | None = None,
     ):
         try:
             return self._extract(
-                kind, url, opts, settings=settings, cancel_event=cancel_event, handler=handler
+                kind,
+                url,
+                opts,
+                settings=settings,
+                cancel_event=cancel_event,
+                handler=handler,
+                platform=platform,
+                window=window,
             )
         except (DownloadCancelled, MetadataBusy, WaitCancelled):
             raise
         except Exception as exc:
             if isinstance(exc, YtClientError):
                 raise
-            limited = self.throttle.handle_error(exc)
+            limited = self.throttle.platform(platform).handle_error(exc)
             if isinstance(exc, (yt_dlp.utils.YoutubeDLError, OSError)) or limited:
                 raise YtClientError(_clean_error(exc), rate_limited=limited) from exc
             raise
@@ -539,16 +699,32 @@ class YtClient:
         genre: str | None = None,
         year: int | None = None,
         cancel_event: threading.Event | None = None,
+        platform: str = YOUTUBE,
     ) -> list[dict[str, Any]]:
-        """Flat search; genre search terms and (with `search.append_year`) the year are appended."""
+        """Flat search; genre search terms and (with `search.append_year`) the year are appended.
+        `platform` 'soundcloud': `scsearchN:` (one API request for N <= 200), entries carry
+        `platform` and DB ids `sc:<id>`."""
         settings = self.settings
+        if platform not in platforms.PLATFORMS:
+            raise YtClientError(f"Unbekannte Plattform: {platform}")
+        if platform == SOUNDCLOUD and not settings.soundcloud.enabled:
+            raise YtClientError("SoundCloud ist in den Einstellungen ausgeschaltet")
         n = n or settings.search.results_count
         full_query = build_search_query(query, genre=genre, year=year, settings=settings)
-        opts = build_ydl_opts(settings, "search")
+        opts = build_ydl_opts(settings, "search", platform)
+        prefix = "scsearch" if platform == SOUNDCLOUD else "ytsearch"
         info = self._metadata_call(
-            "search", f"ytsearch{int(n)}:{full_query}", opts, settings, cancel_event=cancel_event
+            "search",
+            f"{prefix}{int(n)}:{full_query}",
+            opts,
+            settings,
+            cancel_event=cancel_event,
+            platform=platform,
+            window=("head", int(n)),
         )
-        return [normalize_entry(e) for e in info.get("entries") or [] if e and e.get("id")]
+        return [
+            normalize_entry(e, platform) for e in info.get("entries") or [] if e and e.get("id")
+        ]
 
     def list_source(
         self,
@@ -563,8 +739,11 @@ class YtClient:
         has to be paged (~100 entries per request, `sleep_interval_requests` between pages),
         at most NEWEST_LAST_MAX entries (m4), see docs/decisions.md."""
         settings = self.settings
+        platform = platforms.url_platform(url) or YOUTUBE
+        if platform == SOUNDCLOUD and not settings.soundcloud.enabled:
+            raise YtClientError("SoundCloud ist in den Einstellungen ausgeschaltet")
         max_entries = int(max_entries or settings.schedule.entries_per_source)
-        opts = build_ydl_opts(settings, "list")
+        opts = build_ydl_opts(settings, "list", platform)
         handler = None
         if newest_last:
             handler = _newest_last_handler(max_entries, cancel_event)
@@ -577,16 +756,23 @@ class YtClient:
             settings,
             cancel_event=cancel_event,
             handler=handler,
+            platform=platform,
+            window=("tail" if newest_last else "head", max_entries),
         )
-        entries = [normalize_entry(e) for e in info.get("entries") or [] if e and e.get("id")]
-        return entries[: int(max_entries)]
+        entries = [
+            normalize_entry(e, platform) for e in info.get("entries") or [] if e and e.get("id")
+        ]
+        return SourceListing(
+            entries[: int(max_entries)], source_name=listing_name(info, url, platform)
+        )
 
     def resolve(self, video_id: str) -> dict[str, Any]:
         settings = self.settings
         vid = extract_video_id(video_id) or video_id
-        opts = build_ydl_opts(settings, "resolve")
-        info = self._metadata_call("resolve", watch_url(vid), opts, settings)
-        out = normalize_entry(info)
+        platform = platforms.platform_of(vid)
+        opts = build_ydl_opts(settings, "resolve", platform)
+        info = self._metadata_call("resolve", watch_url(vid), opts, settings, platform=platform)
+        out = normalize_entry(info, platform)
         out.update(
             {
                 "description": info.get("description") or "",
@@ -605,17 +791,18 @@ class YtClient:
             lines = archive.read_text(encoding="utf-8").splitlines()
         except OSError:
             return False
-        return f"youtube {video_id}" in (ln.strip() for ln in lines)
+        return platforms.archive_line(video_id) in (ln.strip() for ln in lines)
 
     def _record_archive(self, video_id: str) -> None:
-        """Append `youtube <id>` to the archive; only called after the video is `done`."""
+        """Append `youtube <id>` / `soundcloud <id>` to the archive (yt-dlp format); only called
+        after the video is `done`."""
         if self.in_archive(video_id):
             return
         archive = config.archive_path()
         try:
             archive.parent.mkdir(parents=True, exist_ok=True)
             with archive.open("a", encoding="utf-8", newline="\n") as fh:
-                fh.write(f"youtube {video_id}\n")
+                fh.write(platforms.archive_line(video_id) + "\n")
         except OSError as exc:
             log.warning("Download-Archiv nicht beschreibbar (%s): %s", archive, exc)
 

@@ -106,6 +106,8 @@ else {
         $sc.TargetPath = $VenvPythonW
         $sc.Arguments = '-m app.main'
         $sc.WorkingDirectory = $RepoRoot
+        $icon = Join-Path $RepoRoot 'ui\img\hcloader.ico'
+        if (Test-Path $icon) { $sc.IconLocation = $icon }
         $sc.Description = 'HCLoader'
         $sc.Save()
     }

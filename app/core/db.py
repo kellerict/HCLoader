@@ -14,6 +14,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from .platforms import platform_of
+
 STATUSES = ("new", "inbox", "queued", "downloading", "done", "ignored", "failed")
 SOURCE_TYPES = ("channel", "playlist", "search")
 
@@ -39,6 +41,10 @@ _VIDEO_COLUMNS = (
     "downloaded_at",
     "queue_pos",
     "date_approx",
+    "platform",
+    "url",
+    "channel_url",
+    "preview",
 )
 _SOURCE_FIELDS = (
     "type",
@@ -50,6 +56,8 @@ _SOURCE_FIELDS = (
     "max_entries",
     "newest_last",
     "last_checked",
+    "platform",
+    "name_auto",
 )
 
 
@@ -134,12 +142,34 @@ def _m4_source_videos(conn: sqlite3.Connection) -> None:
     )
 
 
+def _m5_platforms(conn: sqlite3.Connection) -> None:
+    """Phase 7a: SoundCloud as second platform (docs/decisions.md «SoundCloud: IDs»).
+
+    - `videos.platform` / `sources.platform`: 'youtube' | 'soundcloud'; existing rows = youtube.
+      SoundCloud video ids carry the prefix `sc:` (unique across platforms without a composite
+      key), the column is for queries and the UI.
+    - `videos.url`: web page of the video/track (SoundCloud permalinks cannot be rebuilt from
+      the id), `videos.channel_url`: page of the uploader (watchlist from a search hit).
+    - `videos.preview`: SoundCloud Go+ snippet (30 s preview only), never downloaded.
+    - `sources.name_auto`: the name was suggested automatically and may be replaced by the real
+      channel/uploader name of the next check (no extra request).
+    """
+    conn.execute("ALTER TABLE videos ADD COLUMN platform TEXT NOT NULL DEFAULT 'youtube'")
+    conn.execute("ALTER TABLE videos ADD COLUMN url TEXT")
+    conn.execute("ALTER TABLE videos ADD COLUMN channel_url TEXT")
+    conn.execute("ALTER TABLE videos ADD COLUMN preview INTEGER NOT NULL DEFAULT 0")
+    conn.execute("ALTER TABLE sources ADD COLUMN platform TEXT NOT NULL DEFAULT 'youtube'")
+    conn.execute("ALTER TABLE sources ADD COLUMN name_auto INTEGER NOT NULL DEFAULT 0")
+    conn.execute("CREATE INDEX idx_videos_platform_duration ON videos(platform, duration)")
+
+
 # Append new steps at the end; never edit existing ones. Step i upgrades version i -> i+1.
 MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [
     _m1_initial,
     _m2_queue,
     _m3_newest_last,
     _m4_source_videos,
+    _m5_platforms,
 ]
 # statuses a user may put into the download queue (enqueue / retry)
 ENQUEUEABLE = ("new", "inbox", "failed")
@@ -259,6 +289,8 @@ class Database:
                 row["genre_manual"] = int(bool(video.get("genre_manual", 0)))
                 row["first_seen"] = video.get("first_seen") or now_iso()
                 row["date_approx"] = int(bool(video.get("date_approx")))
+                row["platform"] = video.get("platform") or platform_of(vid)
+                row["preview"] = int(bool(video.get("preview")))
                 self._check_status(row["status"])
                 cols = ", ".join(row)
                 marks = ", ".join("?" for _ in row)
@@ -273,6 +305,11 @@ class Database:
                     del updates["upload_date"]  # never replace an exact date by an estimate
                 else:
                     updates["date_approx"] = int(approx)
+            for key in ("url", "channel_url"):
+                if video.get(key):
+                    updates[key] = video[key]
+            if video.get("preview") is not None and "preview" in video:
+                updates["preview"] = int(bool(video["preview"]))
             if video.get("genre") and not existing["genre_manual"]:
                 updates["genre"] = video["genre"]
             if video.get("source_id") is not None and existing["source_id"] is None:
@@ -390,11 +427,38 @@ class Database:
             (status, video_id),
         )
 
-    def next_queued(self) -> dict[str, Any] | None:
+    def next_queued(self, *, exclude_platforms: Iterable[str] = ()) -> dict[str, Any] | None:
+        """First waiting entry; `exclude_platforms`: skip entries of blocked platforms (Phase
+        7a: a SoundCloud backoff must not hold up YouTube entries and vice versa)."""
+        skip = list(exclude_platforms)
+        cond = f" AND platform NOT IN ({','.join('?' for _ in skip)})" if skip else ""
         return self.query_one(
-            "SELECT * FROM videos WHERE status='queued' "
-            "ORDER BY queue_pos IS NULL, queue_pos, first_seen, id LIMIT 1"
+            f"SELECT * FROM videos WHERE status='queued'{cond} "
+            "ORDER BY queue_pos IS NULL, queue_pos, first_seen, id LIMIT 1",
+            skip,
         )
+
+    def queued_platforms(self) -> list[str]:
+        """Platforms with waiting entries, in queue order of their first entry."""
+        rows = self.query(
+            "SELECT platform, MIN(COALESCE(queue_pos, 1e18)) AS p FROM videos "
+            "WHERE status='queued' GROUP BY platform ORDER BY p"
+        )
+        return [r["platform"] for r in rows]
+
+    def duplicate_candidates(
+        self, platform: str, duration: int, *, tolerance: int = 5, statuses: Sequence[str] = ()
+    ) -> list[dict[str, Any]]:
+        """Rows of *other* platforms with a duration within +-tolerance (Phase 7a duplicates)."""
+        sql = (
+            "SELECT id, title, platform, status, duration FROM videos WHERE platform != ? "
+            "AND duration BETWEEN ? AND ?"
+        )
+        params: list[Any] = [platform, duration - tolerance, duration + tolerance]
+        if statuses:
+            sql += f" AND status IN ({','.join('?' for _ in statuses)})"
+            params += list(statuses)
+        return self.query(sql, params)
 
     def list_queue(self) -> list[dict[str, Any]]:
         """Queue view: downloading first, then queued in order, then failed."""
@@ -518,12 +582,14 @@ class Database:
         auto_download: bool = False,
         max_entries: int | None = None,
         newest_last: bool = False,
+        platform: str = "youtube",
+        name_auto: bool = False,
     ) -> int:
         if type not in SOURCE_TYPES:
             raise ValueError(f"Ungültiger Quellentyp: {type}")
         cur = self.execute(
             "INSERT INTO sources(type,name,url_or_query,default_genre,enabled,auto_download,"
-            "max_entries,newest_last) VALUES (?,?,?,?,?,?,?,?)",
+            "max_entries,newest_last,platform,name_auto) VALUES (?,?,?,?,?,?,?,?,?,?)",
             (
                 type,
                 name,
@@ -533,6 +599,8 @@ class Database:
                 int(auto_download),
                 max_entries,
                 int(newest_last),
+                platform,
+                int(name_auto),
             ),
         )
         return int(cur.lastrowid)
@@ -552,11 +620,15 @@ class Database:
             raise ValueError(f"Unbekannte Felder: {', '.join(sorted(bad))}")
         if not fields:
             return
-        for k in ("enabled", "auto_download", "newest_last"):
+        for k in ("enabled", "auto_download", "newest_last", "name_auto"):
             if k in fields:
                 fields[k] = int(bool(fields[k]))
         sets = ", ".join(f"{k}=?" for k in fields)
         self.execute(f"UPDATE sources SET {sets} WHERE id=?", [*fields.values(), source_id])
+
+    def source_platforms(self, *, enabled_only: bool = True) -> set[str]:
+        sql = "SELECT DISTINCT platform FROM sources" + (" WHERE enabled=1" if enabled_only else "")
+        return {r["platform"] for r in self.query(sql)}
 
     def mark_source_checked(self, source_id: int) -> None:
         self.update_source(source_id, last_checked=now_iso())

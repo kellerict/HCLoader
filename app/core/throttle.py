@@ -3,6 +3,13 @@
 Every network access (search, list, resolve, download) must go through this class.
 State and counters live in the DB table `state`, so they survive restarts. Clock, sleep and
 random source are injectable for tests.
+
+Phase 7a: one throttle per platform. The object the app creates is the YouTube throttle (state
+keys and lock names unchanged); `throttle.platform("soundcloud")` returns the SoundCloud
+sibling with its own limits (`settings.soundcloud`), counters, backoff, request spacing, pause
+between downloads, cross-process throttle lock and metadata lock. State keys of non-YouTube
+platforms carry the prefix `<platform>.` (e.g. `soundcloud.backoff_until`). A 429 of one
+platform therefore never blocks the other one.
 """
 
 from __future__ import annotations
@@ -64,7 +71,7 @@ class WaitCancelled(Exception):
 
 
 class MetadataBusy(Exception):
-    """The YouTube metadata lock stayed busy (a download is extracting) - try again shortly."""
+    """The metadata lock stayed busy (a download is extracting) - try again shortly."""
 
     def __init__(self) -> None:
         super().__init__("Download-Abfrage läuft gerade – bitte gleich erneut versuchen")
@@ -84,6 +91,9 @@ class LimitReached(ThrottleError):
         super().__init__(f"Limit erreicht: {names.get(kind, kind)} ({limit})")
 
 
+PLATFORM_NAMES = {"youtube": "YouTube", "soundcloud": "SoundCloud"}
+
+
 def _utcnow() -> datetime:
     return datetime.now(UTC)
 
@@ -99,8 +109,23 @@ class Throttle:
         clock: Callable[[], datetime] = _utcnow,
         sleep: Callable[[float], None] = time.sleep,
         uniform: Callable[[float, float], float] = random.uniform,
+        platform: str = "youtube",
+        platform_settings: dict[str, Any] | None = None,
+        _root: Throttle | None = None,
     ) -> None:
+        """`platform_settings`: {platform: ThrottleSettings or provider} for the siblings
+        (`platform()`); a platform without an entry uses the same limits as this throttle (own
+        state all the same)."""
         self.db = db
+        self.platform_name = platform
+        self._prefix = "" if platform == "youtube" else f"{platform}."
+        self._platform_settings = dict(platform_settings or {})
+        self._root = _root
+        self._siblings: dict[str, Throttle] = {}
+        self._siblings_lock = threading.Lock()
+        suffix = "" if platform == "youtube" else f"-{platform}"
+        self._throttle_lock_name = locks.THROTTLE_LOCK + suffix
+        self._metadata_lock_name = locks.METADATA_LOCK + suffix
         self._settings = settings
         self._clock = clock
         self._sleep = sleep
@@ -126,6 +151,56 @@ class Throttle:
         # is held (lock order: metadata lock -> `_lock`).
         self._meta_lock = threading.Lock()
 
+    # ------------------------------------------------------------------ platforms
+
+    def platform(self, name: str | None) -> Throttle:
+        """Throttle of platform `name` (None/'youtube' = the YouTube throttle)."""
+        root = self._root or self
+        name = name or "youtube"
+        if name == root.platform_name:
+            return root
+        with root._siblings_lock:
+            sib = root._siblings.get(name)
+            if sib is None:
+                cfg = root._platform_settings.get(name, root._settings)
+                sib = Throttle(
+                    root.db,
+                    cfg,
+                    clock=root._clock,
+                    sleep=root._sleep,
+                    uniform=root._uniform,
+                    platform=name,
+                    _root=root,
+                )
+                sib._default_sleep = root._default_sleep
+                root._siblings[name] = sib
+            return sib
+
+    def platforms(self) -> list[Throttle]:
+        """YouTube first, then every configured platform."""
+        root = self._root or self
+        names = ["youtube"]
+        for n in [*root._platform_settings, *root._siblings]:
+            if n not in names:
+                names.append(n)
+        return [root.platform(n) for n in names]
+
+    @property
+    def label(self) -> str:
+        return PLATFORM_NAMES.get(self.platform_name, self.platform_name)
+
+    def _key(self, key: str) -> str:
+        return self._prefix + key
+
+    def _get(self, key: str, default: str | None = None) -> str | None:
+        return self.db.get_state(self._key(key), default)
+
+    def _set(self, key: str, value: Any) -> None:
+        self.db.set_state(self._key(key), value)
+
+    def _del(self, key: str) -> None:
+        self.db.delete_state(self._key(key))
+
     @contextmanager
     def _xlock(self, cancel_event: threading.Event | None = None) -> Iterator[None]:
         """Cross-process critical section (re-entrant; always taken under `self._lock`)."""
@@ -137,7 +212,7 @@ class Throttle:
                 finally:
                     self._xdepth -= 1
                 return
-            with locks.cross_process_lock(locks.THROTTLE_LOCK, cancel=cancel_event):
+            with locks.cross_process_lock(self._throttle_lock_name, cancel=cancel_event):
                 self._xdepth = 1
                 try:
                     yield
@@ -155,7 +230,7 @@ class Throttle:
 
     def backoff_until(self) -> datetime | None:
         """End of the active backoff, or None if there is none (or it has expired)."""
-        raw = self.db.get_state(K_BACKOFF_UNTIL)
+        raw = self._get(K_BACKOFF_UNTIL)
         if not raw:
             return None
         try:
@@ -169,12 +244,12 @@ class Throttle:
         return (until - self._now()) if until else timedelta(0)
 
     def backoff_level(self) -> int:
-        return int(self.db.get_state(K_BACKOFF_LEVEL, "0") or 0)
+        return int(self._get(K_BACKOFF_LEVEL, "0") or 0)
 
     def check_backoff(self) -> None:
         until = self.backoff_until()
         if until:
-            raise BackoffActive(until, self.db.get_state(K_BACKOFF_REASON, "") or "")
+            raise BackoffActive(until, self._get(K_BACKOFF_REASON, "") or "")
 
     def trigger_backoff(self, reason: str = "") -> datetime:
         """Start (or escalate) the backoff: initial hours, doubling up to the cap.
@@ -189,10 +264,12 @@ class Throttle:
             level = self.backoff_level() + 1
             hours = min(cfg.backoff_initial_hours * 2 ** (level - 1), cfg.backoff_max_hours)
             until = self._now() + timedelta(hours=hours)
-            self.db.set_state(K_BACKOFF_LEVEL, level)
-            self.db.set_state(K_BACKOFF_UNTIL, until.isoformat())
-            self.db.set_state(K_BACKOFF_REASON, reason)
-            log.error("YouTube-Sperre erkannt (%s): Pause bis %s (%.1f h)", reason, until, hours)
+            self._set(K_BACKOFF_LEVEL, level)
+            self._set(K_BACKOFF_UNTIL, until.isoformat())
+            self._set(K_BACKOFF_REASON, reason)
+            log.error(
+                "%s-Sperre erkannt (%s): Pause bis %s (%.1f h)", self.label, reason, until, hours
+            )
             return until
 
     def handle_error(self, message: object) -> bool:
@@ -205,17 +282,22 @@ class Throttle:
     def reset_backoff(self) -> None:
         """After a successful run: clear backoff and reset the escalation level."""
         with self._xlock():  # n1: never between another process's check and trigger
-            self.db.delete_state(K_BACKOFF_UNTIL)
-            self.db.delete_state(K_BACKOFF_REASON)
-            self.db.set_state(K_BACKOFF_LEVEL, 0)
+            self._del(K_BACKOFF_UNTIL)
+            self._del(K_BACKOFF_REASON)
+            self._set(K_BACKOFF_LEVEL, 0)
 
-    def finish_run(self, success: bool) -> None:
+    def finish_run(self, success: bool, platforms: Any = None) -> None:
         """Call at the end of every run (GUI queue, headless, smoke).
 
         A successful run (at least one real download/request went through) resets the backoff
-        escalation (SPEC §5); a failed one leaves the state untouched.
+        escalation (SPEC §5); a failed one leaves the state untouched. `platforms` (Phase 7a):
+        the platforms that succeeded in this run; None = this throttle only.
         """
         if not success:
+            return
+        if platforms is not None:
+            for name in platforms:
+                self.platform(name).finish_run(True)
             return
         with self._xlock():  # n1
             # Never lift a backoff that is still active (e.g. a 429 warning seen during this
@@ -228,15 +310,15 @@ class Throttle:
     def clear_backoff_manual(self) -> None:
         """User override: lift the block but keep the level, so a repeat doubles again."""
         with self._xlock():  # n1
-            self.db.delete_state(K_BACKOFF_UNTIL)
-            self.db.delete_state(K_BACKOFF_REASON)
-        log.warning("Backoff manuell aufgehoben")
+            self._del(K_BACKOFF_UNTIL)
+            self._del(K_BACKOFF_REASON)
+        log.warning("Backoff manuell aufgehoben (%s)", self.label)
 
     # ------------------------------------------------------------------ requests
 
     def _search_times(self) -> list[float]:
         try:
-            times = json.loads(self.db.get_state(K_SEARCH_TIMES, "[]") or "[]")
+            times = json.loads(self._get(K_SEARCH_TIMES, "[]") or "[]")
         except ValueError:
             times = []
         horizon = self._now().timestamp() - 3600
@@ -255,7 +337,7 @@ class Throttle:
         return datetime.fromtimestamp(times[len(times) - limit] + 3600, UTC)
 
     def _last_request(self) -> datetime | None:
-        raw = self.db.get_state(K_LAST_REQUEST)
+        raw = self._get(K_LAST_REQUEST)
         if not raw:
             return None
         try:
@@ -319,7 +401,7 @@ class Throttle:
                 if len(times) >= cfg.max_searches_per_hour:
                     raise LimitReached("searches_per_hour", cfg.max_searches_per_hour)
                 times.append(self._now().timestamp())
-                self.db.set_state(K_SEARCH_TIMES, json.dumps(times))
+                self._set(K_SEARCH_TIMES, json.dumps(times))
             last = self._last_request()
             if last is not None and cfg.sleep_requests > 0:
                 since = (self._now() - last).total_seconds()
@@ -327,7 +409,7 @@ class Throttle:
                 wait = min(cfg.sleep_requests - since, float(cfg.sleep_requests))
                 self._wait(wait, cancel_event)
             stamp = self._now().isoformat()
-            self.db.set_state(K_LAST_REQUEST, stamp)
+            self._set(K_LAST_REQUEST, stamp)
             self._local.slot = stamp
             if count_attempt:
                 self.register_download()
@@ -339,7 +421,7 @@ class Throttle:
         spacing to it is waited out here. No wait if this thread's slot is still the latest."""
         with self._xlock(cancel_event):
             cfg = self.cfg
-            raw = self.db.get_state(K_LAST_REQUEST)
+            raw = self._get(K_LAST_REQUEST)
             last = self._last_request()
             if (
                 last is not None
@@ -349,7 +431,7 @@ class Throttle:
                 since = (self._now() - last).total_seconds()
                 self._wait(min(cfg.sleep_requests - since, float(cfg.sleep_requests)), cancel_event)
                 stamp = self._now().isoformat()
-                self.db.set_state(K_LAST_REQUEST, stamp)
+                self._set(K_LAST_REQUEST, stamp)
                 self._local.slot = stamp
 
     def mark_request(self) -> None:
@@ -357,7 +439,7 @@ class Throttle:
         spacing of the next request counts from now, not from the start of that call."""
         with self._xlock():
             stamp = self._now().isoformat()
-            self.db.set_state(K_LAST_REQUEST, stamp)
+            self._set(K_LAST_REQUEST, stamp)
             self._local.slot = stamp
 
     @contextmanager
@@ -385,7 +467,7 @@ class Throttle:
             # R2-n2: also exclusive across processes (GUI search vs. headless watchlist run)
             left = 3600.0 if deadline is None else max(0.0, deadline - time.monotonic())
             with locks.cross_process_lock(
-                locks.METADATA_LOCK,
+                self._metadata_lock_name,
                 timeout=left,
                 cancel=cancel_event,
                 on_timeout=lambda: (
@@ -408,7 +490,7 @@ class Throttle:
         `before_request("download")`, so a countdown shown in advance is exact.
         """
         with self._lock:
-            raw = self.db.get_state(K_LAST_DL_END)
+            raw = self._get(K_LAST_DL_END)
             if not raw:
                 return 0.0
             try:
@@ -438,31 +520,33 @@ class Throttle:
 
     def mark_download_end(self) -> None:
         """Record the end of a download attempt; the next one waits relative to it."""
-        self.db.set_state(K_LAST_DL_END, self._now().isoformat())
+        self._set(K_LAST_DL_END, self._now().isoformat())
 
     # ------------------------------------------------------------------ downloads
 
     def start_run(self) -> None:
-        """Reset the per-run download counter."""
-        with self._lock:
-            self.db.set_state(K_DL_RUN, 0)
+        """Reset the per-run download counter (of every platform: a run spans all of them)."""
+        targets = self.platforms() if self._root is None else [self]
+        for t in targets:
+            with t._lock:
+                t._set(K_DL_RUN, 0)
 
     def _day_key(self) -> str:
         return self._now().astimezone().date().isoformat()
 
     def downloads_today(self) -> int:
-        if self.db.get_state(K_DL_DAY) != self._day_key():
+        if self._get(K_DL_DAY) != self._day_key():
             return 0
-        return int(self.db.get_state(K_DL_TODAY, "0") or 0)
+        return int(self._get(K_DL_TODAY, "0") or 0)
 
     def downloads_this_run(self) -> int:
-        return int(self.db.get_state(K_DL_RUN, "0") or 0)
+        return int(self._get(K_DL_RUN, "0") or 0)
 
     def download_block(self) -> ThrottleError | None:
         """The reason downloads are currently refused (exception instance) or None."""
         until = self.backoff_until()
         if until:
-            return BackoffActive(until, self.db.get_state(K_BACKOFF_REASON, "") or "")
+            return BackoffActive(until, self._get(K_BACKOFF_REASON, "") or "")
         cfg = self.cfg
         if self.downloads_this_run() >= cfg.max_downloads_per_run:
             return LimitReached("downloads_per_run", cfg.max_downloads_per_run)
@@ -483,9 +567,9 @@ class Throttle:
         with self._lock:
             today = self._day_key()
             count = self.downloads_today() + 1
-            self.db.set_state(K_DL_DAY, today)
-            self.db.set_state(K_DL_TODAY, count)
-            self.db.set_state(K_DL_RUN, self.downloads_this_run() + 1)
+            self._set(K_DL_DAY, today)
+            self._set(K_DL_TODAY, count)
+            self._set(K_DL_RUN, self.downloads_this_run() + 1)
 
     def next_download_delay(self) -> float:
         cfg = self.cfg
@@ -505,7 +589,7 @@ class Throttle:
         return {
             "backoff_until": until.isoformat() if until else None,
             "backoff_remaining_s": int(self.backoff_remaining().total_seconds()),
-            "backoff_reason": (self.db.get_state(K_BACKOFF_REASON, "") or "") if until else "",
+            "backoff_reason": (self._get(K_BACKOFF_REASON, "") or "") if until else "",
             "backoff_level": self.backoff_level(),
             "searches_last_hour": self.searches_last_hour(),
             "max_searches_per_hour": cfg.max_searches_per_hour,

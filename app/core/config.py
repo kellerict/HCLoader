@@ -193,6 +193,8 @@ class FilterSettings(_Section):
     match_description: bool = False
     hide_done_ignored: bool = True
     apply_channel_blacklist: bool = True
+    # Phase 7a: hide hits that probably are the same mix already loaded from another platform
+    hide_cross_platform_duplicates: bool = False
 
     _clean = field_validator("include_keywords", "exclude_keywords", mode="before")(_clean_list)
 
@@ -312,6 +314,9 @@ class DownloadSettings(_Section):
     write_cover_jpg: bool = False
     write_cue: bool = True
     write_id3_chapters: bool = True
+    # Phase 7a: SoundCloud mostly streams 128 kbps (MP3) / 160 kbps (AAC); converting to MP3 320
+    # only makes the file bigger. True = keep the original audio (M4A/MP3/Opus) for SoundCloud.
+    keep_original_soundcloud: bool = True
 
     @field_validator("mp3_quality", mode="before")
     @classmethod
@@ -336,7 +341,7 @@ class StorageSettings(_Section):
     @field_validator("path_template")
     @classmethod
     def _template(cls, v: str) -> str:
-        allowed = {"genre", "artist", "channel", "year", "date", "title", "id"}
+        allowed = {"genre", "artist", "channel", "year", "date", "title", "id", "platform"}
         names = set(re.findall(r"\{([^{}]*)\}", v))
         unknown = sorted(names - allowed)
         if unknown:
@@ -389,6 +394,13 @@ class ThrottleSettings(_Section):
         return v
 
 
+class SoundCloudSettings(ThrottleSettings):
+    """Phase 7a: SoundCloud on/off and its own throttle (same cautious defaults as YouTube).
+    Counters and backoff are kept per platform: a 429 from SoundCloud never blocks YouTube."""
+
+    enabled: bool = True
+
+
 class NetworkSettings(_Section):
     po_token_mode: Literal["off", "script", "http"] = "script"
     po_token_port: int = Field(4416, ge=1024, le=65535)
@@ -431,6 +443,7 @@ class Settings(BaseModel):
     storage: StorageSettings = Field(default_factory=StorageSettings)
     throttle: ThrottleSettings = Field(default_factory=ThrottleSettings)
     network: NetworkSettings = Field(default_factory=NetworkSettings)
+    soundcloud: SoundCloudSettings = Field(default_factory=SoundCloudSettings)
     schedule: ScheduleSettings = Field(default_factory=ScheduleSettings)
     appearance: AppearanceSettings = Field(default_factory=AppearanceSettings)
     maintenance: MaintenanceSettings = Field(default_factory=MaintenanceSettings)
@@ -440,6 +453,10 @@ class Settings(BaseModel):
 
     def target_dir_path(self) -> Path:
         return expand_path(self.storage.target_dir)
+
+    def throttle_for(self, platform: str) -> ThrottleSettings:
+        """Throttle limits of a platform (`throttle` = YouTube, `soundcloud` = SoundCloud)."""
+        return self.soundcloud if platform == "soundcloud" else self.throttle
 
 
 SECTION_MODELS: dict[str, type[_Section]] = {
@@ -567,6 +584,7 @@ SECTION_TITLES = {
     "storage": "Ablage & Tags",
     "throttle": "Schonung von YouTube",
     "network": "Netzwerk & PO-Token",
+    "soundcloud": "SoundCloud",
     "schedule": "Zeitplan",
     "appearance": "Darstellung",
     "maintenance": "Wartung",
@@ -589,6 +607,7 @@ COMMENTS = {
     "filters.match_description": "Keywords auch in der Beschreibung suchen (flache Abfragen liefern sie oft nicht)",
     "filters.hide_done_ignored": "Bereits geladene/ignorierte Videos ausblenden",
     "filters.apply_channel_blacklist": "Kanal-Blacklist anwenden",
+    "filters.hide_cross_platform_duplicates": "Vermutlich schon von der anderen Plattform geladene Mixes ausblenden (gleiche Dauer +-5 s, ähnlicher Titel)",
     "genres.items": "Genres in Prioritätsreihenfolge; 'Unsortiert' ist immer vorhanden",
     "download.audio_format": "mp3 oder original (keine Umwandlung)",
     "download.mp3_quality": "MP3-Qualität: 320 (CBR) oder v0 (VBR)",
@@ -596,8 +615,9 @@ COMMENTS = {
     "download.write_cover_jpg": "Zusätzlich cover.jpg neben die Datei legen",
     "download.write_cue": "CUE-Datei aus Kapiteln erzeugen",
     "download.write_id3_chapters": "ID3-Kapitel (CHAP/CTOC) einbetten",
+    "download.keep_original_soundcloud": "SoundCloud: Original behalten (meist 128-160 kbps; MP3 320 bringt nichts)",
     "storage.target_dir": "Zielordner; %USERPROFILE% wird ersetzt; relativ (z.B. .\\Music) = zum App-Ordner, nur Portable-Version",
-    "storage.path_template": "Ordner-/Dateimuster; Platzhalter: genre, artist, channel, year, date, title, id",
+    "storage.path_template": "Ordner-/Dateimuster; Platzhalter: genre, artist, channel, year, date, title, id, platform (id bei SoundCloud: sc-<id>)",
     "storage.max_title_length": "Maximale Titellänge im Dateinamen (20-200)",
     "storage.max_path_length": "Maximale Gesamtpfadlänge (100-259, Windows-Limit)",
     "storage.artist_from_title": "Artist aus dem Titel ableiten (ARTIST @ EVENT / ARTIST - TITEL)",
@@ -616,6 +636,16 @@ COMMENTS = {
     "network.po_token_ttl_hours": "Gültigkeit des PO-Tokens in Stunden",
     "network.cookies_from_browser": "Notlösung: Cookies aus Browser (edge, chrome, firefox, brave); leer = aus",
     "network.proxy": "Optionaler Proxy, z.B. http://127.0.0.1:8080",
+    "soundcloud.enabled": "SoundCloud als zweite Plattform nutzen (Suche, Watchlist, Downloads)",
+    "soundcloud.sleep_requests": "SoundCloud: Pause zwischen Metadaten-Requests in Sekunden (0-60)",
+    "soundcloud.sleep_interval": "SoundCloud: minimale Pause zwischen Downloads in Sekunden",
+    "soundcloud.max_sleep_interval": "SoundCloud: maximale Pause zwischen Downloads (>= minimal)",
+    "soundcloud.limit_rate_mb": "SoundCloud: Download-Tempo in MB/s, 0 = unbegrenzt",
+    "soundcloud.max_downloads_per_run": "SoundCloud: maximale Downloads pro Lauf (1-100)",
+    "soundcloud.max_downloads_per_day": "SoundCloud: maximale Downloads pro Tag (1-500)",
+    "soundcloud.max_searches_per_hour": "SoundCloud: maximale Suchen pro Stunde (1-200)",
+    "soundcloud.backoff_initial_hours": "SoundCloud: Sperrzeit nach HTTP 429 in Stunden (0.5-168)",
+    "soundcloud.backoff_max_hours": "SoundCloud: Obergrenze der Sperrzeit (Verdopplung bis hierhin)",
     "schedule.watchlist_interval_hours": "Prüfintervall der Watchlist in Stunden (1-168)",
     "schedule.in_app_check": "Watchlist auch prüfen, solange die App offen ist",
     "schedule.task_scheduler_enabled": "Windows-Aufgabenplanung nutzen",
@@ -755,11 +785,11 @@ def _repair_section(model: type[_Section], data: Any, name: str, warnings: list[
 
 
 def _normalize(settings: Settings) -> None:
-    t = settings.throttle
-    if t.max_sleep_interval < t.sleep_interval:
-        t.max_sleep_interval = t.sleep_interval
-    if t.backoff_max_hours < t.backoff_initial_hours:
-        t.backoff_max_hours = t.backoff_initial_hours
+    for t in (settings.throttle, settings.soundcloud):
+        if t.max_sleep_interval < t.sleep_interval:
+            t.max_sleep_interval = t.sleep_interval
+        if t.backoff_max_hours < t.backoff_initial_hours:
+            t.backoff_max_hours = t.backoff_initial_hours
 
 
 def load_with_warnings(path: Path | None = None) -> tuple[Settings, list[str]]:

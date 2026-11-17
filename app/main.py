@@ -40,6 +40,9 @@ WINDOW_TITLE = "HCLoader"
 WINDOW_SIZE = (1440, 900)
 WINDOW_MIN_SIZE = (1100, 700)
 WINDOW_BG = "#08080a"
+# Explicit AppUserModelID: the taskbar groups the window under HCLoader (own icon) instead of
+# under pythonw.exe.
+APP_USER_MODEL_ID = "HCLoader.App"
 
 
 # Marker in the user agent: tells bridge.js it runs inside the app (wait for the real API instead
@@ -57,6 +60,23 @@ def ui_url() -> str:
     """`ui/index.html` as plain file URL (no query, see USER_AGENT)."""
     index = Path(__file__).resolve().parents[1] / "ui" / "index.html"
     return index.as_uri()
+
+
+def icon_path() -> Path:
+    """Window/taskbar icon (multi-size ICO, built by scripts/make_icon.py)."""
+    return Path(__file__).resolve().parents[1] / "ui" / "img" / "hcloader.ico"
+
+
+def _set_app_user_model_id() -> None:
+    """Windows only, best effort; must run before the first window is created."""
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_USER_MODEL_ID)  # type: ignore[attr-defined]
+    except Exception:
+        log.debug("AppUserModelID konnte nicht gesetzt werden", exc_info=True)
 
 
 def _bring_to_front(window) -> None:
@@ -142,6 +162,7 @@ def _run_gui() -> int:
         st["bgutil_version"] or "FEHLT",
     )
     api = Api()  # logs config warnings itself
+    _set_app_user_model_id()
     window = webview.create_window(
         WINDOW_TITLE,
         url=ui_url(),
@@ -157,7 +178,9 @@ def _run_gui() -> int:
     api.start()
     try:
         log.info("UI: %s", ui_url())
-        webview.start(user_agent=USER_AGENT)
+        # pywebview (WinForms) sets Form.Icon from this path; a missing file falls back to the
+        # icon of the Python executable
+        webview.start(user_agent=USER_AGENT, icon=str(icon_path()))
     finally:
         # R2-n4: shut the services down first, then stop answering "show" requests; a second
         # start in between finds the (still held) single-instance lock and just exits

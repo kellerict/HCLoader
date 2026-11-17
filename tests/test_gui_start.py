@@ -2,6 +2,7 @@
 
 import sys
 import types
+from pathlib import Path
 
 from app import main as app_main
 from app.api import Api
@@ -49,6 +50,7 @@ def test_run_gui_creates_window_and_wires_api(monkeypatch):
 
     def start(*a, **kw):
         seen["user_agent"] = kw.get("user_agent", "")
+        seen["icon"] = kw.get("icon")
         win = created["window"]
         win.events.loaded.fire()
         # a second start while the window is open brings it to the front
@@ -70,10 +72,32 @@ def test_run_gui_creates_window_and_wires_api(monkeypatch):
     assert created["background_color"] == "#08080a"
     assert created["url"].startswith("file://") and created["url"].endswith("ui/index.html")
     assert "HCLoader-App/" in seen["user_agent"]
+    icon = Path(seen["icon"])
+    assert icon.is_absolute() and icon.is_file() and icon.name == "hcloader.ico"
+    assert icon.read_bytes()[:4] == b"\x00\x00\x01\x00"  # ICONDIR: reserved 0, type 1 (icon)
     assert isinstance(created["js_api"], Api)
     assert seen["activation_file"] is True and seen["activated"] is True
     assert created["window"].actions == ["restore", "show"]
     assert not activation_file().exists()  # cleaned up on exit
+
+
+def test_app_user_model_id_is_set_on_windows(monkeypatch):
+    """Taskbar shows the HCLoader icon instead of the Python one; no-op elsewhere, never fatal."""
+    import ctypes
+
+    calls = []
+    app_main._set_app_user_model_id()  # not Windows: nothing happens
+    monkeypatch.setattr(app_main, "sys", types.SimpleNamespace(platform="win32"))
+    shell32 = types.SimpleNamespace(SetCurrentProcessExplicitAppUserModelID=calls.append)
+    monkeypatch.setattr(ctypes, "windll", types.SimpleNamespace(shell32=shell32), raising=False)
+    app_main._set_app_user_model_id()
+    assert calls == ["HCLoader.App"]
+
+    def broken(app_id):
+        raise OSError("shell32")
+
+    shell32.SetCurrentProcessExplicitAppUserModelID = broken
+    app_main._set_app_user_model_id()  # best effort
 
 
 def test_run_gui_without_pywebview(monkeypatch, capsys):

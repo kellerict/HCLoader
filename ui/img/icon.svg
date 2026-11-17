@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- HCLoader app icon (master, 32-unit grid). Shapes only, no font needed.
+       Small sizes are pixel-hinted by scripts/make_icon.py (same layout, integer pixels). -->
+  <defs>
+    <radialGradient id="haze" cx="0.15" cy="1" r="1">
+      <stop offset="0" stop-color="#ff1f1f" stop-opacity=".34"/>
+      <stop offset=".65" stop-color="#ff1f1f" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="32" height="32" rx="3" fill="#08080a"/>
+  <rect width="32" height="32" rx="3" fill="url(#haze)"/>
+  <rect x=".5" y=".5" width="31" height="31" rx="2.5" fill="none" stroke="#34343d"/>
+  <!-- H -->
+  <path fill="#ececf0" d="M3 4h4v7h3V4h4v18h-4v-7H7v7H3z"/>
+  <!-- C, chamfered -->
+  <path fill="#ff1f1f" d="M20 4h9v4h-7v10h7v4h-9l-2-2V6z"/>
+  <!-- progress bar -->
+  <rect x="3" y="25" width="26" height="3" fill="#2c2c34"/>
+  <rect x="3" y="25" width="18" height="3" fill="#b6ff00"/>
+</svg>
