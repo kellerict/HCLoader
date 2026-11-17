@@ -645,6 +645,7 @@ HC.i18n.register({"code": "hi", "name": "हिन्दी", "dir": "ltr", "int
       "task": "Windows टास्क शेड्यूलर",
       "updates": "अपडेट",
       "app_update": "ऐप अपडेट",
+      "release_notes": "रिलीज़ नोट्स",
       "database": "डेटाबेस",
       "reset": "रीसेट"
     },
@@ -1291,7 +1292,15 @@ HC.i18n.register({"code": "hi", "name": "हिन्दी", "dir": "ltr", "int
     "installed": "इंस्टॉल किया हुआ (सेटअप)",
     "git": "Git चेकआउट",
     "from_repo": "{repo} से (आधिकारिक स्रोत नहीं)",
-    "unverified": "चेकसम के बिना (केवल ZIP की अखंडता सत्यापित)"
+    "unverified": "चेकसम के बिना (केवल ZIP की अखंडता सत्यापित)",
+    "rn_label": "रिलीज़ नोट्स",
+    "rn_help": "हर संस्करण में क्या बदला – इस कॉपी के साथ आए नोट्स से (ऑफ़लाइन भी चलता है)।",
+    "rn_older": "पुराना",
+    "rn_newer": "नया",
+    "rn_pos": "{n} में से {i}",
+    "rn_installed": "इंस्टॉल किया गया",
+    "rn_empty": "कोई रिलीज़ नोट्स नहीं मिले।",
+    "rn_version": "संस्करण"
   },
   "err": {
     "generic": "अज्ञात त्रुटि",

@@ -625,6 +625,7 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
    "task": "Penjadwal Tugas Windows",
    "updates": "Pembaruan",
    "app_update": "Pembaruan aplikasi",
+   "release_notes": "Catatan rilis",
    "database": "Basis data",
    "reset": "Setel ulang"
   },
@@ -1261,7 +1262,15 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
   "installed": "Terpasang (setup)",
   "git": "Checkout Git",
   "from_repo": "dari {repo} (bukan sumber resmi)",
-  "unverified": "tanpa checksum (hanya integritas ZIP yang diverifikasi)"
+  "unverified": "tanpa checksum (hanya integritas ZIP yang diverifikasi)",
+  "rn_label": "Catatan rilis",
+  "rn_help": "Apa yang berubah di setiap versi, dari catatan yang disertakan (berfungsi offline).",
+  "rn_older": "Lebih lama",
+  "rn_newer": "Lebih baru",
+  "rn_pos": "{i} dari {n}",
+  "rn_installed": "terpasang",
+  "rn_empty": "Catatan rilis tidak ditemukan.",
+  "rn_version": "Versi"
  },
  "err": {
   "generic": "Galat tidak diketahui",

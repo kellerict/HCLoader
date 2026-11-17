@@ -645,6 +645,7 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
       "task": "Windows Aktivitetshanteraren",
       "updates": "Uppdateringar",
       "app_update": "Appuppdatering",
+      "release_notes": "Versionsinformation",
       "database": "Databas",
       "reset": "Återställning"
     },
@@ -1291,7 +1292,15 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "installed": "Installerad (setup)",
     "git": "Git-checkout",
     "from_repo": "från {repo} (inte den officiella källan)",
-    "unverified": "utan kontrollsumma (bara ZIP-integriteten verifierad)"
+    "unverified": "utan kontrollsumma (bara ZIP-integriteten verifierad)",
+    "rn_label": "Versionsinformation",
+    "rn_help": "Vad som ändrats i varje version, från anteckningarna som följer med (fungerar offline).",
+    "rn_older": "Äldre",
+    "rn_newer": "Nyare",
+    "rn_pos": "{i} av {n}",
+    "rn_installed": "installerad",
+    "rn_empty": "Ingen versionsinformation hittades.",
+    "rn_version": "Version"
   },
   "err": {
     "generic": "Okänt fel",

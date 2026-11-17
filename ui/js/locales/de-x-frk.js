@@ -645,6 +645,7 @@ HC.i18n.register({"code": "de-x-frk", "name": "Fränggisch", "dir": "ltr", "intl
       "task": "Windows-Aufgabnplanung",
       "updates": "Updates",
       "app_update": "App-Update",
+      "release_notes": "Versionshinweise",
       "database": "Dadenbank",
       "reset": "Zurücksetzn"
     },
@@ -1291,7 +1292,15 @@ HC.i18n.register({"code": "de-x-frk", "name": "Fränggisch", "dir": "ltr", "intl
     "installed": "Installierd (Setup)",
     "git": "Git-Checkout",
     "from_repo": "aus {repo} (ned die offizielle Quelln)",
-    "unverified": "ohne Prüfsumme (bloss ZIP-Integrität gprüft)"
+    "unverified": "ohne Prüfsumme (bloss ZIP-Integrität gprüft)",
+    "rn_label": "Versionshinweise",
+    "rn_help": "Was sich in jeder Version gändert hat – aus den mitgliefertn Notizn (aa offline).",
+    "rn_older": "Älter",
+    "rn_newer": "Neuer",
+    "rn_pos": "{i} vo {n}",
+    "rn_installed": "installiert",
+    "rn_empty": "Ka Versionshinweise gfundn.",
+    "rn_version": "Version"
   },
   "err": {
     "generic": "Unbekannder Fehler",

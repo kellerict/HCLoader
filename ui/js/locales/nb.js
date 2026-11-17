@@ -645,6 +645,7 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
       "task": "Windows Oppgaveplanlegger",
       "updates": "Oppdateringer",
       "app_update": "Appoppdatering",
+      "release_notes": "Versjonsnotater",
       "database": "Database",
       "reset": "Tilbakestilling"
     },
@@ -1291,7 +1292,15 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "installed": "Installert (setup)",
     "git": "Git-utsjekk",
     "from_repo": "fra {repo} (ikke den offisielle kilden)",
-    "unverified": "uten kontrollsum (bare ZIP-integriteten er verifisert)"
+    "unverified": "uten kontrollsum (bare ZIP-integriteten er verifisert)",
+    "rn_label": "Versjonsnotater",
+    "rn_help": "Hva som er endret i hver versjon, fra notatene som følger med (virker også uten nett).",
+    "rn_older": "Eldre",
+    "rn_newer": "Nyere",
+    "rn_pos": "{i} av {n}",
+    "rn_installed": "installert",
+    "rn_empty": "Fant ingen versjonsnotater.",
+    "rn_version": "Versjon"
   },
   "err": {
     "generic": "Ukjent feil",

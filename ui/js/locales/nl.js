@@ -645,6 +645,7 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
    "task": "Windows-taakplanner",
    "updates": "Updates",
    "app_update": "App-update",
+   "release_notes": "Release-opmerkingen",
    "database": "Database",
    "reset": "Herstellen"
   },
@@ -1291,7 +1292,15 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
   "installed": "Geïnstalleerd (setup)",
   "git": "Git-checkout",
   "from_repo": "van {repo} (niet de officiële bron)",
-  "unverified": "zonder controlesom (alleen ZIP-integriteit gecontroleerd)"
+  "unverified": "zonder controlesom (alleen ZIP-integriteit gecontroleerd)",
+  "rn_label": "Release-opmerkingen",
+  "rn_help": "Wat er in elke versie veranderd is, uit de meegeleverde opmerkingen (werkt ook offline).",
+  "rn_older": "Ouder",
+  "rn_newer": "Nieuwer",
+  "rn_pos": "{i} van {n}",
+  "rn_installed": "geïnstalleerd",
+  "rn_empty": "Geen release-opmerkingen gevonden.",
+  "rn_version": "Versie"
  },
  "err": {
   "generic": "Onbekende fout",

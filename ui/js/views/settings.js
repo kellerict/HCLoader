@@ -152,6 +152,8 @@
       { k: 'maintenance.check_app_updates_on_start', type: 'bool' },
       { k: 'maintenance.apply_update_on_exit', type: 'bool' },
       { k: 'maintenance.update_repo', type: 'text', mono: true },
+      { h: 'set.h.release_notes' },
+      { custom: 'releaseNotes' },
       { h: 'set.h.updates' },
       { custom: 'update' },
       { k: 'maintenance.check_updates_on_start', type: 'bool' },
@@ -610,6 +612,8 @@
     },
     /* App-Update (Selbst-Update): Inhalt und Logik in js/updater.js */
     appUpdate(host) { if (HC.updater) HC.updater.section(host); },
+    /* Versionshinweise aus der CHANGELOG.md der App (js/updater.js) */
+    releaseNotes(host) { if (HC.updater) HC.updater.historySection(host); },
     update(host) {
       const head = () => {
         const u = cache.update;

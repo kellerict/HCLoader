@@ -645,6 +645,7 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
       "task": "Agendador de Tarefas do Windows",
       "updates": "Atualizações",
       "app_update": "Atualização do app",
+      "release_notes": "Notas de versão",
       "database": "Banco de dados",
       "reset": "Redefinir"
     },
@@ -1291,7 +1292,15 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "installed": "Instalada (setup)",
     "git": "Checkout do Git",
     "from_repo": "de {repo} (não é a fonte oficial)",
-    "unverified": "sem checksum (só a integridade do ZIP foi verificada)"
+    "unverified": "sem checksum (só a integridade do ZIP foi verificada)",
+    "rn_label": "Notas de versão",
+    "rn_help": "O que mudou em cada versão, a partir das notas incluídas nesta cópia (funciona offline).",
+    "rn_older": "Anterior",
+    "rn_newer": "Mais recente",
+    "rn_pos": "{i} de {n}",
+    "rn_installed": "instalada",
+    "rn_empty": "Nenhuma nota de versão encontrada.",
+    "rn_version": "Versão"
   },
   "err": {
     "generic": "Erro desconhecido",

@@ -645,6 +645,7 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
       "task": "Windows-Aufgabenplanung",
       "updates": "Updates",
       "app_update": "App-Update",
+      "release_notes": "Versionshinweise",
       "database": "Datenbank",
       "reset": "Zurücksetzen"
     },
@@ -1291,7 +1292,15 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "installed": "Installiert (Setup)",
     "git": "Git-Checkout",
     "from_repo": "aus {repo} (nicht die offizielle Quelle)",
-    "unverified": "ohne Prüfsumme (nur ZIP-Integrität geprüft)"
+    "unverified": "ohne Prüfsumme (nur ZIP-Integrität geprüft)",
+    "rn_label": "Versionshinweise",
+    "rn_help": "Was sich in jeder Version geändert hat – aus den mitgelieferten Notizen (auch offline).",
+    "rn_older": "Älter",
+    "rn_newer": "Neuer",
+    "rn_pos": "{i} von {n}",
+    "rn_installed": "installiert",
+    "rn_empty": "Keine Versionshinweise gefunden.",
+    "rn_version": "Version"
   },
   "err": {
     "generic": "Unbekannter Fehler",

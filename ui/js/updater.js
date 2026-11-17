@@ -7,6 +7,8 @@
    - Änderungen (Release-Notizen, Markdown): Dialog mit den Highlights je Version, «Alle Änderungen
      anzeigen» klappt die vollständigen Notizen auf (js/markdown.js, alles escaped; Styles in components.css).
    - Abschnitt «App-Update» im Wartung-Tab (HC.updater.section(host), aus views/settings.js).
+   - Abschnitt «Versionshinweise» im Wartung-Tab (HC.updater.historySection(host)): alle Versionen aus der
+     CHANGELOG.md der App (get_release_notes, offline), blättern ‹ Älter / Neuer ›, installierte markiert.
    Die Prüfung beim Start macht das Backend (Setting maintenance.check_app_updates_on_start);
    heruntergeladen wird erst nach einem Klick. Events: update (UpdateStatus), update_progress.
    ===================================================================== */
@@ -47,6 +49,12 @@
 .upd-x:hover{color:var(--text)}
 .upd-kv{display:flex;flex-wrap:wrap;gap:6px 18px;font:12px var(--f-mono);color:var(--muted);margin:8px 0 2px}
 .upd-kv b{color:var(--text);font-weight:600}
+.fc-main.upd-rn{flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:10px;min-width:0;width:100%}
+.upd-rn>.upd-notes,.upd-rn>.upd-notes-foot{width:100%}
+.upd-rn-nav{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.upd-rn-nav .select{width:auto;min-width:9em}
+.upd-rn-pos{color:var(--muted);font:12px var(--f-mono)}
+.upd-notes.upd-history{max-height:min(48vh,460px);margin-top:0}
 @media (prefers-reduced-motion:reduce){.upd-banner{transition:none}}
 `;
   function injectCss() {
@@ -273,6 +281,73 @@
     if (!st) refresh();
   }
 
+  /* ---------- Versionshinweise im Wartung-Tab (CHANGELOG.md der App, offline) ---------- */
+  /** Eine Version wie im Notizen-Dialog: Highlights, «Alle Änderungen» klappt alles auf. */
+  function historyRelHtml(r, current) {
+    const blocks = HC.md.parse(r.notes);
+    const sum = HC.md.summary(blocks, 8);
+    const empty = `<p class="upd-none">${esc(t('upd.notes_empty'))}</p>`;
+    const date = r.date ? `<span class="upd-date">${esc(util.fmtDate(r.date))}</span>` : '';
+    const mine = current && r.version === current ? `<span class="upd-cur">${esc(t('upd.rn_installed'))}</span>` : '';
+    const head = `<div class="upd-rel-head"><span class="upd-ver">v${esc(r.version)}</span>${date}${mine}</div>`;
+    const toggle = sum && sum.partial ? `<button type="button" class="btn sm ghost upd-toggle" data-rn-toggle aria-expanded="false"><span class="upd-chev" aria-hidden="true"></span><span data-rn-toggle-label>${esc(t('upd.notes_all'))}</span></button>` : '';
+    return `<div class="upd-notes upd-history" tabindex="0" data-rn-box><section class="upd-rel">${head}<div class="md upd-sum">${sum ? sum.html : empty}</div><div class="md upd-full">${blocks.length ? HC.md.render(blocks) : empty}</div></section></div>${toggle ? `<div class="upd-notes-foot">${toggle}</div>` : ''}`;
+  }
+  /** Abschnitt «Versionshinweise»: blättern mit ‹ Älter / Neuer ›, Auswahlliste, «x von n». */
+  function historySection(host) {
+    injectCss();
+    const view = { list: null, current: '', i: 0 };
+    const paintHistory = () => {
+      if (!host.isConnected) return;
+      const list = view.list;
+      let body;
+      if (list == null) body = `<span class="spinner"></span>`;
+      else if (!list.length) body = `<p class="upd-none">${esc(t('upd.rn_empty'))}</p>`;
+      else {
+        const n = list.length, i = view.i, r = list[i];
+        const opts = list.map((x, k) => `<option value="${k}"${k === i ? ' selected' : ''}>v${esc(x.version)}${x.version === view.current ? ` · ${esc(t('upd.rn_installed'))}` : ''}</option>`).join('');
+        body = `<div class="upd-rn-nav">
+            <button type="button" class="btn sm ghost" data-rn="older"${i >= n - 1 ? ' disabled' : ''}>‹ ${esc(t('upd.rn_older'))}</button>
+            <select class="select" data-rn-pick aria-label="${esc(t('upd.rn_version'))}">${opts}</select>
+            <span class="upd-rn-pos">${esc(t('upd.rn_pos', { i: i + 1, n }))}</span>
+            <button type="button" class="btn sm ghost" data-rn="newer"${i <= 0 ? ' disabled' : ''}>${esc(t('upd.rn_newer'))} ›</button>
+          </div>${historyRelHtml(r, view.current)}`;
+      }
+      host.innerHTML = `<div class="field plain"><div class="fl"><b>${esc(t('upd.rn_label'))}</b><span class="help">${esc(t('upd.rn_help'))}</span></div>
+        <div class="fc"><div class="fc-main upd-rn">${body}</div></div></div>`;
+    };
+    const go = (i) => {
+      if (!view.list || i < 0 || i >= view.list.length || i === view.i) return;
+      view.i = i;
+      paintHistory();
+    };
+    host.addEventListener('click', (e) => {
+      const nav = e.target.closest('[data-rn]');
+      if (nav) { go(view.i + (nav.dataset.rn === 'older' ? 1 : -1)); return; }
+      const btn = e.target.closest('[data-rn-toggle]');
+      if (!btn) return;
+      const box = host.querySelector('[data-rn-box]');
+      const all = !box.classList.contains('all');
+      box.classList.toggle('all', all);
+      btn.setAttribute('aria-expanded', String(all));
+      btn.querySelector('[data-rn-toggle-label]').textContent = t(all ? 'upd.notes_less' : 'upd.notes_all');
+      box.scrollTop = 0;
+    });
+    host.addEventListener('change', (e) => {
+      if (e.target.matches('[data-rn-pick]')) go(parseInt(e.target.value, 10) || 0);
+    });
+    paintHistory();
+    HC.bridge.safe('get_release_notes').then((r) => {
+      const list = (r && Array.isArray(r.releases) ? r.releases : []).filter((x) => x && x.version)
+        .map((x) => ({ version: String(x.version).replace(/^v/i, ''), date: x.date || null, notes: String(x.notes || '') }));
+      view.list = list;
+      view.current = String((r && r.current) || '').replace(/^v/i, '');
+      const mine = list.findIndex((x) => x.version === view.current);
+      view.i = mine >= 0 ? mine : 0; // installierte Version zuerst, sonst die neueste
+      paintHistory();
+    });
+  }
+
   /* ---------- Zustand ---------- */
   function paint() {
     paintBanner();
@@ -306,7 +381,7 @@
     });
   }
 
-  HC.updater = { init, section, refresh, notesHtml, status: () => st };
+  HC.updater = { init, section, historySection, refresh, notesHtml, status: () => st };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
 })();

@@ -645,6 +645,7 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
       "task": "Planificateur de tâches Windows",
       "updates": "Mises à jour",
       "app_update": "Mise à jour de l’app",
+      "release_notes": "Notes de version",
       "database": "Base de données",
       "reset": "Réinitialisation"
     },
@@ -1291,7 +1292,15 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
     "installed": "Installée (setup)",
     "git": "Dépôt Git",
     "from_repo": "depuis {repo} (pas la source officielle)",
-    "unverified": "sans somme de contrôle (seule l’intégrité du ZIP est vérifiée)"
+    "unverified": "sans somme de contrôle (seule l’intégrité du ZIP est vérifiée)",
+    "rn_label": "Notes de version",
+    "rn_help": "Ce qui a changé dans chaque version, d’après les notes fournies avec cette copie (fonctionne hors ligne).",
+    "rn_older": "Plus ancienne",
+    "rn_newer": "Plus récente",
+    "rn_pos": "{i} sur {n}",
+    "rn_installed": "installée",
+    "rn_empty": "Aucune note de version trouvée.",
+    "rn_version": "Version"
   },
   "err": {
     "generic": "Erreur inconnue",

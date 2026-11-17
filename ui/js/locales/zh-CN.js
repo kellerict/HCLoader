@@ -625,6 +625,7 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
       "task": "Windows 任务计划程序",
       "updates": "更新",
       "app_update": "应用更新",
+      "release_notes": "版本说明",
       "database": "数据库",
       "reset": "重置"
     },
@@ -1261,7 +1262,15 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "installed": "已安装（安装程序）",
     "git": "Git 检出",
     "from_repo": "来自 {repo}（非官方来源）",
-    "unverified": "无校验和（仅校验了 ZIP 完整性）"
+    "unverified": "无校验和（仅校验了 ZIP 完整性）",
+    "rn_label": "版本说明",
+    "rn_help": "每个版本的变更，来自随附的说明（离线可用）。",
+    "rn_older": "较旧",
+    "rn_newer": "较新",
+    "rn_pos": "第 {i} / {n} 个",
+    "rn_installed": "已安装",
+    "rn_empty": "未找到版本说明。",
+    "rn_version": "版本"
   },
   "err": {
     "generic": "未知错误",

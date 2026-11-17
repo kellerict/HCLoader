@@ -645,6 +645,7 @@ HC.i18n.register({"code": "bn", "name": "বাংলা", "dir": "ltr", "intl":
       "task": "Windows টাস্ক শিডিউলার",
       "updates": "আপডেট",
       "app_update": "অ্যাপ আপডেট",
+      "release_notes": "রিলিজ নোট",
       "database": "ডাটাবেস",
       "reset": "রিসেট"
     },
@@ -1291,7 +1292,15 @@ HC.i18n.register({"code": "bn", "name": "বাংলা", "dir": "ltr", "intl":
     "installed": "ইনস্টল করা (সেটআপ)",
     "git": "Git চেকআউট",
     "from_repo": "{repo} থেকে (অফিসিয়াল উৎস নয়)",
-    "unverified": "চেকসাম ছাড়া (শুধু ZIP-এর অখণ্ডতা যাচাই হয়েছে)"
+    "unverified": "চেকসাম ছাড়া (শুধু ZIP-এর অখণ্ডতা যাচাই হয়েছে)",
+    "rn_label": "রিলিজ নোট",
+    "rn_help": "প্রতিটি সংস্করণে কী বদলেছে – এই কপির সাথে দেওয়া নোট থেকে (অফলাইনেও চলে)।",
+    "rn_older": "পুরোনো",
+    "rn_newer": "নতুন",
+    "rn_pos": "{n}-এর মধ্যে {i}",
+    "rn_installed": "ইনস্টল করা",
+    "rn_empty": "কোনো রিলিজ নোট পাওয়া যায়নি।",
+    "rn_version": "সংস্করণ"
   },
   "err": {
     "generic": "অজানা ত্রুটি",

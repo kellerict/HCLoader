@@ -685,6 +685,7 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
       "task": "„Windows“ užduočių planuoklis",
       "updates": "Naujinimai",
       "app_update": "Programos naujinimas",
+      "release_notes": "Leidimo pastabos",
       "database": "Duomenų bazė",
       "reset": "Atstatymas"
     },
@@ -1351,7 +1352,15 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "installed": "Įdiegta (setup)",
     "git": "Git kopija",
     "from_repo": "iš {repo} (ne oficialus šaltinis)",
-    "unverified": "be kontrolinės sumos (patikrintas tik ZIP vientisumas)"
+    "unverified": "be kontrolinės sumos (patikrintas tik ZIP vientisumas)",
+    "rn_label": "Leidimo pastabos",
+    "rn_help": "Kas pasikeitė kiekvienoje versijoje – iš kartu pateiktų pastabų (veikia ir be ryšio).",
+    "rn_older": "Senesnė",
+    "rn_newer": "Naujesnė",
+    "rn_pos": "{i} iš {n}",
+    "rn_installed": "įdiegta",
+    "rn_empty": "Leidimo pastabų nerasta.",
+    "rn_version": "Versija"
   },
   "err": {
     "generic": "Nežinoma klaida",

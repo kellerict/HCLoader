@@ -665,6 +665,7 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
       "task": "Windows uzdevumu plānotājs",
       "updates": "Atjauninājumi",
       "app_update": "Lietotnes atjauninājums",
+      "release_notes": "Laidiena piezīmes",
       "database": "Datubāze",
       "reset": "Atiestatīšana"
     },
@@ -1321,7 +1322,15 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "installed": "Instalēta (setup)",
     "git": "Git izgūšana",
     "from_repo": "no {repo} (nav oficiālais avots)",
-    "unverified": "bez kontrolsummas (pārbaudīta tikai ZIP integritāte)"
+    "unverified": "bez kontrolsummas (pārbaudīta tikai ZIP integritāte)",
+    "rn_label": "Laidiena piezīmes",
+    "rn_help": "Kas mainījās katrā versijā – no līdzi piegādātajām piezīmēm (darbojas arī bezsaistē).",
+    "rn_older": "Vecāka",
+    "rn_newer": "Jaunāka",
+    "rn_pos": "{i} no {n}",
+    "rn_installed": "instalēta",
+    "rn_empty": "Laidiena piezīmes nav atrastas.",
+    "rn_version": "Versija"
   },
   "err": {
     "generic": "Nezināma kļūda",
