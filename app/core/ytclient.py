@@ -238,6 +238,11 @@ def is_preview_entry(entry: Mapping[str, Any]) -> bool:
     return str(entry.get("sc_policy") or "").upper() == "SNIP"
 
 
+def is_geo_blocked_entry(entry: Mapping[str, Any]) -> bool:
+    """SoundCloud track not available in this region: API policy BLOCK (Review M1)."""
+    return str(entry.get("sc_policy") or "").upper() == "BLOCK"
+
+
 def normalize_entry(entry: Mapping[str, Any], platform: str = YOUTUBE) -> dict[str, Any]:
     """Map a yt-dlp info/entry dict to the fields HCLoader uses (see SPEC §9).
     `id` is the DB id (SoundCloud: `sc:<id>`), `channel_id` too (`sc:<user id>`)."""
@@ -271,6 +276,7 @@ def normalize_entry(entry: Mapping[str, Any], platform: str = YOUTUBE) -> dict[s
         "url": url,
         "live_status": entry.get("live_status"),
         "preview": False,
+        "geo_blocked": False,
     }
 
 
@@ -305,6 +311,7 @@ def _normalize_sc(entry: Mapping[str, Any]) -> dict[str, Any]:
         "url": url,
         "live_status": None,
         "preview": is_preview_entry(entry),
+        "geo_blocked": is_geo_blocked_entry(entry),
     }
 
 
@@ -334,11 +341,12 @@ class _YdlLogger:
     carries on with other clients, so the caller starts the backoff afterwards (`rate_limit_hit`).
     """
 
-    def __init__(self) -> None:
+    def __init__(self, platform: str = YOUTUBE) -> None:
         self.rate_limit_hit: str | None = None
+        self.platform = platform
 
     def _watch(self, msg: str) -> None:
-        if self.rate_limit_hit is None and is_rate_limit_error(msg):
+        if self.rate_limit_hit is None and is_rate_limit_error(msg, self.platform):
             self.rate_limit_hit = _clean_error(Exception(msg))[:200]
 
     def debug(self, msg: str) -> None:
@@ -399,7 +407,7 @@ def build_ydl_opts(
         "quiet": True,
         "no_warnings": False,
         "noprogress": True,
-        "logger": logger if logger is not None else _YdlLogger(),
+        "logger": logger if logger is not None else _YdlLogger(platform),
         "socket_timeout": 30,
         "retries": 0,
         "fragment_retries": 0,
@@ -427,7 +435,10 @@ def build_ydl_opts(
         opts["lazy_playlist"] = True
     elif purpose == "resolve":
         opts["skip_download"] = True
-        opts["extractor_retries"] = 1
+        # YouTube: one extractor retry for transient player errors. SoundCloud: the
+        # RetryManager in `SoundcloudIE._real_extract` retries exactly on 429 and without
+        # `retry_sleep`, i.e. a second request right after the rate limit (Review m4) -> 0.
+        opts["extractor_retries"] = 0 if platform == SOUNDCLOUD else 1
     else:
         _download_opts(opts, settings, target_dir, platform)
         if progress_hook:
@@ -1004,7 +1015,7 @@ class YtClient:
                     if not reached["network"]:
                         raise
                     msg = str(exc)
-                    if is_rate_limit_error(msg) or _HTTP_403_RE.search(msg):
+                    if is_rate_limit_error(msg, platform) or _HTTP_403_RE.search(msg):
                         raise
                     if attempt < 1 and _NETWORK_RE.search(msg):
                         attempt += 1

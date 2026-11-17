@@ -49,10 +49,25 @@ _RATE_LIMIT_PATTERNS = [
 ]
 
 
-def is_rate_limit_error(message: object) -> bool:
-    """True for HTTP 429 / 'confirm you're not a bot' style YouTube errors."""
+# Review M3: SoundCloud blocks bots (Datadome) with HTTP 403, rarely with 429. yt-dlp's
+# `SoundcloudBaseIE._call_api` answers the first 401/403 itself by fetching a new client_id
+# and repeating the call once; a 403 that still reaches us from a SoundCloud extractor
+# (`[soundcloud]`, `[soundcloud:search]`, `[soundcloud:user]`, ...) is therefore the second
+# one in a row = bot check. Deliberately narrow: 404 (track deleted), 401 (private) and a
+# 403 of the media CDN (expired signed URL, no extractor prefix) never match.
+_SC_BLOCK_PATTERNS = [
+    re.compile(r"\[soundcloud(?::[\w:-]+)?\][^\n]*http error 403", re.I),
+    re.compile(r"captcha-delivery|\bdatadome\b", re.I),
+]
+
+
+def is_rate_limit_error(message: object, platform: str = "youtube") -> bool:
+    """True for HTTP 429 / 'confirm you're not a bot' style errors; for `platform`
+    'soundcloud' also a SoundCloud API 403 after the client_id refresh (Datadome)."""
     text = str(message or "")
-    return any(p.search(text) for p in _RATE_LIMIT_PATTERNS)
+    if any(p.search(text) for p in _RATE_LIMIT_PATTERNS):
+        return True
+    return platform == "soundcloud" and any(p.search(text) for p in _SC_BLOCK_PATTERNS)
 
 
 class ThrottleError(Exception):
@@ -273,8 +288,9 @@ class Throttle:
             return until
 
     def handle_error(self, message: object) -> bool:
-        """Trigger backoff if `message` looks like a 429/bot-check. Returns True if it did."""
-        if is_rate_limit_error(message):
+        """Trigger backoff if `message` looks like a 429/bot-check of this platform. Returns
+        True if it did."""
+        if is_rate_limit_error(message, self.platform_name):
             self.trigger_backoff(str(message)[:200])
             return True
         return False
