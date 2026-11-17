@@ -2,6 +2,7 @@
 
 What is planned for HCLoader after the first public release. The order may change – ideas and
 feedback are welcome in [Issues](https://github.com/kellerict/HCLoader/issues).
+Progress per version is tracked in the [milestones](https://github.com/kellerict/HCLoader/milestones).
 
 ![Roadmap timeline: v0.1 released, v0.2 in progress, v0.3 to v0.10 planned](images/roadmap.svg)
 
@@ -17,6 +18,16 @@ feedback are welcome in [Issues](https://github.com/kellerict/HCLoader/issues).
 | **v0.8.0** | 🗓️&nbsp;Planned | **Playlist export** (M3U per festival, genre or DJ) · **DJ pages** with aliases |
 | **v0.9.0** | 🗓️&nbsp;Planned | **Statistics** · Windows notifications for new sets · Plex/Jellyfin library scan after downloads |
 | **v0.10.0** | 🗓️&nbsp;Planned | **Re-upload detection** via audio fingerprint · more sources: Mixcloud, hearthis.at, archive.org |
+
+## Any time
+
+Not tied to a version – ships when it is ready.
+
+| Milestone | Status | Planned |
+|---|---|---|
+| **Signed installer** | 🗓️&nbsp;Planned | Code signing certificate for open source (for example SignPath Foundation), signing in the release workflow – no more SmartScreen warning |
+
+➡️ **[Milestones and issues on GitHub](https://github.com/kellerict/HCLoader/milestones)**
 
 > 🛡️ **Same principles, every release** – gentle on YouTube (one central throttle, sequential
 > downloads, automatic backoff), cheap before expensive, never download twice, everything
