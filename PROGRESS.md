@@ -51,6 +51,10 @@ Phase 6 – Portable (User-Wunsch, Variante 2: komplett portable)
 - Aufgabenplanung: Pfad ändert sich beim Verschieben → App erkennt veränderten Pfad und bietet an, die Aufgabe neu anzulegen.
 - `scripts/build_portable.ps1` + GitHub-Actions-Job (windows-latest), der ein fertiges Portable-ZIP als Artefakt baut (deno, ffmpeg, bgutil inklusive; Lizenzen beilegen).
 
+## Geplant für v0.2.0
+- **Watchlist: «Alles einlesen (einmalig)» pro Quelle** (User-Wunsch): Kanal/Playlist/SoundCloud-Künstler seitenweise vollständig lesen (Throttle, Pausen), Obergrenze einstellbar (~2000), fortsetzbar nach Backoff/Neustart/Abbruch (Cursor in state), Ziel immer Eingang (auch bei Auto-Download), Fortschritt an der Quelle («Liest ein … 240 / ~500»), Bestätigungsdialog mit geschätzter Anzahl Anfragen. Suchquellen bleiben bei 100.
+- Phase 7b: Mixcloud + hearthis.at (Watchlist); 7c: archive.org (optional)
+
 ## Blockiert
 - **GitHub Actions**: seit 16:16 starten alle Jobs nicht (Abbruch nach ~2 s, ohne Log) – vermutlich Actions-Minuten aufgebraucht (privates Repo, Windows ×2; ~20 Läufe hingen je ~1 h wegen MessageBox-Hänger). User prüft Settings → Billing. Danach: CI-Lauf auswerten (ein Windows-Test war rot, Name unbekannt; CI jetzt mit `pytest -v`), Portable-Workflow per workflow_dispatch starten, Artefakt prüfen.
 - Smoke-Test (echter Download) – siehe Vorbedingungen.
