@@ -1045,3 +1045,22 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
   `workflow_dispatch` auf einem Branch released nie. `contents: write` nur im Job `release`.
   **Grund:** Mit `GITHUB_TOKEN` erstellte Tags lösen keinen weiteren Workflow aus; der CHANGELOG-Abschnitt
   ist das bewusste Freigabesignal, damit gewöhnliche Pushes auf `main` nie ein Release erzeugen.
+
+## 2026-11-17 – Review v0.2.0: Nachträge (Plural, Backoff-Dedup, Installer-Upgrade, nl-BE)
+
+- **Entscheid:** (1) Die Plural-Kategorie richtet sich in UI und Backend nach dem Katalog, aus dem der
+  Text tatsächlich stammt (Fallback `nl`/`de`/`en`), nicht nach der aktiven Sprache. (2) Der Headless-Lauf
+  erkennt einen bereits notierten Backoff über den stabilen Block-Code (`DownloadQueue.blocked()[0]`,
+  `last_session["note_code"]`, `WatchlistResult.backoff`), nie über den übersetzten Text. (3) Existiert
+  `{userappdata}\HCLoader\config.yaml`, blendet der Installer die Update-Checkbox aus und zeigt stattdessen
+  einen Hinweis (en/de; übrige Installer-Sprachen erben den englischen Text).
+  **Grund:** (1)/(2) sprachunabhängiges Verhalten; (3) die Checkbox wäre wirkungslos, weil `config.yaml`
+  immer Vorrang hat – Ausblenden ist einfacher und robuster als eine zweite Wahrheit.
+- **Entscheid:** `nl-BE` («Vlaams (België)») ist eine regionale Variante mit `meta.fallback: "nl"` und
+  enthält nur Schlüssel, deren belgischer Wortlaut abweicht (u-Form, «enkel», «bewaren», «bv.» …).
+  Anders als `-x-`-Dialekte wählt `auto` sie: `nl-BE`/`nl-Latn-BE`/`Dutch_Belgium` → `nl-BE`, übrige
+  `nl-*` → `nl`. Paritätstests erlauben unvollständige Kataloge für Sprachen mit `meta.fallback`.
+  **Grund:** echte Landesvariante statt Spass-Dialekt; Teil-Katalog vermeidet 900 Duplikate.
+- **Entscheid:** Zahl-Parameter formatiert nur die UI lokal (`Intl`, z. B. bengalische Ziffern in `bn`);
+  Backend-Meldungen setzen Zahlen unformatiert (lateinische Ziffern) ein. **Grund:** funktional
+  harmlos; eine zweite Zahlenformatierung in Python (ohne ICU) wäre Aufwand ohne Nutzen (Review v0.2.0 m10).
