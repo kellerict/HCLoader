@@ -1120,3 +1120,14 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
   Download- oder Such-Thread, sendet `festival_assign` alle 25 Einträge und ist abbrechbar. Er taggt
   keine Dateien neu. **Grund:** rein lokal (DB + Sidecar), kollidiert so nicht mit Update/Backup;
   Dateien bewegen sich nur auf ausdrücklichen Wunsch (Konzept «Out of scope»).
+- **2026-11-17 – Entscheid (Review v0.3.0 M1):** Erkennung aus flachen Quellen (Suche, Watchlist,
+  `detect_and_store(..., flat=True)`) überspringt Einträge mit Status queued/downloading/done und ersetzt
+  eine bestehende Zuordnung/Vorschlag nie durch ein schwächeres oder leeres Ergebnis. **Grund:** flache
+  Listen liefern fast nie die Beschreibung; Zuordnungen aus Download und «Festivals zuordnen» sind
+  stärker, DB und Datei-Tags dürfen nicht auseinanderlaufen.
+- **2026-11-17 – Entscheid (Review v0.3.0 m1/m2/m5):** An/Aus einer Serie läuft über eigene Methode
+  `set_series_enabled` und ist keine Inhaltsänderung (mitgelieferte Serien erhalten weiter Updates);
+  `save_series` vergleicht normalisiert. Der Durchlauf schreibt in Transaktionen à 200 Zeilen, lädt den
+  Katalog pro Block neu und behandelt eine inzwischen gelöschte/ausgeblendete Serie als «keine
+  Erkennung». **Grund:** kein Einfrieren durch blosses Umschalten, kein Abbruch durch FK-Fehler, weniger
+  fsyncs auf HDD/NAS.

@@ -78,7 +78,7 @@ series:
   - key: rebirth
     name: Rebirth Festival
     kind: festival
-    aliases: [Rebirth Festival, REBiRTH Festival]
+    aliases: [Rebirth Festival]
     weak_aliases: [Rebirth]
   - key: intents
     name: Intents Festival

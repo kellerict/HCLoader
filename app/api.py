@@ -1269,6 +1269,14 @@ class Api:
         log.info(tr("festival.series_saved", name=saved["name"]))
         return {"ok": True, "series": saved}
 
+    def set_series_enabled(self, series_id: int, enabled: bool) -> dict[str, Any]:
+        """On/off for detection only; a built-in stays updatable (no content edit)."""
+        try:
+            saved = series.set_series_enabled(self._db, int(series_id), bool(enabled))
+        except (series.SeriesError, TypeError, ValueError) as exc:
+            return {"ok": False, "error": str(exc) or tr("festival.series_unknown")}
+        return {"ok": True, "series": saved}
+
     def delete_series(self, series_id: int) -> dict[str, Any]:
         try:
             res = series.delete_series(self._db, int(series_id))

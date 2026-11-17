@@ -906,7 +906,7 @@
         if (act === 'enable') {
           const on = s.enabled === false;
           ui.setToggle(b, on);
-          const r = await HC.bridge.safe('save_series', Object.assign({}, s, { enabled: on }));
+          const r = await HC.bridge.safe('set_series_enabled', s.id, on);
           if (r && r.ok) changed(); else fail(r);
           return load();
         }

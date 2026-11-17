@@ -167,6 +167,7 @@
    Festivals & Serien (v0.3.0, offline; Vertrag + Beispiele: docs/bridge-api.md «Festivals & Serien»)
      get_series(include_hidden?)        -> [Series]   Katalog (mitgeliefert + eigene), count = Bibliothekseinträge
      save_series(series)                -> {ok, series: Series} | {ok:false, errors:{feld: "Meldung"}}  (id fehlt = neu)
+     set_series_enabled(id, enabled)    -> {ok, series: Series} | {ok:false, error}   nur an/aus, kein «geändert»
      delete_series(id)                  -> {ok, hidden, cleared} | {ok:false, error}   mitgeliefert -> ausgeblendet
      reset_series(id?)                  -> {ok, series:[Series]} | {ok:false, error}   mitgelieferte wiederherstellen
      get_festival_options()             -> {kinds:[..], set_types:[{code, label}], stages:[..]}

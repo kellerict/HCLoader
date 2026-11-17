@@ -964,6 +964,7 @@ def test_every_method_json_serializable(env):
         # v0.3.0 festivals & series
         "save_series": ({"name": "My Rave", "kind": "festival", "aliases": ["MyRave"]},),
         "delete_series": (999,),
+        "set_series_enabled": (999, False),
         "set_festival": ("abcdefghijk", None),
         "reset_festival": ("abcdefghijk",),
         "detect_festival": ("Defqon.1 2019 | RED",),

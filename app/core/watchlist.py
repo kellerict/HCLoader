@@ -544,7 +544,7 @@ def check_source(
             else:
                 res.inbox += 1
     # v0.3.0: festival/series detection on the stored flat rows (offline, before queueing)
-    series.detect_and_store(db, settings, touched, descriptions=_descriptions(entries))
+    series.detect_and_store(db, settings, touched, descriptions=_descriptions(entries), flat=True)
     if to_queue:
         accepted = enqueue(to_queue) if enqueue else []
         res.queued = len(accepted)

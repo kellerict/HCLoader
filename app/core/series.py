@@ -39,6 +39,7 @@ LIBRARY_STATUSES = ("done",)
 # statuses whose genre must not change any more (discover.GENRE_LOCKED_STATUSES)
 _GENRE_LOCKED = ("queued", "downloading", "done")
 MAX_NAME = 80
+PASS_BATCH = 200  # rows per transaction in assign_pass
 MAX_ALIASES = 40
 _SYNC_LOCK = threading.Lock()
 
@@ -132,6 +133,14 @@ def sync_builtin(db: Database, path: Path | None = None, *, force: bool = False)
                         vals,
                     )
                     changed += 1
+                elif not row["builtin"] and not row["user_modified"]:
+                    # m3: a key that is back in the file is a built-in again
+                    sets = ", ".join(f"{k}=?" for k in values)
+                    db.execute(
+                        f"UPDATE series SET {sets}, builtin=1, updated=? WHERE id=?",
+                        [*values.values(), now_iso(), row["id"]],
+                    )
+                    changed += 1
                 elif row["builtin"] and not row["user_modified"] and not row["hidden"]:
                     if any(row[k] != v for k, v in values.items()):
                         sets = ", ".join(f"{k}=?" for k in values)
@@ -140,10 +149,11 @@ def sync_builtin(db: Database, path: Path | None = None, *, force: bool = False)
                             [*values.values(), now_iso(), row["id"]],
                         )
                         changed += 1
-            # a built-in that was dropped from the file stays as a user series (keeps its data)
+            # a built-in that was dropped from the file stays as a user series (keeps its data);
+            # a hidden one becomes visible again, otherwise it could never be restored (m3)
             for row in db.query("SELECT id, key FROM series WHERE builtin=1"):
                 if row["key"] not in keys:
-                    db.execute("UPDATE series SET builtin=0 WHERE id=?", (row["id"],))
+                    db.execute("UPDATE series SET builtin=0, hidden=0 WHERE id=?", (row["id"],))
             db.set_state(K_BUILTIN_HASH, digest)
         if changed:
             log.debug("Built-in series synchronised: %d", changed)
@@ -302,13 +312,33 @@ def apply_detection(
     row: Mapping[str, Any],
     det: fx.Detection | None,
     settings: Settings,
+    *,
+    keep_stronger: bool = False,
 ) -> str:
     """Store a detection on a video row. Returns "manual" (untouched), "assigned",
     "suggested", "none" or "unchanged". The series' default genre replaces «Unsortiert» on rows
-    whose genre may still change (not manual, not queued/downloading/done)."""
+    whose genre may still change (not manual, not queued/downloading/done).
+
+    `keep_stronger` (flat sources, review v0.3.0 M1): an existing assignment/suggestion is never
+    replaced by a weaker or empty result - it may come from the description, which flat
+    listings almost never deliver. A series deleted or hidden since the catalog snapshot counts
+    as no detection (review m2: no FK error, no assignment to a hidden series)."""
     if row.get("festival_manual"):
         return "manual"
+    if det is not None and det.series_id is not None:
+        live = db.query_one("SELECT hidden FROM series WHERE id=?", (det.series_id,))
+        if not live or live["hidden"]:
+            det = None
     threshold = settings.festivals.min_confidence
+    if keep_stronger:
+        new_conf = det.confidence if det is not None and det.series_id is not None else None
+        old_conf = row.get("festival_confidence") or 0
+        if row.get("edition_id") and (new_conf is None or new_conf < threshold):
+            return "unchanged"
+        if row.get("edition_id") and new_conf is not None and new_conf < old_conf:
+            return "unchanged"
+        if row.get("suggested_edition_id") and (new_conf is None or new_conf < old_conf):
+            return "unchanged"
     edition = suggested = None
     stage = set_type = episode = None
     conf = None
@@ -359,9 +389,15 @@ def detect_and_store(
     ids: Iterable[str],
     *,
     descriptions: Mapping[str, str] | None = None,
+    flat: bool = False,
 ) -> dict[str, int]:
     """Detection for freshly stored flat results (search, watchlist) or a finished download.
-    Never raises: a detection problem must not break a search or a download."""
+    Never raises: a detection problem must not break a search or a download.
+
+    `flat=True` (search/watchlist listings, review v0.3.0 M1): rows that are queued,
+    downloading or done are skipped (their detection belongs to the download step and the
+    «Assign festivals» pass, which see the full description), and an existing assignment is
+    never replaced by a weaker or empty result."""
     counts = {"assigned": 0, "suggested": 0, "none": 0, "manual": 0, "unchanged": 0}
     if not settings.festivals.detect:
         return counts
@@ -371,10 +407,12 @@ def detect_and_store(
             row = db.get_video(vid)
             if not row:
                 continue
+            if flat and row.get("status") in _GENRE_LOCKED:
+                counts["manual" if row.get("festival_manual") else "unchanged"] += 1
+                continue
             desc = (descriptions or {}).get(vid)
-            counts[
-                apply_detection(db, row, detect_row(row, cat, settings, description=desc), settings)
-            ] += 1
+            det = detect_row(row, cat, settings, description=desc)
+            counts[apply_detection(db, row, det, settings, keep_stronger=flat)] += 1
     except Exception:
         log.warning(tr("festival.detect_failed"), exc_info=True)
     return counts
@@ -404,23 +442,37 @@ def assign_pass(
     counts = {"assigned": 0, "suggested": 0, "none": 0, "manual": 0, "unchanged": 0}
     done = 0
     cancelled = False
-    for row in rows:
-        if cancel is not None and cancel.is_set():
-            cancelled = True
+    # review v0.3.0 m5: one short transaction per batch instead of one commit per row; the
+    # detection (and sidecar reading) runs outside the lock, rows are re-read inside it
+    for start in range(0, total, PASS_BATCH):
+        if start:
+            cat = catalog(db, settings)  # series edited/deleted/hidden meanwhile (m2)
+        batch: list[tuple[str, fx.Detection | None]] = []
+        for row in rows[start : start + PASS_BATCH]:
+            if cancel is not None and cancel.is_set():
+                cancelled = True
+                break
+            desc = None
+            if description_of is not None and settings.festivals.match_description:
+                try:
+                    desc = description_of(row["id"])
+                except Exception:  # unreadable sidecar: title only
+                    desc = None
+            batch.append((row["id"], detect_row(row, cat, settings, description=desc)))
+        with db.transaction():
+            results = []
+            for vid, det in batch:
+                cur = db.get_video(vid)
+                results.append(apply_detection(db, cur, det, settings) if cur else "unchanged")
+        for outcome in results:
+            counts[outcome] += 1
+            done += 1
+            if progress is not None and (done % 25 == 0 or done == total):
+                progress({"done": done, "total": total, **counts})
+        if cancelled:
             break
-        desc = None
-        if description_of is not None and settings.festivals.match_description:
-            try:
-                desc = description_of(row["id"])
-            except Exception:  # unreadable sidecar: title only
-                desc = None
-        counts[
-            apply_detection(db, row, detect_row(row, cat, settings, description=desc), settings)
-        ] += 1
-        done += 1
-        if progress is not None and (done % 25 == 0 or done == total):
-            progress({"done": done, "total": total, **counts})
-    db.set_state(K_LAST_PASS, now_iso())
+    if not cancelled:
+        db.set_state(K_LAST_PASS, now_iso())
     if progress is not None and (cancelled or total == 0):
         progress({"done": done, "total": total, **counts})
     return {"ok": True, "cancelled": cancelled, "total": total, "done": done, **counts}
@@ -677,8 +729,9 @@ def save_series(db: Database, settings: Settings, data: Mapping[str, Any]) -> di
             )
             new_id = int(cur.lastrowid)
         else:
-            content = {k: v for k, v in values.items() if k != "enabled"}
-            modified = row["user_modified"] or any(row[k] != v for k, v in content.items())
+            # m1: compare normalised content (case-insensitive duplicates, trimming) so that
+            # saving an unchanged built-in does not freeze it against series.yaml updates
+            modified = row["user_modified"] or _content_key(row) != _content_key(values)
             sets = ", ".join(f"{k}=?" for k in values)
             db.execute(
                 f"UPDATE series SET {sets}, user_modified=?, updated=? WHERE id=?",
@@ -686,6 +739,43 @@ def save_series(db: Database, settings: Settings, data: Mapping[str, Any]) -> di
             )
             new_id = row["id"]
     out = get_series(db, new_id)
+    assert out is not None
+    return out
+
+
+def _content_key(values: Mapping[str, Any]) -> tuple[Any, ...]:
+    """Comparable, normalised content of a series row/values (everything but `enabled`)."""
+    errors: dict[str, str] = {}
+
+    def strings(text: Any) -> tuple[str, ...]:
+        return tuple(_clean_strings(_loads(text), "x", errors, limit=10**6))
+
+    variants = tuple(
+        (str(v.get("name") or "").strip(), tuple(_clean_strings(v.get("aliases"), "x", errors)))
+        for v in _loads(values["variants"])
+        if isinstance(v, Mapping)
+    )
+    return (
+        str(values["name"] or "").strip(),
+        values["kind"],
+        strings(values["aliases"]),
+        strings(values["weak_aliases"]),
+        strings(values["channels"]),
+        variants,
+        values["default_genre"] or None,
+    )
+
+
+def set_series_enabled(db: Database, series_id: int, enabled: bool) -> dict[str, Any]:
+    """Switch a series on/off for detection. Not a content edit: a built-in stays
+    `user_modified=0` and keeps receiving series.yaml updates (review v0.3.0 m1)."""
+    cur = db.execute(
+        "UPDATE series SET enabled=?, updated=? WHERE id=?",
+        (int(bool(enabled)), now_iso(), int(series_id)),
+    )
+    if not cur.rowcount:
+        raise SeriesError({"id": tr("festival.series_unknown")})
+    out = get_series(db, int(series_id))
     assert out is not None
     return out
 
@@ -744,7 +834,24 @@ def reset_series(db: Database, series_id: int | None = None) -> list[dict[str, A
                 [*values.values(), now_iso(), row["id"]],
             )
             out.append(row["id"])
+    for sid in out:
+        _warn_alias_clashes(db, sid)
     return [s for s in (get_series(db, i) for i in out) if s]
+
+
+def _warn_alias_clashes(db: Database, series_id: int) -> None:
+    """m4: a restored built-in may share an alias with a user series created while it was
+    hidden. Detection stays deterministic (lowest id wins), but the user should know."""
+    row = db.query_one("SELECT * FROM series WHERE id=?", (series_id,))
+    if not row:
+        return
+    d = _def_from_row(row)
+    mine = {fx.norm(a) for a in (d.name, *d.aliases, *d.weak_aliases)} - {""}
+    for other in db.query("SELECT * FROM series WHERE hidden=0 AND id<>?", (series_id,)):
+        o = _def_from_row(other)
+        clash = sorted(mine & {fx.norm(a) for a in (o.name, *o.aliases, *o.weak_aliases)})
+        if clash:
+            log.warning(tr("festival.alias_taken", alias=clash[0], series=o.name))
 
 
 # --------------------------------------------------------------------------- grouping

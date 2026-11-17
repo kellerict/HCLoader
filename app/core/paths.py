@@ -189,6 +189,8 @@ def _render(template: str, values: dict[str, str], ext: str) -> list[str]:
             seg = _tidy(seg)
             if not seg and not last:
                 continue  # folder level that only held an empty festival/stage: dropped
+            if not seg:  # review v0.3.0 m7: file name only held empty optionals -> {id}
+                seg = values.get("id") or ""
         seg = sanitize_filename(seg)
         if last:
             seg = sanitize_filename(seg + ext)

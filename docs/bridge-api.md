@@ -393,6 +393,7 @@ den die UI übersetzt (UI-Schlüssel z.B. `fest.set_type.<code>`, Sache der UI-K
 |---|---|---|
 | `get_series(include_hidden=false)` | `true` = auch ausgeblendete mitgelieferte Serien (Feld `hidden`) | `[Series]` sortiert nach Name |
 | `save_series(series)` | `Series` ohne `id` = neu; nur `name, kind, aliases, weak_aliases, channels, variants, default_genre, enabled` werden gelesen | `{ok:true, series:Series}` \| `{ok:false, errors:{feld:"Meldung"}}` |
+| `set_series_enabled(id, enabled)` | nur an/aus für die Erkennung (seit 0.3.0-Review); eine mitgelieferte Serie bleibt `user_modified:false` und erhält weiter Updates aus `series.yaml` | `{ok:true, series:Series}` \| `{ok:false, error}` |
 | `delete_series(id)` | | `{ok:true, hidden, cleared}` \| `{ok:false, error}` |
 | `reset_series(id?)` | ohne `id` = alle mitgelieferten | `{ok:true, series:[Series]}` \| `{ok:false, error}` |
 | `get_festival_options()` | | `{kinds:["festival","radio","podcast"], set_types:[{code, label}], stages:[Name]}` |

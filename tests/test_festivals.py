@@ -739,3 +739,161 @@ def test_search_detect_download_tag_db(world):  # noqa: F811
         assert str(tags["TALB"]) == "Dominator 2024"
         lib = {i["id"]: i for i in w.api.get_library()}
         assert lib["prDominat08"]["festival"]["edition"] == "Dominator 2024"
+
+
+# =========================================================================== review v0.3.0 fixes
+
+CLOSING = "Headhunterz | Closing Ceremony 2024 | RED"
+DESC = "Live at Defqon.1 Weekend Festival 2024"
+
+
+def _desc_assigned(db, settings, vid, status):
+    add_video(db, vid, CLOSING, status=status, upload_date="20240630")
+    series.detect_and_store(db, settings, [vid], descriptions={vid: DESC})
+    row = db.get_video(vid)
+    assert row["edition_id"], "precondition: assignment from the description"
+    return row["edition_id"]
+
+
+@pytest.mark.parametrize("status", ["done", "queued", "downloading"])
+def test_search_hit_keeps_description_assignment_of_library_rows(db, settings, status):
+    """M1: a flat search result must not wipe an assignment that came from the description."""
+    from app.core import discover
+
+    eid = _desc_assigned(db, settings, "abcdefghijk", status)
+    discover.store_results(
+        db,
+        [{"id": "abcdefghijk", "title": CLOSING, "upload_date": "20230101"}],
+        settings,
+        genre_hint=None,
+    )
+    assert db.get_video("abcdefghijk")["edition_id"] == eid
+
+
+def test_watchlist_check_keeps_description_assignment(db, settings):
+    """M1: same for a watchlist check that lists a known (downloaded) video again."""
+    from test_watchlist import FakeClient, src
+
+    from app.core import watchlist
+
+    eid = _desc_assigned(db, settings, "abcdefghijk", "done")
+    s = src(db)
+    entry = {"id": "abcdefghijk", "title": CLOSING, "duration": 3600, "channel_id": "UC1"}
+    watchlist.check_source(
+        s, client=FakeClient({s["url_or_query"]: [entry]}), db=db, settings=settings
+    )
+    assert db.get_video("abcdefghijk")["edition_id"] == eid
+
+
+def test_flat_detection_never_downgrades_new_rows(db, settings):
+    """M1: on rows that may still change, a weaker/empty flat result keeps the old value,
+    a stronger one still applies."""
+    eid = _desc_assigned(db, settings, "abcdefghijk", "new")
+    assert series.detect_and_store(db, settings, ["abcdefghijk"], flat=True)["unchanged"] == 1
+    assert db.get_video("abcdefghijk")["edition_id"] == eid
+    # suggestion only (weak title) -> a stronger flat detection upgrades it
+    add_video(db, "bbbbbbbbbbb", "Defqon.1 anthem remake")
+    series.detect_and_store(db, settings, ["bbbbbbbbbbb"], flat=True)
+    assert db.get_video("bbbbbbbbbbb")["suggested_edition_id"]
+    db.execute("UPDATE videos SET title=? WHERE id=?", ("Defqon.1 2019 | X | RED", "bbbbbbbbbbb"))
+    assert series.detect_and_store(db, settings, ["bbbbbbbbbbb"], flat=True)["assigned"] == 1
+    # the explicit (non-flat) path still replaces as before
+    db.execute("UPDATE videos SET title=? WHERE id=?", ("Something else", "abcdefghijk"))
+    series.detect_and_store(db, settings, ["abcdefghijk"])
+    assert db.get_video("abcdefghijk")["edition_id"] is None
+
+
+def test_toggle_builtin_does_not_mark_user_modified(db, settings):
+    """m1: on/off is not a content edit; saving an unchanged built-in neither."""
+    series.sync_builtin(db)
+    for key in ("rebirth", "qlimax"):
+        row = db.query_one("SELECT * FROM series WHERE key=?", (key,))
+        off = series.set_series_enabled(db, row["id"], False)
+        assert off["enabled"] is False and off["user_modified"] is False
+        same = series.save_series(db, settings, {**series.series_dict(row), "enabled": True})
+        assert same["enabled"] is True and same["user_modified"] is False
+    # duplicate (case-insensitive) aliases in stored content do not count as an edit
+    q = db.query_one("SELECT * FROM series WHERE key='qlimax'")
+    db.execute(
+        "UPDATE series SET aliases=? WHERE id=?",
+        (series._dumps([*series._loads(q["aliases"]), "QLIMAX"]), q["id"]),
+    )
+    q = db.query_one("SELECT * FROM series WHERE key='qlimax'")
+    assert series.save_series(db, settings, series.series_dict(q))["user_modified"] is False
+    with pytest.raises(series.SeriesError):
+        series.set_series_enabled(db, 999999, True)
+
+
+def test_set_series_enabled_bridge(env):  # noqa: F811
+    a = env.make()
+    sid = a.get_series()[0]["id"]
+    res = a.set_series_enabled(sid, False)
+    assert res["ok"] and res["series"]["enabled"] is False
+    assert a.set_series_enabled(999999, True)["ok"] is False
+
+
+def test_assign_pass_survives_series_deleted_or_hidden_midway(db, settings, monkeypatch):
+    """m2: deleting/hiding a series during the pass neither aborts it nor re-assigns."""
+    mine = series.save_series(
+        db, settings, {"name": "My Rave", "kind": "festival", "aliases": ["MyRave Fest"]}
+    )
+    for i in range(series.PASS_BATCH + 5):
+        add_video(db, f"v{i:010d}", "MyRave Fest 2024 | x", status="done")
+    add_video(db, "qqqqqqqqqqq", "Qlimax 2013 - Live", status="done")
+    qid = db.query_one("SELECT id FROM series WHERE key='qlimax'")["id"]
+    real = series.detect_row
+    calls = {"n": 0}
+
+    def detect_then_delete(*a, **kw):
+        calls["n"] += 1
+        if calls["n"] == 3:  # catalog snapshot already taken
+            series.delete_series(db, mine["id"])
+            series.delete_series(db, qid)
+        return real(*a, **kw)
+
+    monkeypatch.setattr(series, "detect_row", detect_then_delete)
+    res = series.assign_pass(db, settings)
+    assert res["ok"] and not res["cancelled"] and res["done"] == res["total"]
+    assert (
+        db.query_one(
+            "SELECT COUNT(*) AS n FROM videos WHERE edition_id IS NOT NULL "
+            "OR suggested_edition_id IS NOT NULL"
+        )["n"]
+        == 0
+    )
+
+
+def test_cancelled_pass_does_not_set_last_pass(db, settings):
+    """m5: a cancelled pass must not look completed."""
+    add_video(db, "aaaaaaaaaaa", "Defqon.1 2019 | X | RED", status="done")
+    stop = threading.Event()
+    stop.set()
+    assert series.assign_pass(db, settings, cancel=stop)["cancelled"]
+    assert not db.get_state(series.K_LAST_PASS)
+
+
+def test_dropped_hidden_builtin_is_visible_and_readopted(db, tmp_path):
+    """m3: dropped while hidden -> visible user series; key back in the file -> built-in."""
+    series.sync_builtin(db)
+    src_file = series.DATA_FILE.read_text(encoding="utf-8")
+    dom = db.query_one("SELECT * FROM series WHERE key='dominator'")
+    series.delete_series(db, dom["id"])
+    without = tmp_path / "series.yaml"
+    lines = src_file.splitlines(keepends=True)
+    start = next(i for i, ln in enumerate(lines) if ln.strip() == "- key: dominator")
+    end = next(i for i in range(start + 1, len(lines)) if lines[i].lstrip().startswith("- key:"))
+    without.write_text("".join(lines[:start] + lines[end:]), encoding="utf-8")
+    series.sync_builtin(db, without)
+    row = db.query_one("SELECT * FROM series WHERE key='dominator'")
+    assert row["builtin"] == 0 and row["hidden"] == 0
+    series.sync_builtin(db, series.DATA_FILE)
+    row = db.query_one("SELECT * FROM series WHERE key='dominator'")
+    assert row["builtin"] == 1
+
+
+def test_file_segment_of_only_empty_optionals_falls_back_to_id(tmp_path):
+    """m7: `{genre}/{id}/{stage}` without a stage must not give `_.mp3`."""
+    p = paths.build_target_path(
+        tmp_path, "{genre}/{id}/{stage}", {"id": "abcdefghijk", "title": "T", "genre": "Hardcore"}
+    )
+    assert p.name == "abcdefghijk.mp3"

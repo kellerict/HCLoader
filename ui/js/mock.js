@@ -1531,6 +1531,14 @@
         return { ok: true, series: seriesOut(s) };
       });
     },
+    set_series_enabled(id, enabled) {
+      return later(80, () => {
+        const s = seriesById(id);
+        if (!s) return { ok: false, error: 'Unknown series.' };
+        s.enabled = !!enabled; // kein user_modified: nur an/aus
+        return { ok: true, series: seriesOut(s) };
+      });
+    },
     delete_series(id) {
       return later(140, () => {
         const s = seriesById(id);

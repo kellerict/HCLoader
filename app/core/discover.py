@@ -208,7 +208,7 @@ def store_results(
         for e in entries
         if e.get("id") and isinstance(e.get("description"), str) and e.get("description")
     }
-    series.detect_and_store(db, settings, ids, descriptions=descriptions)
+    series.detect_and_store(db, settings, ids, descriptions=descriptions, flat=True)
     return ids
 
 
