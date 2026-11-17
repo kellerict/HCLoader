@@ -44,6 +44,28 @@ extra network request.
 - New path placeholders `{festival}`, `{event_year}`, `{stage}`; the **default path template stays
   unchanged** (user decision 2). Existing files only move when the user triggers retag/move.
 
+## v0.5.0 – Collect a whole edition («Festival collector»)
+User request: gather all sets of one festival edition, based on its timetable, with a checklist to
+untick unwanted DJs/sets.
+
+- **Edition checklist**: per edition a list of expected sets (DJ, stage, day/time, set type) with
+  status *not found · found (YouTube/SoundCloud) · queued · downloaded · ignored*; each row has a
+  checkbox, «Select all / none», filter by stage/day.
+- **Where the list comes from** (no scraping of festival websites – fragile and against their terms):
+  1. **Organiser playlists** (preferred, cheapest): e.g. the official «Defqon.1 2024 | Livesets»
+     playlist of the organiser channel – one flat listing gives most sets at once.
+  2. **Paste the timetable** as text (lines like `18:00 – 19:00 Headhunterz`, or CSV); a parser
+     builds the rows, the user can edit them.
+  3. **Shared timetable files** (`timetables/<series>/<year>.json`) curated in the repository and
+     shipped with updates; users can contribute via issues/PRs.
+- **Matching**: rows not covered by the playlist are searched one by one (`<DJ> <festival> <year>`,
+  flat search, Throttle and `max_searches_per_hour` apply – the dialog shows the estimated number of
+  requests and spreads them over time, resumable like the backfill). Hit = DJ name + series + year
+  in the title, duration plausible; uncertain hits need a click to confirm.
+- **Download**: only ticked and confirmed rows go to the queue (sequential, limits as always);
+  results are tagged with the edition/stage from the checklist (manual = authoritative).
+- Builds on the v0.3.0 data model (series/editions) and the v0.4.0 resumable backfill machinery.
+
 ## Out of scope
-- Online lookups (1001tracklists, festival websites).
+- Scraping festival websites or 1001tracklists.
 - Automatic renaming/moving of existing files.
