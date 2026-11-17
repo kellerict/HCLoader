@@ -1081,3 +1081,42 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
 - **Entscheid:** Wartung › «Versionshinweise» liest die mitgelieferte `CHANGELOG.md` (`get_release_notes`,
   offline) statt GitHub. **Grund:** funktioniert ohne Netz und ohne Rate-Limit, passt immer zur
   installierten Version; die Datei liegt schon im Portable-Build, im Installer und im Selbst-Update.
+
+## 2026-11-17 – Festivals & Serien (v0.3.0, Backend)
+
+- **Entscheid:** Serien in der DB (`series`, Migration 7), nicht in `config.yaml`. Aliase, schwache
+  Aliase, Kanäle und Varianten sind JSON-Spalten statt eigener Tabellen (`series_alias` aus dem
+  Konzept entfällt). `editions` = Serie + Jahr (0 = unbekannt) + Variante ('' = keine), eindeutig.
+  Pro Video: `edition_id`, `suggested_edition_id`, `stage`, `set_type` (Code), `episode`,
+  `festival_confidence`, `festival_manual`. **Grund:** Aliase werden nur als Ganzes gelesen (Erkennung
+  in Python), JSON hält Migration und Bearbeiten einfach; die Liste ist Nutzerdaten, keine Einstellung.
+- **Entscheid:** Mitgelieferte Liste `app/data/series.yaml` (35 Einträge: 29 Festivals, 6 Radio/Podcast,
+  Bühnen, Set-Arten, Negativwörter). `sync_builtin` läuft billig (nur bei geändertem Datei-Hash):
+  fügt neue Schlüssel ein, aktualisiert nur unveränderte; vom User bearbeitete (`user_modified`) oder
+  gelöschte (`hidden`) mitgelieferte Serien bleiben unberührt, `reset_series` stellt sie wieder her.
+  Aus der Datei entfernte Einträge werden zu eigenen Serien (keine Daten gehen verloren).
+  **Grund:** User-Wunsch «Updates überschreiben nie meine Änderungen».
+- **Entscheid:** Erkennung = Punktesystem (`app/core/festivals.py`): Alias im Titel 0.5 (schwacher
+  Alias 0.3, direkt mit Jahreszahl 0.5; nur Beschreibung 0.25), Veranstalter-Kanal +0.15, Jahr im
+  Titel +0.3 (Upload-Jahr +0.1), Folgennummer (Radio/Podcast) +0.3, Bühne +0.1, Set-Art +0.1
+  (nicht Anthem/Episode), Negativwort (Remake, Aftermovie, Tickets …) −0.4. Schwelle Standard 0.65.
+  Schwache Aliase für Allerweltswörter (Rebirth, Supremacy, Loudness, Hard Bass, Syndicate,
+  Ground Zero, Decibel, Intents, Unleashed, MOH). Bühne nur als eigenes Titelsegment, «<Name> stage»
+  oder Grossbuchstaben-Wort (sonst Fehltreffer wie «Red Bull», «Black Mirror»). **Grund:** nach
+  ~75 realen Titeln: «Defqon.1 2019 | RED» → 0.9, «Defqon.1 anthem remake» → 0.2,
+  «Hard Bass mix 2020» (Russian Hardbass) → 0.6 = nur Vorschlag.
+- **Entscheid:** Standard-Genre einer Serie nur bei klar einspartigen Serien (Masters of Hardcore,
+  Thunderdome, Hardstyle-Podcasts …), nicht bei Defqon.1, Q-BASE, Decibel usw. Angewendet nur, wenn das
+  Genre sonst «Unsortiert» wäre und das Video noch nicht eingereiht/geladen ist.
+  **Grund:** gemischte Festivals (Hardstyle + Hardcore-Bühnen) würden sonst falsch einsortiert; Ablage
+  und TCON geladener Dateien dürfen sich nicht still ändern (Review Phase 3 M1).
+- **Entscheid:** `TXXX:FESTIVAL` = Serie + Variante («Defqon.1 Australia»), `TXXX:SET_TYPE` = englisches
+  Label aus der Datendatei («Closing Ceremony»), zusätzlich `TXXX:EPISODE`. Album = Ausgabe bei
+  `storage.album_from_edition` (Standard an, User-Entscheid 1). Leere Platzhalter `{festival}`,
+  `{event_year}`, `{stage}` werden aufgeräumt, nur Ordnerebenen mit diesen Platzhaltern können
+  entfallen; Muster ohne sie ergeben byte-gleiche Pfade wie bisher. **Grund:** sprachneutrale, stabile
+  Tags für Plex/Jellyfin; Standardmuster unverändert (User-Entscheid 2).
+- **Entscheid:** Der Zuordnungs-Durchlauf läuft im Wartungs-Worker (`Worker`, Job `festivals`), nicht im
+  Download- oder Such-Thread, sendet `festival_assign` alle 25 Einträge und ist abbrechbar. Er taggt
+  keine Dateien neu. **Grund:** rein lokal (DB + Sidecar), kollidiert so nicht mit Update/Backup;
+  Dateien bewegen sich nur auf ausdrücklichen Wunsch (Konzept «Out of scope»).

@@ -10,6 +10,30 @@ appears after «Show all changes» (`docs/RELEASING.md`).
 
 ## [Unreleased]
 
+### Added
+- Festivals & series (backend): built-in, editable list of 35 hard dance festivals, radio shows and
+  podcasts (`app/data/series.yaml`: Defqon.1 incl. Australia/Chile/at Home, Qlimax, Dominator,
+  Masters of Hardcore, Thunderdome, Q-dance Radio, Hardstyle Mag Podcast …), stored in the database
+  (migration 7 with automatic pre-migration backup). Updates of the list never overwrite series you
+  edited, hid or added.
+- Offline detection of festival/series, edition year (title, else upload year), variant, stage (RED,
+  BLUE, BLACK, UV, Mainstage …), set type (live set, closing ceremony, endshow, warm-up, anthem,
+  episode …) and episode number with a confidence score; below the threshold it is only a suggestion.
+  Runs on new search and watchlist results and after each download; manual values are never
+  overwritten.
+- One-off «Assign festivals» pass over the existing library (background, progress events, cancellable).
+- New tags `TXXX:FESTIVAL`, `TXXX:EVENT_YEAR`, `TXXX:STAGE`, `TXXX:SET_TYPE`, `TXXX:EPISODE`; album tag =
+  edition (e.g. «Defqon.1 2024») when `storage.album_from_edition` is on (default). Re-tagging removes
+  stale frames and keeps foreign ones.
+- Path placeholders `{festival}`, `{event_year}`, `{stage}`; empty values are tidied away. The default
+  path template is unchanged.
+- Settings section `festivals` (detection on/off, confidence threshold, upload year fallback,
+  description matching, extra stages and set-type keywords) and `storage.album_from_edition`.
+- Bridge API for the coming UI: `get_series`, `save_series`, `delete_series`, `reset_series`,
+  `get_festival_options`, `get_library_groups`, `set_festival`, `reset_festival`, `detect_festival`,
+  `get_festival_status`, `assign_festivals`, `cancel_assign_festivals`; event `festival_assign`;
+  library items carry `festival` / `festival_suggestion` (docs/bridge-api.md).
+
 ## [0.2.1] - 2026-11-17
 
 ### Highlights

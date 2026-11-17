@@ -70,7 +70,24 @@ Leitfaden `docs/TRANSLATING.md`, Entscheide `docs/decisions.md` «Mehrsprachigke
   Rest akzeptiert (Nachtrag im Review); nl-BE ergänzt; `__version__` 0.2.0, CHANGELOG `[0.2.0]`
 - [ ] Release: Merge nach `main` → Release-Automatik erstellt Tag `v0.2.0` + Release (nicht manuell taggen)
 
-## Geplant für v0.3.0
+## v0.3.0 – Festivals & Serien (Konzept `docs/concepts/festivals.md`, User-Entscheide: Album = Ausgabe, Standard an, abschaltbar; Standard-Ablagemuster unverändert; Radio/Podcasts sind auch «Serien»)
+- [x] 1 Backend (`integrator`): Migration 7 (`series`, `editions`, Spalten am Video, Backup vor Migration),
+  mitgelieferte Liste `app/data/series.yaml` (35 Serien, Bühnen, Set-Arten), Sync ohne User-Änderungen zu
+  überschreiben, Erkennung `app/core/festivals.py` (Punkte, Schwelle 0.65), Speichern/Zuordnen/Gruppieren
+  `app/core/series.py`, Erkennung bei Suche/Watchlist/Download, Durchlauf «Festivals zuordnen» im
+  Wartungs-Worker (Event `festival_assign`), Tags `TXXX:FESTIVAL/EVENT_YEAR/STAGE/SET_TYPE/EPISODE`,
+  Album = Ausgabe (`storage.album_from_edition`), Platzhalter `{festival}` `{event_year}` `{stage}`,
+  Settings `festivals.*`, 12 Bridge-Methoden (Vertrag `docs/bridge-api.md` «Festivals & Serien»),
+  Backend-Texte in 18 Katalogen (nl-BE erbt von nl), Tests `tests/test_festivals.py` (75 Titel)
+- [ ] 2 UI (`ui-designer`): Tab «Festivals & Serien» (Serienliste, Bearbeiten-Dialog, Schalter, Test,
+  «Festivals zuordnen» mit Fortschritt), Bibliothek «Gruppieren nach» Genre/Festival/Künstler/Jahr,
+  Festival-Ansicht (Kacheln → Jahre → Bühnen), Festival-Badge mit Popover (`set_festival`/`reset_festival`
+  + `retag`), Vorschlag übernehmen, Filter-Chips; Mock-Daten + UI-Kataloge (Set-Art-Codes übersetzen);
+  `storage.album_from_edition` im Tab «Ablage & Tags»; ca. 3–4 Std.
+- [ ] 3 QA + Review
+- [ ] 4 Release v0.3.0 (Version, CHANGELOG `[0.3.0]`, Merge nach `main` → Release-Automatik)
+
+## Geplant für v0.3.0 (weitere Punkte)
 - **Watchlist: «Alles einlesen (einmalig)» pro Quelle** (User-Wunsch): Kanal/Playlist/SoundCloud-Künstler seitenweise vollständig lesen (Throttle, Pausen), Obergrenze einstellbar (~2000), fortsetzbar nach Backoff/Neustart/Abbruch (Cursor in state), Ziel immer Eingang (auch bei Auto-Download), Fortschritt an der Quelle («Liest ein … 240 / ~500»), Bestätigungsdialog mit geschätzter Anzahl Anfragen. Suchquellen bleiben bei 100.
 - Phase 7b: Mixcloud + hearthis.at (Watchlist); 7c: archive.org (optional)
 
@@ -105,3 +122,4 @@ Leitfaden `docs/TRANSLATING.md`, Entscheide `docs/decisions.md` «Mehrsprachigke
 - 2026-11-17 – v0.2.0: QA BESTANDEN, Review FREIGEGEBEN; Review-Minors 1/2/4 behoben, nl-BE (Vlaams) als 19. Sprache, Version 0.2.0 + CHANGELOG → bereit für Release (Merge nach main)
 - 2026-11-17 – Release v0.2.0 automatisch erstellt (19 Sprachen, Installer-Datenschutzseite, Release-Automatik). SignPath-Foundation-Antrag vom User eingereicht; nach Zusage: API-Token als GitHub-Secret, Signierschritt in portable.yml, CODE_SIGNING.md-Status anpassen.
 - 2026-11-17 – v0.2.1 vorbereitet: Release-Notizen mit übersprungenen Versionen (`releases`, `published`; eine Zusatzanfrage an die Release-Liste, Fallback CHANGELOG), Bridge-Methode `open_url` (Links im System-Browser, nur github.com), Version 0.2.1 + CHANGELOG (englisch), Versionshinweise im Wartung-Tab (`get_release_notes`, aus der mitgelieferten CHANGELOG.md, blätterbar)
+- 2026-11-17 – v0.3.0 Schritt 1 Backend Festivals & Serien fertig (Migration 7, Erkennung, Zuordnen, Tags, Bridge-Vertrag); UI als Nächstes
