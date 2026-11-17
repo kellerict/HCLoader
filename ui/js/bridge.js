@@ -188,10 +188,14 @@
                   phase "sleep" = Throttle-Pause vor diesem Eintrag (state bleibt "waiting"),
                   eta = Restsekunden der Pause; optional sleep_total (s) für den Balken.
      LibraryItem {id, title, artist, channel_id, genre, duration (s|null), upload_date, year, downloaded_at (ISO),
-                  file_path, size_mb, missing, has_cue, platform}
+                  file_path, size_mb, missing, has_cue, platform, genre_manual, thumbnail}
                   artist = Kanalname (Spalte/Filter «Kanal»); file_path absolut; missing:true = Datei nicht mehr
-                  am Ort (size_mb 0) -> «Datei fehlt», nur «Eintrag entfernen» und «Ordner öffnen» möglich.
-                  has_cue -> kleines «CUE»-Kennzeichen. Cover: generiert aus id + Genre-Farbe (kein Bildfeld).
+                  am Ort (size_mb 0) -> «Datei fehlt»: kein Abspielen/Neu-Taggen, nur «Eintrag entfernen» und «Ordner öffnen».
+                  has_cue -> kleines «CUE»-Kennzeichen. thumbnail (URL|null): Cover in Liste und Kacheln, geladen nur
+                  von https://*.ytimg.com / https://*.sndcdn.com, sonst Platzhalter aus id + Genre-Farbe.
+                  genre_manual -> Punkt am Genre-Badge («manuell gesetzt»). Klick auf das Badge: set_genre(id, genre),
+                  danach retag(id) (verschiebt die Datei in den Ordner des Genres); bei missing/unknown nur set_genre.
+                  ▶: player.mode "internal" -> get_media(id) + Mini-Player (js/player.js), "external" -> play_external(id).
      LogLine     {ts (ISO), level: "debug"|"info"|"ok"|"warn"|"error", msg}
                   "ok" zählt im Filter zur Stufe Info; "debug" ist in der UI standardmässig ausgeblendet.
      Run         {id, kind: "watchlist"|"headless"|"manual", started (ISO), finished (ISO|null),

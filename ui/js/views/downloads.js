@@ -234,7 +234,7 @@
         const bo = HC.platform.backoff(p), other = HC.platform.label(p === 'youtube' ? 'soundcloud' : 'youtube');
         const text = x.reason ? esc(x.reason) : `${esc(HC.platform.label(p))}: ${esc(t('downloads.' + (WHY[x.code] || 'why_busy')))}`;
         const tab = p === 'soundcloud' ? 'soundcloud' : 'throttle';
-        html += ui.notice(x.code === 'backoff' ? 'error' : 'warn', `<b>${text}</b>${bo && x.code === 'backoff' ? ` (${esc(t('statusbar.backoff_until', { t: util.fmtWhen(bo.until), rest: util.fmtSpan(bo.remaining_s) }))})` : ''} ${esc(t('downloads.platform_other', { p: other }))} <button class="linkbtn" data-goto="settings/${tab}">${t(p === 'soundcloud' ? 'watchlist.backoff_link_sc' : 'watchlist.backoff_link')}</button>`);
+        html += ui.notice(x.code === 'backoff' ? 'error' : 'warn', `<b>${text}</b>${bo && x.code === 'backoff' && !x.reason ? ` (${esc(t('statusbar.backoff_until', { t: util.fmtWhen(bo.until), rest: util.fmtSpan(bo.remaining_s) }))})` : ''} ${esc(t('downloads.platform_other', { p: other }))} <button class="linkbtn" data-goto="settings/${tab}">${t(p === 'soundcloud' ? 'watchlist.backoff_link_sc' : 'watchlist.backoff_link')}</button>`);
       });
     }
     if (queue.paused) html += ui.notice('warn', t('downloads.paused'));
