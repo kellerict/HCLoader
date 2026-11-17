@@ -811,3 +811,42 @@ def test_runtime_drift_in_override_falls_back_to_stock(sc_api, fresh_sc_classes,
     assert [e["duration"] for e in entries] == [3600, 3600, None, None]  # stock: stubs stay
     assert len(sc_api) == 1  # only the resolve, the stub batch was never sent
     assert any("passt nicht zu dieser yt-dlp-Version" in r.message for r in caplog.records)
+
+
+# --------------------------------------------------------------------------- Review 7a/8: M3, m4
+
+
+@pytest.mark.parametrize(
+    ("message", "sc_hit", "yt_hit"),
+    [
+        (
+            "ERROR: [soundcloud:user] a: Unable to download JSON metadata: HTTP Error 403: "
+            "Forbidden (caused by <HTTPError 403: Forbidden>)",
+            True,
+            False,
+        ),
+        ("ERROR: [soundcloud] Unable to download webpage: HTTP Error 403: Forbidden", True, False),
+        ("[soundcloud:search] x: blocked by https://geo.captcha-delivery.com/captcha", True, False),
+        ("[soundcloud] 1: Unable to download JSON metadata: HTTP Error 404: Not Found", False, False),
+        ("[soundcloud] 1: Unable to download JSON metadata: HTTP Error 401: Unauthorized", False, False),
+        ("ERROR: unable to download video data: HTTP Error 403: Forbidden", False, False),
+        ("[youtube] abc: HTTP Error 403: Forbidden", False, False),
+        ("ERROR: [soundcloud] 1: HTTP Error 429: Too Many Requests", True, True),
+    ],
+)
+def test_soundcloud_bot_check_detection(db, message, sc_hit, yt_hit):
+    from app.core.throttle import is_rate_limit_error
+
+    assert is_rate_limit_error(message, "soundcloud") is sc_hit
+    assert is_rate_limit_error(message) is yt_hit
+    s = config.defaults()
+    yt = Throttle(db, lambda: s.throttle, platform_settings={"soundcloud": lambda: s.soundcloud})
+    assert yt.platform("soundcloud").handle_error(message) is sc_hit
+    assert yt.handle_error(message) is yt_hit
+
+
+def test_soundcloud_resolve_has_no_extractor_retry():
+    s = config.defaults()
+    assert ytclient.build_ydl_opts(s, "resolve", "soundcloud")["extractor_retries"] == 0
+    assert ytclient.build_ydl_opts(s, "resolve", "youtube")["extractor_retries"] == 1
+    assert ytclient.build_ydl_opts(s, "search", "soundcloud")["logger"].platform == "soundcloud"

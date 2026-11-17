@@ -186,3 +186,39 @@ def test_http_mode_without_gui_or_answer_keeps_exit_1(env):
             pot_wait=0,
         )
         assert code == EXIT_FAILED and "PO-Token" in db.list_runs()[0]["note"]
+
+
+# --------------------------------------------------------------------------- Review 7a/8 m5
+
+
+def _sc_throttle(settings, db):
+    return Throttle(
+        db,
+        lambda: settings.throttle,
+        platform_settings={"soundcloud": lambda: settings.soundcloud},
+    )
+
+
+def test_disabled_soundcloud_backoff_is_not_exit_blocked(env):
+    settings, db = env
+    settings.soundcloud.enabled = False
+    db.add_source("channel", "A", "https://www.youtube.com/@a")
+    db.add_source("channel", "SC", "https://soundcloud.com/a", platform="soundcloud")
+    th = _sc_throttle(settings, db)
+    th.platform("soundcloud").trigger_backoff("HTTP Error 429")
+    assert run(env, throttle=th) == EXIT_OK
+    # enabled again: the SoundCloud source is active, its backoff counts
+    settings.soundcloud.enabled = True
+    assert run(env, throttle=th) == EXIT_BLOCKED
+
+
+def test_successful_soundcloud_check_resets_its_backoff_level(env):
+    settings, db = env
+    db.add_source("channel", "SC", "https://soundcloud.com/a", platform="soundcloud")
+    th = _sc_throttle(settings, db)
+    sc_th = th.platform("soundcloud")
+    sc_th.trigger_backoff("HTTP Error 429")
+    sc_th.clear_backoff_manual()
+    assert sc_th.backoff_level() == 1
+    assert run(env, throttle=th) == EXIT_OK
+    assert sc_th.backoff_level() == 0

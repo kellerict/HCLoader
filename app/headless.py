@@ -295,7 +295,12 @@ def _run(
         # `soundcloud.enabled = false` or without SoundCloud sources is not «blocked»)
         until_now = None
         if hasattr(throttle, "platform"):
-            for name in sorted(watchlist.active_platforms(db, settings)):
+            relevant = watchlist.active_platforms(db, settings)
+            if db.next_queued() is not None:  # waiting downloads count as well
+                relevant |= set(db.queued_platforms())
+            if not settings.soundcloud.enabled:
+                relevant.discard("soundcloud")
+            for name in sorted(relevant):
                 until_now = throttle.platform(name).backoff_until()
                 if until_now is not None:
                     break
