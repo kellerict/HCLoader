@@ -9,14 +9,14 @@
   "milestones": [
     {
       "title": "v0.2.0 – Multilingual UI",
-      "description": "18 languages with English as default (incl. the Fränggisch fun dialect), automated releases.",
+      "description": "19 languages with English as default (incl. Flemish and the Fränggisch fun dialect), automated releases.",
       "issues": [
         {
           "title": "Multilingual UI: i18n framework, language picker, English default",
           "body": "Move every UI and user-facing backend text into translation catalogs. Setting `general.language` (default `en`, `auto` = system language). Live switching, Intl formatting for dates/numbers, plural rules. Data (genres, folders, tags) stays language-independent."
         },
         {
-          "title": "Translations: de, zh-CN, hi, es, fr, bn, pt-BR, ru, id, nl, sv, nb, fi, lt, lv, et, de-x-frk (Fränggisch)",
+          "title": "Translations: de, zh-CN, hi, es, fr, bn, pt-BR, ru, id, nl, nl-BE, sv, nb, fi, lt, lv, et, de-x-frk (Fränggisch)",
           "body": "Complete catalogs for the 17 languages next to English (incl. Fränggisch, a fun dialect with German fallback), with key/placeholder parity tests. See docs/TRANSLATING.md for how to help."
         },
         {

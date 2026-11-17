@@ -1,0 +1,54 @@
+{
+  "_meta": {
+    "code": "nl-BE",
+    "name": "Vlaams (België)",
+    "dir": "ltr",
+    "intl": "nl-BE",
+    "fallback": "nl",
+    "note": "Backend messages, variant of nl: only keys that differ. Guide: docs/TRANSLATING.md"
+  },
+  "api": {
+    "only_failed_retry": "Enkel mislukte items kunnen opnieuw worden geprobeerd",
+    "only_waiting_move": "Enkel wachtende items kunnen worden verplaatst",
+    "save_failed": "Bewaren mislukt: {error}",
+    "settings_saved": "Instellingen bewaard",
+    "source_saved": "Bron bewaard: {name}"
+  },
+  "cli": {
+    "smoke": "precies één download uitvoeren (enkel QA)"
+  },
+  "config": {
+    "repo_format": "Formaat “eigenaar/repo”, bv. kellerict/HCLoader"
+  },
+  "db": {
+    "schema_downgrade_hint": "\n\nAls u bewust naar de oudere versie wilt teruggaan: sluit HCLoader en kopieer een back-up uit {folder} (hcloader-premigrate-…) terug als hcloader.db.",
+    "schema_too_new_user": "De database komt van een nieuwere HCLoader-versie (schema v{found}); deze versie kent enkel v{known}.\n\nWerk HCLoader bij naar de nieuwste versie (download de draagbare ZIP opnieuw, of «git pull» en setup.ps1). De gegevens blijven ongewijzigd."
+  },
+  "filter": {
+    "preview": "Enkel preview (Go+)"
+  },
+  "headless": {
+    "watchlist_busy": "De volglijst wordt momenteel door een andere run gecontroleerd (bv. de controle in de app van de GUI) – deze run wordt overgeslagen."
+  },
+  "queue": {
+    "other_run": "Er is een andere downloadrun bezig (bv. de geplande controle) – wachten"
+  },
+  "tag": {
+    "cue_truncated": "CUE: {n} hoofdstukken, enkel de eerste {max} worden geschreven"
+  },
+  "task": {
+    "windows_only": "De taakplanner is enkel beschikbaar op Windows."
+  },
+  "update": {
+    "no_sums": "Geen SHA256SUMS in de release – enkel de ZIP-integriteit wordt gecontroleerd",
+    "run_active": "Er is een downloadrun bezig (bv. de geplande volglijstcontrole) – de update blijft klaarstaan en wordt bij het volgende afsluiten geïnstalleerd.",
+    "windows_only": "Zelf-updaten is enkel beschikbaar op Windows."
+  },
+  "watchlist": {
+    "busy_other": "De volglijst wordt momenteel door een andere run gecontroleerd (bv. de geplande controle)"
+  },
+  "yt": {
+    "not_direct_video": "Geen rechtstreekse video (verwijzing, bv. trailer van een betaalde video)",
+    "preview_only": "{reason} – volledige track enkel met SoundCloud Go+"
+  }
+}

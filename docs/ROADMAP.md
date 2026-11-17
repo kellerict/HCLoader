@@ -6,7 +6,7 @@ automated GitHub release (see v0.2.0).
 | Version | Content |
 |---|---|
 | v0.1.0 | First public release (done) |
-| v0.2.0 | Multilingual UI – 18 languages, English default (en, de, zh-CN, hi, es, fr, bn, pt-BR, ru, id, nl, sv, nb, fi, lt, lv, et, de-x-frk; de-x-frk = Fränggisch, fun dialect). **Release automation**: pushing a new version to `main` creates tag, release (notes from CHANGELOG) and assets; Claude prepares, the user gives the go. |
+| v0.2.0 | Multilingual UI – 19 languages, English default (en, de, zh-CN, hi, es, fr, bn, pt-BR, ru, id, nl, nl-BE, sv, nb, fi, lt, lv, et, de-x-frk; nl-BE = Flemish variant; de-x-frk = Fränggisch, fun dialect). **Release automation**: pushing a new version to `main` creates tag, release (notes from CHANGELOG) and assets; Claude prepares, the user gives the go. |
 | v0.3.0 | Festivals & series in the library – [concept](concepts/festivals.md) |
 | v0.4.0 | Watchlist «Read everything (once)» per source – paged, resumable backfill into the inbox |
 | v0.5.0 | Festival collector: checklist per edition from organiser playlist / pasted timetable / shared timetable files – [concept](concepts/festivals.md#v050--collect-a-whole-edition-festival-collector) |

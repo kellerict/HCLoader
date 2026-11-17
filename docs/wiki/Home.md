@@ -34,7 +34,7 @@ source platform as possible. Sources: YouTube and SoundCloud.
 
 <sub>Screenshots show mock data.</sub>
 
-> 🌐 **Language** – The app speaks 18 languages: English (default), German (Swiss spelling), Chinese (Simplified), Hindi, Spanish, French, Bengali, Portuguese (Brazil), Russian, Indonesian, Dutch, Swedish, Norwegian (Bokmål), Finnish, Lithuanian, Latvian, Estonian and Fränggisch (fun dialect). Pick one in Settings ›
+> 🌐 **Language** – The app speaks 19 languages: English (default), German (Swiss spelling), Chinese (Simplified), Hindi, Spanish, French, Bengali, Portuguese (Brazil), Russian, Indonesian, Dutch, Flemish (Belgium), Swedish, Norwegian (Bokmål), Finnish, Lithuanian, Latvian, Estonian and Fränggisch (fun dialect). Pick one in Settings ›
 > General › Language. This wiki is in English; older pages may still name German labels, for
 > example "Schonung" (throttle) or "Wartung" (maintenance).
 

@@ -2,7 +2,8 @@
 
 Catalogs: `app/locales/<code>.json` = {"_meta": {...}, <nested keys>}. English (`en`) is the
 reference: every key exists there first. `tr("area.key", name=value)` returns the text in the
-active language, falls back to the catalog's `_meta.fallback` (dialects: de-x-frk -> de),
+active language, falls back to the catalog's `_meta.fallback` (de-x-frk -> de, nl-BE -> nl; such
+variants may be partial),
 then to English and finally to the key itself (logged once).
 
 - Placeholders `{name}` are replaced by the keyword arguments (unknown ones stay as they are,
@@ -35,7 +36,7 @@ log = logging.getLogger(__name__)
 
 # Picker order (ui/js/i18n.js has the same list)
 SUPPORTED: tuple[str, ...] = (
-    *("en", "de", "zh-CN", "hi", "es", "fr", "bn", "pt", "ru", "id", "nl"),
+    *("en", "de", "zh-CN", "hi", "es", "fr", "bn", "pt", "ru", "id", "nl", "nl-BE"),
     *("sv", "nb", "fi", "lt", "lv", "et", "de-x-frk"),
 )
 REFERENCE = "en"
@@ -157,6 +158,8 @@ def match(tag: str | None) -> str | None:
         return "id"
     if base in ("no", "nn"):  # Norwegian macro language / Nynorsk -> Bokmål
         return "nb"
+    if base == "nl" and re.search(r"-be(-|$)", t):  # Flemish (nl-Latn-BE); other nl-* -> nl
+        return "nl-BE"
     for code in SUPPORTED:
         if not is_dialect(code) and code.split("-")[0] == base:
             return code
@@ -182,6 +185,8 @@ def match(tag: str | None) -> str | None:
         "estonian": "et",
     }
     word = re.split(r"[\s(_-]", t)[0]
+    if word == "dutch" and "belgium" in t:  # "Dutch_Belgium"
+        return "nl-BE"
     return names.get(word)
 
 

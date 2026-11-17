@@ -44,6 +44,7 @@ REQUIRED_PLURALS = {
     "lt": {"one", "few", "many", "other"},
     "lv": {"zero", "one", "other"},
     "et": {"one", "other"},
+    "nl-BE": {"one", "other"},
     "de-x-frk": {"one", "other"},
 }
 PLACEHOLDER = re.compile(r"\{(\w+)\}")
@@ -101,6 +102,14 @@ def py_catalog(code: str) -> dict:
 
 UI_REF = flatten(ui_catalog("en")[1])
 PY_REF = flatten(py_catalog("en"))
+
+
+def parent_fallback(code: str) -> str | None:
+    """`meta.fallback` of a catalog: such variants (nl-BE -> nl, de-x-frk -> de) may be partial,
+    missing keys come from the parent. UI and backend catalog must agree."""
+    fb = ui_catalog(code)[0].get("fallback")
+    assert fb == py_catalog(code)["_meta"].get("fallback"), f"{code}: UI/backend fallback differ"
+    return fb if fb in i18n.SUPPORTED and fb != code else None
 
 
 def check_values(code: str, flat: dict, ref: dict) -> list[str]:
@@ -184,6 +193,9 @@ def test_ui_pending_locale(code):
     flat = flatten(ui_catalog(code)[1])
     assert sorted(set(flat) - set(UI_REF)) == [], "keys that the reference does not have"
     assert check_values(code, flat, UI_REF) == []
+    if parent_fallback(code):
+        assert flat, f"{code}: variant catalog is empty"
+        return  # partial by design: missing keys come from the parent catalog
     missing = sorted(set(UI_REF) - set(flat))
     if missing:
         pytest.xfail(f"{code}: {len(missing)} of {len(UI_REF)} keys not translated yet")
@@ -374,9 +386,28 @@ def test_backend_pending_locale(code):
     flat = flatten(py_catalog(code))
     assert sorted(set(flat) - set(PY_REF)) == []
     assert check_values(code, flat, PY_REF) == []
+    if parent_fallback(code):
+        assert flat, f"{code}: variant catalog is empty"
+        return  # partial by design: missing keys come from the parent catalog
     missing = sorted(set(PY_REF) - set(flat))
     if missing:
         pytest.xfail(f"{code}: {len(missing)} of {len(PY_REF)} backend keys not translated yet")
+
+
+def test_flemish_variant_only_holds_differences():
+    """nl-BE is a partial variant of nl: only keys whose Belgian wording differs."""
+    assert parent_fallback("nl-BE") == "nl"
+    for name, variant, parent in (
+        ("ui", flatten(ui_catalog("nl-BE")[1]), flatten(ui_catalog("nl")[1])),
+        ("backend", flatten(py_catalog("nl-BE")), flatten(py_catalog("nl"))),
+    ):
+        same = [k for k, v in variant.items() if parent.get(k) == v]
+        assert same == [], f"{name}: nl-BE repeats nl unchanged"
+        assert 0 < len(variant) < len(parent) // 2
+    assert i18n.translate("api.settings_saved", "nl-BE") == "Instellingen bewaard"
+    assert i18n.translate("api.invalid_selection", "nl-BE") == i18n.translate(
+        "api.invalid_selection", "nl"
+    )  # missing in nl-BE -> nl, not en
 
 
 def _tr_calls() -> dict[str, list[str]]:
@@ -467,6 +498,7 @@ def test_backend_key_constants_exist():
         ("fi", {1: "one", 2: "other"}),
         ("et", {1: "one", 2: "other"}),
         ("de-x-frk", {1: "one", 2: "other"}),
+        ("nl-BE", {0: "other", 1: "one", 2: "other"}),
         (
             "lt",
             {1: "one", 2: "few", 9: "few", 10: "other", 11: "other", 21: "one", 1.5: "many"},
@@ -521,6 +553,11 @@ def test_tr_follows_active_language():
         ("zh-TW", None),
         ("nl-NL", "nl"),
         ("Dutch_Netherlands", "nl"),
+        ("nl-BE", "nl-BE"),
+        ("nl_BE.UTF-8", "nl-BE"),
+        ("nl-Latn-BE", "nl-BE"),
+        ("Dutch_Belgium", "nl-BE"),
+        ("fr-BE", "fr"),
         ("in_ID", "id"),
         ("sv-SE", "sv"),
         ("Swedish_Sweden", "sv"),
@@ -714,6 +751,8 @@ def test_js_t_plural_fallback_and_escape(page):
       HC.i18n.register({code: 'ru', name: 'Русский', intl: 'ru-RU', dir: 'rtl'}, {});
       HC.i18n.set('ru');
       out.ar = [document.documentElement.dir, document.documentElement.lang];
+      /* review v0.2.0 m1: text from en -> English plural rules, not Russian ("21" is ru "one") */
+      out.ru_en_plural = HC.t('toast.enqueued', {n: 21});
       HC.i18n.set('de');
       out.resolve = [HC.i18n.resolve('auto', ['pt-PT', 'en']),
                      HC.i18n.resolve('auto', ['ja', 'zh-TW']),
@@ -722,7 +761,8 @@ def test_js_t_plural_fallback_and_escape(page):
       out.dialect = [HC.i18n.resolve('auto', ['de-x-frk', 'en']),
                      HC.i18n.resolve('auto', ['de-DE']),
                      HC.i18n.resolve('de-x-frk'), HC.i18n.resolve('auto', ['nn-NO']),
-                     HC.i18n.resolve('auto', ['lv-LV'])];
+                     HC.i18n.resolve('auto', ['lv-LV']), HC.i18n.resolve('auto', ['nl-BE']),
+                     HC.i18n.resolve('auto', ['nl-NL'])];
       /* dialect: missing key -> meta.fallback (de) before en */
       const cat = HC.i18n.catalogs();
       const saved = cat['de-x-frk'];
@@ -741,9 +781,10 @@ def test_js_t_plural_fallback_and_escape(page):
     assert r["ru_fallback"] == "Library"  # missing in ru -> en
     assert r["missing"] == "no.such.&#60;key&#62;"
     assert r["ar"] == ["rtl", "ru-RU"]
+    assert r["ru_en_plural"] == "21 mixes added to the queue"
     assert r["resolve"] == ["pt", "en", "zh-CN", "en"]
     assert "2013" in r["year"]  # no digit grouping in params
-    assert r["dialect"] == ["de", "de", "de-x-frk", "nb", "lv"]
+    assert r["dialect"] == ["de", "de", "de-x-frk", "nb", "lv", "nl-BE", "nl"]
     assert r["frk"] == ["Eigang", "Bibliothek", "de-DE"]
     assert ("warning", "[i18n] missing: no.such.<key>") in page.messages
 
@@ -786,7 +827,8 @@ def test_js_language_switch_rebuilds_ui(page):
     )
     assert options[:3] == ["Automatic (system language)", "English", "Deutsch"]
     assert "Nederlands" in options and "Fränggisch" in options
-    assert len(options) == 1 + len(i18n.SUPPORTED) == 19
+    assert "Vlaams (België)" in options
+    assert len(options) == 1 + len(i18n.SUPPORTED) == 20
     assert options[-1] == "Fränggisch"
 
 

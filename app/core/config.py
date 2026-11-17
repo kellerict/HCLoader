@@ -177,9 +177,10 @@ def _clean_list(v: Any) -> Any:
 class GeneralSettings(_Section):
     # UI + message language (docs/TRANSLATING.md); "auto" = Windows display language, else en
     # de-x-frk = Franconian fun dialect (never chosen by "auto"; missing keys -> de -> en)
+    # nl-BE = Flemish variant (partial catalog; missing keys -> nl -> en; "auto" for nl-BE only)
     language: Literal[
         "auto",
-        *("en", "de", "zh-CN", "hi", "es", "fr", "bn", "pt", "ru", "id", "nl"),
+        *("en", "de", "zh-CN", "hi", "es", "fr", "bn", "pt", "ru", "id", "nl", "nl-BE"),
         *("sv", "nb", "fi", "lt", "lv", "et", "de-x-frk"),
     ] = "en"
     start_view: Literal["discover", "inbox", "watchlist", "downloads", "library", "log"] = (
@@ -641,7 +642,7 @@ SECTION_TITLES = {
 }
 
 COMMENTS = {
-    "general.language": "Sprache der Oberfläche: auto (Windows-Sprache), en, de, zh-CN, hi, es, fr, bn, pt, ru, id, nl, sv, nb, fi, lt, lv, et, de-x-frk (Fränggisch)",
+    "general.language": "Sprache der Oberfläche: auto (Windows-Sprache), en, de, zh-CN, hi, es, fr, bn, pt, ru, id, nl, nl-BE (Vlaams), sv, nb, fi, lt, lv, et, de-x-frk (Fränggisch)",
     "general.start_view": "Startansicht: discover, inbox, watchlist, downloads, library, log",
     "general.log_level": "Log-Stufe: DEBUG, INFO, WARNING, ERROR",
     "general.confirm_delete": "Vor dem Löschen aus der Bibliothek nachfragen",

@@ -1,13 +1,13 @@
 # Translating HCLoader
 
-HCLoader speaks 18 languages from v0.2.0 on. **English (`en`) is the reference catalog**: every key
+HCLoader speaks 19 languages from v0.2.0 on. **English (`en`) is the reference catalog**: every key
 exists there first, and a missing translation falls back to English, then to the key itself.
 German (`de`, de-CH spelling) is the second complete catalog. The others: `zh-CN`, `hi`, `es`,
-`fr`, `bn`, `pt` (Brazil), `ru`, `id`, `nl`, `sv`, `nb` (Bokmål), `fi`, `lt`, `lv`, `et` and
+`fr`, `bn`, `pt` (Brazil), `ru`, `id`, `nl`, `nl-BE` (Vlaams, a regional variant of `nl`), `sv`, `nb` (Bokmål), `fi`, `lt`, `lv`, `et` and
 `de-x-frk` («Fränggisch», a Franconian fun dialect).
 
-Picker order (`SUPPORTED`): en, de, zh-CN, hi, es, fr, bn, pt, ru, id, nl, sv, nb, fi, lt, lv, et,
-de-x-frk.
+Picker order (`SUPPORTED`): en, de, zh-CN, hi, es, fr, bn, pt, ru, id, nl, nl-BE, sv, nb, fi, lt, lv,
+et, de-x-frk.
 
 ## Dialects (`-x-` codes)
 
@@ -16,6 +16,22 @@ it. `auto` never resolves to it (a system language `de-x-frk` maps to its parent
 base-language match (`de-DE` → `de`) never lands on it. Its meta names a parent with
 `"fallback": "de"`: a missing key falls back to `de`, then `en`, then the key itself. Plural rules
 and `Intl` formats come from `intl` (`de-DE`).
+
+## Regional variants (`meta.fallback`, e.g. `nl-BE`)
+
+A **variant** is a real regional language with a parent catalog: `nl-BE` («Vlaams (België)»,
+`"intl": "nl-BE"`, `"fallback": "nl"`). Its catalogs contain **only the keys whose wording differs**
+from the parent – for Flemish e.g. the polite `u`/`uw` instead of `je`, «enkel» instead of «alleen»,
+«bewaren» instead of «opslaan», «bv.» instead of «bijv.», «rechtstreeks», «momenteel». Keep it natural
+and professional, no caricature. Every other key falls back to `nl`, then `en`.
+
+- Unlike `-x-` dialects, `auto` does pick a variant: `nl-BE`, `nl_BE`, `nl-Latn-BE` and the Windows name
+  `Dutch_Belgium` → `nl-BE`; every other `nl-*` → `nl` (the plain code is listed before its variants).
+- Tests: a catalog with `meta.fallback` may be partial (parity tests skip the "missing keys" check;
+  placeholders, tags and plurals of the keys it has are still checked). `nl-BE` must not repeat a
+  parent text unchanged (`test_flemish_variant_only_holds_differences`).
+- When you change a parent text, check whether the variant overrides that key.
+- The plural category always follows the catalog the text actually came from.
 
 ## File layout
 
@@ -39,8 +55,8 @@ Meta object (UI and backend `_meta`):
 
 - `name` – native name, shown in Settings › General › Language.
 - `dir` – `rtl` for right-to-left languages (none shipped at the moment); the UI sets `<html dir>` from it.
-- `fallback` – optional: a supported language that is tried before English (dialects, e.g.
-  `"fallback": "de"` for `de-x-frk`).
+- `fallback` – optional: a supported language that is tried before English (dialects and
+  regional variants, e.g. `"fallback": "de"` for `de-x-frk`, `"fallback": "nl"` for `nl-BE`).
 - `intl` – locale for `Intl` (dates, numbers, relative times, units). Use e.g. `ar-u-nu-latn` for an RTL language if
   Latin digits are wanted, `bn` / `hi-IN` for native conventions.
 
@@ -70,7 +86,13 @@ or a failed video (run notes, error column) keep the language they were written 
 English text, in any order the language needs; do not translate the name inside the braces.
 Some texts contain literal braces that are *not* parameters (`{id}`, `{platform}` in the path
 pattern help) – keep them unchanged too. Numbers passed as parameters are formatted with `Intl`
-(no digit grouping, so years stay `2013`).
+(no digit grouping, so years stay `2013`). Backend messages insert numbers unformatted (Latin
+digits) – accepted difference, see `docs/decisions.md`.
+
+**Parameters are inserted raw (not escaped)** so that markup like `<b>…</b>` can be passed. Any
+`HC.t(...)` result with data from outside (video title, channel or source name, path, error text)
+must go through `esc()` – or through `ui.toast` / `ui.confirm`, which escape – before it reaches
+`innerHTML`. Never put such a result into `innerHTML` directly.
 
 HTML: a few UI texts contain `<b>…</b>`; keep the same tags (the tests compare them).
 Quotation marks: use the typographic quotes of your language (de-CH «…», en “…”).
@@ -90,7 +112,7 @@ A plural key is an object with CLDR categories instead of a string:
 
 | Language | Categories |
 |---|---|
-| en, de, nl, hi, bn, sv, nb, fi, et, de-x-frk | `one`, `other` |
+| en, de, nl, nl-BE, hi, bn, sv, nb, fi, et, de-x-frk | `one`, `other` |
 | es, fr, pt | `one`, `other` (`many` optional, only for millions) |
 | ru | `one`, `few`, `many`, `other` |
 | lt | `one`, `few`, `many` (fractions), `other` |

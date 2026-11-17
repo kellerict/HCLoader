@@ -6,7 +6,7 @@ Leitfaden `docs/TRANSLATING.md`); Validierungsmeldungen aus `app/locales/<code>.
 
 | Abschnitt (Tab) | Schlüssel | Typ | Default | Grenzen / Werte |
 |---|---|---|---|---|
-| `general` (Allgemein) | `language` | str | `en` | auto, en, de, zh-CN, hi, es, fr, bn, pt, ru, id, nl, sv, nb, fi, lt, lv, et, de-x-frk (v0.2.0). `auto` = Windows-Anzeigesprache, nicht unterstützt → `en`; `auto` wählt nie `de-x-frk` (Fränggisch, Spass-Dialekt; fehlende Texte → `de` → `en`). Fehlt der Schlüssel (Konfiguration vor v0.2.0) → `en` |
+| `general` (Allgemein) | `language` | str | `en` | auto, en, de, zh-CN, hi, es, fr, bn, pt, ru, id, nl, nl-BE, sv, nb, fi, lt, lv, et, de-x-frk (v0.2.0). `auto` = Windows-Anzeigesprache, nicht unterstützt → `en`; `auto` wählt nie `de-x-frk` (Fränggisch, Spass-Dialekt; fehlende Texte → `de` → `en`). `nl-BE` (Vlaams) enthält nur abweichende Texte (Rest → `nl` → `en`); `auto` wählt es bei belgisch-niederländischer Systemsprache, übrige `nl-*` → `nl`. Fehlt der Schlüssel (Konfiguration vor v0.2.0) → `en` |
 | | `start_view` | str | `discover` | discover, inbox, watchlist, downloads, library, log |
 | | `log_level` | str | `INFO` | DEBUG, INFO, WARNING, ERROR |
 | | `confirm_delete` | bool | true | |

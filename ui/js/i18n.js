@@ -9,18 +9,23 @@
    - Plurals: the value is an object with CLDR categories
      ({one: '…', other: '…'}, Arabic also zero/two/few/many). The category is
      chosen with Intl.PluralRules from params.count, else params.n.
-   - Lookup: active language → its meta.fallback (e.g. de-x-frk → de) → en (reference)
-     → the key itself (console.warn once).
+   - Lookup: active language → its meta.fallback (e.g. de-x-frk → de, nl-BE → nl) → en
+     (reference) → the key itself (console.warn once). Regional variants with a fallback
+     (nl-BE) only contain the keys that differ from their parent.
+   - Plural category: rules of the catalog the text actually came from (not the active one).
    - Private-use dialects (code with "-x-", e.g. de-x-frk) are only chosen explicitly,
      never by 'auto'.
    - Numbers passed as params are formatted with Intl.NumberFormat (no grouping).
+   - CONTRACT: params are inserted raw (so '<b>…</b>' can be passed). Results that contain
+     outside data (titles, names, paths, errors) must be escaped (esc(), ui.toast, ui.confirm)
+     before they reach innerHTML.
    ===================================================================== */
 (function () {
   'use strict';
   const HC = (window.HC = window.HC || {});
 
   /** Supported languages in picker order. Data (genre names, folders, tags) never depends on this. */
-  const SUPPORTED = ['en', 'de', 'zh-CN', 'hi', 'es', 'fr', 'bn', 'pt', 'ru', 'id', 'nl',
+  const SUPPORTED = ['en', 'de', 'zh-CN', 'hi', 'es', 'fr', 'bn', 'pt', 'ru', 'id', 'nl', 'nl-BE',
     'sv', 'nb', 'fi', 'lt', 'lv', 'et', 'de-x-frk'];
   /** Fun dialects / private-use tags: selectable, never picked by 'auto' or a base-language match. */
   const isDialect = (c) => /-x-/i.test(c);
@@ -55,6 +60,8 @@
     if (base === 'zh') return /hant|-tw|-hk|-mo/.test(t) ? null : 'zh-CN';
     if (base === 'in') return 'id'; // legacy code for Indonesian
     if (base === 'no' || base === 'nn') return 'nb'; // Norwegian (macro language, Nynorsk) -> Bokmål
+    if (base === 'nl' && /-be(-|$)/.test(t)) return 'nl-BE'; // Flemish (e.g. nl-Latn-BE); other nl-* -> nl
+    /* base match: the plain code (listed before its regional variants) */
     return SUPPORTED.find((c) => !isDialect(c) && c.split('-')[0] === base) || null;
   }
 
@@ -112,7 +119,11 @@
     nf(opts) { return cached('n', opts, () => new Intl.NumberFormat(i18n.locale, opts)); },
     df(opts) { return cached('d', opts, () => new Intl.DateTimeFormat(i18n.locale, opts)); },
     rtf(opts) { return cached('r', opts, () => new Intl.RelativeTimeFormat(i18n.locale, opts)); },
-    plural(n) { return cached('p', null, () => new Intl.PluralRules(i18n.locale)).select(n); },
+    /** Plural category of n; `code` = language the text came from (default: active language). */
+    plural(n, code) {
+      const loc = code && code !== lang ? meta(code).intl : i18n.locale;
+      return cached('p' + loc, null, () => new Intl.PluralRules(loc)).select(n);
+    },
   });
 
   function cached(kind, opts, make) {
@@ -131,10 +142,12 @@
 
   /** Text for `key` in the active language. Placeholders {name}; numbers are locale-formatted. */
   HC.t = function (key, params) {
+    /* `src` = catalog the text actually comes from; its plural rules apply (review v0.2.0 m1) */
+    let src = lang;
     let v = lookup(lang, key);
     const fb = catalogs[lang] && catalogs[lang].meta.fallback;
-    if (v === undefined && fb && fb !== lang && fb !== REFERENCE) v = lookup(fb, key);
-    if (v === undefined && lang !== REFERENCE) v = lookup(REFERENCE, key);
+    if (v === undefined && fb && fb !== lang && fb !== REFERENCE) { src = fb; v = lookup(fb, key); }
+    if (v === undefined && lang !== REFERENCE) { src = REFERENCE; v = lookup(REFERENCE, key); }
     if (v === undefined) {
       if (!warned.has(key)) { warned.add(key); console.warn(`[i18n] missing: ${key}`); }
       /* The key can contain data (e.g. 'phase.' + value) and often ends up in innerHTML -> escape. */
@@ -142,7 +155,7 @@
     }
     if (typeof v !== 'string') {
       const c = params && (typeof params.count === 'number' ? params.count : typeof params.n === 'number' ? params.n : null);
-      const cat = c == null ? 'other' : i18n.plural(c);
+      const cat = c == null ? 'other' : i18n.plural(c, src);
       v = v[cat] != null ? v[cat] : v.other;
     }
     if (params) {

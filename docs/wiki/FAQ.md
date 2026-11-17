@@ -14,7 +14,7 @@ Yes, in Settings, Schonung. But more load means more risk of a 429 or bot check,
 blocks everything for hours. The defaults are a good trade-off.
 
 **Which languages does the interface speak?**
-18 languages (from v0.2.0): English (default), German (Swiss spelling), Chinese (Simplified), Hindi, Spanish, French, Bengali, Portuguese (Brazil), Russian, Indonesian, Dutch, Swedish, Norwegian (Bokmål), Finnish, Lithuanian, Latvian, Estonian and Fränggisch (fun dialect). English is the default; pick another one in Settings ›
+19 languages (from v0.2.0): English (default), German (Swiss spelling), Chinese (Simplified), Hindi, Spanish, French, Bengali, Portuguese (Brazil), Russian, Indonesian, Dutch, Flemish (Belgium), Swedish, Norwegian (Bokmål), Finnish, Lithuanian, Latvian, Estonian and Fränggisch (fun dialect). English is the default; pick another one in Settings ›
 General › Language, or «Automatic» to follow the Windows display language. The switch applies at
 once. «Automatic» never picks Fränggisch – it is a Franconian fun dialect you choose on purpose;
 texts it lacks fall back to German, then English. German uses Swiss spelling ("ss" instead of
