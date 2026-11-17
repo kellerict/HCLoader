@@ -463,8 +463,6 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "sort_title": "Pavadinimas A–Ž",
     "sort_channel": "Kanalas A–Ž",
     "sort_duration": "Ilgiausi pirmiausia",
-    "group": "Pagal žanrą",
-    "group_title": "Grupuoti įrašus pagal žanrą",
     "view_list": "Sąrašas",
     "view_grid": "Plytelės",
     "clear": "Atstatyti filtrus",
@@ -522,7 +520,14 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "target_down_hint": "Patikrinkite diską arba tinklo išteklių. Kol jo nėra, failų būsena nežinoma: „Pažymėti iš naujo“ ir „Pašalinti įrašą“ išjungti.",
     "unknown_title": "Paskirties aplankas nepasiekiamas – failo būsena nežinoma",
     "none_title": "Nieko nerasta",
-    "none_text": "Nė vienas įrašas neatitinka paieškos ir filtrų."
+    "none_text": "Nė vienas įrašas neatitinka paieškos ir filtrų.",
+    "group_by": "Grupuoti pagal",
+    "group_none": "Nėra",
+    "group_genre": "Žanras",
+    "group_festival": "Festivalis",
+    "group_artist": "Atlikėjas",
+    "group_year": "Metai",
+    "group_unknown": "Nežinoma"
   },
   "player": {
     "label": "Mini grotuvas",
@@ -629,7 +634,8 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "network": "Tinklas ir PO-Token",
     "schedule": "Tvarkaraštis",
     "appearance": "Išvaizda",
-    "maintenance": "Priežiūra"
+    "maintenance": "Priežiūra",
+    "festivals": "Festivaliai ir serijos"
   },
   "tabs_hint": {
     "general": "Pagrindinis programos elgesys.",
@@ -642,7 +648,8 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "network": "PO-Token identifikuoja užklausas kaip tikro naršyklės ir sumažina botų blokavimo riziką.",
     "schedule": "Kada stebimi šaltiniai tikrinami automatiškai – programoje ir per „Windows“ užduočių planuoklį.",
     "appearance": "Išvaizda ir pojūtis. Pakeitimai matomi iškart ir tampa nuolatiniai tik po išsaugojimo.",
-    "maintenance": "Versijos, naujinimai, duomenų bazė."
+    "maintenance": "Versijos, naujinimai, duomenų bazė.",
+    "festivals": "Atpažįsta festivalį ar seriją, metus, sceną ir seto tipą iš išsaugotų pavadinimų – neprisijungus, be nė vienos papildomos užklausos."
   },
   "set": {
     "default": "Numatyta",
@@ -687,7 +694,9 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
       "app_update": "Programos naujinimas",
       "release_notes": "Leidimo pastabos",
       "database": "Duomenų bazė",
-      "reset": "Atstatymas"
+      "reset": "Atstatymas",
+      "detection": "Atpažinimas",
+      "series": "Serijos"
     },
     "general": {
       "language": {
@@ -844,11 +853,16 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
         "label": "Išvalyti pavadinimą",
         "help": "Reguliarieji reiškiniai, kurių atitikmenys pašalinami iš pavadinimo. Enter prideda.",
         "ph": "+ regex"
+      },
+      "album_from_edition": {
+        "label": "Albumas = laida",
+        "help": "Įrašo laidą (pvz., „Defqon.1 2024“) kaip albumo žymą, kad Plex ir Jellyfin visus festivalio setus rodytų kaip vieną albumą. Išjungta: albumas = pavadinimas, kaip anksčiau."
       }
     },
     "path_preview": {
       "label": "Peržiūra",
-      "help": "Spustelėkite vietos žymes, kad įterptumėte jas į kelio šabloną."
+      "help": "Spustelėkite vietos žymes, kad įterptumėte jas į kelio šabloną.",
+      "fest": "{festival}, {event_year} ir {stage} užpildomi tik tada, kai priskirtas festivalis. Kitu atveju jie išnyksta kartu su likusiais skyrikliais ir tuščiais aplankais."
     },
     "throttle": {
       "sleep_requests": {
@@ -1118,6 +1132,77 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
       "label": "Visi nustatymai",
       "help": "Atstato visus skirtukus į numatytuosius. Duomenų bazė ir muzikos failai nepaliečiami.",
       "button": "Atstatyti viską"
+    },
+    "festivals": {
+      "detect": {
+        "label": "Atpažinti automatiškai",
+        "help": "Naujiems rezultatams ir atsisiuntimams priskiria festivalį ar seriją, metus, sceną ir seto tipą. Rankiniu būdu nustatytos reikšmės niekada neperrašomos."
+      },
+      "min_confidence": {
+        "label": "Atpažinimo slenkstis",
+        "help": "Tikrumas, nuo kurio atitikmuo priskiriamas. Žemiau jis rodomas tik kaip pasiūlymas, kurį galite priimti."
+      },
+      "year_from_upload_date": {
+        "label": "Metai iš įkėlimo datos",
+        "help": "Jei pavadinime nėra metų, imami įkėlimo metai (laikoma mažiau patikima)."
+      },
+      "match_description": {
+        "label": "Ieškoti ir aprašyme",
+        "help": "Festivalių pavadinimų ieško ir išsaugotame aprašyme."
+      },
+      "extra_stages": {
+        "label": "Papildomos scenos",
+        "help": "Scenų pavadinimai be integruotų (RED, BLUE, BLACK, UV, Mainstage …).",
+        "ph": "+ scena"
+      }
+    },
+    "fest_types": {
+      "label": "Savi setų tipų terminai",
+      "help": "Žodžiai pavadinime, nurodantys seto tipą. Jie tikrinami prieš integruotus terminus.",
+      "ph": "Terminas pavadinime",
+      "add": "Terminas"
+    },
+    "fest_test": {
+      "label": "Išbandyti pavadinimą",
+      "help": "Parodo, ką atpažinimas randa pavadinime. Niekas neišsaugoma; galioja išsaugoti nustatymai.",
+      "ph": "pvz., Defqon.1 2024 | RED | Closing Ceremony",
+      "none": "Nieko neatpažinta",
+      "assigned": "būtų priskirta",
+      "suggested": "tik pasiūlymas"
+    },
+    "fest_status": {
+      "title": "Priskirta {assigned} iš {total} miksų",
+      "last": "Paskutinis perėjimas",
+      "help": "Veikia neprisijungus su esama biblioteka. Rankinės reikšmės lieka; failai nežymimi iš naujo ir neperkeliami.",
+      "button": "Priskirti festivalius dabar",
+      "running": "Priskiriama … {done} / {total}"
+    },
+    "series": {
+      "hint": "Žinomi festivaliai, radijo laidos ir tinklalaidės. Šio sąrašo pakeitimai išsaugomi iškart.",
+      "add": "Serija",
+      "show_hidden": "Rodyti paslėptas",
+      "reset_all": "Atstatyti integruotas serijas",
+      "builtin": "integruota",
+      "own": "sava",
+      "modified": "pakeista",
+      "hidden": "paslėpta",
+      "no_aliases": "nėra pseudonimų",
+      "enable": "Atpažinti šią seriją",
+      "hide": "Slėpti",
+      "restore": "Atkurti",
+      "new_title": "Nauja serija",
+      "edit_title": "Redaguoti seriją",
+      "name": "Pavadinimas",
+      "kind": "Rūšis",
+      "default_genre": "Numatytasis žanras",
+      "aliases": "Pseudonimai",
+      "aliases_help": "Kitos rašybos. Pakanka vieno atitikmens pavadinime.",
+      "weak_aliases": "Silpni pseudonimai",
+      "weak_help": "Kasdieniai žodžiai, kurie skaičiuojami tik kartu su metais.",
+      "variants": "Variantai",
+      "variants_help": "Atskiros laidos, pvz., Australia arba at Home.",
+      "channels": "Organizatoriaus kanalai",
+      "channels_help": "Kanalo pavadinimas, ID arba URL. Tik padidina tikrumą."
     }
   },
   "opt": {
@@ -1206,6 +1291,25 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "reset_all": {
       "title": "Atstatyti viską",
       "text": "Visi nustatymai visuose skirtukuose nedelsiant nustatomi į numatytuosius ir įrašomi.",
+      "ok": "Atstatyti"
+    },
+    "series_delete": {
+      "title": "Ištrinti seriją?",
+      "text": "„{name}“ ir jos laidos bus ištrintos.",
+      "warn": {
+        "one": "{n} miksas praras priskyrimą.",
+        "few": "{n} miksai praras priskyrimą.",
+        "many": "{n} mikso praras priskyrimą.",
+        "other": "{n} miksų praras priskyrimą."
+      }
+    },
+    "series_hide": {
+      "title": "Slėpti seriją?",
+      "text": "„{name}“ nebebus atpažįstama. Ją grąžinsite pasirinkę „Rodyti paslėptas“."
+    },
+    "series_reset": {
+      "title": "Atstatyti integruotas serijas?",
+      "text": "Visos integruotos serijos grįš į pradinę būseną, paslėptos vėl atsiras. Jūsų serijos liks.",
       "ok": "Atstatyti"
     }
   },
@@ -1299,7 +1403,14 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "update_failed": "Atnaujinti nepavyko",
     "restart_required": "Atnaujinta – paleiskite HCLoader iš naujo, kad paieška ir atsisiuntimai vėl veiktų",
     "backup_done": "Atsarginė kopija sukurta: {path}",
-    "reset_all": "Visi nustatymai atstatyti"
+    "reset_all": "Visi nustatymai atstatyti",
+    "festival_entry_only": "„{name}“ išsaugota tik įraše – failas nepasiekiamas",
+    "series_saved": "Serija „{name}“ išsaugota",
+    "series_deleted": "Serija „{name}“ ištrinta",
+    "series_hidden": "Serija „{name}“ paslėpta",
+    "series_reset": "Integruotos serijos atkurtos",
+    "assign_done": "Festivaliai priskirti: naujų {assigned}, pasiūlymų {suggested}",
+    "assign_cancelled": "Priskyrimas nutrauktas: naujų {assigned}, pasiūlymų {suggested}"
   },
   "upd": {
     "available": "Yra versija {v}",
@@ -1373,5 +1484,60 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "text": "Sąsaja negavo atsakymo iš Python HCLoader dalies. Nerodoma ir neišsaugoma nieko, kas nėra tikra.",
     "waiting": "Vis dar laukiama serverio dalies …",
     "reload": "Įkelti iš naujo"
+  },
+  "fest": {
+    "all": "Visos serijos",
+    "other": "Kita / nepriskirta",
+    "other_hint": "Be festivalio",
+    "sets": {
+      "one": "{n} setas",
+      "few": "{n} setai",
+      "many": "{n} seto",
+      "other": "{n} setų"
+    },
+    "editions": {
+      "one": "{n} laida",
+      "few": "{n} laidos",
+      "many": "{n} laidos",
+      "other": "{n} laidų"
+    },
+    "suggestions": {
+      "one": "{n} pasiūlymas",
+      "few": "{n} pasiūlymai",
+      "many": "{n} pasiūlymo",
+      "other": "{n} pasiūlymų"
+    },
+    "all_years": "Visi",
+    "no_stage": "Be scenos",
+    "kind": {
+      "festival": "Festivalis",
+      "radio": "Radijo laida",
+      "podcast": "Tinklalaidė"
+    },
+    "set_type": {
+      "live_set": "Gyvas setas",
+      "closing_ceremony": "Uždarymo ceremonija",
+      "opening": "Atidarymas",
+      "endshow": "Endshow",
+      "full_show": "Visas šou",
+      "warm_up": "Apšilimas",
+      "anthem": "Himnas",
+      "episode": "Epizodas"
+    },
+    "change": "keisti festivalį",
+    "change_manual": "nustatyta rankiniu būdu, spustelėkite, kad pakeistumėte",
+    "add": "Nustatyti festivalį ar seriją",
+    "suggested": "Neužtikrintas pasiūlymas: {name}",
+    "accept": "Priimti pasiūlymą",
+    "p_title": "Festivalis / serija",
+    "p_search": "Ieškoti serijos …",
+    "p_none": "Be festivalio",
+    "p_no_match": "Serijų nerasta",
+    "p_year": "Metai",
+    "p_variant": "Variantas",
+    "p_stage": "Scena",
+    "p_type": "Seto tipas",
+    "p_apply": "Taikyti",
+    "p_auto": "Grąžinti automatinį"
   }
 });

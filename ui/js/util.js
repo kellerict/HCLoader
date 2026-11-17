@@ -261,6 +261,10 @@
     volume: svg('<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 010 7"/><path d="M19.2 6a8.5 8.5 0 010 12"/>'),
     mute: svg('<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9.5l5 5M22 9.5l-5 5"/>'),
     file_x: svg('<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9.5 12.5l5 5M14.5 12.5l-5 5"/>'),
+    /* v0.3.0 Festivals & Serien: Art der Serie */
+    flag: svg('<path d="M5 21V4"/><path d="M5 4h13l-3 4.5 3 4.5H5"/>'),
+    radio: svg('<circle cx="12" cy="12" r="1.6"/><path d="M8.5 8.5a5 5 0 000 7M15.5 8.5a5 5 0 010 7M5.6 5.6a9 9 0 000 12.8M18.4 5.6a9 9 0 010 12.8"/>'),
+    mic: svg('<path d="M12 3a3 3 0 00-3 3v5a3 3 0 006 0V6a3 3 0 00-3-3z"/><path d="M5.5 11a6.5 6.5 0 0013 0"/><path d="M12 17.5V21"/>'),
   };
 
   /* ---------- Plattformen (Phase 7a): YouTube | SoundCloud ---------- */

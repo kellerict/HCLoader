@@ -53,7 +53,7 @@
     storage: {
       target_dir: '%USERPROFILE%\\Music\\HCLoader',
       path_template: '{genre}/{artist}/{year}/{date} - {title} [{id}]',
-      max_title_length: 120, max_path_length: 240, artist_from_title: false,
+      max_title_length: 120, max_path_length: 240, artist_from_title: false, album_from_edition: true,
       title_cleanup_patterns: ['\\(Official[^)]*\\)', '\\[HQ\\]', '\\[HD\\]', '\\(HQ\\)', '\\(HD\\)', '\\[Official[^\\]]*\\]'],
     },
     throttle: {
@@ -68,6 +68,7 @@
       backoff_initial_hours: 6, backoff_max_hours: 48,
     },
     player: { mode: 'internal' },
+    festivals: { detect: true, min_confidence: 0.65, year_from_upload_date: true, match_description: true, extra_stages: [], extra_set_types: [] },
     schedule: { watchlist_interval_hours: 24, in_app_check: true, task_scheduler_enabled: false, task_time: '03:00', entries_per_source: 30 },
     appearance: { reduce_effects: false, scanlines: true, pulse_bpm: 200 },
     maintenance: { check_updates_on_start: true, check_app_updates_on_start: true, apply_update_on_exit: true, update_repo: 'kellerict/HCLoader' },
@@ -121,6 +122,12 @@
     'storage.max_title_length': { int: 1, min: 20, max: 200 },
     'storage.max_path_length': { int: 1, min: 100, max: 259 },
     'storage.artist_from_title': { bool: 1 },
+    'storage.album_from_edition': { bool: 1 },
+    'festivals.detect': { bool: 1 },
+    'festivals.min_confidence': { min: 0.3, max: 1 },
+    'festivals.year_from_upload_date': { bool: 1 },
+    'festivals.match_description': { bool: 1 },
+    'festivals.extra_stages': { list: 1 },
     'storage.title_cleanup_patterns': { list: 1, regex: 1 },
     'throttle.sleep_requests': { min: 0, max: 60 },
     'throttle.sleep_interval': { int: 1, min: 0, max: 3600 },
@@ -153,8 +160,12 @@
   };
   /* Abschnitt «soundcloud» erbt die Schonungs-Felder (gleiche Grenzen und Meldungen wie «throttle»). */
   Object.keys(RULES).filter((k) => k.startsWith('throttle.')).forEach((k) => { RULES[k.replace('throttle.', 'soundcloud.')] = RULES[k]; });
-  const PLACEHOLDERS = ['genre', 'artist', 'channel', 'year', 'date', 'title', 'id', 'platform'];
+  const PLACEHOLDERS = ['genre', 'artist', 'channel', 'year', 'date', 'title', 'id', 'platform', 'festival', 'event_year', 'stage'];
   const MIN_YEAR = 2005;
+
+  /* Set-Arten: Code + sprachneutrales Label (TXXX:SET_TYPE), wie app/core/festivals.py */
+  const SET_TYPES = [['live_set', 'Live Set'], ['closing_ceremony', 'Closing Ceremony'], ['opening', 'Opening'], ['endshow', 'Endshow'], ['full_show', 'Full Show'],
+    ['warm_up', 'Warm-Up'], ['anthem', 'Anthem'], ['episode', 'Episode']].map(([code, label]) => ({ code, label }));
 
   function validate(v) {
     const errors = {};
@@ -215,6 +226,13 @@
       if (!/^#[0-9a-f]{6}$/i.test(g.color || '')) errors[`genres.items.${i}.color`] = 'Colour expected as #rrggbb.';
     });
     if (!seen.has('unsortiert')) errors['genres.items'] = 'The genre “Unsortiert” must exist.';
+    const fs = v.festivals || {};
+    (Array.isArray(fs.extra_stages) ? fs.extra_stages : []).forEach((x) => { if (String(x).length > 40) errors['festivals.extra_stages'] = `Stage name too long: ${String(x).slice(0, 40)}`; });
+    if (!Array.isArray(fs.extra_set_types)) errors['festivals.extra_set_types'] = 'List expected.';
+    else fs.extra_set_types.forEach((x, i) => {
+      if (!String((x && x.keyword) || '').trim()) errors[`festivals.extra_set_types.${i}.keyword`] = 'Keyword missing.';
+      else if (!SET_TYPES.some((st) => st.code === x.set_type)) errors[`festivals.extra_set_types.${i}.set_type`] = `Unknown set type: ${x.set_type}`;
+    });
     return errors;
   }
 
@@ -226,6 +244,7 @@
     vault: ['UCvaul0007', 'Gabber Vault'], stage: ['UCstag0008', 'Big Stage Events'],
     terror: ['UCterr0009', 'Terror Transmission'], night: ['UCnigh0010', 'Night Shift FM'],
     bunker: ['UCbunk0011', 'Bunker 303'], zrh: ['UCzrh00012', 'Hardfloor Zürich'],
+    qd: ['UCqdan0013', 'Q-dance'], aod: ['UCaodn0014', 'Art of Dance'], b2s: ['UCb2s00015', 'b2s'],
   };
   const V = (id, title, ch, min, sec, days, views, genre, status) => ({
     id, title, channel_id: CH[ch][0], channel_name: CH[ch][1], duration: min * 60 + sec,
@@ -434,6 +453,190 @@
     const l = LIBRARY.find((x) => x.id === id);
     l.file_path = libPath(l.genre, folder, l.upload_date, l.title, l.id);
   });
+
+  /* ---------- Festivals & Serien (v0.3.0, docs/bridge-api.md) ---------- */
+  const STAGES = ['RED', 'BLUE', 'BLACK', 'UV', 'YELLOW', 'INDIGO', 'MAGENTA', 'GOLD', 'SILVER', 'PURPLE', 'GREEN', 'ORANGE', 'WHITE', 'PINK', 'Mainstage'];
+  let seriesSeq = 0;
+  const SR = (key, name, kind, aliases, extra) => Object.assign({
+    id: ++seriesSeq, key, name, kind, aliases, weak_aliases: [], channels: [], variants: [], default_genre: null,
+    builtin: true, user_modified: false, enabled: true, hidden: false,
+  }, extra);
+  const SERIES_BUILTIN = [
+    SR('defqon1', 'Defqon.1', 'festival', ['DQ1', 'Defqon 1', 'Defqon.1 Weekend Festival'], { channels: ['Q-dance'], variants: [{ name: 'Australia', aliases: ['Sydney'] }, { name: 'Chile', aliases: [] }, { name: 'at Home', aliases: [] }] }),
+    SR('qlimax', 'Qlimax', 'festival', ['Qlimax The Source'], { channels: ['Q-dance'], default_genre: 'Hardstyle' }),
+    SR('decibel', 'Decibel outdoor', 'festival', ['Decibel Outdoor Festival', 'Decibel'], { channels: ['b2s'] }),
+    SR('intents', 'Intents Festival', 'festival', ['Intents']),
+    SR('dominator', 'Dominator', 'festival', ['Dominator Festival'], { channels: ['Art of Dance'], default_genre: 'Hardcore' }),
+    SR('moh', 'Masters of Hardcore', 'festival', ['MOH'], { channels: ['Art of Dance'], default_genre: 'Hardcore' }),
+    SR('thunderdome', 'Thunderdome', 'festival', ['Thunderdome Die Hard'], { default_genre: 'Hardcore' }),
+    SR('reverze', 'Reverze', 'festival', []),
+    SR('hardbass', 'Hard Bass', 'festival', [], { weak_aliases: ['Hard Bass'], channels: ['b2s'] }),
+    SR('qbase', 'Q-BASE', 'festival', ['QBASE', 'Q Base'], { channels: ['Q-dance'] }),
+    SR('supremacy', 'Supremacy', 'festival', [], { weak_aliases: ['Supremacy'], channels: ['Art of Dance'] }),
+    SR('rebirth', 'REBiRTH Festival', 'festival', [], { weak_aliases: ['Rebirth'] }),
+    SR('groundzero', 'Ground Zero Festival', 'festival', ['Ground Zero'], { default_genre: 'Hardcore' }),
+    SR('hardshock', 'Hardshock Festival', 'festival', ['Hardshock'], { default_genre: 'Hardcore' }),
+    SR('qdanceradio', 'Q-dance Radio', 'radio', ['Qdance Radio', 'Q-dance presents'], { channels: ['Q-dance'] }),
+    SR('hardstylemag', 'Hardstyle Mag Podcast', 'podcast', ['Hardstyle Mag']),
+  ];
+  let SERIES = clone(SERIES_BUILTIN);
+  SERIES.push(SR('u-hardfloor-zurich-podcast', 'Hardfloor Zürich Podcast', 'podcast', ['Hardfloor Zurich Podcast'], { builtin: false, channels: ['Hardfloor Zürich'], default_genre: 'Hardstyle' }));
+  SERIES.find((x) => x.key === 'thunderdome').aliases.push('Thunderdome Tribute');
+  SERIES.find((x) => x.key === 'thunderdome').user_modified = true;
+  const EDITIONS = [];
+  const seriesByKey = (key) => SERIES.find((x) => x.key === key);
+  const seriesById = (id) => SERIES.find((x) => x.id === +id);
+  function editionOf(sid, year, variant) {
+    const v = variant || '';
+    let e = EDITIONS.find((x) => x.series_id === sid && x.event_year === (year || null) && x.variant === v);
+    if (!e) EDITIONS.push((e = { id: EDITIONS.length + 1, series_id: sid, event_year: year || null, variant: v }));
+    return e;
+  }
+  /** Festival-Objekt eines Eintrags (Form wie LibraryItem.festival). */
+  function festivalOf(edition, o) {
+    const s = seriesById(edition.series_id), x = o || {};
+    const festival = [s.name, edition.variant].filter(Boolean).join(' ');
+    return {
+      edition_id: edition.id, series_id: s.id, series_key: s.key, series: s.name, kind: s.kind, event_year: edition.event_year, variant: edition.variant,
+      edition: [festival, edition.event_year].filter(Boolean).join(' '), festival,
+      stage: x.stage || null, set_type: x.set_type || null, episode: x.episode || null, manual: !!x.manual, confidence: x.manual ? null : x.confidence == null ? 0.92 : x.confidence,
+    };
+  }
+  const fest = (key, year, o) => festivalOf(editionOf(seriesByKey(key).id, year, o && o.variant), o);
+  /* Sets: [id, Titel, Kanal, Genre, Minuten, Serie, Jahr, Bühne, Set-Art, Zusatz] – das Upload-Datum liegt im Sommer des Jahres. */
+  const FL = (id, title, ch, genre, min, key, year, stage, setType, o) => {
+    const x = o || {}, date = `${year}-${x.md || '07-02'}`, duration = min * 60 + (id.charCodeAt(1) % 60), artist = CH[ch][1];
+    const dl = 1 + [...id].reduce((n, c) => (n * 7 + c.charCodeAt(0)) % 997, 3) % 34;
+    return Object.assign({
+      id, title, artist, channel_id: CH[ch][0], genre, duration, upload_date: date, year,
+      downloaded_at: isoAt(dl, dl % 3 ? 21 : 9, 5 + (id.charCodeAt(3) % 50)),
+      file_path: libPath(genre, artist, date, title, id), size_mb: sizeOf(duration), missing: false, has_cue: id.charCodeAt(3) % 4 !== 0,
+      platform: 'youtube', thumbnail: null, genre_manual: false,
+      festival: x.assign === false ? null : fest(key, year, { stage, set_type: setType, variant: x.variant, episode: x.episode, manual: x.manual, confidence: x.confidence }),
+      festival_suggestion: null,
+    }, x.extra);
+  };
+  LIBRARY.push(
+    FL('qDq24RedCls', 'Defqon.1 2024 | RED | The Closing Ceremony', 'qd', 'Hardstyle', 34, 'defqon1', 2024, 'RED', 'closing_ceremony'),
+    FL('qDq24RedSZP', 'Sub Zero Project | Defqon.1 2024 | RED', 'qd', 'Hardstyle', 61, 'defqon1', 2024, 'RED', 'live_set'),
+    FL('qDq24RedEnd', 'Defqon.1 2024 | RED | Saturday Endshow', 'qd', 'Hardstyle', 22, 'defqon1', 2024, 'RED', 'endshow'),
+    FL('qDq24BluRwx', 'Rebelion | Defqon.1 2024 | BLUE', 'qd', 'Hardstyle', 59, 'defqon1', 2024, 'BLUE', 'live_set'),
+    FL('qDq24BluVer', 'Vertile | Defqon.1 2024 | BLUE', 'qd', 'Hardstyle', 58, 'defqon1', 2024, 'BLUE', 'live_set'),
+    FL('qDq24BlkDrS', 'Dr. Peacock | Defqon.1 2024 | BLACK', 'qd', 'Hardcore', 60, 'defqon1', 2024, 'BLACK', 'live_set'),
+    FL('qDq24BlkAng', 'Angerfist | Defqon.1 2024 | BLACK', 'qd', 'Hardcore', 62, 'defqon1', 2024, 'BLACK', 'live_set', { manual: true }),
+    FL('qDq24PwrHr1', 'Defqon.1 2024 | POWER HOUR', 'qd', 'Hardstyle', 63, 'defqon1', 2024, null, 'full_show'),
+    FL('qDq23RedHhz', 'Headhunterz | Defqon.1 2023 | RED', 'qd', 'Hardstyle', 60, 'defqon1', 2023, 'RED', 'live_set'),
+    FL('qDq23RedCls', 'Defqon.1 2023 | RED | The Closing Ceremony', 'qd', 'Hardstyle', 31, 'defqon1', 2023, 'RED', 'closing_ceremony'),
+    FL('qDq23BluDst', 'D-Sturb | Defqon.1 2023 | BLUE', 'qd', 'Hardstyle', 57, 'defqon1', 2023, 'BLUE', 'live_set'),
+    FL('qDq23BlkMhP', 'Miss K8 | Defqon.1 2023 | BLACK', 'qd', 'Hardcore', 59, 'defqon1', 2023, 'BLACK', 'live_set'),
+    FL('qDq22RedOpn', 'Defqon.1 2022 | RED | The Opening Ceremony', 'qd', 'Hardstyle', 28, 'defqon1', 2022, 'RED', 'opening'),
+    FL('qDq22BluWar', 'Warface | Defqon.1 2022 | BLUE', 'qd', 'Hardstyle', 60, 'defqon1', 2022, 'BLUE', 'live_set'),
+    FL('qDq22BlkPrt', 'Partyraiser | Defqon.1 2022 | BLACK', 'qd', 'Uptempo', 58, 'defqon1', 2022, 'BLACK', 'live_set'),
+    FL('qDq21HomeRd', 'Defqon.1 at Home 2021 | RED | Saturday Livestream', 'qd', 'Hardstyle', 182, 'defqon1', 2021, 'RED', 'full_show', { variant: 'at Home' }),
+    FL('qDq20HomeBk', 'Defqon.1 at Home 2020 | BLACK | Full Stream', 'qd', 'Hardcore', 176, 'defqon1', 2020, 'BLACK', 'full_show', { variant: 'at Home' }),
+    FL('qDq19RedCls', 'Defqon.1 2019 | RED | The Closing Ceremony', 'qd', 'Hardstyle', 33, 'defqon1', 2019, 'RED', 'closing_ceremony'),
+    FL('qDq19RedCoo', 'Coone | Defqon.1 2019 | RED', 'qd', 'Hardstyle', 59, 'defqon1', 2019, 'RED', 'live_set'),
+    FL('qDq19BlkNSD', 'N-Vitral | Defqon.1 2019 | BLACK', 'qd', 'Hardcore', 57, 'defqon1', 2019, 'BLACK', 'live_set'),
+    FL('qQlx24Full1', 'Qlimax 2024 | Rise of the Celestials | Full Show', 'qd', 'Hardstyle', 372, 'qlimax', 2024, null, 'full_show', { md: '11-25' }),
+    FL('qQlx23Anth1', 'Qlimax 2023 | The Anthem Show', 'qd', 'Hardstyle', 18, 'qlimax', 2023, null, 'anthem', { md: '11-27' }),
+    FL('qQlx23Ran-D', 'Ran-D | Qlimax 2023', 'qd', 'Hardstyle', 58, 'qlimax', 2023, null, 'live_set', { md: '11-27' }),
+    FL('qQlx22SndR', 'Sound Rush | Qlimax 2022 | The Reawakening', 'qd', 'Hardstyle', 55, 'qlimax', 2022, null, 'live_set', { md: '11-28' }),
+    FL('aDom24MainA', 'Dominator 2024 | Mainstage | Angerfist', 'aod', 'Hardcore', 61, 'dominator', 2024, 'Mainstage', 'live_set', { md: '07-22' }),
+    FL('aDom24MainS', 'Dominator 2024 | Mainstage | Sefa – Closing Set', 'aod', 'Hardcore', 64, 'dominator', 2024, 'Mainstage', 'closing_ceremony', { md: '07-22' }),
+    FL('aDom23MainD', 'Dominator 2023 | Mainstage | D-Fence', 'aod', 'Hardcore', 59, 'dominator', 2023, 'Mainstage', 'live_set', { md: '07-17' }),
+    FL('aDom23Warm1', 'Dominator 2023 | Warm-Up Mix by Never Surrender', 'aod', 'Hardcore', 47, 'dominator', 2023, null, 'warm_up', { md: '06-30' }),
+    FL('qRad24Ep512', 'Q-dance Radio 512 | Hosted by Villain', 'qd', 'Hardstyle', 60, 'qdanceradio', 2024, null, 'episode', { md: '03-14', episode: 512 }),
+    FL('qRad24Ep520', 'Q-dance Radio 520 | Road to Defqon.1', 'qd', 'Hardstyle', 61, 'qdanceradio', 2024, null, 'episode', { md: '05-09', episode: 520 }),
+    FL('qRad24Ep531', 'Q-dance Radio 531 | Raw Special', 'qd', 'Hardstyle', 60, 'qdanceradio', 2024, null, 'episode', { md: '07-25', episode: 531 }),
+    FL('qRad23Ep480', 'Q-dance Radio 480 | Yearmix Preview', 'qd', 'Hardstyle', 62, 'qdanceradio', 2023, null, 'episode', { md: '12-07', episode: 480 }),
+    /* Noch nicht zugeordnet: «Festivals zuordnen» erkennt sie (assign_festivals). */
+    FL('aMoh24MainM', 'Masters of Hardcore 2024 | Mainstage | Mad Dog', 'aod', 'Hardcore', 60, 'moh', 2024, 'Mainstage', 'live_set', { md: '03-25', assign: false }),
+    FL('aMoh24MainE', 'Masters of Hardcore 2024 | The Endshow', 'aod', 'Hardcore', 21, 'moh', 2024, null, 'endshow', { md: '03-25', assign: false }),
+    FL('bHrdBss19Gr', 'Hard Bass Team Green – Full Liveset', 'b2s', 'Hardstyle', 88, 'hardbass', 2019, null, 'full_show', { md: '02-11', assign: false }),
+    FL('bDcb23MainR', 'Decibel outdoor 2023 | Mainstage | Rooler', 'b2s', 'Hardstyle', 58, 'decibel', 2023, 'Mainstage', 'live_set', { md: '08-21', assign: false }),
+  );
+  /* Bestehende Einträge: Podcast-Folgen der eigenen Serie, ein unsicherer Vorschlag (Tribute-Mix). */
+  const libById = (id) => LIBRARY.find((x) => x.id === id);
+  LIBRARY.forEach((l) => { if (l.festival === undefined) { l.festival = null; l.festival_suggestion = null; } });
+  [['zZrhPod0006', 6], ['zZrhPod0005', 5], ['zZrhPod0001', 1]].forEach(([id, ep]) => {
+    const l = libById(id);
+    l.festival = fest('u-hardfloor-zurich-podcast', l.year, { set_type: 'episode', episode: ep, confidence: 0.81 });
+  });
+  libById('gThunder98x').festival_suggestion = (() => { const f = fest('thunderdome', 1998, { confidence: 0.48 }); delete f.manual; return f; })();
+  libById('bHrdBss19Gr').festival_suggestion = (() => { const f = fest('hardbass', 2019, { set_type: 'full_show', confidence: 0.58 }); delete f.manual; return f; })();
+  const seriesCount = (sid) => LIBRARY.filter((l) => l.festival && l.festival.series_id === sid).length;
+  const seriesOut = (s) => { const o = clone(s); o.count = seriesCount(s.id); return o; };
+  const foldName = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '');
+  /** Stellvertreter für app/core/festivals.detect: Alias im Titel, Jahr, Bühne, Set-Art. */
+  function detect(title, o) {
+    const text = String(title || ''), folded = foldName(text), x = o || {};
+    let best = null;
+    SERIES.filter((s) => !s.hidden && s.enabled).forEach((s) => {
+      (s.weak_aliases.includes(s.name) ? [] : [s.name]).concat(s.aliases).forEach((a) => { const f = foldName(a); if (f && folded.includes(f) && (!best || f.length > best.len)) best = { s, alias: a, len: f.length, weak: false }; });
+      s.weak_aliases.forEach((a) => { const f = foldName(a); if (f && folded.includes(f) && !best) best = { s, alias: a, len: f.length, weak: true }; });
+    });
+    if (!best) return null;
+    const s = best.s, fs = settings.festivals;
+    const y4 = text.match(/(?:^|\D)((?:19[89]|20[0-3])\d)(?!\d)/), y2 = text.match(/[’'](\d\d)(?!\d)/);
+    const fromTitle = y4 ? +y4[1] : y2 ? (+y2[1] > 80 ? 1900 : 2000) + +y2[1] : null;
+    const year = fromTitle || (fs.year_from_upload_date && x.upload_date ? +String(x.upload_date).slice(0, 4) : null);
+    const stage = STAGES.concat(fs.extra_stages || []).find((st) => new RegExp(`(^|[^A-Za-z])${st.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^A-Za-z])`, st === st.toUpperCase() ? '' : 'i').test(text)) || null;
+    const low = text.toLowerCase();
+    const custom = (fs.extra_set_types || []).find((k) => k.keyword && low.includes(String(k.keyword).toLowerCase()));
+    const setType = custom ? custom.set_type : /closing/.test(low) ? 'closing_ceremony' : /opening/.test(low) ? 'opening' : /endshow/.test(low) ? 'endshow' : /anthem/.test(low) ? 'anthem'
+      : /warm.?up/.test(low) ? 'warm_up' : /full (show|stream|set)|registration|power hour/.test(low) ? 'full_show' : s.kind !== 'festival' ? 'episode' : /\||@|live ?set/.test(low) ? 'live_set' : null;
+    const ep = s.kind !== 'festival' ? (text.match(/(?:#|episode |ep\.? ?)(\d{1,4})\b/i) || text.match(/\b(\d{2,4})\b(?!.*\b(?:19|20)\d\d)/) || [])[1] : null;
+    const variant = (s.variants.find((v) => [v.name].concat(v.aliases).some((a) => foldName(a) && folded.includes(foldName(a)))) || {}).name || '';
+    let conf = best.weak ? 0.35 : 0.6;
+    if (fromTitle) conf += 0.2; else if (year) conf += 0.08;
+    if (stage) conf += 0.08;
+    if (setType) conf += 0.05;
+    if (x.channel_name && s.channels.includes(x.channel_name)) conf += 0.1;
+    if (/tribute|reaction|aftermovie/.test(low)) conf -= 0.3;
+    conf = Math.max(0.05, Math.min(0.99, +conf.toFixed(2)));
+    const festival = [s.name, variant].filter(Boolean).join(' ');
+    return {
+      series_key: s.key, series_id: s.id, series: s.name, kind: s.kind, year, year_source: fromTitle ? 'title' : year ? 'upload' : null, variant,
+      edition: [festival, year].filter(Boolean).join(' '), stage, set_type: setType, episode: ep ? +ep : null, confidence: conf, alias: best.alias, reasons: ['alias'],
+    };
+  }
+  /** Erkennung auf einen Bibliothekseintrag anwenden -> "assigned" | "suggested" | "none" | "unchanged" | "manual". */
+  function assignOne(l) {
+    if (l.festival && l.festival.manual) return 'manual';
+    const d = detect(l.title, { channel_name: l.artist, upload_date: l.upload_date });
+    const before = JSON.stringify([l.festival && [l.festival.edition_id, l.festival.stage, l.festival.set_type], l.festival_suggestion && l.festival_suggestion.edition_id]);
+    if (l.festival && !d) return 'unchanged'; // der Mock erkennt weniger als das Backend: Bestehendes bleibt
+    if (!d) { l.festival = null; l.festival_suggestion = null; }
+    else {
+      const f = festivalOf(editionOf(d.series_id, d.year, d.variant), { stage: d.stage, set_type: d.set_type, episode: d.episode, confidence: d.confidence });
+      if (d.confidence >= settings.festivals.min_confidence) { l.festival = f; l.festival_suggestion = null; }
+      else { delete f.manual; l.festival = null; l.festival_suggestion = f; }
+    }
+    const after = JSON.stringify([l.festival && [l.festival.edition_id, l.festival.stage, l.festival.set_type], l.festival_suggestion && l.festival_suggestion.edition_id]);
+    return before === after ? 'unchanged' : l.festival ? 'assigned' : l.festival_suggestion ? 'suggested' : 'none';
+  }
+  const festState = { running: false, cancel: false, lastPass: isoAt(9, 21, 40), timer: null };
+  /** Zuordnungen/Vorschläge einer Serie entfernen (Serie gelöscht/ausgeblendet) -> Anzahl. */
+  function clearSeries(sid) {
+    let n = 0;
+    LIBRARY.forEach((l) => {
+      if (l.festival && l.festival.series_id === sid) { l.festival = null; n++; }
+      if (l.festival_suggestion && l.festival_suggestion.series_id === sid) { l.festival_suggestion = null; n++; }
+    });
+    return n;
+  }
+  /** Namen einer geänderten Serie in die Einträge nachziehen. */
+  function renameSeries(s) {
+    LIBRARY.forEach((l) => ['festival', 'festival_suggestion'].forEach((k) => {
+      const f = l[k];
+      if (!f || f.series_id !== s.id) return;
+      const fresh = festivalOf(editionOf(s.id, f.event_year, f.variant), f);
+      if (k === 'festival_suggestion') delete fresh.manual;
+      fresh.confidence = f.confidence;
+      l[k] = fresh;
+    }));
+  }
+
   let libraryBackup = null;
   let targetDown = false; // demo.targetDown(): Zielordner nicht erreichbar
 
@@ -663,6 +866,7 @@
       cntOf(plat).downloads_run++; cntOf(plat).downloads_day++;
       const artist = v.channel_name;
       LIBRARY.unshift({
+        festival: null, festival_suggestion: null,
         id: v.id, title: v.title, artist, channel_id: v.channel_id, genre: v.genre, duration: v.duration, upload_date: v.upload_date, year: +v.upload_date.slice(0, 4),
         downloaded_at: new Date().toISOString(),
         file_path: libPath(v.genre, artist, v.upload_date, v.title, v.id), size_mb: sizeOf(v.duration), missing: false, has_cue: true,
@@ -1289,6 +1493,165 @@
         return { ok: true, deleted: file ? [name].concat(l.has_cue ? [name.replace(/\.mp3$/, '.cue')] : []) : [] };
       });
     },
+
+    /* Festivals & Serien (v0.3.0) */
+    get_series: (includeHidden) => later(40, () => SERIES.filter((s) => includeHidden || !s.hidden).map((s) => { const o = seriesOut(s); if (!includeHidden) delete o.hidden; return o; })
+      .sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }))),
+    save_series(data) {
+      return later(180, () => {
+        const d = data || {}, errors = {};
+        const cur = d.id != null ? seriesById(d.id) : null;
+        const name = String(d.name || '').trim();
+        if (d.id != null && !cur) errors.id = 'Unknown series.';
+        if (!name) errors.name = 'Name missing.';
+        else if (name.length > 80) errors.name = 'Name is too long (max. 80 characters).';
+        else if (SERIES.some((s) => s !== cur && !s.hidden && foldName(s.name) === foldName(name))) errors.name = `“${name}” already exists.`;
+        if (!['festival', 'radio', 'podcast'].includes(d.kind)) errors.kind = 'Allowed: festival, radio, podcast.';
+        ['aliases', 'weak_aliases', 'channels'].forEach((k) => {
+          const list = d[k] == null ? [] : d[k];
+          if (!Array.isArray(list) || list.length > 40) { errors[k] = 'List with at most 40 entries expected.'; return; }
+          if (k === 'channels') return;
+          list.forEach((a) => {
+            const other = SERIES.find((s) => s !== cur && !s.hidden && [s.name].concat(s.aliases, s.weak_aliases).some((x) => foldName(x) === foldName(a)));
+            if (other && !errors[k]) errors[k] = `“${a}” already belongs to “${other.name}”.`;
+          });
+        });
+        if (d.default_genre && !settings.genres.items.some((g) => g.name === d.default_genre)) errors.default_genre = `Unknown genre: ${d.default_genre}`;
+        if (Object.keys(errors).length) return { ok: false, errors };
+        const clean = (l) => [...new Set((l || []).map((x) => String(x).trim()).filter(Boolean))];
+        const fields = {
+          name, kind: d.kind, aliases: clean(d.aliases), weak_aliases: clean(d.weak_aliases), channels: clean(d.channels),
+          variants: (d.variants || []).map((v) => ({ name: String(v.name || '').trim(), aliases: clean(v.aliases) })).filter((v) => v.name),
+          default_genre: d.default_genre || null, enabled: d.enabled !== false,
+        };
+        let s = cur;
+        if (s) { Object.assign(s, fields); if (s.builtin) s.user_modified = true; renameSeries(s); }
+        else SERIES.push((s = SR(`u-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'series'}`, name, d.kind, [], Object.assign(fields, { builtin: false }))));
+        pushLog('info', `Series saved: ${s.name}`);
+        return { ok: true, series: seriesOut(s) };
+      });
+    },
+    delete_series(id) {
+      return later(140, () => {
+        const s = seriesById(id);
+        if (!s) return { ok: false, error: 'Unknown series.' };
+        const cleared = clearSeries(s.id);
+        if (s.builtin) s.hidden = true; else SERIES = SERIES.filter((x) => x !== s);
+        pushLog('warn', `${s.builtin ? 'Series hidden' : 'Series deleted'}: ${s.name} · ${cleared} assignment(s) removed`);
+        return { ok: true, hidden: !!s.builtin, cleared };
+      });
+    },
+    reset_series(id) {
+      return later(160, () => {
+        const one = id != null ? seriesById(id) : null;
+        if (id != null && (!one || !one.builtin)) return { ok: false, error: 'Only built-in series can be reset.' };
+        SERIES.filter((s) => s.builtin && (!one || s === one)).forEach((s) => {
+          Object.assign(s, clone(SERIES_BUILTIN.find((b) => b.key === s.key)), { id: s.id });
+          renameSeries(s);
+        });
+        pushLog('info', one ? `Series reset: ${one.name}` : 'Built-in series restored');
+        return { ok: true, series: SERIES.filter((s) => s.builtin && (!one || s === one)).map(seriesOut) };
+      });
+    },
+    get_festival_options: () => later(20, () => ({ kinds: ['festival', 'radio', 'podcast'], set_types: clone(SET_TYPES), stages: STAGES.concat(settings.festivals.extra_stages || []) })),
+    get_library_groups(by) {
+      return later(40, () => {
+        const mode = by || 'festival';
+        if (mode === 'festival') {
+          const series = SERIES.map((s) => {
+            const mine = LIBRARY.filter((l) => l.festival && l.festival.series_id === s.id);
+            const tally = (list, key) => { const m = new Map(); list.forEach((l) => m.set(l.festival[key] || null, (m.get(l.festival[key] || null) || 0) + 1)); return [...m].sort((a, b) => !a[0] - !b[0] || b[1] - a[1]).map(([k, count]) => ({ [key]: k, count })); };
+            const editions = [...new Set(mine.map((l) => l.festival.edition_id))].map((eid) => {
+              const list = mine.filter((l) => l.festival.edition_id === eid), f = list[0].festival;
+              return { id: eid, event_year: f.event_year, variant: f.variant, edition: f.edition, festival: f.festival, count: list.length, stages: tally(list, 'stage'), set_types: tally(list, 'set_type') };
+            }).sort((a, b) => (b.event_year || 0) - (a.event_year || 0));
+            return { id: s.id, key: s.key, name: s.name, kind: s.kind, count: mine.length, editions };
+          }).filter((s) => s.count).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+          const rest = LIBRARY.filter((l) => !l.festival);
+          return { ok: true, by: mode, series, unassigned: rest.length, suggested: rest.filter((l) => l.festival_suggestion).length, total: LIBRARY.length };
+        }
+        const keyOf = {
+          year: (l) => String(l.year || ''), event_year: (l) => String((l.festival && l.festival.event_year) || ''), artist: (l) => l.artist || '', genre: (l) => l.genre || '',
+          stage: (l) => (l.festival && l.festival.stage) || '', set_type: (l) => (l.festival && l.festival.set_type) || '',
+        }[mode];
+        if (!keyOf) return { ok: false, error: `Unknown grouping: ${mode}` };
+        const m = new Map();
+        LIBRARY.forEach((l) => m.set(keyOf(l), (m.get(keyOf(l)) || 0) + 1));
+        const years = mode === 'year' || mode === 'event_year';
+        return { ok: true, by: mode, groups: [...m].map(([key, count]) => ({ key, count })).sort((a, b) => !a.key - !b.key || (years ? b.key.localeCompare(a.key) : b.count - a.count)) };
+      });
+    },
+    set_festival(id, data) {
+      return later(140, () => {
+        const l = LIBRARY.find((x) => x.id === id);
+        if (!l) return { ok: false, errors: { id: 'Unknown video.' }, error: 'Unknown video.' };
+        const errors = {};
+        let f = null;
+        if (data) {
+          let ed = null;
+          if (data.edition_id != null) { ed = EDITIONS.find((e) => e.id === +data.edition_id); if (!ed) errors.edition_id = 'Unknown edition.'; }
+          else {
+            const s = seriesById(data.series_id), y = data.event_year;
+            if (!s) errors.series_id = 'Unknown series.';
+            if (y != null && (!Number.isInteger(y) || y < 1985 || y > new Date().getFullYear() + 1)) errors.event_year = `Invalid year: ${y}`;
+            if (!Object.keys(errors).length) ed = editionOf(s.id, y || null, data.variant);
+          }
+          if (data.set_type && !SET_TYPES.some((x) => x.code === data.set_type)) errors.set_type = `Unknown set type: ${data.set_type}`;
+          if (data.episode != null && (!Number.isInteger(data.episode) || data.episode < 1)) errors.episode = 'Episode must be a positive number.';
+          if (Object.keys(errors).length) return { ok: false, errors, error: Object.values(errors)[0] };
+          f = festivalOf(ed, { stage: data.stage, set_type: data.set_type, episode: data.episode, manual: true });
+        }
+        l.festival = f || null;
+        l.festival_suggestion = null;
+        l.festival_none = !f; // «kein Festival» von Hand: die Erkennung lässt es in Ruhe
+        pushLog('info', f ? `Festival set: ${l.title} → ${f.edition}${f.stage ? ` · ${f.stage}` : ''}` : `Festival removed: ${l.title}`);
+        emit('video', { id, status: 'done', genre: l.genre, festival: clone(l.festival), festival_suggestion: null });
+        return { ok: true, festival: clone(l.festival), festival_suggestion: null };
+      });
+    },
+    reset_festival(id) {
+      return later(140, () => {
+        const l = LIBRARY.find((x) => x.id === id);
+        if (!l) return { ok: false, error: 'Unknown video.' };
+        if (l.festival) l.festival.manual = false;
+        delete l.festival_none;
+        const had = !!l.festival;
+        let outcome = assignOne(l);
+        if (outcome === 'unchanged' && had && !detect(l.title)) { l.festival = null; outcome = 'none'; }
+        emit('video', { id, status: 'done', genre: l.genre, festival: clone(l.festival), festival_suggestion: clone(l.festival_suggestion) });
+        return { ok: true, outcome, festival: clone(l.festival), festival_suggestion: clone(l.festival_suggestion) };
+      });
+    },
+    detect_festival: (title, opts) => later(60, () => { const d = detect(title, opts); return { ok: true, detection: d, assigned: !!d && d.confidence >= settings.festivals.min_confidence }; }),
+    get_festival_status: () => later(30, () => {
+      const rest = LIBRARY.filter((l) => !l.festival);
+      return { series: SERIES.filter((s) => !s.hidden).length, assigned: LIBRARY.length - rest.length, suggested: rest.filter((l) => l.festival_suggestion).length, unassigned: rest.length, total: LIBRARY.length, last_pass: festState.lastPass, running: festState.running };
+    }),
+    assign_festivals(opts) {
+      return later(60, () => {
+        const scope = opts && opts.scope === 'all' ? 'all' : 'library';
+        if (festState.running) return { ok: true, started: false, running: true };
+        Object.assign(festState, { running: true, cancel: false });
+        const todo = LIBRARY.filter((l) => !l.festival_none), total = todo.length;
+        const counts = { assigned: 0, suggested: 0, none: 0, manual: 0, unchanged: 0 };
+        let done = 0;
+        emit('festival_assign', { phase: 'start', scope });
+        pushLog('info', 'Assigning festivals …');
+        const step = () => {
+          const end = Math.min(total, done + 9);
+          for (; done < end && !festState.cancel; done++) counts[assignOne(todo[done])]++;
+          const finished = done >= total || festState.cancel;
+          emit('festival_assign', Object.assign({ phase: 'progress', scope, done, total }, counts));
+          if (!finished) { festState.timer = setTimeout(step, 260 * speed.factor); return; }
+          Object.assign(festState, { running: false, lastPass: new Date().toISOString() });
+          pushLog('ok', `Festivals assigned: ${counts.assigned} new, ${counts.suggested} suggestion(s), ${counts.unchanged} unchanged`);
+          emit('festival_assign', Object.assign({ phase: 'done', scope, ok: true, cancelled: festState.cancel, total, done }, counts));
+        };
+        festState.timer = setTimeout(step, 200 * speed.factor);
+        return { ok: true, started: true, scope };
+      });
+    },
+    cancel_assign_festivals: () => later(20, () => { festState.cancel = true; return { ok: true, running: festState.running }; }),
 
     /* Protokoll */
     /* filters (optional, Backend): die UI ruft ohne Argument auf und filtert selbst. */

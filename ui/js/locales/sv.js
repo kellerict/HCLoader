@@ -439,8 +439,6 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "sort_title": "Titel A–Ö",
     "sort_channel": "Kanal A–Ö",
     "sort_duration": "Längst först",
-    "group": "Efter genre",
-    "group_title": "Gruppera poster efter genre",
     "view_list": "Lista",
     "view_grid": "Rutor",
     "clear": "Återställ filter",
@@ -494,7 +492,14 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "target_down_hint": "Kontrollera enheten eller nätverksresursen. Så länge den saknas är filernas status okänd: ”Tagga om” och ”Ta bort post” är inaktiverade.",
     "unknown_title": "Målmappen är inte nåbar – filens status är okänd",
     "none_title": "Inga resultat",
-    "none_text": "Ingen post matchar sökningen och filtren."
+    "none_text": "Ingen post matchar sökningen och filtren.",
+    "group_by": "Gruppera efter",
+    "group_none": "Ingen",
+    "group_genre": "Genre",
+    "group_festival": "Festival",
+    "group_artist": "Artist",
+    "group_year": "År",
+    "group_unknown": "Okänt"
   },
   "player": {
     "label": "Minispelare",
@@ -593,7 +598,8 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "network": "Nätverk och PO-Token",
     "schedule": "Schema",
     "appearance": "Utseende",
-    "maintenance": "Underhåll"
+    "maintenance": "Underhåll",
+    "festivals": "Festivaler & serier"
   },
   "tabs_hint": {
     "general": "Appens grundläggande beteende.",
@@ -606,7 +612,8 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "network": "PO-Token identifierar förfrågningar som en riktig webbläsare och minskar risken för bot-blockeringar.",
     "schedule": "När bevakningen kontrolleras automatiskt – i appen och via Windows Aktivitetshanteraren.",
     "appearance": "Utseende och känsla. Ändringar förhandsvisas direkt och blir permanenta först när du sparar.",
-    "maintenance": "Versioner, uppdateringar, databas."
+    "maintenance": "Versioner, uppdateringar, databas.",
+    "festivals": "Känner igen festival eller serie, år, scen och settyp ur de sparade titlarna – offline, utan en enda extra förfrågan."
   },
   "set": {
     "default": "Standard",
@@ -647,7 +654,9 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
       "app_update": "Appuppdatering",
       "release_notes": "Versionsinformation",
       "database": "Databas",
-      "reset": "Återställning"
+      "reset": "Återställning",
+      "detection": "Igenkänning",
+      "series": "Serier"
     },
     "general": {
       "language": {
@@ -804,11 +813,16 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
         "label": "Rensa titel",
         "help": "Reguljära uttryck vars träffar tas bort från titeln. Enter lägger till.",
         "ph": "+ regex"
+      },
+      "album_from_edition": {
+        "label": "Album = upplaga",
+        "help": "Skriver upplagan (t.ex. ”Defqon.1 2024”) som albumtagg, så att Plex och Jellyfin visar alla set från en festival som ett album. Av: album = titel, som tidigare."
       }
     },
     "path_preview": {
       "label": "Förhandsvisning",
-      "help": "Klicka på platshållare för att infoga dem i sökvägsmönstret."
+      "help": "Klicka på platshållare för att infoga dem i sökvägsmönstret.",
+      "fest": "{festival}, {event_year} och {stage} fylls bara i när en festival är tilldelad. Annars faller de bort, tillsammans med överblivna skiljetecken och tomma mappar."
     },
     "throttle": {
       "sleep_requests": {
@@ -1076,6 +1090,77 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
       "label": "Alla inställningar",
       "help": "Återställer alla flikar till standardvärden. Databas och musikfiler berörs inte.",
       "button": "Återställ allt"
+    },
+    "festivals": {
+      "detect": {
+        "label": "Känn igen automatiskt",
+        "help": "Tilldelar festival eller serie, år, scen och settyp till nya träffar och nedladdningar. Manuellt satta värden skrivs aldrig över."
+      },
+      "min_confidence": {
+        "label": "Tröskel för igenkänning",
+        "help": "Säkerhet från vilken en träff tilldelas. Under den visas den bara som ett förslag som du kan godta."
+      },
+      "year_from_upload_date": {
+        "label": "År från uppladdningsdatum",
+        "help": "Om titeln saknar årtal gäller uppladdningsåret (räknas som mindre säkert)."
+      },
+      "match_description": {
+        "label": "Sök även i beskrivningen",
+        "help": "Letar efter festivalnamn även i den sparade beskrivningen."
+      },
+      "extra_stages": {
+        "label": "Extra scener",
+        "help": "Scennamn utöver de inbyggda (RED, BLUE, BLACK, UV, Mainstage …).",
+        "ph": "+ scen"
+      }
+    },
+    "fest_types": {
+      "label": "Egna termer för settyper",
+      "help": "Ord i titeln som tyder på en settyp. De kontrolleras före de inbyggda termerna.",
+      "ph": "Term i titeln",
+      "add": "Term"
+    },
+    "fest_test": {
+      "label": "Testa en titel",
+      "help": "Visar vad igenkänningen hittar i en titel. Inget sparas; de sparade inställningarna gäller.",
+      "ph": "t.ex. Defqon.1 2024 | RED | Closing Ceremony",
+      "none": "Inget hittades",
+      "assigned": "skulle tilldelas",
+      "suggested": "endast förslag"
+    },
+    "fest_status": {
+      "title": "{assigned} av {total} mixar tilldelade",
+      "last": "Senaste körning",
+      "help": "Körs offline över det befintliga biblioteket. Manuella värden står kvar; filer taggas inte om och flyttas inte.",
+      "button": "Tilldela festivaler nu",
+      "running": "Tilldelar … {done} / {total}"
+    },
+    "series": {
+      "hint": "Kända festivaler, radioprogram och podcaster. Ändringar i listan sparas direkt.",
+      "add": "Serie",
+      "show_hidden": "Visa dolda",
+      "reset_all": "Återställ inbyggda serier",
+      "builtin": "inbyggd",
+      "own": "egen",
+      "modified": "ändrad",
+      "hidden": "dold",
+      "no_aliases": "inga alias",
+      "enable": "Känn igen den här serien",
+      "hide": "Dölj",
+      "restore": "Återställ",
+      "new_title": "Ny serie",
+      "edit_title": "Redigera serie",
+      "name": "Namn",
+      "kind": "Typ",
+      "default_genre": "Standardgenre",
+      "aliases": "Alias",
+      "aliases_help": "Andra stavningar. En träff i titeln räcker.",
+      "weak_aliases": "Svaga alias",
+      "weak_help": "Vardagsord som bara räknas tillsammans med ett årtal.",
+      "variants": "Varianter",
+      "variants_help": "Egna upplagor, t.ex. Australia eller at Home.",
+      "channels": "Arrangörens kanaler",
+      "channels_help": "Kanalnamn, ID eller URL. Höjer bara säkerheten."
     }
   },
   "opt": {
@@ -1163,6 +1248,23 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
       "title": "Återställ allt",
       "text": "Alla inställningar på alla flikar sätts direkt till standardvärden och sparas.",
       "ok": "Återställ"
+    },
+    "series_delete": {
+      "title": "Ta bort serien?",
+      "text": "”{name}” och dess upplagor tas bort.",
+      "warn": {
+        "one": "{n} mix förlorar sin tilldelning.",
+        "other": "{n} mixar förlorar sin tilldelning."
+      }
+    },
+    "series_hide": {
+      "title": "Dölj serien?",
+      "text": "”{name}” känns inte längre igen. Du hämtar tillbaka den med ”Visa dolda”."
+    },
+    "series_reset": {
+      "title": "Återställ inbyggda serier?",
+      "text": "Alla inbyggda serier återgår till ursprungsläget och dolda kommer tillbaka. Dina egna serier finns kvar.",
+      "ok": "Återställ"
     }
   },
   "toast": {
@@ -1239,7 +1341,14 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "update_failed": "Uppdateringen misslyckades",
     "restart_required": "Uppdaterad – starta om HCLoader så att sökning och nedladdningar fungerar igen",
     "backup_done": "Säkerhetskopia skapad: {path}",
-    "reset_all": "Alla inställningar återställda"
+    "reset_all": "Alla inställningar återställda",
+    "festival_entry_only": "”{name}” sparades bara i posten – filen går inte att nå",
+    "series_saved": "Serien ”{name}” sparad",
+    "series_deleted": "Serien ”{name}” borttagen",
+    "series_hidden": "Serien ”{name}” dold",
+    "series_reset": "Inbyggda serier återställda",
+    "assign_done": "Festivaler tilldelade: {assigned} nya, {suggested} förslag",
+    "assign_cancelled": "Tilldelningen avbröts: {assigned} nya, {suggested} förslag"
   },
   "upd": {
     "available": "Version {v} finns",
@@ -1313,5 +1422,54 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "text": "Gränssnittet fick inget svar från Python-delen av HCLoader. Inget som inte är verkligt visas eller sparas.",
     "waiting": "Väntar fortfarande på backend …",
     "reload": "Ladda om"
+  },
+  "fest": {
+    "all": "Alla serier",
+    "other": "Övrigt / ej tilldelat",
+    "other_hint": "Ingen festival",
+    "sets": {
+      "one": "{n} set",
+      "other": "{n} set"
+    },
+    "editions": {
+      "one": "{n} upplaga",
+      "other": "{n} upplagor"
+    },
+    "suggestions": {
+      "one": "{n} förslag",
+      "other": "{n} förslag"
+    },
+    "all_years": "Alla",
+    "no_stage": "Ingen scen",
+    "kind": {
+      "festival": "Festival",
+      "radio": "Radioprogram",
+      "podcast": "Podcast"
+    },
+    "set_type": {
+      "live_set": "Liveset",
+      "closing_ceremony": "Avslutningsceremoni",
+      "opening": "Öppning",
+      "endshow": "Endshow",
+      "full_show": "Hel show",
+      "warm_up": "Warm-up",
+      "anthem": "Anthem",
+      "episode": "Avsnitt"
+    },
+    "change": "ändra festival",
+    "change_manual": "satt manuellt, klicka för att ändra",
+    "add": "Ange festival eller serie",
+    "suggested": "Osäkert förslag: {name}",
+    "accept": "Godta förslaget",
+    "p_title": "Festival / serie",
+    "p_search": "Sök serie …",
+    "p_none": "Ingen festival",
+    "p_no_match": "Ingen serie hittades",
+    "p_year": "År",
+    "p_variant": "Variant",
+    "p_stage": "Scen",
+    "p_type": "Settyp",
+    "p_apply": "Verkställ",
+    "p_auto": "Återgå till automatiskt"
   }
 });

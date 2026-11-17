@@ -439,8 +439,6 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
     "sort_title": "Título A–Z",
     "sort_channel": "Canal A–Z",
     "sort_duration": "Más largos primero",
-    "group": "Por género",
-    "group_title": "Agrupar entradas por género",
     "view_list": "Lista",
     "view_grid": "Mosaico",
     "clear": "Restablecer filtros",
@@ -494,7 +492,14 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
     "target_down_hint": "Revisa la unidad o el recurso de red. Mientras falte, se desconoce el estado de los archivos: «Re-etiquetar» y «Quitar entrada» están desactivados.",
     "unknown_title": "Carpeta de destino inaccesible: estado del archivo desconocido",
     "none_title": "Sin resultados",
-    "none_text": "Ninguna entrada coincide con la búsqueda y los filtros."
+    "none_text": "Ninguna entrada coincide con la búsqueda y los filtros.",
+    "group_by": "Agrupar por",
+    "group_none": "Nada",
+    "group_genre": "Género",
+    "group_festival": "Festival",
+    "group_artist": "Artista",
+    "group_year": "Año",
+    "group_unknown": "Desconocido"
   },
   "player": {
     "label": "Minirreproductor",
@@ -593,7 +598,8 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
     "network": "Red y PO-Token",
     "schedule": "Programación",
     "appearance": "Apariencia",
-    "maintenance": "Mantenimiento"
+    "maintenance": "Mantenimiento",
+    "festivals": "Festivales y series"
   },
   "tabs_hint": {
     "general": "Comportamiento básico de la app.",
@@ -606,7 +612,8 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
     "network": "El PO-Token identifica las peticiones como de un navegador real y reduce el riesgo de bloqueos por bots.",
     "schedule": "Cuándo se revisa la lista de seguimiento automáticamente: en la app y con el Programador de tareas de Windows.",
     "appearance": "Aspecto y comportamiento. Los cambios se ven al instante y solo son permanentes tras guardar.",
-    "maintenance": "Versiones, actualizaciones, base de datos."
+    "maintenance": "Versiones, actualizaciones, base de datos.",
+    "festivals": "Reconoce festival o serie, año, escenario y tipo de set a partir de los títulos guardados: sin conexión, sin una sola petición extra."
   },
   "set": {
     "default": "Predeterminado",
@@ -647,7 +654,9 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
       "app_update": "Actualización de la app",
       "release_notes": "Notas de versión",
       "database": "Base de datos",
-      "reset": "Restablecer"
+      "reset": "Restablecer",
+      "detection": "Detección",
+      "series": "Series"
     },
     "general": {
       "language": {
@@ -804,11 +813,16 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
         "label": "Limpiar título",
         "help": "Expresiones regulares cuyas coincidencias se eliminan del título. Intro añade.",
         "ph": "+ regex"
+      },
+      "album_from_edition": {
+        "label": "Álbum = edición",
+        "help": "Escribe la edición (p. ej. «Defqon.1 2024») como etiqueta de álbum, para que Plex y Jellyfin muestren todos los sets de un festival como un álbum. Desactivado: álbum = título, como antes."
       }
     },
     "path_preview": {
       "label": "Vista previa",
-      "help": "Haz clic en los marcadores para insertarlos en el patrón de ruta."
+      "help": "Haz clic en los marcadores para insertarlos en el patrón de ruta.",
+      "fest": "{festival}, {event_year} y {stage} solo se rellenan si hay un festival asignado. Si no, desaparecen junto con los separadores sobrantes y las carpetas vacías."
     },
     "throttle": {
       "sleep_requests": {
@@ -1076,6 +1090,77 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
       "label": "Todos los ajustes",
       "help": "Restablece todas las pestañas a sus valores predeterminados. La base de datos y los archivos de música no se tocan.",
       "button": "Restablecer todo"
+    },
+    "festivals": {
+      "detect": {
+        "label": "Detectar automáticamente",
+        "help": "Asigna festival o serie, año, escenario y tipo de set a los resultados y descargas nuevos. Los valores definidos a mano nunca se sobrescriben."
+      },
+      "min_confidence": {
+        "label": "Umbral de detección",
+        "help": "Certeza a partir de la cual se asigna una coincidencia. Por debajo solo aparece como sugerencia que puedes aceptar."
+      },
+      "year_from_upload_date": {
+        "label": "Año de la fecha de subida",
+        "help": "Si el título no contiene un año, se usa el año de subida (cuenta como menos seguro)."
+      },
+      "match_description": {
+        "label": "Buscar también en la descripción",
+        "help": "Busca los nombres de festivales también en la descripción guardada."
+      },
+      "extra_stages": {
+        "label": "Escenarios adicionales",
+        "help": "Nombres de escenario además de los incluidos (RED, BLUE, BLACK, UV, Mainstage …).",
+        "ph": "+ escenario"
+      }
+    },
+    "fest_types": {
+      "label": "Términos propios de tipo de set",
+      "help": "Palabras del título que indican un tipo de set. Se comprueban antes que los términos incluidos.",
+      "ph": "Término en el título",
+      "add": "Término"
+    },
+    "fest_test": {
+      "label": "Probar un título",
+      "help": "Muestra lo que la detección encuentra en un título. No se guarda nada; se aplican los ajustes guardados.",
+      "ph": "p. ej. Defqon.1 2024 | RED | Closing Ceremony",
+      "none": "Nada detectado",
+      "assigned": "se asignaría",
+      "suggested": "solo sugerencia"
+    },
+    "fest_status": {
+      "title": "{assigned} de {total} mixes asignados",
+      "last": "Última pasada",
+      "help": "Se ejecuta sin conexión sobre la biblioteca existente. Los valores manuales se conservan; los archivos no se reetiquetan ni se mueven.",
+      "button": "Asignar festivales ahora",
+      "running": "Asignando … {done} / {total}"
+    },
+    "series": {
+      "hint": "Festivales, programas de radio y pódcast conocidos. Los cambios en esta lista se guardan de inmediato.",
+      "add": "Serie",
+      "show_hidden": "Mostrar ocultas",
+      "reset_all": "Restablecer series incluidas",
+      "builtin": "incluida",
+      "own": "propia",
+      "modified": "modificada",
+      "hidden": "oculta",
+      "no_aliases": "sin alias",
+      "enable": "Detectar esta serie",
+      "hide": "Ocultar",
+      "restore": "Restaurar",
+      "new_title": "Nueva serie",
+      "edit_title": "Editar serie",
+      "name": "Nombre",
+      "kind": "Tipo",
+      "default_genre": "Género predeterminado",
+      "aliases": "Alias",
+      "aliases_help": "Otras grafías. Basta una coincidencia en el título.",
+      "weak_aliases": "Alias débiles",
+      "weak_help": "Palabras corrientes que solo cuentan junto con un año.",
+      "variants": "Variantes",
+      "variants_help": "Ediciones propias, p. ej. Australia o at Home.",
+      "channels": "Canales del organizador",
+      "channels_help": "Nombre, ID o URL del canal. Solo aumenta la certeza."
     }
   },
   "opt": {
@@ -1163,6 +1248,23 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
       "title": "Restablecer todo",
       "text": "Todos los ajustes de todas las pestañas se restablecen de inmediato a sus valores predeterminados y se guardan.",
       "ok": "Restablecer"
+    },
+    "series_delete": {
+      "title": "¿Eliminar serie?",
+      "text": "Se eliminan «{name}» y sus ediciones.",
+      "warn": {
+        "one": "{n} mix pierde su asignación.",
+        "other": "{n} mixes pierden su asignación."
+      }
+    },
+    "series_hide": {
+      "title": "¿Ocultar serie?",
+      "text": "«{name}» deja de detectarse. Puedes recuperarla con «Mostrar ocultas»."
+    },
+    "series_reset": {
+      "title": "¿Restablecer las series incluidas?",
+      "text": "Todas las series incluidas vuelven a su estado original y las ocultas reaparecen. Tus series propias se conservan.",
+      "ok": "Restablecer"
     }
   },
   "toast": {
@@ -1239,7 +1341,14 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
     "update_failed": "Falló la actualización",
     "restart_required": "Actualizado: reinicia HCLoader para que la búsqueda y las descargas vuelvan a funcionar",
     "backup_done": "Copia de seguridad creada: {path}",
-    "reset_all": "Todos los ajustes restablecidos"
+    "reset_all": "Todos los ajustes restablecidos",
+    "festival_entry_only": "«{name}» guardado solo en la entrada: no se puede acceder al archivo",
+    "series_saved": "Serie «{name}» guardada",
+    "series_deleted": "Serie «{name}» eliminada",
+    "series_hidden": "Serie «{name}» ocultada",
+    "series_reset": "Series incluidas restauradas",
+    "assign_done": "Festivales asignados: {assigned} nuevos, {suggested} sugerencias",
+    "assign_cancelled": "Asignación cancelada: {assigned} nuevos, {suggested} sugerencias"
   },
   "upd": {
     "available": "Versión {v} disponible",
@@ -1313,5 +1422,54 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
     "text": "La interfaz no recibió respuesta de la parte Python de HCLoader. No se muestra ni se guarda nada que no sea real.",
     "waiting": "Esperando todavía al backend …",
     "reload": "Recargar"
+  },
+  "fest": {
+    "all": "Todas las series",
+    "other": "Otros / sin asignar",
+    "other_hint": "Sin festival",
+    "sets": {
+      "one": "{n} set",
+      "other": "{n} sets"
+    },
+    "editions": {
+      "one": "{n} edición",
+      "other": "{n} ediciones"
+    },
+    "suggestions": {
+      "one": "{n} sugerencia",
+      "other": "{n} sugerencias"
+    },
+    "all_years": "Todos",
+    "no_stage": "Sin escenario",
+    "kind": {
+      "festival": "Festival",
+      "radio": "Programa de radio",
+      "podcast": "Pódcast"
+    },
+    "set_type": {
+      "live_set": "Set en vivo",
+      "closing_ceremony": "Ceremonia de clausura",
+      "opening": "Apertura",
+      "endshow": "Endshow",
+      "full_show": "Show completo",
+      "warm_up": "Warm-up",
+      "anthem": "Himno",
+      "episode": "Episodio"
+    },
+    "change": "cambiar festival",
+    "change_manual": "definido a mano, clic para cambiar",
+    "add": "Asignar festival o serie",
+    "suggested": "Sugerencia dudosa: {name}",
+    "accept": "Aceptar sugerencia",
+    "p_title": "Festival / serie",
+    "p_search": "Buscar serie …",
+    "p_none": "Sin festival",
+    "p_no_match": "No se encontró ninguna serie",
+    "p_year": "Año",
+    "p_variant": "Variante",
+    "p_stage": "Escenario",
+    "p_type": "Tipo de set",
+    "p_apply": "Aplicar",
+    "p_auto": "Volver a automático"
   }
 });

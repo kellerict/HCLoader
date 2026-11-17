@@ -112,5 +112,10 @@ Bridge (`ui/js/bridge.js`): `get_settings()` → `{values, defaults}`; `save_set
   `delete_series`, `reset_series`, docs/bridge-api.md «Festivals & Serien»), nicht über `save_settings`.
 - Der Tab enthält ausserdem: Knopf «Festivals zuordnen» (`assign_festivals`, Fortschritt
   `festival_assign`, Stand `get_festival_status`) und ein Testfeld (`detect_festival`).
-- `storage.album_from_edition` gehört zum Tab «Ablage & Tags» (bei den Tag-Optionen), die neuen
-  Platzhalter erklärt die Hilfe von `storage.path_template`.
+- `storage.album_from_edition` gehört zum Tab «Ablage & Tags» (bei den Tag-Optionen) und steht zusätzlich
+  im Tab «Festivals & Serien» (dasselbe Feld, ein Wert; die UI zählt es bei «ungespeichert» nur einmal).
+  Die neuen Platzhalter erklärt der Hinweis unter der Pfad-Vorschau (`set.path_preview.fest`), die
+  Vorschau bietet `{festival}`, `{event_year}`, `{stage}` als Knöpfe an.
+- UI der Serienliste: Zeile pro Serie (Art, Name, Kennzeichen mitgeliefert/eigene/angepasst/ausgeblendet,
+  Aliase, Anzahl, Schalter «erkennen»), Dialog zum Anlegen/Bearbeiten; jede Änderung ruft sofort
+  `save_series`/`delete_series`/`reset_series` auf und sendet UI-intern `series_changed`.

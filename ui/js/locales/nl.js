@@ -439,8 +439,6 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
   "sort_title": "Titel A–Z",
   "sort_channel": "Kanaal A–Z",
   "sort_duration": "Langste eerst",
-  "group": "Per genre",
-  "group_title": "Items groeperen per genre",
   "view_list": "Lijst",
   "view_grid": "Tegels",
   "clear": "Filters herstellen",
@@ -494,7 +492,14 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
   "target_down_hint": "Controleer de schijf of netwerkmap. Zolang die ontbreekt, is de toestand van de bestanden onbekend: “Opnieuw taggen” en “Item verwijderen” zijn uitgeschakeld.",
   "unknown_title": "Doelmap onbereikbaar – toestand van het bestand onbekend",
   "none_title": "Geen resultaten",
-  "none_text": "Geen enkel item komt overeen met de zoekopdracht en filters."
+  "none_text": "Geen enkel item komt overeen met de zoekopdracht en filters.",
+  "group_by": "Groeperen op",
+  "group_none": "Geen",
+  "group_genre": "Genre",
+  "group_festival": "Festival",
+  "group_artist": "Artiest",
+  "group_year": "Jaar",
+  "group_unknown": "Onbekend"
  },
  "player": {
   "label": "Miniplayer",
@@ -593,7 +598,8 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
   "network": "Netwerk en PO-Token",
   "schedule": "Schema",
   "appearance": "Uiterlijk",
-  "maintenance": "Onderhoud"
+  "maintenance": "Onderhoud",
+  "festivals": "Festivals & reeksen"
  },
  "tabs_hint": {
   "general": "Basisgedrag van de app.",
@@ -606,7 +612,8 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
   "network": "Het PO-Token laat verzoeken eruitzien als van een echte browser en verkleint het risico op botblokkades.",
   "schedule": "Wanneer de volglijst automatisch wordt gecontroleerd – in de app en via de Windows-taakplanner.",
   "appearance": "Look-and-feel. Wijzigingen zijn direct te zien en worden pas permanent na opslaan.",
-  "maintenance": "Versies, updates, database."
+  "maintenance": "Versies, updates, database.",
+  "festivals": "Herkent festival of reeks, jaar, stage en soort set uit de opgeslagen titels – offline, zonder één extra verzoek."
  },
  "set": {
   "default": "Standaard",
@@ -647,7 +654,9 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
    "app_update": "App-update",
    "release_notes": "Release-opmerkingen",
    "database": "Database",
-   "reset": "Herstellen"
+   "reset": "Herstellen",
+   "detection": "Herkenning",
+   "series": "Reeksen"
   },
   "general": {
    "language": {
@@ -804,11 +813,16 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "label": "Titel opschonen",
     "help": "Reguliere expressies waarvan de treffers uit de titel worden verwijderd. Enter voegt toe.",
     "ph": "+ regex"
+   },
+   "album_from_edition": {
+    "label": "Album = editie",
+    "help": "Schrijft de editie (bijv. “Defqon.1 2024”) als albumtag, zodat Plex en Jellyfin alle sets van een festival als één album tonen. Uit: album = titel, zoals voorheen."
    }
   },
   "path_preview": {
    "label": "Voorbeeld",
-   "help": "Klik op plaatsaanduidingen om ze in het padpatroon in te voegen."
+   "help": "Klik op plaatsaanduidingen om ze in het padpatroon in te voegen.",
+   "fest": "{festival}, {event_year} en {stage} zijn alleen gevuld als er een festival is toegewezen. Anders vervallen ze, samen met overgebleven scheidingstekens en lege mappen."
   },
   "throttle": {
    "sleep_requests": {
@@ -1076,6 +1090,77 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
    "label": "Alle instellingen",
    "help": "Zet alle tabbladen terug op de standaardwaarden. Database en muziekbestanden blijven onaangeroerd.",
    "button": "Alles herstellen"
+  },
+  "festivals": {
+   "detect": {
+    "label": "Automatisch herkennen",
+    "help": "Wijst festival of reeks, jaar, stage en soort set toe aan nieuwe resultaten en downloads. Handmatig ingestelde waarden worden nooit overschreven."
+   },
+   "min_confidence": {
+    "label": "Herkenningsdrempel",
+    "help": "Zekerheid vanaf waar een treffer wordt toegewezen. Daaronder verschijnt hij alleen als suggestie die je kunt overnemen."
+   },
+   "year_from_upload_date": {
+    "label": "Jaar uit de uploaddatum",
+    "help": "Staat er geen jaartal in de titel, dan geldt het uploadjaar (telt als minder zeker)."
+   },
+   "match_description": {
+    "label": "Ook de beschrijving doorzoeken",
+    "help": "Zoekt festivalnamen ook in de opgeslagen beschrijving."
+   },
+   "extra_stages": {
+    "label": "Extra stages",
+    "help": "Stagenamen naast de ingebouwde (RED, BLUE, BLACK, UV, Mainstage …).",
+    "ph": "+ stage"
+   }
+  },
+  "fest_types": {
+   "label": "Eigen termen voor soorten sets",
+   "help": "Woorden in de titel die op een soort set wijzen. Ze worden vóór de ingebouwde termen gecontroleerd.",
+   "ph": "Term in de titel",
+   "add": "Term"
+  },
+  "fest_test": {
+   "label": "Titel testen",
+   "help": "Toont wat de herkenning in een titel vindt. Er wordt niets opgeslagen; de opgeslagen instellingen gelden.",
+   "ph": "bijv. Defqon.1 2024 | RED | Closing Ceremony",
+   "none": "Niets herkend",
+   "assigned": "zou worden toegewezen",
+   "suggested": "alleen suggestie"
+  },
+  "fest_status": {
+   "title": "{assigned} van {total} mixes toegewezen",
+   "last": "Laatste doorloop",
+   "help": "Loopt offline over de bestaande bibliotheek. Handmatige waarden blijven; bestanden worden niet opnieuw getagd of verplaatst.",
+   "button": "Festivals nu toewijzen",
+   "running": "Toewijzen … {done} / {total}"
+  },
+  "series": {
+   "hint": "Bekende festivals, radioshows en podcasts. Wijzigingen in deze lijst worden direct opgeslagen.",
+   "add": "Reeks",
+   "show_hidden": "Verborgen tonen",
+   "reset_all": "Ingebouwde reeksen herstellen",
+   "builtin": "ingebouwd",
+   "own": "eigen",
+   "modified": "aangepast",
+   "hidden": "verborgen",
+   "no_aliases": "geen aliassen",
+   "enable": "Deze reeks herkennen",
+   "hide": "Verbergen",
+   "restore": "Terugzetten",
+   "new_title": "Nieuwe reeks",
+   "edit_title": "Reeks bewerken",
+   "name": "Naam",
+   "kind": "Soort",
+   "default_genre": "Standaardgenre",
+   "aliases": "Aliassen",
+   "aliases_help": "Andere schrijfwijzen. Eén treffer in de titel volstaat.",
+   "weak_aliases": "Zwakke aliassen",
+   "weak_help": "Alledaagse woorden die alleen samen met een jaartal tellen.",
+   "variants": "Varianten",
+   "variants_help": "Eigen edities, bijv. Australia of at Home.",
+   "channels": "Kanalen van de organisator",
+   "channels_help": "Kanaalnaam, ID of URL. Verhoogt alleen de zekerheid."
   }
  },
  "opt": {
@@ -1163,6 +1248,23 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
    "title": "Alles herstellen",
    "text": "Alle instellingen op alle tabbladen worden direct op de standaardwaarden gezet en opgeslagen.",
    "ok": "Herstellen"
+  },
+  "series_delete": {
+   "title": "Reeks verwijderen?",
+   "text": "“{name}” en de bijbehorende edities worden verwijderd.",
+   "warn": {
+    "one": "{n} mix verliest zijn toewijzing.",
+    "other": "{n} mixes verliezen hun toewijzing."
+   }
+  },
+  "series_hide": {
+   "title": "Reeks verbergen?",
+   "text": "“{name}” wordt niet meer herkend. Met “Verborgen tonen” haal je hem terug."
+  },
+  "series_reset": {
+   "title": "Ingebouwde reeksen herstellen?",
+   "text": "Alle ingebouwde reeksen keren terug naar de oorspronkelijke staat, verborgen reeksen komen terug. Je eigen reeksen blijven.",
+   "ok": "Herstellen"
   }
  },
  "toast": {
@@ -1239,7 +1341,14 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
   "update_failed": "Bijwerken mislukt",
   "restart_required": "Bijgewerkt – start HCLoader opnieuw zodat zoeken en downloads weer werken",
   "backup_done": "Back-up gemaakt: {path}",
-  "reset_all": "Alle instellingen hersteld"
+  "reset_all": "Alle instellingen hersteld",
+  "festival_entry_only": "“{name}” alleen in het item opgeslagen – het bestand is niet bereikbaar",
+  "series_saved": "Reeks “{name}” opgeslagen",
+  "series_deleted": "Reeks “{name}” verwijderd",
+  "series_hidden": "Reeks “{name}” verborgen",
+  "series_reset": "Ingebouwde reeksen hersteld",
+  "assign_done": "Festivals toegewezen: {assigned} nieuw, {suggested} suggesties",
+  "assign_cancelled": "Toewijzen afgebroken: {assigned} nieuw, {suggested} suggesties"
  },
  "upd": {
   "available": "Versie {v} beschikbaar",
@@ -1313,5 +1422,54 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
   "text": "De interface kreeg geen antwoord van het Python-deel van HCLoader. Er wordt niets getoond of opgeslagen dat niet echt is.",
   "waiting": "Nog steeds wachten op de backend …",
   "reload": "Opnieuw laden"
+ },
+ "fest": {
+  "all": "Alle reeksen",
+  "other": "Overig / niet toegewezen",
+  "other_hint": "Geen festival",
+  "sets": {
+   "one": "{n} set",
+   "other": "{n} sets"
+  },
+  "editions": {
+   "one": "{n} editie",
+   "other": "{n} edities"
+  },
+  "suggestions": {
+   "one": "{n} suggestie",
+   "other": "{n} suggesties"
+  },
+  "all_years": "Alle",
+  "no_stage": "Geen stage",
+  "kind": {
+   "festival": "Festival",
+   "radio": "Radioshow",
+   "podcast": "Podcast"
+  },
+  "set_type": {
+   "live_set": "Liveset",
+   "closing_ceremony": "Closing ceremony",
+   "opening": "Opening",
+   "endshow": "Endshow",
+   "full_show": "Volledige show",
+   "warm_up": "Warm-up",
+   "anthem": "Anthem",
+   "episode": "Aflevering"
+  },
+  "change": "festival wijzigen",
+  "change_manual": "handmatig ingesteld, klik om te wijzigen",
+  "add": "Festival of reeks instellen",
+  "suggested": "Onzekere suggestie: {name}",
+  "accept": "Suggestie overnemen",
+  "p_title": "Festival / reeks",
+  "p_search": "Reeks zoeken …",
+  "p_none": "Geen festival",
+  "p_no_match": "Geen reeks gevonden",
+  "p_year": "Jaar",
+  "p_variant": "Variant",
+  "p_stage": "Stage",
+  "p_type": "Soort set",
+  "p_apply": "Toepassen",
+  "p_auto": "Terug naar automatisch"
  }
 });

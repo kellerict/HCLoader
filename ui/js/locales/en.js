@@ -439,8 +439,6 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "sort_title": "Title A–Z",
     "sort_channel": "Channel A–Z",
     "sort_duration": "Longest first",
-    "group": "By genre",
-    "group_title": "Group entries by genre",
     "view_list": "List",
     "view_grid": "Tiles",
     "clear": "Reset filters",
@@ -494,7 +492,14 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "target_down_hint": "Check the drive or network share. While it is missing, the state of the files is unknown: “Retag” and “Remove entry” are disabled.",
     "unknown_title": "Target folder unreachable – state of the file unknown",
     "none_title": "No results",
-    "none_text": "No entry matches the search and filters."
+    "none_text": "No entry matches the search and filters.",
+    "group_by": "Group by",
+    "group_none": "None",
+    "group_genre": "Genre",
+    "group_festival": "Festival",
+    "group_artist": "Artist",
+    "group_year": "Year",
+    "group_unknown": "Unknown"
   },
   "player": {
     "label": "Mini player",
@@ -593,7 +598,8 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "network": "Network & PO token",
     "schedule": "Schedule",
     "appearance": "Appearance",
-    "maintenance": "Maintenance"
+    "maintenance": "Maintenance",
+    "festivals": "Festivals & series"
   },
   "tabs_hint": {
     "general": "Basic app behaviour.",
@@ -606,7 +612,8 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "network": "The PO token identifies requests as a real browser and lowers the risk of bot blocks.",
     "schedule": "When the watchlist is checked automatically – in the app and via the Windows Task Scheduler.",
     "appearance": "Look & feel. Changes are previewed immediately and only become permanent after saving.",
-    "maintenance": "Versions, updates, database."
+    "maintenance": "Versions, updates, database.",
+    "festivals": "Recognizes festival or series, year, stage and set type from the stored titles – offline, without a single extra request."
   },
   "set": {
     "default": "Default",
@@ -647,7 +654,9 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
       "app_update": "App update",
       "release_notes": "Release notes",
       "database": "Database",
-      "reset": "Reset"
+      "reset": "Reset",
+      "detection": "Detection",
+      "series": "Series"
     },
     "general": {
       "language": {
@@ -804,11 +813,16 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
         "label": "Clean up title",
         "help": "Regular expressions whose matches are removed from the title. Enter adds.",
         "ph": "+ regex"
+      },
+      "album_from_edition": {
+        "label": "Album = edition",
+        "help": "Writes the edition (e.g. “Defqon.1 2024”) as album tag, so Plex and Jellyfin show all sets of a festival as one album. Off: album = title, as before."
       }
     },
     "path_preview": {
       "label": "Preview",
-      "help": "Click placeholders to insert them into the path pattern."
+      "help": "Click placeholders to insert them into the path pattern.",
+      "fest": "{festival}, {event_year} and {stage} are only filled when a festival is assigned. Otherwise they drop out, together with leftover separators and empty folders."
     },
     "throttle": {
       "sleep_requests": {
@@ -1076,6 +1090,77 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
       "label": "All settings",
       "help": "Resets all tabs to their defaults. Database and music files stay untouched.",
       "button": "Reset everything"
+    },
+    "festivals": {
+      "detect": {
+        "label": "Detect automatically",
+        "help": "Assign festival or series, year, stage and set type to new hits and downloads. Manually set values are never overwritten."
+      },
+      "min_confidence": {
+        "label": "Detection threshold",
+        "help": "Confidence from which a match is assigned. Below it, the match only appears as a suggestion that you can accept."
+      },
+      "year_from_upload_date": {
+        "label": "Year from upload date",
+        "help": "If the title contains no year, use the upload year (counts as less certain)."
+      },
+      "match_description": {
+        "label": "Search description too",
+        "help": "Also look for festival names in the stored description."
+      },
+      "extra_stages": {
+        "label": "Additional stages",
+        "help": "Stage names besides the built-in ones (RED, BLUE, BLACK, UV, Mainstage …).",
+        "ph": "+ stage"
+      }
+    },
+    "fest_types": {
+      "label": "Own set type terms",
+      "help": "Words in the title that indicate a set type. They are checked before the built-in terms.",
+      "ph": "Term in the title",
+      "add": "Term"
+    },
+    "fest_test": {
+      "label": "Test a title",
+      "help": "Shows what the detection finds in a title. Nothing is stored; the saved settings apply.",
+      "ph": "e.g. Defqon.1 2024 | RED | Closing Ceremony",
+      "none": "Nothing detected",
+      "assigned": "would be assigned",
+      "suggested": "suggestion only"
+    },
+    "fest_status": {
+      "title": "{assigned} of {total} mixes assigned",
+      "last": "Last pass",
+      "help": "Runs offline over the existing library. Manual values stay; files are not retagged or moved.",
+      "button": "Assign festivals now",
+      "running": "Assigning … {done} / {total}"
+    },
+    "series": {
+      "hint": "Known festivals, radio shows and podcasts. Changes to this list are saved immediately.",
+      "add": "Series",
+      "show_hidden": "Show hidden",
+      "reset_all": "Reset built-in series",
+      "builtin": "built-in",
+      "own": "own",
+      "modified": "modified",
+      "hidden": "hidden",
+      "no_aliases": "no aliases",
+      "enable": "Detect this series",
+      "hide": "Hide",
+      "restore": "Restore",
+      "new_title": "New series",
+      "edit_title": "Edit series",
+      "name": "Name",
+      "kind": "Kind",
+      "default_genre": "Default genre",
+      "aliases": "Aliases",
+      "aliases_help": "Other spellings. One hit in the title is enough.",
+      "weak_aliases": "Weak aliases",
+      "weak_help": "Everyday words that only count together with a year.",
+      "variants": "Variants",
+      "variants_help": "Editions of their own, e.g. Australia or at Home.",
+      "channels": "Organiser channels",
+      "channels_help": "Channel name, ID or URL. Raises the confidence only."
     }
   },
   "opt": {
@@ -1163,6 +1248,23 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
       "title": "Reset everything",
       "text": "All settings in all tabs are immediately set to their defaults and saved.",
       "ok": "Reset"
+    },
+    "series_delete": {
+      "title": "Delete series?",
+      "text": "“{name}” and its editions are deleted.",
+      "warn": {
+        "one": "{n} mix loses its assignment.",
+        "other": "{n} mixes lose their assignment."
+      }
+    },
+    "series_hide": {
+      "title": "Hide series?",
+      "text": "“{name}” is no longer detected. You can bring it back with “Show hidden”."
+    },
+    "series_reset": {
+      "title": "Reset built-in series?",
+      "text": "All built-in series return to their original state, hidden ones come back. Your own series stay.",
+      "ok": "Reset"
     }
   },
   "toast": {
@@ -1239,7 +1341,14 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "update_failed": "Update failed",
     "restart_required": "Updated – please restart HCLoader so search and downloads work again",
     "backup_done": "Backup created: {path}",
-    "reset_all": "All settings reset"
+    "reset_all": "All settings reset",
+    "festival_entry_only": "“{name}” saved in the entry only – the file is not reachable",
+    "series_saved": "Series “{name}” saved",
+    "series_deleted": "Series “{name}” deleted",
+    "series_hidden": "Series “{name}” hidden",
+    "series_reset": "Built-in series restored",
+    "assign_done": "Festivals assigned: {assigned} new, {suggested} suggestions",
+    "assign_cancelled": "Assignment cancelled: {assigned} new, {suggested} suggestions"
   },
   "upd": {
     "available": "Version {v} available",
@@ -1313,5 +1422,54 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "text": "The interface received no response from the Python part of HCLoader. Nothing that is not real is shown or saved.",
     "waiting": "Still waiting for the backend …",
     "reload": "Reload"
+  },
+  "fest": {
+    "all": "All series",
+    "other": "Other / unassigned",
+    "other_hint": "No festival",
+    "sets": {
+      "one": "{n} set",
+      "other": "{n} sets"
+    },
+    "editions": {
+      "one": "{n} edition",
+      "other": "{n} editions"
+    },
+    "suggestions": {
+      "one": "{n} suggestion",
+      "other": "{n} suggestions"
+    },
+    "all_years": "All",
+    "no_stage": "No stage",
+    "kind": {
+      "festival": "Festival",
+      "radio": "Radio show",
+      "podcast": "Podcast"
+    },
+    "set_type": {
+      "live_set": "Live set",
+      "closing_ceremony": "Closing ceremony",
+      "opening": "Opening",
+      "endshow": "Endshow",
+      "full_show": "Full show",
+      "warm_up": "Warm-up",
+      "anthem": "Anthem",
+      "episode": "Episode"
+    },
+    "change": "change festival",
+    "change_manual": "set manually, click to change",
+    "add": "Set festival or series",
+    "suggested": "Uncertain suggestion: {name}",
+    "accept": "Accept suggestion",
+    "p_title": "Festival / series",
+    "p_search": "Search series …",
+    "p_none": "No festival",
+    "p_no_match": "No series found",
+    "p_year": "Year",
+    "p_variant": "Variant",
+    "p_stage": "Stage",
+    "p_type": "Set type",
+    "p_apply": "Apply",
+    "p_auto": "Reset to automatic"
   }
 });

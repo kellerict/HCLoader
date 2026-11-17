@@ -427,8 +427,6 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
   "sort_title": "Judul A–Z",
   "sort_channel": "Kanal A–Z",
   "sort_duration": "Terpanjang dulu",
-  "group": "Per genre",
-  "group_title": "Kelompokkan entri per genre",
   "view_list": "Daftar",
   "view_grid": "Kotak",
   "clear": "Setel ulang filter",
@@ -480,7 +478,14 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
   "target_down_hint": "Periksa drive atau folder jaringan. Selama tidak tersedia, kondisi file tidak diketahui: “Tandai ulang” dan “Buang entri” dinonaktifkan.",
   "unknown_title": "Folder tujuan tidak terjangkau – kondisi file tidak diketahui",
   "none_title": "Tidak ada hasil",
-  "none_text": "Tidak ada entri yang cocok dengan pencarian dan filter."
+  "none_text": "Tidak ada entri yang cocok dengan pencarian dan filter.",
+  "group_by": "Kelompokkan",
+  "group_none": "Tidak",
+  "group_genre": "Genre",
+  "group_festival": "Festival",
+  "group_artist": "Artis",
+  "group_year": "Tahun",
+  "group_unknown": "Tidak diketahui"
  },
  "player": {
   "label": "Pemutar mini",
@@ -575,7 +580,8 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
   "network": "Jaringan & PO-Token",
   "schedule": "Jadwal",
   "appearance": "Tampilan",
-  "maintenance": "Pemeliharaan"
+  "maintenance": "Pemeliharaan",
+  "festivals": "Festival & seri"
  },
  "tabs_hint": {
   "general": "Perilaku dasar aplikasi.",
@@ -588,7 +594,8 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
   "network": "PO-Token menandai permintaan sebagai browser sungguhan dan menurunkan risiko pemblokiran bot.",
   "schedule": "Kapan daftar pantau diperiksa otomatis – di aplikasi dan lewat Penjadwal Tugas Windows.",
   "appearance": "Tampilan & nuansa. Perubahan langsung dipratinjau dan baru permanen setelah disimpan.",
-  "maintenance": "Versi, pembaruan, basis data."
+  "maintenance": "Versi, pembaruan, basis data.",
+  "festivals": "Mengenali festival atau seri, tahun, panggung, dan jenis set dari judul yang tersimpan – luring, tanpa satu pun permintaan tambahan."
  },
  "set": {
   "default": "Bawaan",
@@ -627,7 +634,9 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
    "app_update": "Pembaruan aplikasi",
    "release_notes": "Catatan rilis",
    "database": "Basis data",
-   "reset": "Setel ulang"
+   "reset": "Setel ulang",
+   "detection": "Deteksi",
+   "series": "Seri"
   },
   "general": {
    "language": {
@@ -784,11 +793,16 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "label": "Bersihkan judul",
     "help": "Ekspresi reguler yang kecocokannya dihapus dari judul. Enter untuk menambah.",
     "ph": "+ regex"
+   },
+   "album_from_edition": {
+    "label": "Album = edisi",
+    "help": "Menulis edisi (mis. “Defqon.1 2024”) sebagai tag album, sehingga Plex dan Jellyfin menampilkan semua set satu festival sebagai satu album. Mati: album = judul, seperti sebelumnya."
    }
   },
   "path_preview": {
    "label": "Pratinjau",
-   "help": "Klik penampung untuk menyisipkannya ke pola jalur."
+   "help": "Klik penampung untuk menyisipkannya ke pola jalur.",
+   "fest": "{festival}, {event_year}, dan {stage} hanya terisi bila festival sudah ditetapkan. Jika tidak, semuanya hilang bersama pemisah yang tersisa dan folder kosong."
   },
   "throttle": {
    "sleep_requests": {
@@ -1055,6 +1069,77 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
    "label": "Semua pengaturan",
    "help": "Mengembalikan semua tab ke bawaan. Basis data dan file musik tidak tersentuh.",
    "button": "Setel ulang semuanya"
+  },
+  "festivals": {
+   "detect": {
+    "label": "Deteksi otomatis",
+    "help": "Menetapkan festival atau seri, tahun, panggung, dan jenis set pada hasil dan unduhan baru. Nilai yang diatur manual tidak pernah ditimpa."
+   },
+   "min_confidence": {
+    "label": "Ambang deteksi",
+    "help": "Tingkat keyakinan agar kecocokan ditetapkan. Di bawahnya, kecocokan hanya muncul sebagai saran yang bisa Anda terima."
+   },
+   "year_from_upload_date": {
+    "label": "Tahun dari tanggal unggah",
+    "help": "Jika judul tidak memuat tahun, tahun unggah dipakai (dianggap kurang pasti)."
+   },
+   "match_description": {
+    "label": "Cari juga di deskripsi",
+    "help": "Mencari nama festival juga di deskripsi yang tersimpan."
+   },
+   "extra_stages": {
+    "label": "Panggung tambahan",
+    "help": "Nama panggung selain yang bawaan (RED, BLUE, BLACK, UV, Mainstage …).",
+    "ph": "+ panggung"
+   }
+  },
+  "fest_types": {
+   "label": "Istilah jenis set sendiri",
+   "help": "Kata dalam judul yang menunjukkan jenis set. Diperiksa sebelum istilah bawaan.",
+   "ph": "Istilah dalam judul",
+   "add": "Istilah"
+  },
+  "fest_test": {
+   "label": "Uji judul",
+   "help": "Menampilkan apa yang ditemukan deteksi dalam sebuah judul. Tidak ada yang disimpan; pengaturan tersimpan yang berlaku.",
+   "ph": "mis. Defqon.1 2024 | RED | Closing Ceremony",
+   "none": "Tidak ada yang terdeteksi",
+   "assigned": "akan ditetapkan",
+   "suggested": "hanya saran"
+  },
+  "fest_status": {
+   "title": "{assigned} dari {total} mix ditetapkan",
+   "last": "Proses terakhir",
+   "help": "Berjalan luring pada pustaka yang ada. Nilai manual tetap; berkas tidak ditandai ulang atau dipindahkan.",
+   "button": "Tetapkan festival sekarang",
+   "running": "Menetapkan … {done} / {total}"
+  },
+  "series": {
+   "hint": "Festival, acara radio, dan podcast yang dikenal. Perubahan pada daftar ini langsung disimpan.",
+   "add": "Seri",
+   "show_hidden": "Tampilkan yang disembunyikan",
+   "reset_all": "Setel ulang seri bawaan",
+   "builtin": "bawaan",
+   "own": "sendiri",
+   "modified": "diubah",
+   "hidden": "disembunyikan",
+   "no_aliases": "tanpa alias",
+   "enable": "Deteksi seri ini",
+   "hide": "Sembunyikan",
+   "restore": "Pulihkan",
+   "new_title": "Seri baru",
+   "edit_title": "Edit seri",
+   "name": "Nama",
+   "kind": "Jenis",
+   "default_genre": "Genre bawaan",
+   "aliases": "Alias",
+   "aliases_help": "Ejaan lain. Satu kecocokan di judul sudah cukup.",
+   "weak_aliases": "Alias lemah",
+   "weak_help": "Kata umum yang hanya dihitung bila disertai tahun.",
+   "variants": "Varian",
+   "variants_help": "Edisi tersendiri, mis. Australia atau at Home.",
+   "channels": "Kanal penyelenggara",
+   "channels_help": "Nama, ID, atau URL kanal. Hanya menaikkan keyakinan."
   }
  },
  "opt": {
@@ -1141,6 +1226,22 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
    "title": "Setel ulang semuanya",
    "text": "Semua pengaturan di semua tab langsung dikembalikan ke bawaan dan disimpan.",
    "ok": "Setel ulang"
+  },
+  "series_delete": {
+   "title": "Hapus seri?",
+   "text": "“{name}” dan edisinya akan dihapus.",
+   "warn": {
+    "other": "{n} mix kehilangan penetapannya."
+   }
+  },
+  "series_hide": {
+   "title": "Sembunyikan seri?",
+   "text": "“{name}” tidak lagi dideteksi. Anda bisa mengembalikannya lewat “Tampilkan yang disembunyikan”."
+  },
+  "series_reset": {
+   "title": "Setel ulang seri bawaan?",
+   "text": "Semua seri bawaan kembali ke keadaan semula dan yang disembunyikan muncul lagi. Seri Anda sendiri tetap ada.",
+   "ok": "Setel ulang"
   }
  },
  "toast": {
@@ -1209,7 +1310,14 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
   "update_failed": "Pembaruan gagal",
   "restart_required": "Diperbarui – mulai ulang HCLoader agar pencarian dan unduhan berfungsi lagi",
   "backup_done": "Cadangan dibuat: {path}",
-  "reset_all": "Semua pengaturan disetel ulang"
+  "reset_all": "Semua pengaturan disetel ulang",
+  "festival_entry_only": "“{name}” hanya disimpan di entri – berkas tidak dapat dijangkau",
+  "series_saved": "Seri “{name}” disimpan",
+  "series_deleted": "Seri “{name}” dihapus",
+  "series_hidden": "Seri “{name}” disembunyikan",
+  "series_reset": "Seri bawaan dipulihkan",
+  "assign_done": "Festival ditetapkan: {assigned} baru, {suggested} saran",
+  "assign_cancelled": "Penetapan dibatalkan: {assigned} baru, {suggested} saran"
  },
  "upd": {
   "available": "Versi {v} tersedia",
@@ -1283,5 +1391,51 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
   "text": "Antarmuka tidak menerima respons dari bagian Python HCLoader. Tidak ada yang tidak nyata yang ditampilkan atau disimpan.",
   "waiting": "Masih menunggu backend …",
   "reload": "Muat ulang"
+ },
+ "fest": {
+  "all": "Semua seri",
+  "other": "Lainnya / belum ditetapkan",
+  "other_hint": "Tanpa festival",
+  "sets": {
+   "other": "{n} set"
+  },
+  "editions": {
+   "other": "{n} edisi"
+  },
+  "suggestions": {
+   "other": "{n} saran"
+  },
+  "all_years": "Semua",
+  "no_stage": "Tanpa panggung",
+  "kind": {
+   "festival": "Festival",
+   "radio": "Acara radio",
+   "podcast": "Podcast"
+  },
+  "set_type": {
+   "live_set": "Live set",
+   "closing_ceremony": "Upacara penutupan",
+   "opening": "Pembukaan",
+   "endshow": "Endshow",
+   "full_show": "Acara penuh",
+   "warm_up": "Warm-up",
+   "anthem": "Anthem",
+   "episode": "Episode"
+  },
+  "change": "ubah festival",
+  "change_manual": "diatur manual, klik untuk mengubah",
+  "add": "Atur festival atau seri",
+  "suggested": "Saran kurang pasti: {name}",
+  "accept": "Terima saran",
+  "p_title": "Festival / seri",
+  "p_search": "Cari seri …",
+  "p_none": "Tanpa festival",
+  "p_no_match": "Seri tidak ditemukan",
+  "p_year": "Tahun",
+  "p_variant": "Varian",
+  "p_stage": "Panggung",
+  "p_type": "Jenis set",
+  "p_apply": "Terapkan",
+  "p_auto": "Kembali ke otomatis"
  }
 });

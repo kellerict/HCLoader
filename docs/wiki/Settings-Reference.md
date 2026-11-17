@@ -86,6 +86,40 @@ match by priority, then the genre chip selected for the search, then `Unsortiert
 Keywords match the title on word boundaries, so a mix called "Dominator 2026" stays in `Unsortiert`
 until you add a keyword such as `dominator` to the right genre.
 
+## festivals (tab Festivals & series, v0.3.0)
+
+Detection of festival or series, edition year, stage and set type. Everything runs offline on data
+that is already stored (title, channel, upload date, description).
+
+| Key | Default | Range / values | Description |
+|---|---|---|---|
+| `detect` | `true` | | Detect automatically on new search and watchlist results and after each download. Manually set values are never overwritten. |
+| `min_confidence` | `0.65` | 0.3 to 1.0 | From this confidence a match is assigned; below it, it is only shown as a suggestion that you can accept in the library. |
+| `year_from_upload_date` | `true` | | Without a year in the title, use the upload year (counts as less certain). |
+| `match_description` | `true` | | Also look for festival names in the stored description. |
+| `extra_stages` | (none) | list, 40 characters each | Stage names in addition to the built-in ones (RED, BLUE, BLACK, UV, YELLOW, INDIGO, MAGENTA, GOLD, SILVER, PURPLE, GREEN, ORANGE, WHITE, PINK, Mainstage). |
+| `extra_set_types` | (none) | list of term + set type | Own words that indicate a set type, checked before the built-in ones. Set types: live set, closing ceremony, opening, endshow, full show, warm-up, anthem, episode. |
+
+The tab also contains:
+
+- **Assign festivals now**: a one-off pass over the existing library with a progress bar and
+  **Cancel**. It works offline, skips manually set entries and does not retag or move files (use
+  *Retag* in the library for that). The box shows how many mixes are assigned, the number of
+  suggestions and the time of the last pass.
+- **Test a title**: type a title to see what the detection would find (series, year, stage, set
+  type, confidence). Nothing is stored.
+- **Album = edition** (`storage.album_from_edition`, see below).
+- **Series**: the list of known festivals, radio shows and podcasts. It lives in the database, not
+  in `config.yaml`, and **changes are saved immediately** (they are not part of *Save* / *Discard*).
+
+| Series action | What it does |
+|---|---|
+| Switch | Off = the series stays in the list but is no longer detected; existing assignments remain. |
+| Edit | Name, kind (festival, radio show, podcast), default genre, aliases (other spellings; one hit in the title is enough), weak aliases (everyday words such as *Rebirth* that only count together with a year), variants (*Australia*, *at Home*) and organiser channels (only raise the confidence). |
+| Add | Creates your own series (label **own**). |
+| Delete / Hide | Own series are deleted with their editions; built-in ones are hidden and stay hidden after app updates. Assignments to the series are removed. |
+| Restore | Resets an edited (**modified**) or hidden built-in series to its shipped state. *Show hidden* lists hidden ones; *Reset built-in series* restores all of them and keeps your own. |
+
 ## download (tab Download & Qualität)
 
 | Key | Default | Range / values | Description |
@@ -103,10 +137,11 @@ until you add a keyword such as `dominator` to the right genre.
 | Key | Default | Range / values | Description |
 |---|---|---|---|
 | `target_dir` | `%USERPROFILE%\Music\HCLoader` | path | Root of the library. Temporary files live in `.tmp` below it. In the portable build a relative path such as `.\Music` is relative to the app folder. |
-| `path_template` | `{genre}/{artist}/{year}/{date} - {title} [{id}]` | must contain `{id}` | Folder and file name pattern. Placeholders: `genre`, `artist`, `channel`, `year`, `date`, `title`, `id`, `platform` (YouTube or SoundCloud). For SoundCloud `{id}` is `sc-<id>`. |
+| `path_template` | `{genre}/{artist}/{year}/{date} - {title} [{id}]` | must contain `{id}` | Folder and file name pattern. Placeholders: `genre`, `artist`, `channel`, `year`, `date`, `title`, `id`, `platform` (YouTube or SoundCloud), and from v0.3.0 `festival`, `event_year`, `stage` (only filled when a festival is assigned; otherwise they drop out together with leftover separators such as ` - ` or `()` and empty folder levels). For SoundCloud `{id}` is `sc-<id>`. The default template is unchanged. |
 | `max_title_length` | `120` | 20 to 200 | Titles are shortened to this many characters in file names. |
 | `max_path_length` | `240` | 100 to 259 | Total path length limit (Windows MAX_PATH safety). |
 | `artist_from_title` | `false` | | Parse the artist from the title (patterns like `ARTIST @ EVENT` or `ARTIST - TITLE`) instead of using the channel name. |
+| `album_from_edition` | `true` | | v0.3.0: write the edition (e.g. `Defqon.1 2024`) as album tag when a festival or series is assigned, so Plex and Jellyfin show all sets of an edition as one album. Off = album is the title, as before. Also shown in the tab *Festivals & series*. |
 | `title_cleanup_patterns` | `\(Official[^)]*\)`, `\[HQ\]`, `\[HD\]`, `\(HQ\)`, `\(HD\)`, `\[Official[^\]]*\]` | list of valid regular expressions | Removed from titles before tagging and naming. |
 
 ## throttle (tab Schonung): YouTube

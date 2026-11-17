@@ -451,8 +451,6 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "sort_title": "Nosaukums A–Z",
     "sort_channel": "Kanāls A–Z",
     "sort_duration": "Garākie vispirms",
-    "group": "Pēc žanra",
-    "group_title": "Grupēt ierakstus pēc žanra",
     "view_list": "Saraksts",
     "view_grid": "Flīzes",
     "clear": "Atiestatīt filtrus",
@@ -508,7 +506,14 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "target_down_hint": "Pārbaudiet disku vai tīkla koplietojumu. Kamēr tā nav, failu stāvoklis nav zināms: “Atzīmēt atkārtoti” un “Noņemt ierakstu” ir atspējoti.",
     "unknown_title": "Mērķa mape nav pieejama – faila stāvoklis nav zināms",
     "none_title": "Nav rezultātu",
-    "none_text": "Neviens ieraksts neatbilst meklēšanai un filtriem."
+    "none_text": "Neviens ieraksts neatbilst meklēšanai un filtriem.",
+    "group_by": "Grupēt pēc",
+    "group_none": "Nav",
+    "group_genre": "Žanrs",
+    "group_festival": "Festivāls",
+    "group_artist": "Izpildītājs",
+    "group_year": "Gads",
+    "group_unknown": "Nezināms"
   },
   "player": {
     "label": "Mini atskaņotājs",
@@ -611,7 +616,8 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "network": "Tīkls un PO-Token",
     "schedule": "Grafiks",
     "appearance": "Izskats",
-    "maintenance": "Apkope"
+    "maintenance": "Apkope",
+    "festivals": "Festivāli un sērijas"
   },
   "tabs_hint": {
     "general": "Lietotnes pamatuzvedība.",
@@ -624,7 +630,8 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "network": "PO-Token identificē pieprasījumus kā īstas pārlūkprogrammas pieprasījumus un samazina robotu bloķēšanas risku.",
     "schedule": "Kad vērojamie avoti tiek pārbaudīti automātiski – lietotnē un ar Windows uzdevumu plānotāju.",
     "appearance": "Izskats un sajūta. Izmaiņas ir redzamas uzreiz un kļūst pastāvīgas tikai pēc saglabāšanas.",
-    "maintenance": "Versijas, atjauninājumi, datubāze."
+    "maintenance": "Versijas, atjauninājumi, datubāze.",
+    "festivals": "Atpazīst festivālu vai sēriju, gadu, skatuvi un seta veidu pēc saglabātajiem nosaukumiem – bezsaistē, bez neviena papildu pieprasījuma."
   },
   "set": {
     "default": "Noklusējums",
@@ -667,7 +674,9 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
       "app_update": "Lietotnes atjauninājums",
       "release_notes": "Laidiena piezīmes",
       "database": "Datubāze",
-      "reset": "Atiestatīšana"
+      "reset": "Atiestatīšana",
+      "detection": "Atpazīšana",
+      "series": "Sērijas"
     },
     "general": {
       "language": {
@@ -824,11 +833,16 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
         "label": "Tīrīt nosaukumu",
         "help": "Regulārās izteiksmes, kuru atbilstības tiek noņemtas no nosaukuma. Enter pievieno.",
         "ph": "+ regex"
+      },
+      "album_from_edition": {
+        "label": "Albums = izdevums",
+        "help": "Ieraksta izdevumu (piem., “Defqon.1 2024”) kā albuma tagu, lai Plex un Jellyfin visus festivāla setus rādītu kā vienu albumu. Izslēgts: albums = nosaukums, kā līdz šim."
       }
     },
     "path_preview": {
       "label": "Priekšskatījums",
-      "help": "Noklikšķiniet uz vietturiem, lai ievietotu tos ceļa veidnē."
+      "help": "Noklikšķiniet uz vietturiem, lai ievietotu tos ceļa veidnē.",
+      "fest": "{festival}, {event_year} un {stage} tiek aizpildīti tikai tad, ja ir piešķirts festivāls. Citādi tie izkrīt kopā ar liekajiem atdalītājiem un tukšajām mapēm."
     },
     "throttle": {
       "sleep_requests": {
@@ -1097,6 +1111,77 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
       "label": "Visi iestatījumi",
       "help": "Atiestata visas cilnes uz noklusējuma vērtībām. Datubāze un mūzikas faili netiek skarti.",
       "button": "Atiestatīt visu"
+    },
+    "festivals": {
+      "detect": {
+        "label": "Atpazīt automātiski",
+        "help": "Piešķir festivālu vai sēriju, gadu, skatuvi un seta veidu jauniem rezultātiem un lejupielādēm. Manuāli iestatītās vērtības nekad netiek pārrakstītas."
+      },
+      "min_confidence": {
+        "label": "Atpazīšanas slieksnis",
+        "help": "Drošība, no kuras atbilstība tiek piešķirta. Zem tās tā parādās tikai kā ieteikums, ko varat pieņemt."
+      },
+      "year_from_upload_date": {
+        "label": "Gads no augšupielādes datuma",
+        "help": "Ja nosaukumā nav gada, tiek izmantots augšupielādes gads (uzskatāms par mazāk drošu)."
+      },
+      "match_description": {
+        "label": "Meklēt arī aprakstā",
+        "help": "Festivālu nosaukumus meklē arī saglabātajā aprakstā."
+      },
+      "extra_stages": {
+        "label": "Papildu skatuves",
+        "help": "Skatuvju nosaukumi papildus iebūvētajiem (RED, BLUE, BLACK, UV, Mainstage …).",
+        "ph": "+ skatuve"
+      }
+    },
+    "fest_types": {
+      "label": "Savi setu veidu termini",
+      "help": "Vārdi nosaukumā, kas norāda uz seta veidu. Tie tiek pārbaudīti pirms iebūvētajiem terminiem.",
+      "ph": "Termins nosaukumā",
+      "add": "Termins"
+    },
+    "fest_test": {
+      "label": "Pārbaudīt nosaukumu",
+      "help": "Parāda, ko atpazīšana atrod nosaukumā. Nekas netiek saglabāts; spēkā ir saglabātie iestatījumi.",
+      "ph": "piem., Defqon.1 2024 | RED | Closing Ceremony",
+      "none": "Nekas nav atpazīts",
+      "assigned": "tiktu piešķirts",
+      "suggested": "tikai ieteikums"
+    },
+    "fest_status": {
+      "title": "Piešķirti {assigned} no {total} miksiem",
+      "last": "Pēdējā caurskate",
+      "help": "Darbojas bezsaistē ar esošo bibliotēku. Manuālās vērtības paliek; faili netiek atkārtoti atzīmēti vai pārvietoti.",
+      "button": "Piešķirt festivālus tagad",
+      "running": "Piešķir … {done} / {total}"
+    },
+    "series": {
+      "hint": "Zināmie festivāli, radio šovi un podkāsti. Izmaiņas šajā sarakstā tiek saglabātas uzreiz.",
+      "add": "Sērija",
+      "show_hidden": "Rādīt paslēptās",
+      "reset_all": "Atiestatīt iebūvētās sērijas",
+      "builtin": "iebūvēta",
+      "own": "sava",
+      "modified": "mainīta",
+      "hidden": "paslēpta",
+      "no_aliases": "nav aizstājvārdu",
+      "enable": "Atpazīt šo sēriju",
+      "hide": "Paslēpt",
+      "restore": "Atjaunot",
+      "new_title": "Jauna sērija",
+      "edit_title": "Rediģēt sēriju",
+      "name": "Nosaukums",
+      "kind": "Veids",
+      "default_genre": "Noklusējuma žanrs",
+      "aliases": "Aizstājvārdi",
+      "aliases_help": "Citi rakstības veidi. Pietiek ar vienu atbilstību nosaukumā.",
+      "weak_aliases": "Vājie aizstājvārdi",
+      "weak_help": "Ikdienas vārdi, kas skaitās tikai kopā ar gadu.",
+      "variants": "Varianti",
+      "variants_help": "Atsevišķi izdevumi, piem., Australia vai at Home.",
+      "channels": "Rīkotāja kanāli",
+      "channels_help": "Kanāla nosaukums, ID vai URL. Tikai palielina drošību."
     }
   },
   "opt": {
@@ -1185,6 +1270,24 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
       "title": "Atiestatīt visu",
       "text": "Visi iestatījumi visās cilnēs tiek nekavējoties iestatīti uz noklusējuma vērtībām un saglabāti.",
       "ok": "Atiestatīt"
+    },
+    "series_delete": {
+      "title": "Dzēst sēriju?",
+      "text": "“{name}” un tās izdevumi tiks dzēsti.",
+      "warn": {
+        "zero": "{n} miksu zaudēs piešķīrumu.",
+        "one": "{n} miks zaudēs piešķīrumu.",
+        "other": "{n} miksi zaudēs piešķīrumu."
+      }
+    },
+    "series_hide": {
+      "title": "Paslēpt sēriju?",
+      "text": "“{name}” vairs netiks atpazīta. To var atgūt ar “Rādīt paslēptās”."
+    },
+    "series_reset": {
+      "title": "Atiestatīt iebūvētās sērijas?",
+      "text": "Visas iebūvētās sērijas atgriežas sākotnējā stāvoklī, paslēptās parādās atkal. Jūsu pašu sērijas paliek.",
+      "ok": "Atiestatīt"
     }
   },
   "toast": {
@@ -1269,7 +1372,14 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "update_failed": "Atjaunināšana neizdevās",
     "restart_required": "Atjaunināts – lūdzu, restartējiet HCLoader, lai meklēšana un lejupielādes atkal darbotos",
     "backup_done": "Dublējums izveidots: {path}",
-    "reset_all": "Visi iestatījumi atiestatīti"
+    "reset_all": "Visi iestatījumi atiestatīti",
+    "festival_entry_only": "“{name}” saglabāts tikai ierakstā – fails nav pieejams",
+    "series_saved": "Sērija “{name}” saglabāta",
+    "series_deleted": "Sērija “{name}” dzēsta",
+    "series_hidden": "Sērija “{name}” paslēpta",
+    "series_reset": "Iebūvētās sērijas atjaunotas",
+    "assign_done": "Festivāli piešķirti: jauni {assigned}, ieteikumi {suggested}",
+    "assign_cancelled": "Piešķiršana pārtraukta: jauni {assigned}, ieteikumi {suggested}"
   },
   "upd": {
     "available": "Pieejama versija {v}",
@@ -1343,5 +1453,57 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "text": "Saskarne nesaņēma atbildi no HCLoader Python daļas. Netiek rādīts vai saglabāts nekas, kas nav īsts.",
     "waiting": "Joprojām gaida aizmugursistēmu …",
     "reload": "Pārlādēt"
+  },
+  "fest": {
+    "all": "Visas sērijas",
+    "other": "Citi / nepiešķirti",
+    "other_hint": "Bez festivāla",
+    "sets": {
+      "zero": "{n} setu",
+      "one": "{n} sets",
+      "other": "{n} seti"
+    },
+    "editions": {
+      "zero": "{n} izdevumu",
+      "one": "{n} izdevums",
+      "other": "{n} izdevumi"
+    },
+    "suggestions": {
+      "zero": "{n} ieteikumu",
+      "one": "{n} ieteikums",
+      "other": "{n} ieteikumi"
+    },
+    "all_years": "Visi",
+    "no_stage": "Bez skatuves",
+    "kind": {
+      "festival": "Festivāls",
+      "radio": "Radio šovs",
+      "podcast": "Podkāsts"
+    },
+    "set_type": {
+      "live_set": "Dzīvais sets",
+      "closing_ceremony": "Noslēguma ceremonija",
+      "opening": "Atklāšana",
+      "endshow": "Endshow",
+      "full_show": "Pilns šovs",
+      "warm_up": "Iesildīšanās",
+      "anthem": "Himna",
+      "episode": "Epizode"
+    },
+    "change": "mainīt festivālu",
+    "change_manual": "iestatīts manuāli, noklikšķiniet, lai mainītu",
+    "add": "Iestatīt festivālu vai sēriju",
+    "suggested": "Nedrošs ieteikums: {name}",
+    "accept": "Pieņemt ieteikumu",
+    "p_title": "Festivāls / sērija",
+    "p_search": "Meklēt sēriju …",
+    "p_none": "Bez festivāla",
+    "p_no_match": "Sērija nav atrasta",
+    "p_year": "Gads",
+    "p_variant": "Variants",
+    "p_stage": "Skatuve",
+    "p_type": "Seta veids",
+    "p_apply": "Lietot",
+    "p_auto": "Atpakaļ uz automātisko"
   }
 });

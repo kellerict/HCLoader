@@ -427,8 +427,6 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "sort_title": "标题 A–Z",
     "sort_channel": "频道 A–Z",
     "sort_duration": "最长优先",
-    "group": "按流派",
-    "group_title": "按流派分组",
     "view_list": "列表",
     "view_grid": "平铺",
     "clear": "重置筛选",
@@ -480,7 +478,14 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "target_down_hint": "请检查驱动器或网络共享。在其缺失期间，文件状态未知：“重写标签”和“移除条目”不可用。",
     "unknown_title": "目标文件夹无法访问 – 文件状态未知",
     "none_title": "无结果",
-    "none_text": "没有符合搜索和筛选条件的条目。"
+    "none_text": "没有符合搜索和筛选条件的条目。",
+    "group_by": "分组方式",
+    "group_none": "无",
+    "group_genre": "流派",
+    "group_festival": "音乐节",
+    "group_artist": "艺人",
+    "group_year": "年份",
+    "group_unknown": "未知"
   },
   "player": {
     "label": "迷你播放器",
@@ -575,7 +580,8 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "network": "网络与 PO-Token",
     "schedule": "计划",
     "appearance": "外观",
-    "maintenance": "维护"
+    "maintenance": "维护",
+    "festivals": "音乐节与系列"
   },
   "tabs_hint": {
     "general": "应用的基本行为。",
@@ -588,7 +594,8 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "network": "PO-Token 可将请求标识为真实浏览器，降低被机器人拦截的风险。",
     "schedule": "关注列表何时自动检查 – 在应用内以及通过 Windows 任务计划程序。",
     "appearance": "外观与体验。更改会即时预览，保存后才会永久生效。",
-    "maintenance": "版本、更新、数据库。"
+    "maintenance": "版本、更新、数据库。",
+    "festivals": "根据已保存的标题识别音乐节或系列、年份、舞台和 set 类型——离线进行，不产生任何额外请求。"
   },
   "set": {
     "default": "默认值",
@@ -627,7 +634,9 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
       "app_update": "应用更新",
       "release_notes": "版本说明",
       "database": "数据库",
-      "reset": "重置"
+      "reset": "重置",
+      "detection": "识别",
+      "series": "系列"
     },
     "general": {
       "language": {
@@ -784,11 +793,16 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
         "label": "清理标题",
         "help": "正则表达式，匹配到的内容会从标题中移除。按 Enter 添加。",
         "ph": "+ 正则"
+      },
+      "album_from_edition": {
+        "label": "专辑 = 届次",
+        "help": "把届次（如“Defqon.1 2024”）写入专辑标签，让 Plex 和 Jellyfin 把同一音乐节的所有 set 显示为一张专辑。关闭：专辑 = 标题，与以前相同。"
       }
     },
     "path_preview": {
       "label": "预览",
-      "help": "点击占位符可将其插入路径模式。"
+      "help": "点击占位符可将其插入路径模式。",
+      "fest": "{festival}、{event_year} 和 {stage} 仅在已归类音乐节时才有内容。否则它们会连同多余的分隔符和空文件夹一起省略。"
     },
     "throttle": {
       "sleep_requests": {
@@ -1055,6 +1069,77 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
       "label": "所有设置",
       "help": "将所有标签页重置为默认值。数据库和音乐文件不受影响。",
       "button": "全部重置"
+    },
+    "festivals": {
+      "detect": {
+        "label": "自动识别",
+        "help": "为新的搜索结果和下载归类音乐节或系列、年份、舞台和 set 类型。手动设置的值绝不会被覆盖。"
+      },
+      "min_confidence": {
+        "label": "识别阈值",
+        "help": "达到此置信度才会归类。低于它时只作为建议显示，可由你采纳。"
+      },
+      "year_from_upload_date": {
+        "label": "年份取自上传日期",
+        "help": "标题中没有年份时，使用上传年份（可信度较低）。"
+      },
+      "match_description": {
+        "label": "同时搜索简介",
+        "help": "也在已保存的简介中查找音乐节名称。"
+      },
+      "extra_stages": {
+        "label": "额外舞台",
+        "help": "内置舞台（RED、BLUE、BLACK、UV、Mainstage …）之外的舞台名称。",
+        "ph": "+ 舞台"
+      }
+    },
+    "fest_types": {
+      "label": "自定义 set 类型词",
+      "help": "标题中表示 set 类型的词语。会先于内置词语检查。",
+      "ph": "标题中的词语",
+      "add": "词语"
+    },
+    "fest_test": {
+      "label": "测试标题",
+      "help": "显示识别功能在标题中找到的内容。不会保存任何内容；以已保存的设置为准。",
+      "ph": "例如 Defqon.1 2024 | RED | Closing Ceremony",
+      "none": "未识别到任何内容",
+      "assigned": "将被归类",
+      "suggested": "仅作建议"
+    },
+    "fest_status": {
+      "title": "{total} 个 mix 中已归类 {assigned} 个",
+      "last": "上次运行",
+      "help": "离线处理现有资料库。手动设置的值保留；文件不会被重写标签或移动。",
+      "button": "立即归类音乐节",
+      "running": "正在归类 … {done} / {total}"
+    },
+    "series": {
+      "hint": "已知的音乐节、电台节目和播客。对此列表的更改会立即保存。",
+      "add": "系列",
+      "show_hidden": "显示已隐藏",
+      "reset_all": "重置内置系列",
+      "builtin": "内置",
+      "own": "自定义",
+      "modified": "已修改",
+      "hidden": "已隐藏",
+      "no_aliases": "无别名",
+      "enable": "识别此系列",
+      "hide": "隐藏",
+      "restore": "恢复",
+      "new_title": "新建系列",
+      "edit_title": "编辑系列",
+      "name": "名称",
+      "kind": "类型",
+      "default_genre": "默认流派",
+      "aliases": "别名",
+      "aliases_help": "其他写法。标题中出现一次即可。",
+      "weak_aliases": "弱别名",
+      "weak_help": "常见词语，只有和年份一起出现才算数。",
+      "variants": "分支",
+      "variants_help": "独立的届次，例如 Australia 或 at Home。",
+      "channels": "主办方频道",
+      "channels_help": "频道名称、ID 或网址。只会提高置信度。"
     }
   },
   "opt": {
@@ -1141,6 +1226,22 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
       "title": "全部重置",
       "text": "所有标签页的全部设置将立即恢复为默认值并保存。",
       "ok": "重置"
+    },
+    "series_delete": {
+      "title": "删除系列？",
+      "text": "“{name}”及其届次将被删除。",
+      "warn": {
+        "other": "{n} 个 mix 将失去归类。"
+      }
+    },
+    "series_hide": {
+      "title": "隐藏系列？",
+      "text": "“{name}”将不再被识别。可通过“显示已隐藏”找回。"
+    },
+    "series_reset": {
+      "title": "重置内置系列？",
+      "text": "所有内置系列恢复到初始状态，已隐藏的会重新出现。你自己的系列保持不变。",
+      "ok": "重置"
     }
   },
   "toast": {
@@ -1209,7 +1310,14 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "update_failed": "更新失败",
     "restart_required": "已更新 – 请重启 HCLoader，搜索和下载才能恢复正常",
     "backup_done": "已创建备份：{path}",
-    "reset_all": "所有设置已重置"
+    "reset_all": "所有设置已重置",
+    "festival_entry_only": "“{name}”仅保存在条目中——无法访问文件",
+    "series_saved": "系列“{name}”已保存",
+    "series_deleted": "系列“{name}”已删除",
+    "series_hidden": "系列“{name}”已隐藏",
+    "series_reset": "内置系列已恢复",
+    "assign_done": "音乐节已归类：新增 {assigned} 个，建议 {suggested} 条",
+    "assign_cancelled": "归类已取消：新增 {assigned} 个，建议 {suggested} 条"
   },
   "upd": {
     "available": "有新版本 {v}",
@@ -1283,5 +1391,51 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "text": "界面没有收到 HCLoader Python 部分的响应。不会显示或保存任何不真实的内容。",
     "waiting": "仍在等待后端…",
     "reload": "重新加载"
+  },
+  "fest": {
+    "all": "全部系列",
+    "other": "其他 / 未归类",
+    "other_hint": "无音乐节",
+    "sets": {
+      "other": "{n} 个 set"
+    },
+    "editions": {
+      "other": "{n} 届"
+    },
+    "suggestions": {
+      "other": "{n} 条建议"
+    },
+    "all_years": "全部",
+    "no_stage": "无舞台",
+    "kind": {
+      "festival": "音乐节",
+      "radio": "电台节目",
+      "podcast": "播客"
+    },
+    "set_type": {
+      "live_set": "现场 set",
+      "closing_ceremony": "闭幕式",
+      "opening": "开幕",
+      "endshow": "Endshow",
+      "full_show": "完整演出",
+      "warm_up": "暖场",
+      "anthem": "主题曲",
+      "episode": "单集"
+    },
+    "change": "更改音乐节",
+    "change_manual": "手动设置，点击更改",
+    "add": "设置音乐节或系列",
+    "suggested": "不确定的建议：{name}",
+    "accept": "采纳建议",
+    "p_title": "音乐节 / 系列",
+    "p_search": "搜索系列 …",
+    "p_none": "无音乐节",
+    "p_no_match": "未找到系列",
+    "p_year": "年份",
+    "p_variant": "分支",
+    "p_stage": "舞台",
+    "p_type": "Set 类型",
+    "p_apply": "应用",
+    "p_auto": "恢复自动识别"
   }
 });

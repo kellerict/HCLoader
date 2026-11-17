@@ -439,8 +439,6 @@ HC.i18n.register({"code": "de-x-frk", "name": "Fränggisch", "dir": "ltr", "intl
     "sort_title": "Titel A–Z",
     "sort_channel": "Kanal A–Z",
     "sort_duration": "Längsde zuerschd",
-    "group": "Nach Genre",
-    "group_title": "Einträch nach Genre gruppiern",
     "view_list": "Lisdn",
     "view_grid": "Kachln",
     "clear": "Filder zurücksetzn",
@@ -494,7 +492,14 @@ HC.i18n.register({"code": "de-x-frk", "name": "Fränggisch", "dir": "ltr", "intl
     "target_down_hint": "Laufwerk oder Netzfreigabe prüfn. Solang er fehld, is der Zustand der Dateien unbekannd: «Neu daggn» und «Eintrag wegdoa» sin gsperrt.",
     "unknown_title": "Zielordner ned erreichbar – Zustand der Datei unbekannd",
     "none_title": "Kane Treffer",
-    "none_text": "Kan Eintrag basst zu Suche und Fildern."
+    "none_text": "Kan Eintrag basst zu Suche und Fildern.",
+    "group_by": "Gruppiern",
+    "group_none": "Nix",
+    "group_genre": "Genre",
+    "group_festival": "Festival",
+    "group_artist": "Artist",
+    "group_year": "Jahr",
+    "group_unknown": "Unbekannd"
   },
   "player": {
     "label": "Mini-Player",
@@ -593,7 +598,8 @@ HC.i18n.register({"code": "de-x-frk", "name": "Fränggisch", "dir": "ltr", "intl
     "network": "Netzwerk & PO-Token",
     "schedule": "Zeitplan",
     "appearance": "Darstellung",
-    "maintenance": "Wartung"
+    "maintenance": "Wartung",
+    "festivals": "Festivals & Serien"
   },
   "tabs_hint": {
     "general": "Grundlegends Verhalden vo der App.",
@@ -606,7 +612,8 @@ HC.i18n.register({"code": "de-x-frk", "name": "Fränggisch", "dir": "ltr", "intl
     "network": "Der PO-Token weisd Requests als echdn Browser aus und senkd des Risiko vo Bot-Sperrn.",
     "schedule": "Wann die Watchlist automadisch gprüft wird – in der App und über die Windows-Aufgabnplanung.",
     "appearance": "Look & Feel. Änderungen sin sofort als Vorschau sichtbar und gelden erschd nach dem Speichern dauerhaft.",
-    "maintenance": "Versionen, Updates, Dadenbank."
+    "maintenance": "Versionen, Updates, Dadenbank.",
+    "festivals": "Erkennd Festival oder Serie, Jahr, Bühna und Set-Ard aus die gspeicherdn Tiddl – offline, ohne aa bloss aane Zusatzanfroch."
   },
   "set": {
     "default": "Standard",
@@ -647,7 +654,9 @@ HC.i18n.register({"code": "de-x-frk", "name": "Fränggisch", "dir": "ltr", "intl
       "app_update": "App-Update",
       "release_notes": "Versionshinweise",
       "database": "Dadenbank",
-      "reset": "Zurücksetzn"
+      "reset": "Zurücksetzn",
+      "detection": "Erkennung",
+      "series": "Serien"
     },
     "general": {
       "start_view": {
@@ -804,11 +813,16 @@ HC.i18n.register({"code": "de-x-frk", "name": "Fränggisch", "dir": "ltr", "intl
         "label": "Titel bereinigen",
         "help": "Reguläre Ausdrücke, deren Treffer aus dem Titel entfernd werdn. Enter fügd hinzu.",
         "ph": "+ Regex"
+      },
+      "album_from_edition": {
+        "label": "Album = Ausgab",
+        "help": "Schreibd die Ausgab (z.B. «Defqon.1 2024») als Album-Tag nei, damid Plex und Jellyfin alle Sets vo am Festival als aa Album zeign. Aus: Album = Tiddl, wie bisher aa."
       }
     },
     "path_preview": {
       "label": "Vorschau",
-      "help": "Plazhaldr anklickn, um sie ins Pfadmusder eizufügn."
+      "help": "Plazhaldr anklickn, um sie ins Pfadmusder eizufügn.",
+      "fest": "{festival}, {event_year} und {stage} san bloss gfülld, wenn a Festival zugordned is. Sonsd falln’s weg, samd übrige Trennzeichn und leere Ordner."
     },
     "throttle": {
       "sleep_requests": {
@@ -1076,6 +1090,77 @@ HC.i18n.register({"code": "de-x-frk", "name": "Fränggisch", "dir": "ltr", "intl
       "label": "Alle Einstellungen",
       "help": "Setzd sämdliche Tabs auf die Standardwerte. Dadenbank und Musikdateien bleibn unberührd.",
       "button": "Alles auf Standard"
+    },
+    "festivals": {
+      "detect": {
+        "label": "Automadisch erkenna",
+        "help": "Ordned Festival oder Serie, Jahr, Bühna und Set-Ard bei neue Treffer und Downloads zu. Wos du vo Hand gsetzt hosd, wird nie überschriebn."
+      },
+      "min_confidence": {
+        "label": "Erkennungsschwelln",
+        "help": "Sicherheid, ab der a Treffer zugordned wird. Drunter kummd er bloss als Vorschlooch, den wo du übernehma kannsd."
+      },
+      "year_from_upload_date": {
+        "label": "Jahr ausm Upload-Datum",
+        "help": "Stehd im Tiddl ka Jahreszahl, gild des Upload-Jahr (zähld als weniger sicher)."
+      },
+      "match_description": {
+        "label": "Aa die Beschreibung durchsuchn",
+        "help": "Festivalnama aa in der gspeicherdn Beschreibung suchn."
+      },
+      "extra_stages": {
+        "label": "Zusätzliche Bühna",
+        "help": "Bühnanama nebn die eibaudn (RED, BLUE, BLACK, UV, Mainstage …).",
+        "ph": "+ Bühna"
+      }
+    },
+    "fest_types": {
+      "label": "Eigne Begriff für Set-Ardn",
+      "help": "Wördder im Tiddl, die auf a Set-Ard hindeudn. Die wern vor die eibaudn Begriff gschaud.",
+      "ph": "Begriff im Tiddl",
+      "add": "Begriff"
+    },
+    "fest_test": {
+      "label": "Tiddl ausprobiern",
+      "help": "Zeigd, wos die Erkennung in am Tiddl findd. Gspeicherd wird nix; es geldn die gspeicherdn Einstellungen.",
+      "ph": "z.B. Defqon.1 2024 | RED | Closing Ceremony",
+      "none": "Nix erkannd",
+      "assigned": "däd zugordned wern",
+      "suggested": "bloss a Vorschlooch"
+    },
+    "fest_status": {
+      "title": "{assigned} vo {total} Mixes zugordned",
+      "last": "Ledzder Durchlauf",
+      "help": "Läufd offline über die Biggerei, die wo scho do is. Wos vo Hand gsetzt is, bleibd; Dateien wern wedder neu daggd no verschobn.",
+      "button": "Festivals etz zuordna",
+      "running": "Ordne zu … {done} / {total}"
+    },
+    "series": {
+      "hint": "Bekannde Festivals, Radioshows und Podcasts. Wos du an dera Lisdn ändersd, wird glei gspeicherd.",
+      "add": "Serie",
+      "show_hidden": "Ausgeblendete zeign",
+      "reset_all": "Midgelieferde zurücksetzn",
+      "builtin": "midgelieferd",
+      "own": "eigne",
+      "modified": "angepassd",
+      "hidden": "ausgeblended",
+      "no_aliases": "kane Aliase",
+      "enable": "Die Serie erkenna",
+      "hide": "Ausblendn",
+      "restore": "Wiederherstelln",
+      "new_title": "Neue Serie",
+      "edit_title": "Serie bearbeidn",
+      "name": "Nama",
+      "kind": "Ard",
+      "default_genre": "Standard-Genre",
+      "aliases": "Aliase",
+      "aliases_help": "Andre Schreibweisn. Aa Treffer im Tiddl langd.",
+      "weak_aliases": "Schwache Aliase",
+      "weak_help": "Allerweldswördder, die bloss mid aner Jahreszahl zähln.",
+      "variants": "Variandn",
+      "variants_help": "Eigne Ausgabn, z.B. Australia oder at Home.",
+      "channels": "Kanäle vom Veranstalder",
+      "channels_help": "Kanalnama, ID oder URL. Machd bloss die Sicherheid höher."
     }
   },
   "opt": {
@@ -1163,6 +1248,23 @@ HC.i18n.register({"code": "de-x-frk", "name": "Fränggisch", "dir": "ltr", "intl
       "title": "Alles auf Standard",
       "text": "Alle Einstellungen in allen Tabs werdn sofort auf die Standardwerte gsetzt und gspeichert.",
       "ok": "Zurücksetzn"
+    },
+    "series_delete": {
+      "title": "Serie löschn?",
+      "text": "«{name}» und ihre Ausgabn wern glöschd.",
+      "warn": {
+        "one": "{n} Mix verlierd sei Zuordnung.",
+        "other": "{n} Mixes verliern ihre Zuordnung."
+      }
+    },
+    "series_hide": {
+      "title": "Serie ausblendn?",
+      "text": "«{name}» wird nimmer erkannd. Mid «Ausgeblendete zeign» holsd sie widder her."
+    },
+    "series_reset": {
+      "title": "Midgelieferde Serien zurücksetzn?",
+      "text": "Alle midgelieferdn Serien san widder wie am Anfang, ausgeblendete kumma zurück. Deine eignen Serien bleibn.",
+      "ok": "Zurücksetzn"
     }
   },
   "toast": {
@@ -1239,7 +1341,14 @@ HC.i18n.register({"code": "de-x-frk", "name": "Fränggisch", "dir": "ltr", "intl
     "update_failed": "Aktualisierung fehlgschlong",
     "restart_required": "Aktualisierd – bidde HCLoader neu starddn, damid Suche und Downloads wieder laufn",
     "backup_done": "Backup erstelld: {path}",
-    "reset_all": "Alle Einstellungen zurückgsetzd"
+    "reset_all": "Alle Einstellungen zurückgsetzd",
+    "festival_entry_only": "«{name}» bloss im Eintrag gspeicherd – an die Datei kumma mer ned hie",
+    "series_saved": "Serie «{name}» gspeicherd",
+    "series_deleted": "Serie «{name}» glöschd",
+    "series_hidden": "Serie «{name}» ausgeblended",
+    "series_reset": "Midgelieferde Serien widder hergstelld",
+    "assign_done": "Festivals zugordned: {assigned} neu, {suggested} Vorschläch",
+    "assign_cancelled": "Zuordnung abbrochn: {assigned} neu, {suggested} Vorschläch"
   },
   "upd": {
     "available": "Version {v} verfügbar",
@@ -1313,5 +1422,54 @@ HC.i18n.register({"code": "de-x-frk", "name": "Fränggisch", "dir": "ltr", "intl
     "text": "Die Oberfläche hod kane Andwort vom Python-Deil vo HCLoader grichd. Es wird nix angezeigd oder gspeichert, was ned echt is.",
     "waiting": "Wardet weider auf des Backend …",
     "reload": "Neu ladn"
+  },
+  "fest": {
+    "all": "Alle Serien",
+    "other": "Der Rest / ned zugordned",
+    "other_hint": "Kaa Festival",
+    "sets": {
+      "one": "{n} Set",
+      "other": "{n} Sets"
+    },
+    "editions": {
+      "one": "{n} Ausgab",
+      "other": "{n} Ausgabn"
+    },
+    "suggestions": {
+      "one": "{n} Vorschlooch",
+      "other": "{n} Vorschläch"
+    },
+    "all_years": "Alle",
+    "no_stage": "Ohne Bühna",
+    "kind": {
+      "festival": "Festival",
+      "radio": "Radioshow",
+      "podcast": "Podcast"
+    },
+    "set_type": {
+      "live_set": "Live-Set",
+      "closing_ceremony": "Closing Ceremony",
+      "opening": "Opening",
+      "endshow": "Endshow",
+      "full_show": "Ganze Show",
+      "warm_up": "Warm-up",
+      "anthem": "Anthem",
+      "episode": "Folch"
+    },
+    "change": "Festival ändern",
+    "change_manual": "vo Hand gsetzt, Glick zum Ändern",
+    "add": "Festival oder Serie setzn",
+    "suggested": "Unsichrer Vorschlooch: {name}",
+    "accept": "Vorschlooch übernehma",
+    "p_title": "Festival / Serie",
+    "p_search": "Serie suchn …",
+    "p_none": "Kaa Festival",
+    "p_no_match": "Kaa Serie gfundn",
+    "p_year": "Jahr",
+    "p_variant": "Variandn",
+    "p_stage": "Bühna",
+    "p_type": "Set-Ard",
+    "p_apply": "Übernehma",
+    "p_auto": "Zurück auf automadisch"
   }
 });

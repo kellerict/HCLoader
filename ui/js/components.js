@@ -93,13 +93,7 @@
       if (it.head) return `<div class="mhead">${esc(it.head)}</div>`;
       return `<button data-i="${i}"${it.key ? ` data-k="${esc(it.key)}"` : ''} class="${it.danger ? 'danger' : ''}"${it.disabled ? ' disabled' : ''}>${it.icon || ''}${it.dot ? `<span class="dot" style="background:${esc(it.dot)}"></span>` : ''}<span>${esc(it.label)}</span>${it.current ? `<span class="cur">${t('common.current')}</span>` : ''}</button>`;
     }).join('');
-    HC.$('#overlays').appendChild(el);
-    const r = anchor.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight;
-    const left = Math.max(8, Math.min(o && o.align === 'left' ? r.left : r.right - w, window.innerWidth - w - 8));
-    if (o && o.align === 'left') el.classList.add('from-left');
-    const top = r.bottom + 4 + h > window.innerHeight - 40 ? Math.max(8, r.top - h - 4) : r.bottom + 4;
-    el.style.left = `${left}px`;
-    el.style.top = `${top}px`;
+    place(el, anchor, o);
     el.addEventListener('click', (e) => {
       const b = e.target.closest('button');
       if (!b) return;
@@ -107,7 +101,22 @@
       ui.closeMenu();
       if (it && it.onClick) it.onClick();
     });
+    arm(el, true);
+  };
+  /** Overlay an den Anker setzen (unter ihm, sonst darüber; bleibt im Fenster). */
+  function place(el, anchor, o) {
+    HC.$('#overlays').appendChild(el);
+    const r = anchor.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight;
+    const left = Math.max(8, Math.min(o && o.align === 'left' ? r.left : r.right - w, window.innerWidth - w - 8));
+    if (o && o.align === 'left') el.classList.add('from-left');
+    const top = r.bottom + 4 + h > window.innerHeight - 40 ? Math.max(8, r.top - h - 4) : r.bottom + 4;
+    el.style.left = `${left}px`;
+    el.style.top = `${top}px`;
+  }
+  /** Schliessen bei Klick daneben und Escape (blur: auch wenn das Fenster den Fokus verliert). */
+  function arm(el, blur) {
     setTimeout(() => {
+      if (ui._menu !== el) return;
       const off = (e) => {
         if (e.type === 'keydown' && e.key !== 'Escape') return;
         if (e.type === 'mousedown' && el.contains(e.target)) return;
@@ -116,9 +125,26 @@
       ui._menuOff = () => { document.removeEventListener('mousedown', off, true); document.removeEventListener('keydown', off, true); window.removeEventListener('blur', off); };
       document.addEventListener('mousedown', off, true);
       document.addEventListener('keydown', off, true);
-      window.addEventListener('blur', off);
+      if (blur) window.addEventListener('blur', off);
     }, 0);
     ui._menu = el;
+  }
+  /**
+   * Kleines Formular am Anker (z.B. Festival eines Eintrags). html = Inhalt, o: {align, cls, label}.
+   * Schliesst wie ein Menü (Klick daneben, Escape, ui.closeMenu()); liefert das Element.
+   */
+  ui.popover = function (anchor, html, o) {
+    ui.closeMenu();
+    const el = document.createElement('div');
+    el.className = `popover ${(o && o.cls) || ''}`;
+    el.setAttribute('role', 'dialog');
+    if (o && o.label) el.setAttribute('aria-label', o.label);
+    el.innerHTML = html;
+    place(el, anchor, o);
+    arm(el, false);
+    /* Nach Änderungen am Inhalt (andere Höhe) neu ausrichten. */
+    el._place = () => place(el, anchor, o);
+    return el;
   };
   ui.closeMenu = function () {
     if (ui._menu) ui._menu.remove();

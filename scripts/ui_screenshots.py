@@ -68,6 +68,7 @@ SETTINGS_TABS = [
     "general",
     "filters",
     "genres",
+    "festivals",
     "download",
     "storage",
     "throttle",
@@ -323,13 +324,13 @@ class Shooter:
         page.click('#lib-view [data-v="grid"]')
         self.settle()
         self.shot("library-grid")
-        page.check("#lib-group")
+        page.click('#lib-groupby [data-g="genre"]')
         self.settle()
         self.shot("library-grid-grouped")
         page.click('#lib-view [data-v="list"]')
         self.settle()
         self.shot("library-list-grouped")
-        page.uncheck("#lib-group")
+        page.click('#lib-groupby [data-g="none"]')
         page.click("#lib-missing")
         self.settle()
         self.shot("library-missing")
@@ -363,6 +364,88 @@ class Shooter:
         self.go("library")
         self.shot("library-empty")
         page.evaluate("HC.mock.demo.libraryEmpty(false)")
+        self.go("discover")
+
+    def festival_scenes(self) -> None:
+        """v0.3.0: group by festival/series (tiles, year timeline, stages), badge form, settings."""
+        page = self.page
+        self.go("library")
+        page.click('#lib-groupby [data-g="festival"]')
+        page.wait_for_selector(".fest-tile")
+        self.settle()
+        self.shot("library-festivals")
+        page.click('.fest-tile:has(.ft-name:text-is("Defqon.1"))')
+        page.wait_for_selector(".fest-line")
+        self.settle()
+        self.shot("library-festival-series")
+        page.click('#lib-view [data-v="grid"]')
+        self.settle()
+        self.shot("library-festival-series-grid")
+        page.click('#lib-view [data-v="list"]')
+        page.click('.fest-line [data-edition="all"]')
+        self.settle()
+        self.shot("library-festival-all-years")
+        # badge -> form: series (searchable), year, variant, stage, set type
+        page.click(".fest-line button:last-child")
+        page.click('#lib-body tr[data-id="qDq24PwrHr1"] [data-act="fest"]')
+        page.wait_for_selector(".popover.fpop")
+        self.settle()
+        self.shot("library-festival-popover")
+        page.fill('.fpop [data-f="stage"]', "BLUE")
+        page.click('.fpop [data-f="ok"]')
+        page.wait_for_selector("#toasts .toast")
+        self.settle()
+        self.shot("library-festival-set")
+        # unassigned entries: uncertain detections as dashed suggestions with "accept"
+        page.click("[data-fest-back]")
+        page.click('.fest-tile[data-series="none"]')
+        page.fill("#lib-q", "th")
+        self.settle()
+        self.shot("library-festival-other")
+        page.fill("#lib-q", "")
+        page.dispatch_event("#lib-q", "input")
+        page.click("[data-fest-back]")
+        page.click('#lib-groupby [data-g="artist"]')
+        self.settle()
+        self.shot("library-group-artist")
+        page.click('#lib-groupby [data-g="year"]')
+        self.settle()
+        self.shot("library-group-year")
+        page.click('#lib-groupby [data-g="none"]')
+
+        # settings: running pass (progress + cancel), result, series dialog, title test
+        self.go("settings")
+        self.tab("festivals")
+        page.wait_for_selector(".series-row")
+        page.evaluate(
+            "window.mv.emit('festival_assign', {phase: 'start', scope: 'library'});"
+            " window.mv.emit('festival_assign', {phase: 'progress', scope: 'library',"
+            " done: 50, total: 77, assigned: 2, suggested: 0, none: 0, manual: 1, unchanged: 47})"
+        )
+        self.settle()
+        self.shot("settings-festivals-assigning")
+        page.evaluate(
+            "window.mv.emit('festival_assign', {phase: 'done', scope: 'library', ok: true,"
+            " cancelled: false, done: 77, total: 77, assigned: 3, suggested: 0, none: 0,"
+            " manual: 1, unchanged: 73})"
+        )
+        self.clear_toasts()
+        page.fill("[data-custom=festTest] [data-title]", "Qlimax 2019 | Symphony of Shadows")
+        page.wait_for_selector(".fest-test:not([hidden])")
+        page.click("[data-custom=festTypes] [data-add]")
+        page.fill("[data-custom=festTypes] [data-kw]", "liveregistratie")
+        page.evaluate(
+            "document.querySelector('[data-custom=festTypes]').scrollIntoView({block: 'center'})"
+        )
+        self.settle()
+        self.shot("settings-festivals-test")
+        page.click("#btn-discard")
+        page.click('.series-row:has(b:text-is("Defqon.1")) [data-s="edit"]')
+        page.wait_for_selector(".series-modal")
+        self.settle()
+        self.shot("settings-festivals-series-dialog")
+        page.keyboard.press("Escape")
+        page.evaluate("HC.views.settings.reset()")  # forget the simulated pass
         self.go("discover")
 
     def log_scenes(self) -> None:
@@ -510,6 +593,7 @@ class Shooter:
         self.shot("downloads")
 
         self.library_scenes()
+        self.festival_scenes()
         self.log_scenes()
 
         # Einstellungen: jeder Tab, lange Tabs zusätzlich gescrollt

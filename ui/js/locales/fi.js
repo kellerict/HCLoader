@@ -439,8 +439,6 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "sort_title": "Nimi A–Ö",
     "sort_channel": "Kanava A–Ö",
     "sort_duration": "Pisimmät ensin",
-    "group": "Tyylilajin mukaan",
-    "group_title": "Ryhmittele merkinnät tyylilajin mukaan",
     "view_list": "Luettelo",
     "view_grid": "Ruudukko",
     "clear": "Palauta suodattimet",
@@ -494,7 +492,14 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "target_down_hint": "Tarkista asema tai verkkolevy. Kun se puuttuu, tiedostojen tila on tuntematon: ”Merkitse uudelleen” ja ”Poista merkintä” on poistettu käytöstä.",
     "unknown_title": "Kohdekansio ei ole tavoitettavissa – tiedoston tila on tuntematon",
     "none_title": "Ei tuloksia",
-    "none_text": "Mikään merkintä ei vastaa hakua ja suodattimia."
+    "none_text": "Mikään merkintä ei vastaa hakua ja suodattimia.",
+    "group_by": "Ryhmittele",
+    "group_none": "Ei",
+    "group_genre": "Tyylilaji",
+    "group_festival": "Festivaali",
+    "group_artist": "Artisti",
+    "group_year": "Vuosi",
+    "group_unknown": "Tuntematon"
   },
   "player": {
     "label": "Minisoitin",
@@ -593,7 +598,8 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "network": "Verkko ja PO-Token",
     "schedule": "Aikataulu",
     "appearance": "Ulkoasu",
-    "maintenance": "Ylläpito"
+    "maintenance": "Ylläpito",
+    "festivals": "Festivaalit ja sarjat"
   },
   "tabs_hint": {
     "general": "Sovelluksen perustoiminta.",
@@ -606,7 +612,8 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "network": "PO-Token tunnistaa pyynnöt oikeaksi selaimeksi ja pienentää bottiestojen riskiä.",
     "schedule": "Milloin seuranta tarkistetaan automaattisesti – sovelluksessa ja Windowsin tehtävien ajoituksella.",
     "appearance": "Ulkoasu ja tuntuma. Muutokset esikatsellaan heti ja tulevat pysyviksi vasta tallennuksen jälkeen.",
-    "maintenance": "Versiot, päivitykset, tietokanta."
+    "maintenance": "Versiot, päivitykset, tietokanta.",
+    "festivals": "Tunnistaa festivaalin tai sarjan, vuoden, lavan ja setin tyypin tallennetuista otsikoista – ilman verkkoa, ilman yhtäkään lisäpyyntöä."
   },
   "set": {
     "default": "Oletus",
@@ -647,7 +654,9 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
       "app_update": "Sovelluksen päivitys",
       "release_notes": "Julkaisutiedot",
       "database": "Tietokanta",
-      "reset": "Palautus"
+      "reset": "Palautus",
+      "detection": "Tunnistus",
+      "series": "Sarjat"
     },
     "general": {
       "language": {
@@ -804,11 +813,16 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
         "label": "Siivoa nimi",
         "help": "Säännölliset lausekkeet, joiden osumat poistetaan nimestä. Enter lisää.",
         "ph": "+ regex"
+      },
+      "album_from_edition": {
+        "label": "Albumi = tapahtuma",
+        "help": "Kirjoittaa tapahtuman (esim. ”Defqon.1 2024”) albumitunnisteeksi, jolloin Plex ja Jellyfin näyttävät festivaalin kaikki setit yhtenä albumina. Pois: albumi = otsikko, kuten ennen."
       }
     },
     "path_preview": {
       "label": "Esikatselu",
-      "help": "Napsauta paikkamerkkejä lisätäksesi ne polkumalliin."
+      "help": "Napsauta paikkamerkkejä lisätäksesi ne polkumalliin.",
+      "fest": "{festival}, {event_year} ja {stage} täytetään vain, kun festivaali on kohdistettu. Muuten ne jäävät pois ylimääräisten erottimien ja tyhjien kansioiden kanssa."
     },
     "throttle": {
       "sleep_requests": {
@@ -1076,6 +1090,77 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
       "label": "Kaikki asetukset",
       "help": "Palauttaa kaikki välilehdet oletusarvoihin. Tietokantaan ja musiikkitiedostoihin ei kosketa.",
       "button": "Palauta kaikki"
+    },
+    "festivals": {
+      "detect": {
+        "label": "Tunnista automaattisesti",
+        "help": "Kohdistaa festivaalin tai sarjan, vuoden, lavan ja setin tyypin uusiin osumiin ja latauksiin. Käsin asetettuja arvoja ei koskaan korvata."
+      },
+      "min_confidence": {
+        "label": "Tunnistuskynnys",
+        "help": "Varmuus, josta alkaen osuma kohdistetaan. Sen alapuolella osuma näkyy vain ehdotuksena, jonka voit hyväksyä."
+      },
+      "year_from_upload_date": {
+        "label": "Vuosi latauspäivästä",
+        "help": "Jos otsikossa ei ole vuosilukua, käytetään julkaisuvuotta (lasketaan epävarmemmaksi)."
+      },
+      "match_description": {
+        "label": "Hae myös kuvauksesta",
+        "help": "Etsii festivaalien nimiä myös tallennetusta kuvauksesta."
+      },
+      "extra_stages": {
+        "label": "Lisälavat",
+        "help": "Lavojen nimet sisäänrakennettujen lisäksi (RED, BLUE, BLACK, UV, Mainstage …).",
+        "ph": "+ lava"
+      }
+    },
+    "fest_types": {
+      "label": "Omat termit settityypeille",
+      "help": "Otsikon sanat, jotka viittaavat setin tyyppiin. Ne tarkistetaan ennen sisäänrakennettuja termejä.",
+      "ph": "Termi otsikossa",
+      "add": "Termi"
+    },
+    "fest_test": {
+      "label": "Testaa otsikko",
+      "help": "Näyttää, mitä tunnistus löytää otsikosta. Mitään ei tallenneta; tallennetut asetukset ovat voimassa.",
+      "ph": "esim. Defqon.1 2024 | RED | Closing Ceremony",
+      "none": "Mitään ei tunnistettu",
+      "assigned": "kohdistettaisiin",
+      "suggested": "vain ehdotus"
+    },
+    "fest_status": {
+      "title": "{assigned} / {total} mixiä kohdistettu",
+      "last": "Viimeisin ajo",
+      "help": "Ajetaan ilman verkkoa nykyiselle kirjastolle. Käsin asetetut arvot säilyvät; tiedostoja ei merkitä uudelleen eikä siirretä.",
+      "button": "Kohdista festivaalit nyt",
+      "running": "Kohdistetaan … {done} / {total}"
+    },
+    "series": {
+      "hint": "Tunnetut festivaalit, radio-ohjelmat ja podcastit. Luettelon muutokset tallennetaan heti.",
+      "add": "Sarja",
+      "show_hidden": "Näytä piilotetut",
+      "reset_all": "Palauta sisäänrakennetut sarjat",
+      "builtin": "sisäänrakennettu",
+      "own": "oma",
+      "modified": "muokattu",
+      "hidden": "piilotettu",
+      "no_aliases": "ei aliaksia",
+      "enable": "Tunnista tämä sarja",
+      "hide": "Piilota",
+      "restore": "Palauta",
+      "new_title": "Uusi sarja",
+      "edit_title": "Muokkaa sarjaa",
+      "name": "Nimi",
+      "kind": "Laji",
+      "default_genre": "Oletustyylilaji",
+      "aliases": "Aliakset",
+      "aliases_help": "Muut kirjoitusasut. Yksi osuma otsikossa riittää.",
+      "weak_aliases": "Heikot aliakset",
+      "weak_help": "Arkiset sanat, jotka lasketaan vain vuosiluvun kanssa.",
+      "variants": "Versiot",
+      "variants_help": "Omat tapahtumansa, esim. Australia tai at Home.",
+      "channels": "Järjestäjän kanavat",
+      "channels_help": "Kanavan nimi, tunnus tai URL. Lisää vain varmuutta."
     }
   },
   "opt": {
@@ -1163,6 +1248,23 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
       "title": "Palauta kaikki",
       "text": "Kaikki asetukset kaikilla välilehdillä palautetaan heti oletusarvoihin ja tallennetaan.",
       "ok": "Palauta"
+    },
+    "series_delete": {
+      "title": "Poistetaanko sarja?",
+      "text": "”{name}” ja sen tapahtumat poistetaan.",
+      "warn": {
+        "one": "{n} mixi menettää kohdistuksensa.",
+        "other": "{n} mixiä menettää kohdistuksensa."
+      }
+    },
+    "series_hide": {
+      "title": "Piilotetaanko sarja?",
+      "text": "Sarjaa ”{name}” ei enää tunnisteta. Saat sen takaisin valinnalla ”Näytä piilotetut”."
+    },
+    "series_reset": {
+      "title": "Palautetaanko sisäänrakennetut sarjat?",
+      "text": "Kaikki sisäänrakennetut sarjat palaavat alkutilaan ja piilotetut tulevat takaisin. Omat sarjasi säilyvät.",
+      "ok": "Palauta"
     }
   },
   "toast": {
@@ -1239,7 +1341,14 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "update_failed": "Päivitys epäonnistui",
     "restart_required": "Päivitetty – käynnistä HCLoader uudelleen, jotta haku ja lataukset toimivat taas",
     "backup_done": "Varmuuskopio luotu: {path}",
-    "reset_all": "Kaikki asetukset palautettu"
+    "reset_all": "Kaikki asetukset palautettu",
+    "festival_entry_only": "”{name}” tallennettiin vain merkintään – tiedostoon ei päästä käsiksi",
+    "series_saved": "Sarja ”{name}” tallennettu",
+    "series_deleted": "Sarja ”{name}” poistettu",
+    "series_hidden": "Sarja ”{name}” piilotettu",
+    "series_reset": "Sisäänrakennetut sarjat palautettu",
+    "assign_done": "Festivaalit kohdistettu: {assigned} uutta, {suggested} ehdotusta",
+    "assign_cancelled": "Kohdistus keskeytetty: {assigned} uutta, {suggested} ehdotusta"
   },
   "upd": {
     "available": "Versio {v} saatavilla",
@@ -1313,5 +1422,54 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "text": "Käyttöliittymä ei saanut vastausta HCLoaderin Python-osalta. Mitään epätodellista ei näytetä eikä tallenneta.",
     "waiting": "Odotetaan edelleen taustajärjestelmää …",
     "reload": "Lataa uudelleen"
+  },
+  "fest": {
+    "all": "Kaikki sarjat",
+    "other": "Muut / kohdistamatta",
+    "other_hint": "Ei festivaalia",
+    "sets": {
+      "one": "{n} setti",
+      "other": "{n} settiä"
+    },
+    "editions": {
+      "one": "{n} tapahtuma",
+      "other": "{n} tapahtumaa"
+    },
+    "suggestions": {
+      "one": "{n} ehdotus",
+      "other": "{n} ehdotusta"
+    },
+    "all_years": "Kaikki",
+    "no_stage": "Ei lavaa",
+    "kind": {
+      "festival": "Festivaali",
+      "radio": "Radio-ohjelma",
+      "podcast": "Podcast"
+    },
+    "set_type": {
+      "live_set": "Livesetti",
+      "closing_ceremony": "Päätösseremonia",
+      "opening": "Avaus",
+      "endshow": "Endshow",
+      "full_show": "Koko show",
+      "warm_up": "Warm-up",
+      "anthem": "Anthem",
+      "episode": "Jakso"
+    },
+    "change": "vaihda festivaali",
+    "change_manual": "asetettu käsin, vaihda napsauttamalla",
+    "add": "Aseta festivaali tai sarja",
+    "suggested": "Epävarma ehdotus: {name}",
+    "accept": "Hyväksy ehdotus",
+    "p_title": "Festivaali / sarja",
+    "p_search": "Hae sarjaa …",
+    "p_none": "Ei festivaalia",
+    "p_no_match": "Sarjaa ei löytynyt",
+    "p_year": "Vuosi",
+    "p_variant": "Versio",
+    "p_stage": "Lava",
+    "p_type": "Setin tyyppi",
+    "p_apply": "Käytä",
+    "p_auto": "Palauta automaattiseksi"
   }
 });

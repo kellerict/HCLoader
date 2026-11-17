@@ -439,8 +439,6 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "sort_title": "Tittel A–Å",
     "sort_channel": "Kanal A–Å",
     "sort_duration": "Lengst først",
-    "group": "Etter sjanger",
-    "group_title": "Grupper oppføringer etter sjanger",
     "view_list": "Liste",
     "view_grid": "Fliser",
     "clear": "Tilbakestill filtre",
@@ -494,7 +492,14 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "target_down_hint": "Sjekk stasjonen eller nettverksressursen. Så lenge den mangler, er filenes tilstand ukjent: «Merk på nytt» og «Fjern oppføring» er deaktivert.",
     "unknown_title": "Målmappen er ikke tilgjengelig – filens tilstand er ukjent",
     "none_title": "Ingen resultater",
-    "none_text": "Ingen oppføring samsvarer med søket og filtrene."
+    "none_text": "Ingen oppføring samsvarer med søket og filtrene.",
+    "group_by": "Grupper etter",
+    "group_none": "Ingen",
+    "group_genre": "Sjanger",
+    "group_festival": "Festival",
+    "group_artist": "Artist",
+    "group_year": "År",
+    "group_unknown": "Ukjent"
   },
   "player": {
     "label": "Minispiller",
@@ -593,7 +598,8 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "network": "Nettverk og PO-Token",
     "schedule": "Plan",
     "appearance": "Utseende",
-    "maintenance": "Vedlikehold"
+    "maintenance": "Vedlikehold",
+    "festivals": "Festivaler og serier"
   },
   "tabs_hint": {
     "general": "Appens grunnleggende oppførsel.",
@@ -606,7 +612,8 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "network": "PO-Token identifiserer forespørsler som en ekte nettleser og reduserer risikoen for bot-blokkeringer.",
     "schedule": "Når overvåkingen sjekkes automatisk – i appen og via Windows Oppgaveplanlegger.",
     "appearance": "Utseende og følelse. Endringer forhåndsvises umiddelbart og blir permanente først etter lagring.",
-    "maintenance": "Versjoner, oppdateringer, database."
+    "maintenance": "Versjoner, oppdateringer, database.",
+    "festivals": "Gjenkjenner festival eller serie, år, scene og sett-type ut fra de lagrede titlene – frakoblet, uten en eneste ekstra forespørsel."
   },
   "set": {
     "default": "Standard",
@@ -647,7 +654,9 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
       "app_update": "Appoppdatering",
       "release_notes": "Versjonsnotater",
       "database": "Database",
-      "reset": "Tilbakestilling"
+      "reset": "Tilbakestilling",
+      "detection": "Gjenkjenning",
+      "series": "Serier"
     },
     "general": {
       "language": {
@@ -804,11 +813,16 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
         "label": "Rydd opp i tittelen",
         "help": "Regulære uttrykk der treffene fjernes fra tittelen. Enter legger til.",
         "ph": "+ regex"
+      },
+      "album_from_edition": {
+        "label": "Album = utgave",
+        "help": "Skriver utgaven (f.eks. «Defqon.1 2024») som albumtagg, slik at Plex og Jellyfin viser alle sett fra en festival som ett album. Av: album = tittel, som før."
       }
     },
     "path_preview": {
       "label": "Forhåndsvisning",
-      "help": "Klikk på plassholdere for å sette dem inn i stimønsteret."
+      "help": "Klikk på plassholdere for å sette dem inn i stimønsteret.",
+      "fest": "{festival}, {event_year} og {stage} fylles bare ut når en festival er tilordnet. Ellers faller de bort, sammen med overflødige skilletegn og tomme mapper."
     },
     "throttle": {
       "sleep_requests": {
@@ -1076,6 +1090,77 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
       "label": "Alle innstillinger",
       "help": "Tilbakestiller alle faner til standardverdier. Database og musikkfiler berøres ikke.",
       "button": "Tilbakestill alt"
+    },
+    "festivals": {
+      "detect": {
+        "label": "Gjenkjenn automatisk",
+        "help": "Tilordner festival eller serie, år, scene og sett-type til nye treff og nedlastinger. Manuelt satte verdier overskrives aldri."
+      },
+      "min_confidence": {
+        "label": "Terskel for gjenkjenning",
+        "help": "Sikkerhet et treff må ha for å bli tilordnet. Under den vises det bare som et forslag du kan godta."
+      },
+      "year_from_upload_date": {
+        "label": "År fra opplastingsdato",
+        "help": "Hvis tittelen mangler årstall, brukes opplastingsåret (regnes som mindre sikkert)."
+      },
+      "match_description": {
+        "label": "Søk også i beskrivelsen",
+        "help": "Leter etter festivalnavn også i den lagrede beskrivelsen."
+      },
+      "extra_stages": {
+        "label": "Ekstra scener",
+        "help": "Scenenavn i tillegg til de innebygde (RED, BLUE, BLACK, UV, Mainstage …).",
+        "ph": "+ scene"
+      }
+    },
+    "fest_types": {
+      "label": "Egne begreper for sett-typer",
+      "help": "Ord i tittelen som tyder på en sett-type. De sjekkes før de innebygde begrepene.",
+      "ph": "Begrep i tittelen",
+      "add": "Begrep"
+    },
+    "fest_test": {
+      "label": "Test en tittel",
+      "help": "Viser hva gjenkjenningen finner i en tittel. Ingenting lagres; de lagrede innstillingene gjelder.",
+      "ph": "f.eks. Defqon.1 2024 | RED | Closing Ceremony",
+      "none": "Ingenting gjenkjent",
+      "assigned": "ville blitt tilordnet",
+      "suggested": "bare forslag"
+    },
+    "fest_status": {
+      "title": "{assigned} av {total} mixer tilordnet",
+      "last": "Siste gjennomgang",
+      "help": "Kjører frakoblet over det eksisterende biblioteket. Manuelle verdier beholdes; filer merkes ikke på nytt og flyttes ikke.",
+      "button": "Tilordne festivaler nå",
+      "running": "Tilordner … {done} / {total}"
+    },
+    "series": {
+      "hint": "Kjente festivaler, radioprogrammer og podkaster. Endringer i listen lagres med en gang.",
+      "add": "Serie",
+      "show_hidden": "Vis skjulte",
+      "reset_all": "Tilbakestill innebygde serier",
+      "builtin": "innebygd",
+      "own": "egen",
+      "modified": "endret",
+      "hidden": "skjult",
+      "no_aliases": "ingen aliaser",
+      "enable": "Gjenkjenn denne serien",
+      "hide": "Skjul",
+      "restore": "Gjenopprett",
+      "new_title": "Ny serie",
+      "edit_title": "Rediger serie",
+      "name": "Navn",
+      "kind": "Type",
+      "default_genre": "Standardsjanger",
+      "aliases": "Aliaser",
+      "aliases_help": "Andre skrivemåter. Ett treff i tittelen er nok.",
+      "weak_aliases": "Svake aliaser",
+      "weak_help": "Hverdagsord som bare teller sammen med et årstall.",
+      "variants": "Varianter",
+      "variants_help": "Egne utgaver, f.eks. Australia eller at Home.",
+      "channels": "Arrangørens kanaler",
+      "channels_help": "Kanalnavn, ID eller URL. Øker bare sikkerheten."
     }
   },
   "opt": {
@@ -1163,6 +1248,23 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
       "title": "Tilbakestill alt",
       "text": "Alle innstillinger i alle faner settes umiddelbart til standardverdier og lagres.",
       "ok": "Tilbakestill"
+    },
+    "series_delete": {
+      "title": "Slette serien?",
+      "text": "«{name}» og utgavene slettes.",
+      "warn": {
+        "one": "{n} mix mister tilordningen.",
+        "other": "{n} mixer mister tilordningen."
+      }
+    },
+    "series_hide": {
+      "title": "Skjule serien?",
+      "text": "«{name}» gjenkjennes ikke lenger. Du henter den tilbake med «Vis skjulte»."
+    },
+    "series_reset": {
+      "title": "Tilbakestille innebygde serier?",
+      "text": "Alle innebygde serier går tilbake til utgangspunktet, og skjulte kommer tilbake. Dine egne serier beholdes.",
+      "ok": "Tilbakestill"
     }
   },
   "toast": {
@@ -1239,7 +1341,14 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "update_failed": "Oppdateringen mislyktes",
     "restart_required": "Oppdatert – start HCLoader på nytt slik at søk og nedlastinger fungerer igjen",
     "backup_done": "Sikkerhetskopi laget: {path}",
-    "reset_all": "Alle innstillinger tilbakestilt"
+    "reset_all": "Alle innstillinger tilbakestilt",
+    "festival_entry_only": "«{name}» ble bare lagret i oppføringen – filen er ikke tilgjengelig",
+    "series_saved": "Serien «{name}» lagret",
+    "series_deleted": "Serien «{name}» slettet",
+    "series_hidden": "Serien «{name}» skjult",
+    "series_reset": "Innebygde serier gjenopprettet",
+    "assign_done": "Festivaler tilordnet: {assigned} nye, {suggested} forslag",
+    "assign_cancelled": "Tilordningen ble avbrutt: {assigned} nye, {suggested} forslag"
   },
   "upd": {
     "available": "Versjon {v} er tilgjengelig",
@@ -1313,5 +1422,54 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "text": "Grensesnittet fikk ikke svar fra Python-delen av HCLoader. Ingenting som ikke er ekte, vises eller lagres.",
     "waiting": "Venter fortsatt på backend …",
     "reload": "Last inn på nytt"
+  },
+  "fest": {
+    "all": "Alle serier",
+    "other": "Øvrig / ikke tilordnet",
+    "other_hint": "Ingen festival",
+    "sets": {
+      "one": "{n} sett",
+      "other": "{n} sett"
+    },
+    "editions": {
+      "one": "{n} utgave",
+      "other": "{n} utgaver"
+    },
+    "suggestions": {
+      "one": "{n} forslag",
+      "other": "{n} forslag"
+    },
+    "all_years": "Alle",
+    "no_stage": "Ingen scene",
+    "kind": {
+      "festival": "Festival",
+      "radio": "Radioprogram",
+      "podcast": "Podkast"
+    },
+    "set_type": {
+      "live_set": "Livesett",
+      "closing_ceremony": "Avslutningsseremoni",
+      "opening": "Åpning",
+      "endshow": "Endshow",
+      "full_show": "Hele showet",
+      "warm_up": "Warm-up",
+      "anthem": "Anthem",
+      "episode": "Episode"
+    },
+    "change": "endre festival",
+    "change_manual": "satt manuelt, klikk for å endre",
+    "add": "Angi festival eller serie",
+    "suggested": "Usikkert forslag: {name}",
+    "accept": "Godta forslaget",
+    "p_title": "Festival / serie",
+    "p_search": "Søk etter serie …",
+    "p_none": "Ingen festival",
+    "p_no_match": "Fant ingen serie",
+    "p_year": "År",
+    "p_variant": "Variant",
+    "p_stage": "Scene",
+    "p_type": "Sett-type",
+    "p_apply": "Bruk",
+    "p_auto": "Tilbake til automatisk"
   }
 });

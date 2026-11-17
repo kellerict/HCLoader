@@ -33,6 +33,22 @@ appears after «Show all changes» (`docs/RELEASING.md`).
   `get_festival_options`, `get_library_groups`, `set_festival`, `reset_festival`, `detect_festival`,
   `get_festival_status`, `assign_festivals`, `cancel_assign_festivals`; event `festival_assign`;
   library items carry `festival` / `festival_suggestion` (docs/bridge-api.md).
+- Library: «Group by» switch (none · genre · festival · artist · year), remembered between starts.
+  The festival view shows one tile per series (kind, number of sets, year range) – click a tile for
+  the editions as a year timeline and the sets grouped by stage. Search and filters keep working;
+  entries without a festival sit in «Other / unassigned».
+- Festival badge on library entries (edition + stage). Click it to pick the series (searchable),
+  year, variant, stage and set type, or to go back to automatic; the file is retagged right away.
+  Uncertain detections appear as dashed suggestions with a one-click «accept».
+- Settings tab «Festivals & series»: detection options and threshold, own stage names and set-type
+  terms, a title test field, «Assign festivals now» with progress and cancel, and the series list
+  (built-in or own, on/off, aliases, kind, default genre; add, edit, delete, hide, reset).
+  `storage.album_from_edition` is explained there and under «Storage & tags»; the path preview
+  offers `{festival}`, `{event_year}` and `{stage}`.
+- All new texts in every UI language.
+
+### Changed
+- Library: the «By genre» checkbox became the «Group by» switch; a saved «By genre» choice is kept.
 
 ## [0.2.1] - 2026-11-17
 

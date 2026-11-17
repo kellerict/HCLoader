@@ -233,6 +233,10 @@
                   danach retag(id) (verschiebt die Datei in den Ordner des Genres); bei missing/unknown nur set_genre.
                   ▶: player.mode "internal" -> get_media(id) + Mini-Player (js/player.js), "external" -> play_external(id).
                   v0.3.0: festival (Festival|null), festival_suggestion (Festival ohne manual|null).
+                  Festival-Badge (js/festivals.js): Klick -> Formular -> set_festival(id, data), danach retag(id)
+                  (bei missing/unknown nur set_festival). Vorschlag: gestrichelt, «Übernehmen» = set_festival
+                  mit {edition_id, stage, set_type, episode}. Die Bibliothek gruppiert selbst aus `festival`
+                  (get_library_groups braucht sie nicht); die Serienliste pflegt der Tab «Festivals & Serien».
      Festival    {edition_id, series_id, series_key, series, kind, event_year (int|null), variant, edition, festival,
                   stage|null, set_type (Code)|null, episode|null, manual, confidence (0–1|null)}
      Series      {id, key, name, kind: "festival"|"radio"|"podcast", aliases, weak_aliases, channels,

@@ -439,8 +439,6 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "sort_title": "Pealkiri A–Ü",
     "sort_channel": "Kanal A–Ü",
     "sort_duration": "Pikimad enne",
-    "group": "Žanri järgi",
-    "group_title": "Rühmita kirjed žanri järgi",
     "view_list": "Loend",
     "view_grid": "Paanid",
     "clear": "Lähtesta filtrid",
@@ -494,7 +492,14 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "target_down_hint": "Kontrolli draivi või võrgujagamist. Kuni see puudub, on failide olek teadmata: „Sildista uuesti” ja „Eemalda kirje” on keelatud.",
     "unknown_title": "Sihtkaust pole kättesaadav – faili olek on teadmata",
     "none_title": "Tulemusi pole",
-    "none_text": "Ükski kirje ei vasta otsingule ja filtritele."
+    "none_text": "Ükski kirje ei vasta otsingule ja filtritele.",
+    "group_by": "Rühmita",
+    "group_none": "Puudub",
+    "group_genre": "Žanr",
+    "group_festival": "Festival",
+    "group_artist": "Artist",
+    "group_year": "Aasta",
+    "group_unknown": "Teadmata"
   },
   "player": {
     "label": "Minipleier",
@@ -593,7 +598,8 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "network": "Võrk ja PO-Token",
     "schedule": "Ajakava",
     "appearance": "Välimus",
-    "maintenance": "Hooldus"
+    "maintenance": "Hooldus",
+    "festivals": "Festivalid ja sarjad"
   },
   "tabs_hint": {
     "general": "Rakenduse põhikäitumine.",
@@ -606,7 +612,8 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "network": "PO-Token tuvastab päringud päris brauseri omadena ja vähendab robotiblokeeringu riski.",
     "schedule": "Millal jälgitavaid allikaid automaatselt kontrollitakse – rakenduses ja Windowsi tegumiplaanija kaudu.",
     "appearance": "Välimus ja tunnetus. Muudatused on kohe eelvaates ja jäävad püsima alles pärast salvestamist.",
-    "maintenance": "Versioonid, uuendused, andmebaas."
+    "maintenance": "Versioonid, uuendused, andmebaas.",
+    "festivals": "Tuvastab salvestatud pealkirjadest festivali või sarja, aasta, lava ja seti liigi – võrguühenduseta, ilma ühegi lisapäringuta."
   },
   "set": {
     "default": "Vaikimisi",
@@ -647,7 +654,9 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
       "app_update": "Rakenduse uuendus",
       "release_notes": "Väljalaskemärkmed",
       "database": "Andmebaas",
-      "reset": "Lähtestamine"
+      "reset": "Lähtestamine",
+      "detection": "Tuvastamine",
+      "series": "Sarjad"
     },
     "general": {
       "language": {
@@ -804,11 +813,16 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
         "label": "Puhasta pealkiri",
         "help": "Regulaaravaldised, mille vasted pealkirjast eemaldatakse. Enter lisab.",
         "ph": "+ regex"
+      },
+      "album_from_edition": {
+        "label": "Album = väljaanne",
+        "help": "Kirjutab väljaande (nt „Defqon.1 2024“) albumi sildiks, nii et Plex ja Jellyfin näitavad festivali kõiki sette ühe albumina. Väljas: album = pealkiri, nagu varem."
       }
     },
     "path_preview": {
       "label": "Eelvaade",
-      "help": "Klõpsa kohatäitjatel, et neid tee mustrisse lisada."
+      "help": "Klõpsa kohatäitjatel, et neid tee mustrisse lisada.",
+      "fest": "{festival}, {event_year} ja {stage} täidetakse ainult siis, kui festival on määratud. Muidu jäävad need ära koos üleliigsete eraldajate ja tühjade kaustadega."
     },
     "throttle": {
       "sleep_requests": {
@@ -1076,6 +1090,77 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
       "label": "Kõik seaded",
       "help": "Lähtestab kõik vahekaardid vaikeväärtustele. Andmebaas ja muusikafailid jäävad puutumata.",
       "button": "Lähtesta kõik"
+    },
+    "festivals": {
+      "detect": {
+        "label": "Tuvasta automaatselt",
+        "help": "Määrab uutele tulemustele ja allalaadimistele festivali või sarja, aasta, lava ja seti liigi. Käsitsi määratud väärtusi ei kirjutata kunagi üle."
+      },
+      "min_confidence": {
+        "label": "Tuvastuslävi",
+        "help": "Kindlus, millest alates vaste määratakse. Sellest allpool kuvatakse see vaid soovitusena, mille saad vastu võtta."
+      },
+      "year_from_upload_date": {
+        "label": "Aasta üleslaadimise kuupäevast",
+        "help": "Kui pealkirjas aastaarvu pole, kehtib üleslaadimise aasta (loetakse vähem kindlaks)."
+      },
+      "match_description": {
+        "label": "Otsi ka kirjeldusest",
+        "help": "Otsib festivalide nimesid ka salvestatud kirjeldusest."
+      },
+      "extra_stages": {
+        "label": "Lisalavad",
+        "help": "Lavade nimed lisaks sisseehitatutele (RED, BLUE, BLACK, UV, Mainstage …).",
+        "ph": "+ lava"
+      }
+    },
+    "fest_types": {
+      "label": "Oma terminid setiliikidele",
+      "help": "Sõnad pealkirjas, mis viitavad seti liigile. Neid kontrollitakse enne sisseehitatud termineid.",
+      "ph": "Termin pealkirjas",
+      "add": "Termin"
+    },
+    "fest_test": {
+      "label": "Testi pealkirja",
+      "help": "Näitab, mida tuvastus pealkirjast leiab. Midagi ei salvestata; kehtivad salvestatud seaded.",
+      "ph": "nt Defqon.1 2024 | RED | Closing Ceremony",
+      "none": "Midagi ei tuvastatud",
+      "assigned": "määrataks",
+      "suggested": "ainult soovitus"
+    },
+    "fest_status": {
+      "title": "{assigned} miksi {total}-st määratud",
+      "last": "Viimane läbikäik",
+      "help": "Töötab võrguühenduseta olemasoleva kogu peal. Käsitsi määratud väärtused jäävad; faile ei sildistata uuesti ega teisaldata.",
+      "button": "Määra festivalid kohe",
+      "running": "Määramine … {done} / {total}"
+    },
+    "series": {
+      "hint": "Tuntud festivalid, raadiosaated ja taskuhäälingud. Selle loendi muudatused salvestatakse kohe.",
+      "add": "Sari",
+      "show_hidden": "Näita peidetuid",
+      "reset_all": "Lähtesta sisseehitatud sarjad",
+      "builtin": "sisseehitatud",
+      "own": "oma",
+      "modified": "muudetud",
+      "hidden": "peidetud",
+      "no_aliases": "aliased puuduvad",
+      "enable": "Tuvasta see sari",
+      "hide": "Peida",
+      "restore": "Taasta",
+      "new_title": "Uus sari",
+      "edit_title": "Muuda sarja",
+      "name": "Nimi",
+      "kind": "Liik",
+      "default_genre": "Vaikežanr",
+      "aliases": "Aliased",
+      "aliases_help": "Muud kirjapildid. Piisab ühest vastest pealkirjas.",
+      "weak_aliases": "Nõrgad aliased",
+      "weak_help": "Tavasõnad, mis loevad ainult koos aastaarvuga.",
+      "variants": "Variandid",
+      "variants_help": "Omaette väljaanded, nt Australia või at Home.",
+      "channels": "Korraldaja kanalid",
+      "channels_help": "Kanali nimi, ID või URL. Suurendab ainult kindlust."
     }
   },
   "opt": {
@@ -1163,6 +1248,23 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
       "title": "Lähtesta kõik",
       "text": "Kõik seaded kõigil vahekaartidel määratakse kohe vaikeväärtustele ja salvestatakse.",
       "ok": "Lähtesta"
+    },
+    "series_delete": {
+      "title": "Kas kustutada sari?",
+      "text": "„{name}“ ja selle väljaanded kustutatakse.",
+      "warn": {
+        "one": "{n} miks kaotab oma määrangu.",
+        "other": "{n} miksi kaotavad oma määrangu."
+      }
+    },
+    "series_hide": {
+      "title": "Kas peita sari?",
+      "text": "Sarja „{name}“ enam ei tuvastata. Tagasi saad selle valikuga „Näita peidetuid“."
+    },
+    "series_reset": {
+      "title": "Kas lähtestada sisseehitatud sarjad?",
+      "text": "Kõik sisseehitatud sarjad naasevad algseisu ja peidetud tulevad tagasi. Sinu enda sarjad jäävad alles.",
+      "ok": "Lähtesta"
     }
   },
   "toast": {
@@ -1239,7 +1341,14 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "update_failed": "Uuendamine ebaõnnestus",
     "restart_required": "Uuendatud – käivita HCLoader uuesti, et otsing ja allalaadimised taas töötaksid",
     "backup_done": "Varukoopia loodud: {path}",
-    "reset_all": "Kõik seaded lähtestatud"
+    "reset_all": "Kõik seaded lähtestatud",
+    "festival_entry_only": "„{name}“ salvestati ainult kirjesse – fail pole kättesaadav",
+    "series_saved": "Sari „{name}“ salvestatud",
+    "series_deleted": "Sari „{name}“ kustutatud",
+    "series_hidden": "Sari „{name}“ peidetud",
+    "series_reset": "Sisseehitatud sarjad taastatud",
+    "assign_done": "Festivalid määratud: {assigned} uut, {suggested} soovitust",
+    "assign_cancelled": "Määramine katkestati: {assigned} uut, {suggested} soovitust"
   },
   "upd": {
     "available": "Saadaval on versioon {v}",
@@ -1313,5 +1422,54 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "text": "Liides ei saanud vastust HCLoaderi Pythoni osast. Mitteehtsaid andmeid ei kuvata ega salvestata.",
     "waiting": "Ootan endiselt taustaprogrammi …",
     "reload": "Laadi uuesti"
+  },
+  "fest": {
+    "all": "Kõik sarjad",
+    "other": "Muud / määramata",
+    "other_hint": "Festival puudub",
+    "sets": {
+      "one": "{n} sett",
+      "other": "{n} setti"
+    },
+    "editions": {
+      "one": "{n} väljaanne",
+      "other": "{n} väljaannet"
+    },
+    "suggestions": {
+      "one": "{n} soovitus",
+      "other": "{n} soovitust"
+    },
+    "all_years": "Kõik",
+    "no_stage": "Lava puudub",
+    "kind": {
+      "festival": "Festival",
+      "radio": "Raadiosaade",
+      "podcast": "Taskuhääling"
+    },
+    "set_type": {
+      "live_set": "Live-sett",
+      "closing_ceremony": "Lõputseremoonia",
+      "opening": "Avamine",
+      "endshow": "Endshow",
+      "full_show": "Kogu show",
+      "warm_up": "Warm-up",
+      "anthem": "Anthem",
+      "episode": "Osa"
+    },
+    "change": "muuda festivali",
+    "change_manual": "määratud käsitsi, muutmiseks klõpsa",
+    "add": "Määra festival või sari",
+    "suggested": "Ebakindel soovitus: {name}",
+    "accept": "Võta soovitus vastu",
+    "p_title": "Festival / sari",
+    "p_search": "Otsi sarja …",
+    "p_none": "Festival puudub",
+    "p_no_match": "Sarja ei leitud",
+    "p_year": "Aasta",
+    "p_variant": "Variant",
+    "p_stage": "Lava",
+    "p_type": "Seti liik",
+    "p_apply": "Rakenda",
+    "p_auto": "Tagasi automaatsele"
   }
 });

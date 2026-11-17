@@ -13,7 +13,7 @@
   const I = HC.icons;
   const FALLBACK_GENRE = 'Unsortiert';
   const PALETTE = ['#00e5ff', '#ff7a00', '#ff3bd4', '#ffe600', '#3bff9d', '#7a8cff'];
-  const PLACEHOLDERS = ['genre', 'artist', 'channel', 'year', 'date', 'title', 'id', 'platform'];
+  const PLACEHOLDERS = ['genre', 'artist', 'channel', 'year', 'date', 'title', 'id', 'platform', 'festival', 'event_year', 'stage'];
   const MIN_YEAR = 2005; // wie core/config.MIN_UPLOAD_YEAR
   const thisYear = () => new Date().getFullYear();
 
@@ -62,6 +62,21 @@
       { k: 'filters.hide_cross_platform_duplicates', type: 'bool' },
     ] },
     { id: 'genres', fields: [{ custom: 'genres' }], keys: ['genres.items'] },
+    { id: 'festivals', fields: [
+      { custom: 'festStatus' },
+      { h: 'set.h.detection' },
+      { k: 'festivals.detect', type: 'bool' },
+      { k: 'festivals.min_confidence', type: 'float', min: 0.3, max: 1, enabled: (w) => w.festivals.detect },
+      { k: 'festivals.year_from_upload_date', type: 'bool', enabled: (w) => w.festivals.detect },
+      { k: 'festivals.match_description', type: 'bool', enabled: (w) => w.festivals.detect },
+      { k: 'festivals.extra_stages', type: 'chips', lower: false, placeholder: 'set.festivals.extra_stages.ph' },
+      { custom: 'festTypes' },
+      { custom: 'festTest' },
+      { h: 'set.h.tags' },
+      { k: 'storage.album_from_edition', type: 'bool' },
+      { h: 'set.h.series' },
+      { custom: 'series' },
+    ], keys: ['festivals.detect', 'festivals.min_confidence', 'festivals.year_from_upload_date', 'festivals.match_description', 'festivals.extra_stages', 'festivals.extra_set_types', 'storage.album_from_edition'] },
     { id: 'download', fields: [
       { k: 'download.audio_format', type: 'select', options: ['mp3', 'original'] },
       { k: 'download.mp3_quality', type: 'select', options: ['320', 'v0'], enabled: (w) => w.download.audio_format === 'mp3' },
@@ -82,6 +97,7 @@
       { k: 'storage.max_path_length', type: 'int', min: 100, max: 259, unit: 'unit.chars' },
       { h: 'set.h.tags' },
       { k: 'storage.artist_from_title', type: 'bool' },
+      { k: 'storage.album_from_edition', type: 'bool' },
       { k: 'storage.title_cleanup_patterns', type: 'chips', lower: false, commaSplits: false, placeholder: 'set.storage.title_cleanup_patterns.ph' },
     ] },
     { id: 'throttle', fields: [
@@ -171,10 +187,10 @@
   let cur = 'general';
   let genreKeys = []; // stabile Schlüssel für die Genre-Zeilen (FLIP)
   let gk = 0;
-  const cache = { task: null, versions: null, blacklist: null, poTest: null, update: null, before: null, restart: false, backups: [], freshBackup: '' };
+  const cache = { task: null, versions: null, blacklist: null, poTest: null, update: null, before: null, restart: false, backups: [], freshBackup: '', fest: null, assign: null, series: null, seriesHidden: false };
 
   const isDirtyKey = (k) => !eq(get(work, k), get(saved, k));
-  const dirtyKeys = () => TABS.flatMap(tabKeys).filter(isDirtyKey);
+  const dirtyKeys = () => [...new Set(TABS.flatMap(tabKeys))].filter(isDirtyKey); // ein Feld kann in zwei Tabs stehen
   const errorsOf = (tab) => Object.keys(errors).filter((e) => tabKeys(tab).some((k) => e === k || e.startsWith(k + '.')));
 
   /* ---------- Anzeige von Werten ---------- */
@@ -392,9 +408,9 @@
 
     /* Vorschau des Ablagepfads */
     pathPreview(host) {
-      const sample = { genre: 'Hardcore', artist: 'Gabber Vault', channel: 'Gabber Vault', year: '2026', date: '2026-10-03', title: 'Millennium Hardcore Continuous Mix (Official Video) [HQ]', id: 'gMill3nnium', platform: 'YouTube' };
+      const sample = { genre: 'Hardcore', artist: 'Gabber Vault', channel: 'Gabber Vault', year: '2026', date: '2026-10-03', title: 'Millennium Hardcore Continuous Mix (Official Video) [HQ]', id: 'gMill3nnium', platform: 'YouTube', festival: 'Dominator', event_year: '2026', stage: 'Mainstage' };
       host.innerHTML = `<div class="field plain"><div class="fl"><b>${t('set.path_preview.label')}</b><span class="help">${t('set.path_preview.help')}</span></div>
-        <div class="fc"><div class="fc-main"><div class="ph-list">${PLACEHOLDERS.map((p) => `<button type="button" class="ph" data-ph="{${p}}">{${p}}</button>`).join('')}</div><div class="preview" data-out></div></div></div></div>`;
+        <div class="fc"><div class="fc-main"><div class="ph-list">${PLACEHOLDERS.map((p) => `<button type="button" class="ph" data-ph="{${p}}">{${p}}</button>`).join('')}</div><div class="preview" data-out></div><div class="fhint">${t('set.path_preview.fest')}</div></div></div></div>`;
       host.addEventListener('click', (e) => {
         const b = e.target.closest('[data-ph]');
         const inp = $('.field[data-k="storage.path_template"] [data-c]', el);
@@ -700,6 +716,218 @@
       });
     },
 
+    /* ---------- Festivals & Serien (v0.3.0) ---------- */
+    /* Stand der Zuordnung + «Festivals jetzt zuordnen» (assign_festivals, Fortschritt: Event festival_assign) */
+    festStatus(host) {
+      const paint = () => {
+        const s = cache.fest, a = cache.assign;
+        if (!s) { host.innerHTML = box('off', t('common.loading'), '&nbsp;', '', '', 'off'); return; }
+        const running = a ? !!a.running : !!s.running;
+        const pct = a && a.total ? Math.round(((a.done || 0) / a.total) * 100) : 0;
+        const detail = `${esc(t('fest.suggestions', { n: s.suggested }))} · ${t('set.fest_status.last')}: <b>${esc(s.last_pass ? util.fmtWhen(s.last_pass) : t('fmt.never'))}</b><br>${t('set.fest_status.help')}`;
+        const actions = running
+          ? `<button class="btn sm danger" data-fest="cancel"${a && a.cancelling ? ' disabled' : ''}>${I.x}${t('common.cancel')}</button>`
+          : `<button class="btn sm primary" data-fest="assign"${s.total ? '' : ' disabled'}>${I.flag}${t('set.fest_status.button')}</button>`;
+        const res = a && a.result;
+        const extra = running
+          ? `<div class="fest-prog"><div class="progress${a && a.total ? '' : ' indet'}"><div class="bar kick" style="width:${pct}%;--p:${pct}"></div></div><span class="unit">${esc(t('set.fest_status.running', { done: util.fmtNum((a && a.done) || 0), total: a && a.total ? util.fmtNum(a.total) : '…' }))}</span></div>`
+          : res ? ui.notice(res.ok === false ? 'error' : res.cancelled ? 'warn' : 'ok', esc(res.ok === false ? res.error || t('err.generic') : t(res.cancelled ? 'toast.assign_cancelled' : 'toast.assign_done', { assigned: res.assigned || 0, suggested: res.suggested || 0 }))) : '';
+        host.innerHTML = box(running ? 'warn' : s.assigned ? 'ok' : 'off', esc(t('set.fest_status.title', { assigned: util.fmtNum(s.assigned), total: util.fmtNum(s.total) })), detail, actions, extra, running ? 'warn blink' : s.assigned ? '' : 'off');
+      };
+      const load = async () => { const s = await HC.bridge.safe('get_festival_status'); if (s) { cache.fest = s; if (!s.running && cache.assign && cache.assign.running) cache.assign = null; if (host.isConnected) paint(); } };
+      host._paint = paint;
+      host._load = load;
+      host.addEventListener('click', async (e) => {
+        const b = e.target.closest('[data-fest]');
+        if (!b || b.disabled) return;
+        if (b.dataset.fest === 'cancel') {
+          if (cache.assign) cache.assign.cancelling = true;
+          paint();
+          await HC.bridge.safe('cancel_assign_festivals');
+          return;
+        }
+        ui.busy(b, true);
+        const r = await HC.bridge.safe('assign_festivals', { scope: 'library' });
+        if (r && r.ok) { if (!cache.assign || !cache.assign.running) cache.assign = { running: true, done: 0, total: 0 }; }
+        else if (r) ui.toast(r.error || t('err.generic'), 'err');
+        paint();
+      });
+      paint();
+      load();
+    },
+    /* Eigene Begriffe für Set-Arten: festivals.extra_set_types = [{keyword, set_type}] */
+    festTypes(host) {
+      const K = 'festivals.extra_set_types';
+      const list = () => get(work, K) || [];
+      const sync = () => { Object.keys(errors).forEach((k) => { if (k.startsWith(K)) delete errors[k]; }); onChange(K); };
+      const paint = (focus) => {
+        const rows = list().map((x, i) => {
+          const err = errors[`${K}.${i}.keyword`] || errors[`${K}.${i}.set_type`] || errors[`${K}.${i}`];
+          return `<div class="kwrow${err ? ' has-error' : ''}" data-i="${i}"><input class="input mono" data-kw value="${esc(x.keyword)}" maxlength="60" placeholder="${esc(t('set.fest_types.ph'))}" spellcheck="false" autocomplete="off">
+            <span class="unit">→</span><select class="select" data-st>${HC.fest.SET_TYPES.map((c) => `<option value="${c}"${c === x.set_type ? ' selected' : ''}>${esc(HC.fest.setType(c))}</option>`).join('')}</select>
+            <button type="button" class="iconbtn danger" data-del title="${esc(t('common.remove'))}">${I.trash}</button>${err ? `<div class="row-error">${esc(err)}</div>` : ''}</div>`;
+        }).join('');
+        const top = errors[K];
+        host.innerHTML = `<div class="field plain${isDirtyKey(K) ? ' dirty' : ''}"><div class="fl"><b>${t('set.fest_types.label')}</b><span class="help">${t('set.fest_types.help')}</span></div>
+          <div class="fc"><div class="fc-main kwlist">${rows}<button type="button" class="btn sm" data-add>${I.plus}${t('set.fest_types.add')}</button>${top ? `<div class="row-error">${esc(top)}</div>` : ''}</div></div></div>`;
+        if (focus != null) { const inp = $(`.kwrow[data-i="${focus}"] [data-kw]`, host); if (inp) inp.focus(); }
+      };
+      host.addEventListener('click', (e) => {
+        const r = e.target.closest('.kwrow');
+        if (e.target.closest('[data-add]')) { set(work, K, list().concat([{ keyword: '', set_type: 'live_set' }])); sync(); paint(list().length - 1); }
+        else if (r && e.target.closest('[data-del]')) { set(work, K, list().filter((x, i) => i !== +r.dataset.i)); sync(); paint(); }
+      });
+      const edit = (e) => {
+        const r = e.target.closest('.kwrow');
+        if (!r) return;
+        const x = list()[+r.dataset.i];
+        if (e.target.matches('[data-kw]')) x.keyword = e.target.value;
+        else if (e.target.matches('[data-st]')) x.set_type = e.target.value;
+        else return;
+        sync();
+        $('.field', host).classList.toggle('dirty', isDirtyKey(K));
+      };
+      host.addEventListener('input', edit);
+      host.addEventListener('change', edit);
+      paint();
+    },
+    /* Testfeld: detect_festival(titel) – speichert nichts, gilt mit den gespeicherten Einstellungen */
+    festTest(host) {
+      host.innerHTML = row('set.fest_test', `<input class="input wide" data-title placeholder="${esc(t('set.fest_test.ph'))}" spellcheck="false" autocomplete="off"><div class="fest-test" data-out hidden></div>`, 'fest-testrow');
+      let seq = 0;
+      const run = util.debounce(async () => {
+        const my = ++seq, title = $('[data-title]', host).value.trim(), out = $('[data-out]', host);
+        if (!title) { out.hidden = true; return; }
+        const r = await HC.bridge.safe('detect_festival', title);
+        if (my !== seq || !host.isConnected || !r) return;
+        const d = r.detection;
+        out.hidden = false;
+        out.className = `fest-test ${d ? (r.assigned ? 'ok' : 'sugg') : 'none'}`;
+        out.innerHTML = d
+          ? `${HC.fest.kindIcon(d.kind)}<b>${esc(d.edition || d.series)}${d.episode ? ` #${esc(d.episode)}` : ''}</b>${d.stage ? `<span>${HC.fest.stageDot(d.stage)}${esc(d.stage)}</span>` : ''}${d.set_type ? `<span>${esc(HC.fest.setType(d.set_type))}</span>` : ''}<span class="mono">${Math.round((d.confidence || 0) * 100)} %</span><em>${t(r.assigned ? 'set.fest_test.assigned' : 'set.fest_test.suggested')}</em>`
+          : `<em>${t('set.fest_test.none')}</em>`;
+      }, 250);
+      host.addEventListener('input', run);
+    },
+    /* Serien-Katalog (liegt in der DB): mitgelieferte + eigene. Jede Änderung wird sofort gespeichert. */
+    series(host) {
+      const fail = (r) => { if (r && !r.ok) ui.toast(r.error || t('err.generic'), 'err'); };
+      const changed = () => { HC.bridge.emit('series_changed', {}); const st = $('[data-custom=festStatus]', el); if (st && st._load) st._load(); };
+      const load = async () => {
+        const l = await HC.bridge.safe('get_series', cache.seriesHidden);
+        if (l) { cache.series = l; if (host.isConnected) paint(); }
+      };
+      const rowHtml = (s) => {
+        const state = s.hidden ? 'hidden' : s.builtin ? (s.user_modified ? 'modified' : 'builtin') : 'own';
+        const al = (s.aliases || []).concat(s.weak_aliases || []);
+        const shown = al.slice(0, 6);
+        return `<div class="series-row k-${esc(s.kind)}${s.hidden ? ' gone' : ''}${s.enabled === false ? ' off' : ''}" data-sid="${esc(s.id)}">
+          <span class="sr-kind" title="${esc(HC.fest.kindLabel(s.kind))}">${HC.fest.kindIcon(s.kind)}</span>
+          <div class="sr-main"><div class="sr-name"><b title="${esc(s.name)}">${esc(s.name)}</b><span class="rtag ${state}">${t('set.series.' + state)}</span>${s.default_genre ? `<span class="sr-genre">${ui.genreDot(s.default_genre)}</span>` : ''}</div>
+            <div class="sr-al">${shown.length ? shown.map((a) => `<span title="${esc(a)}">${esc(a)}</span>`).join('') + (al.length > shown.length ? `<span class="more">+${al.length - shown.length}</span>` : '') : `<span class="more">${t('set.series.no_aliases')}</span>`}</div></div>
+          <span class="sr-count mono" title="${esc(t('fest.sets', { n: s.count || 0 }))}">${util.fmtNum(s.count || 0)}</span>
+          ${s.hidden ? `<span></span><button type="button" class="btn sm" data-s="restore">${I.retry}${t('set.series.restore')}</button>`
+            : `${ui.toggle(s.enabled !== false, `data-s="enable" title="${esc(t('set.series.enable'))}" aria-label="${esc(t('set.series.enable'))}"`)}
+              <span class="sr-act"><button type="button" class="iconbtn" data-s="edit" title="${esc(t('common.edit'))}">${I.edit}</button>${s.builtin && s.user_modified ? `<button type="button" class="iconbtn" data-s="reset" title="${esc(t('set.series.restore'))}">${I.retry}</button>` : ''}<button type="button" class="iconbtn danger" data-s="del" title="${esc(t(s.builtin ? 'set.series.hide' : 'common.delete'))}">${s.builtin ? I.ban : I.trash}</button></span>`}</div>`;
+      };
+      const paint = () => {
+        const list = cache.series;
+        host.innerHTML = `<p class="hint series-hint">${t('set.series.hint')}</p>
+          <div class="series-bar"><button type="button" class="btn sm" data-s="add">${I.plus}${t('set.series.add')}</button>
+            <label class="check"><input type="checkbox" data-s="hidden"${cache.seriesHidden ? ' checked' : ''}>${t('set.series.show_hidden')}</label><span class="spacer"></span>
+            <button type="button" class="linkbtn" data-s="reset-all">${t('set.series.reset_all')}</button></div>
+          <div class="series-list">${!list ? `<span class="unit">${t('common.loading')}</span>` : list.map(rowHtml).join('')}</div>`;
+      };
+      const editDialog = (s0) => {
+        const isNew = !s0, s = s0 ? clone(s0) : { name: '', kind: 'festival', aliases: [], weak_aliases: [], channels: [], variants: [], default_genre: null, enabled: true };
+        const err = (k) => `<div class="field-error" data-e="${k}" hidden></div>`;
+        const genres = HC.genres.names();
+        const chipsets = {};
+        return ui.modal({
+          title: t(isNew ? 'set.series.new_title' : 'set.series.edit_title'), okLabel: t('common.save'),
+          body: `<div data-form-error hidden></div>
+            <div class="frow inline"><div style="flex:1;min-width:0"><label class="lbl">${t('set.series.name')}</label><input class="input" data-f="name" value="${esc(s.name)}" maxlength="80" autocomplete="off" spellcheck="false">${err('name')}</div>
+              <div style="width:150px;flex:none"><label class="lbl">${t('set.series.default_genre')}</label><select class="select" data-f="default_genre"><option value="">–</option>${genres.map((g) => `<option${s.default_genre === g ? ' selected' : ''}>${esc(g)}</option>`).join('')}</select>${err('default_genre')}</div></div>
+            <div class="frow"><label class="lbl">${t('set.series.kind')}</label><div class="seg wide" data-seg="kind">${HC.fest.KINDS.map((k) => `<button type="button" data-v="${k}" class="${s.kind === k ? 'on' : ''}" aria-pressed="${s.kind === k}">${HC.fest.kindIcon(k)}${esc(HC.fest.kindLabel(k))}</button>`).join('')}</div>${err('kind')}</div>
+            ${[['aliases', 'aliases_help'], ['weak_aliases', 'weak_help'], ['variants', 'variants_help'], ['channels', 'channels_help']].map(([k, h]) => `<div class="frow"><label class="lbl">${t('set.series.' + k)}</label><div data-chips="${k}"></div><div class="fhint">${t('set.series.' + h)}</div>${err(k)}</div>`).join('')}`,
+          onOpen(m) {
+            m.querySelector('.modal').classList.add('series-modal');
+            chipsets.aliases = ui.chips($('[data-chips=aliases]', m), { list: s.aliases || [], lower: false });
+            chipsets.weak_aliases = ui.chips($('[data-chips=weak_aliases]', m), { list: s.weak_aliases || [], lower: false });
+            chipsets.variants = ui.chips($('[data-chips=variants]', m), { list: (s.variants || []).map((v) => v.name), lower: false });
+            chipsets.channels = ui.chips($('[data-chips=channels]', m), { list: s.channels || [], lower: false, commaSplits: false });
+            m.addEventListener('click', (e) => {
+              const b = e.target.closest('[data-seg] button');
+              if (b) $$('button', b.parentElement).forEach((x) => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); });
+            });
+          },
+          async onOk(m) {
+            const old = new Map((s.variants || []).map((v) => [v.name, v]));
+            const data = {
+              name: $('[data-f=name]', m).value.trim(), kind: $('[data-seg=kind] .on', m).dataset.v,
+              aliases: chipsets.aliases.get(), weak_aliases: chipsets.weak_aliases.get(), channels: chipsets.channels.get(),
+              variants: chipsets.variants.get().map((n) => old.get(n) || { name: n, aliases: [] }),
+              default_genre: $('[data-f=default_genre]', m).value || null, enabled: s.enabled !== false,
+            };
+            if (!isNew) data.id = s.id;
+            const okBtn = $('[data-act=ok]', m);
+            ui.busy(okBtn, true);
+            const r = await HC.bridge.safe('save_series', data);
+            ui.busy(okBtn, false);
+            if (r && r.ok) { ui.toast(t('toast.series_saved', { name: r.series.name })); changed(); load(); return true; }
+            const errs = (r && r.errors) || {};
+            let rest = [];
+            Object.keys(errs).forEach((k) => { if (!$(`[data-e="${k}"]`, m)) rest.push(errs[k]); });
+            $$('[data-e]', m).forEach((e) => { const msg = errs[e.dataset.e]; e.hidden = !msg; e.textContent = msg || ''; });
+            const text = rest.concat(r && r.error && !Object.keys(errs).length ? [r.error] : []).join(' ');
+            const fe = $('[data-form-error]', m);
+            fe.hidden = !text;
+            fe.innerHTML = text ? ui.notice('error', esc(text)) : '';
+            return false;
+          },
+        });
+      };
+      host.addEventListener('change', (e) => { if (e.target.matches('[data-s=hidden]')) { cache.seriesHidden = e.target.checked; load(); } });
+      host.addEventListener('click', async (e) => {
+        const b = e.target.closest('button[data-s]');
+        if (!b || b.disabled) return;
+        const act = b.dataset.s, r0 = b.closest('.series-row');
+        const s = r0 && (cache.series || []).find((x) => String(x.id) === r0.dataset.sid);
+        if (act === 'add') return editDialog(null);
+        if (act === 'reset-all') {
+          const yes = await ui.confirm(t('dlg.series_reset.title'), t('dlg.series_reset.text'), { okLabel: t('dlg.series_reset.ok'), kind: 'warn', danger: true });
+          if (!yes) return;
+          const r = await HC.bridge.safe('reset_series');
+          if (r && r.ok) { ui.toast(t('toast.series_reset'), 'warn'); changed(); load(); } else fail(r);
+          return;
+        }
+        if (!s) return;
+        if (act === 'edit') return editDialog(s);
+        if (act === 'enable') {
+          const on = s.enabled === false;
+          ui.setToggle(b, on);
+          const r = await HC.bridge.safe('save_series', Object.assign({}, s, { enabled: on }));
+          if (r && r.ok) changed(); else fail(r);
+          return load();
+        }
+        if (act === 'restore' || act === 'reset') {
+          const r = await HC.bridge.safe('reset_series', s.id);
+          if (r && r.ok) { ui.toast(t('toast.series_reset'), 'info'); changed(); load(); } else fail(r);
+          return;
+        }
+        if (act === 'del') {
+          const key = s.builtin ? 'series_hide' : 'series_delete';
+          const yes = await ui.confirm(t(`dlg.${key}.title`), t(`dlg.${key}.text`, { name: s.name }), { okLabel: t(s.builtin ? 'set.series.hide' : 'common.delete'), danger: true, kind: 'del', warning: s.count ? esc(t('dlg.series_delete.warn', { n: s.count })) : '' });
+          if (!yes) return;
+          const r = await HC.bridge.safe('delete_series', s.id);
+          if (r && r.ok) { ui.toast(t(r.hidden ? 'toast.series_hidden' : 'toast.series_deleted', { name: s.name }), 'warn'); changed(); load(); } else fail(r);
+        }
+      });
+      host.addEventListener('repaint', paint);
+      paint();
+      load();
+    },
+
     /* Genre-Editor */
     genres(host) {
       const items = () => work.genres.items;
@@ -903,6 +1131,20 @@
       if (HC.app.current() === 'settings' && e.ctrlKey && e.key.toLowerCase() === 's') { e.preventDefault(); if (!$('#btn-save', el).disabled) save(); }
     });
     HC.bridge.on('log', onUpdateLog);
+    /* «Festivals zuordnen»: Fortschritt in den Tab, Ergebnis als Toast (auch wenn ein anderer Tab offen ist). */
+    HC.bridge.on('festival_assign', (d) => {
+      const host = $('[data-custom=festStatus]', el);
+      if (d.phase === 'start' || d.phase === 'progress') cache.assign = Object.assign(cache.assign && cache.assign.running ? cache.assign : { running: true, done: 0, total: 0 }, d.done != null ? { done: d.done } : {}, d.total != null ? { total: d.total } : {});
+      else {
+        cache.assign = { running: false, result: d };
+        if (d.phase === 'error' || d.ok === false) ui.toast(d.error || t('err.generic'), 'err');
+        else ui.toast(t(d.cancelled ? 'toast.assign_cancelled' : 'toast.assign_done', { assigned: d.assigned || 0, suggested: d.suggested || 0 }), d.cancelled ? 'warn' : 'ok', 5000);
+        const sr = $('[data-custom=series]', el);
+        if (host && host._load) host._load();
+        if (sr) HC.bridge.safe('get_series', cache.seriesHidden).then((l) => { if (l && sr.isConnected) { cache.series = l; sr.dispatchEvent(new CustomEvent('repaint')); } });
+      }
+      if (host && host._paint) host._paint();
+    });
     HC.bridge.on('status_rendered', () => { if (HC.app.current() === 'settings') $$('[data-custom]', el).forEach((h) => h._update && h._update()); });
   }
 
@@ -912,5 +1154,5 @@
     render();
   }
 
-  HC.views.settings = { init, show, reset() { saved = null; Object.assign(cache, { task: null, versions: null, blacklist: null, poTest: null, update: null, before: null, restart: false, backups: [], freshBackup: '' }); } };
+  HC.views.settings = { init, show, reset() { saved = null; Object.assign(cache, { task: null, versions: null, blacklist: null, poTest: null, update: null, before: null, restart: false, backups: [], freshBackup: '', fest: null, assign: null, series: null, seriesHidden: false }); } };
 })();
