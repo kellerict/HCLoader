@@ -1415,3 +1415,12 @@ def test_changelog_ships_with_portable_build_installer_and_update():
     iss = (ROOT / "installer" / "HCLoader.iss").read_text(encoding="utf-8")
     assert re.search(r'Source: "\{#SourceDir\}\\\*"; DestDir: "\{app\}"', iss)  # whole tree
     assert "CHANGELOG.md" in selfupdate.PROGRAM_FILES
+
+
+def test_changelog_releases_handle_crlf():
+    text = (
+        "## [0.2.1] - 2026-11-17\r\n\r\n### Highlights\r\n- a\r\n\r\n"
+        "## [0.2.0] - 2026-11-10\r\n- b\r\n"
+    )
+    notes = selfupdate.changelog_releases(text, newer_than=None, up_to=None, limit=None)
+    assert [n["notes"] for n in notes] == ["### Highlights\n- a", "- b"]

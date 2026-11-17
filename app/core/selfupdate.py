@@ -185,6 +185,8 @@ def changelog_releases(
 ) -> list[dict[str, Any]]:
     """All `## [x.y.z] - YYYY-MM-DD` sections with `newer_than` < version <= `up_to`, newest
     first: [{version, published, notes, url: ""}]. `[Unreleased]` and pre-releases are skipped."""
+    # Windows checkouts (core.autocrlf) and text-mode writes give CRLF line endings.
+    text = (text or "").replace("\r\n", "\n").replace("\r", "\n")
     heads = list(_CHANGELOG_HEAD_RE.finditer(text or ""))
     starts = [m.start() for m in re.finditer(r"^##\s", text or "", re.M)]
     out: list[dict[str, Any]] = []
