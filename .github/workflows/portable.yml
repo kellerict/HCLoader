@@ -119,7 +119,9 @@ jobs:
           $deno = Join-Path $root 'bin\deno.exe'
           $server = Join-Path $root 'bin\bgutil-pot-provider\server'
           $nm = Join-Path $server 'node_modules'
-          $cache = Join-Path $env:RUNNER_TEMP 'bgutil-cache'
+          # same cache dir as the plugin and app/core/potoken.py (XDG_CACHE_HOME, else USERPROFILE\.cache)
+          $env:XDG_CACHE_HOME = Join-Path $env:RUNNER_TEMP 'xdg-cache'
+          $cache = Join-Path $env:XDG_CACHE_HOME 'bgutil-ytdlp-pot-provider'
           New-Item -ItemType Directory -Path $cache -Force | Out-Null
           Set-Location $env:RUNNER_TEMP
           # same check as app/core/potoken.py (and the plugin itself): generate_once.ts --version
