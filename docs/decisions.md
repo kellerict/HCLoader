@@ -1326,3 +1326,19 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
   entfernen); nach einer Bearbeitung importiert `import_timetable` die Zeilen statt des Texts, eine
   Textänderung liest neu ein und verwirft die Bearbeitungen. **Grund:** der Parser rät nie perfekt;
   Korrigieren vor dem Speichern ist billiger als danach in der Checkliste.
+
+### 2026-11-18 – Timetable-Parser: Zeilen bewerten statt Einzelfälle flicken (QA-Nachprüfung 2 v0.5.0)
+- **Entscheid:** jede eingefügte Zeile wird der Reihe nach bewertet: Überschrift (Tag, Datum,
+  Tag + Bühne – vor der Zeitsuche, damit `12.07.` ein Datum und nicht 12:07 ist), beschriftete
+  Liste (`FRIDAY: A, B`, `MAINSTAGE: A`, `Line-up: A, B`), Freitext (URL, `r/…`, Hashtags,
+  `Edit:`, Ankündigungswörter wie tickets/doors/Einlass/uitverkocht, Satzzeichen am Ende,
+  Funktionswörter-Dichte, sehr lange Zeilen), Titel, Tabellenzellen, Bühnen-Überschrift
+  (Bühnenwort, Farbe, Katalog, kurze Grossbuchstaben-Zeile vor einem Block oder zwischen
+  gemischt geschriebenen Namen), Zeit-only-Zeile (App-Karte: Zeit zur Zeile darüber oder
+  darunter), sonst Artist. Freitext und Titelzeilen landen in `skipped` (vorher wurden Titel
+  still übergangen). **Grund:** jede QA-Runde bringt neue echte Pastes; Regeln nach Zeilenart
+  verallgemeinern, Einzelfälle nicht. Korpus mit > 70 Pastes in `tests/test_timetable_corpus.py`.
+- **Entscheid:** eine Kopfzeile wird in den ersten 5 Zeilen gesucht (Titel darüber → `skipped`),
+  Tages-Überschriften zwischen Tabellenzeilen setzen den Tag; in Tab-/Pipe-Zeilen ohne Katalog
+  gewinnt die Zelle mit Farbe/Bühnenwort als Bühne. Listen haben höchstens 60 Namen pro Zeile
+  (Laufzeit-Schutz). **Grund:** QA-Befunde Tab-Tabelle und Tag in Tabellen, ohne Raten.

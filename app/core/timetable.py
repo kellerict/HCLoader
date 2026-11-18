@@ -7,9 +7,13 @@
   (`Saturday`, `Samstag 28.06.`, `Day 2`, `## Zaterdag`) and stage headings (`RED`, `Stage: BLUE`,
   `[UV]`, `Mainstage:`, `=== The Gathering Stage ===`), combined headings (`Saturday – RED`,
   `SAT | RED STAGE`), `Sat 18.00–19.00 Name @ PURPLE`, CSV without header row (columns told
-  apart by content). Emoji/symbols and `**bold**` are removed first. A line without a time that
-  is no heading is a row with the artist only (plain line-up lists); a line without any letter
-  or digit is never a stage: it is reported in `skipped` (unless it is a separator like `=====`).
+  apart by content), dated day headings (`Samstag, 12.07.`, `Saturday 12 July`, `12/07 –
+  Saturday`), line-ups without times under stage headings (`MAINSTAGE`, `RED`, `THE GATHERING`),
+  labelled lists (`FRIDAY: A, B`, `Line-up: A, B, C`), festival-app cards (name line, time line).
+  Emoji/symbols and `**bold**` are removed first. Each line is scored (heading, free text,
+  title, table cells, stage heading, time only, artist); free text (sentences, URLs, hashtags,
+  «tickets», «doors open»), titles and lines without any letter or digit are reported in
+  `skipped` (separators like `=====` are dropped), never a stage or an artist.
   Nothing is guessed from websites: the user pastes, the parser only splits
   (docs/concepts/festivals.md, no scraping).
 - Shipped timetable files `app/data/timetables/<series-key>/<year>[-<variant>].json`
@@ -949,7 +953,6 @@ def _parse_lines(
             skipped.insert(pending[3], expanded[pending[2]][0])
             pending = None
         made: dict[str, Any] | None = None
-        heading = False
         line = raw.strip()
         if line.startswith("//"):
             continue
@@ -1049,7 +1052,7 @@ def _parse_lines(
             prev_row, prev_heading = None, False
             continue
         made = add(artist, st or stage, lead_day or day, start, end, t)
-        prev_row, prev_heading = made, heading
+        prev_row, prev_heading = made, False
     if pending is not None:
         skipped.insert(pending[3], expanded[pending[2]][0])
     return rows, skipped
