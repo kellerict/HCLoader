@@ -193,3 +193,4 @@ docs/bridge-api.md «Tracklist search».
 - 2026-11-18 – User-Entscheid A: v0.5.0 mit Text-Import als «Beta» veröffentlicht; Parser-Verbesserung in v0.5.x.
 - 2026-11-18 – SignPath-Antrag abgelehnt (zu wenig Reputation). Neuer Antrag, sobald Downloads/Stars/Erwähnungen vorhanden (ca. 3–6 Monate). Alternativen notiert: Certum Open-Source-Zertifikat, Azure Artifact Signing (Verfügbarkeit CH prüfen).
 - 2026-11-18 – v0.6.0 Tracklist-Suche gebaut (Backend, UI, 19 Sprachen, Tests, Screenshots, Doku); offen: QA, Review, Release (ca. 1–2 Std.)
+- 2026-11-18 – v0.6.0 Tracklist-Suche: Review FREIGEGEBEN, QA BESTANDEN; Minors behoben (Panel-Fehler abgefangen, FTS5-Prüfung beim Start, FTS/LIKE gleiche Treffer, gelöschte Sets räumen auf, «Neue einlesen» inkrementell, Migration 11 für «Meistgespielt», «Track 01 –»-Präfix, Screenshots 5,8 → ca. 1 MB); Version 0.6.0 + CHANGELOG → bereit für Release (ca. 15 Min. bis Merge/Tag durch Orchestrator).

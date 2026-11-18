@@ -10,6 +10,8 @@ appears after «Show all changes» (`docs/RELEASING.md`).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-18
+
 ### Highlights
 - New **Tracks** search in the library: type an artist or title and see every set that plays it, with the timestamp
 - Click a timestamp to play the set from exactly that point in the built-in player
@@ -20,13 +22,17 @@ appears after «Show all changes» (`docs/RELEASING.md`).
 ### Added
 - Tracklist extraction (`app/core/tracklist.py`): chapters and description from the metadata
   sidecar, ID3 CHAP frames and `.cue` files. Understands timestamped lines (`00:00`, `[12:34]`,
-  `(1:02:03)`, timestamp at the end), numbered lists (`1.`, `01)`, `#3`) and plain "Tracklist:"
-  blocks; skips timetables, links and promo lines. Artists and titles are normalised (`feat.`, `x`,
+  `(1:02:03)`, timestamp at the end), numbered lists (`1.`, `01)`, `#3`, `Track 01 –`, `Track 1:`) and plain
+  "Tracklist:" blocks; skips timetables, links and promo lines. Artists and titles are normalised (`feat.`, `x`,
   `vs.`, `&`, remix/edit/VIP as version, trailing `[Label]`, unicode quotes and dashes).
 - Database migration 10 (automatic backup first): tables `tracklists` and `tracks` with an SQLite
-  FTS5 index for fast search over thousands of sets; falls back to a plain search if FTS5 is missing.
+  FTS5 index for fast search over thousands of sets; falls back to a plain search with the same
+  results if FTS5 is missing (checked at every start; the index is repaired or rebuilt when needed).
+  Migration 11 adds an index that makes "Most played" about four times faster on large libraries.
+- Deleting a set also removes its tracklist, so it no longer shows up in search or "Most played".
 - Tracklists are read after every download; the existing library is read once when the Tracks view
-  is opened for the first time (progress, cancel, "Read again" later).
+  is opened for the first time (progress, cancel). Later, "Read new" only reads sets that are new or
+  changed since, and "Re-read all" reads everything again.
 - Bridge methods `search_tracks`, `get_tracklist`, `get_top_tracks`, `get_tracklist_status`,
   `build_tracklists`, `cancel_build_tracklists` and event `tracklist_index` (`docs/bridge-api.md`).
 - External player mode: clicking a timestamp opens the file and tells you where to jump.
@@ -39,6 +45,7 @@ appears after «Show all changes» (`docs/RELEASING.md`).
 ### Fixed
 - Chapters read from a description no longer lose a closing bracket at the end of the title
   ("Title (X Remix" in CUE files and ID3 chapters).
+- A damaged audio file no longer breaks the Tracklist panel; it shows a clear message instead.
 
 ## [0.5.1] - 2026-11-18
 
