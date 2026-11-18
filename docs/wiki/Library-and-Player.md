@@ -68,6 +68,12 @@ The setting *Abspielen mit* (`player.mode`, Settings, Allgemein) chooses what pl
 
 The other variant is always available per entry in the menu.
 
+## Tracks and tracklists (v0.6.0)
+
+**Tracks** (button next to *Collector*) searches the tracklists of all your sets: type an artist or
+title, click a timestamp and the set plays from that point. The menu (**⋯**) of every entry has
+**Tracklist** with clickable timestamps. Details: [Tracklist search](Tracklist-Search).
+
 ## Tip for media servers
 
 Point Plex or Jellyfin at the target folder (type: Music). The default folder layout and the tags
