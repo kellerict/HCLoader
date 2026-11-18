@@ -366,3 +366,43 @@ def test_requeue_downloading(db):
     db.upsert_video(vid("a2", status="done"))
     assert db.requeue_downloading() == 1
     assert db.get_video("a1")["status"] == "queued" and db.get_video("a2")["status"] == "done"
+
+
+def test_migration_12_from_v060_keeps_data_and_adds_tables(tmp_path):
+    """v0.6.0 database (schema 11) -> current: existing rows untouched, new tables empty,
+    cascades from `videos` work."""
+    path = tmp_path / "v060.db"
+    conn = sqlite3.connect(path)
+    assert dbmod.migrate(conn, dbmod.MIGRATIONS[:11]) == 11
+    conn.close()
+    conn = sqlite3.connect(path)  # v0.6.0 data written with plain SQL
+    conn.execute(
+        "INSERT INTO videos(id, title, channel_name, duration, status, file_path) "
+        "VALUES ('vid00000001', 'Mix', 'DJ', 3600, 'done', 'C:/m/mix.mp3')"
+    )
+    conn.execute("INSERT INTO state VALUES ('k', 'v')")
+    conn.commit()
+    before = conn.execute("SELECT * FROM videos").fetchall()
+    conn.close()
+
+    d = Database(path)
+    try:
+        assert d.schema_version() == len(dbmod.MIGRATIONS) >= 12
+        conn = d._conn
+        assert [tuple(r) for r in conn.execute("SELECT * FROM videos").fetchall()] == [
+            tuple(r) for r in before
+        ]
+        assert d.get_state("k") == "v"
+        tables = {r["name"] for r in d.query("SELECT name FROM sqlite_master WHERE type='table'")}
+        assert {"audio_analysis", "playback"} <= tables
+        assert d.query("SELECT * FROM audio_analysis") == []
+        assert d.query("SELECT * FROM playback") == []
+        d.execute("INSERT INTO audio_analysis(video_id, lufs) VALUES ('vid00000001', -8.0)")
+        d.execute(
+            "INSERT INTO playback(video_id, position, updated) VALUES ('vid00000001', 90, 'x')"
+        )
+        d.execute("DELETE FROM videos WHERE id = 'vid00000001'")
+        assert d.query("SELECT * FROM audio_analysis") == []  # ON DELETE CASCADE
+        assert d.query("SELECT * FROM playback") == []
+    finally:
+        d.close()
