@@ -80,6 +80,9 @@ Leitfaden `docs/TRANSLATING.md`); Validierungsmeldungen aus `app/locales/<code>.
 | | `match_description` | bool | true | Festivalnamen auch in der Beschreibung suchen (Suchtreffer: nur falls geliefert; Bibliothek: Sidecar) |
 | | `extra_stages` | list[str] | `[]` | zusätzliche Bühnennamen, je max. 40 Zeichen (eingebaut: RED, BLUE, BLACK, UV, YELLOW, INDIGO, MAGENTA, GOLD, SILVER, PURPLE, GREEN, ORANGE, WHITE, PINK, Mainstage) |
 | | `extra_set_types` | list[{`keyword` str 1–60, `set_type` Code}] | `[]` | eigene Begriffe für Set-Arten, vor den eingebauten geprüft; Codes: live_set, closing_ceremony, opening, endshow, full_show, warm_up, anthem, episode. Fehler: `festivals.extra_set_types.<i>.set_type` |
+| | `collector_searches_per_hour` | int | 10 | 1–200 (v0.5.0 Festival-Sammler): Suchen pro Stunde für fehlende Sets, gleichmässig verteilt (10 = alle 6 Min.); nie mehr als `throttle.max_searches_per_hour` |
+| | `collector_results_per_search` | int | 10 | 1–50: Treffer pro Suche (eine Anfrage pro Suche) |
+| | `collector_auto_confirm` | float | 0.85 | 0.5–1.0: ab dieser Sicherheit gilt ein Treffer ohne Bestätigung – nur mit DJ, Festival und Jahr im Titel |
 | `maintenance` (Wartung) | `check_updates_on_start` | bool | true | max. 1×/Tag |
 | | `check_app_updates_on_start` | bool | true | HCLoader-Update (GitHub-Release) einmal pro Start prüfen |
 | | `apply_update_on_exit` | bool | true | bereitgelegtes App-Update beim Beenden einspielen |
@@ -131,3 +134,12 @@ Bridge (`ui/js/bridge.js`): `get_settings()` → `{values, defaults}`; `save_set
   gibt es nicht (ein Fortsetzen muss die schon gelesenen Seiten erneut abfragen – ein hartes Budget unter
   dieser Seitenzahl käme nie voran); stattdessen gleichmässige Verteilung, im Headless-Lauf als Budget
   pro Lauf (docs/decisions.md «Alles einlesen»).
+
+## v0.5.0 – Festival-Sammler (Entscheid)
+- Drei neue Werte im Abschnitt `festivals` (Tabelle oben), in der UI im Tab «Festivals & Serien» unter
+  einer Zwischenüberschrift «Festival-Sammler»; Einheit von `collector_searches_per_hour` = `unit.req_h`
+  (bzw. «Suchen/h»), `collector_auto_confirm` wie `min_confidence` (0.5–1.0, Schritt 0.05).
+- Seitengrösse/Tempo des Playlist-Imports kommen aus `watchlist.backfill_*` (gleiches Seiten-Tor wie
+  «Alles einlesen»), die Mindestdauer eines Treffers aus `filters.min_duration` – keine eigenen Werte.
+- Die Checklisten selbst stehen in der DB (`checklists`, `checklist_rows`), nicht in `config.yaml`
+  (Bridge: docs/bridge-api.md «Festival collector»).

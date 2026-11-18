@@ -541,6 +541,144 @@ den die UI übersetzt (UI-Schlüssel z.B. `fest.set_type.<code>`, Sache der UI-K
   Reste wie « - », «()» werden entfernt, eine Ordnerebene, die nur daraus bestand, entfällt. Das
   Standardmuster bleibt unverändert; bestehende Dateien bewegen sich nur mit `retag`.
 
+### Festival collector (v0.5.0)
+
+Konzept: `docs/concepts/festivals.md` «v0.5.0 – Collect a whole edition», Entscheide: `docs/decisions.md`
+«Festival-Sammler (v0.5.0)». Backend: `app/core/collector.py` (Checkliste, Abgleich, Suchauftrag, Queue),
+`app/core/timetable.py` (Parser, mitgelieferte Dateien). Pro **Ausgabe** (`editions`, z.B. «Defqon.1 2024»)
+eine Checkliste der erwarteten Sets. Quellen der Zeilen: Playlist des Veranstalters, eingefügter
+Timetable (Text/CSV), mitgelieferte Timetable-Datei, von Hand. **Kein Scraping** von Festival-Websites.
+
+| Methode | Parameter | Rückgabe |
+|---|---|---|
+| `get_collector_editions()` | | `[CollectorEdition]` – Ausgaben mit Checkliste, neuestes Jahr zuerst (offline) |
+| `open_collector_edition(data)` | `{edition_id}` **oder** `{series_id, year, variant?}` (Ausgabe wird angelegt; Jahr Pflicht) | `{ok:true, edition:CollectorEdition}` \| `{ok:false, errors:{series_id?\|year?\|edition_id?: "Meldung"}, error}` |
+| `delete_checklist(edition_id)` | | `{ok:true, deleted}` – Zeilen + Suchauftrag weg (ein laufender wird gestoppt); Videos/Dateien bleiben |
+| `get_checklist(edition_id)` | | `{ok:true, edition:CollectorEdition, rows:[ChecklistRow]}` (Reihenfolge = `position`) \| `{ok:false, errors, error}` |
+| `parse_timetable(text)` | eingefügter Text | `{ok:true, rows:[TimetableRow], skipped:[Zeile], days:[str], stages:[str], csv:bool}` – nur Vorschau, nichts gespeichert |
+| `import_timetable(edition_id, data)` | `data` = Text **oder** `[TimetableRow]` (bearbeitete Vorschau) | `{ok:true, added, merged, invalid, skipped:[Zeile], ids:[Zeilen-id], matched}` + Event `collector_rows` |
+| `get_timetable_files()` | | `[TimetableFile]` |
+| `import_timetable_file(file)` | `TimetableFile.file` | `{ok:true, edition_id, added, merged, invalid, skipped, ids, matched}` (Checkliste der Ausgabe wird angelegt) \| `{ok:false, errors:{file}, error}` |
+| `import_checklist_playlist(edition_id, url)` | YouTube-Playlist (`playlist?list=` oder `watch?…&list=`) oder SoundCloud-Set | `{ok:true, started:true, url}` (normalisiert) \| `{ok:true, started:false, running:true}` \| `{ok:false, errors:{url}, error}` \| `{ok:false, error}` (Backoff, yt-dlp-Update, Neustart nötig) + Events `collector_import`, `collector_rows` |
+| `add_checklist_row(edition_id, row)` | `{artist, stage?, day?, start?, end?, set_type?, checked?}` | `{ok:true, row:ChecklistRow}` (`source:"manual"`, sofort gegen die Bibliothek abgeglichen) \| `{ok:false, errors, error}` |
+| `update_checklist_row(id, row)` | nur die geänderten Felder von oben | `{ok:true, row, retag}` \| `{ok:false, errors:{artist?\|start?\|end?\|set_type?}, error}` |
+| `delete_checklist_rows(ids)` | `[id]` | `{ok:true, deleted}` + Event `collector_rows` (`deleted`) |
+| `set_checklist_checked(ids, checked)` | `[id]`, bool – «Alle/keine» = alle (gefilterten) ids | `{ok:true, changed}` |
+| `set_checklist_ignored(ids, ignored)` | `[id]`, bool | `{ok:true, changed}` |
+| `confirm_checklist_match(id, video_id?, reject?)` | `video_id` = aktueller Treffer **oder** ein Kandidat; `null` = Treffer verwerfen; `reject:true` = dieses Video nie wieder für die Zeile vorschlagen | `{ok:true, row}` \| `{ok:false, errors:{video_id}, error}` |
+| `estimate_checklist_matching(edition_id, opts?)` | `opts {restart?}` | `{ok:true, edition_id, rows, requests, per_hour, seconds, searches_left_hour, available_at, backoff_until, matched_offline, resume}` (ohne Netzwerk) |
+| `start_checklist_matching(edition_id, opts?)` | `opts {restart?}` | `{ok:true, job:CollectorJob}` \| `{ok:true, job, nothing:true}` (nichts zu suchen) \| `{ok:false, error}` + Events `collector_job`, `collector_rows` |
+| `cancel_checklist_matching(edition_id)` | | `{ok:true, job}` – hält vor der nächsten Suche an |
+| `queue_checklist(edition_id, ids?)` | ohne `ids` = alle Zeilen | `{ok:true, queued:[video_id], retag, skipped:{unchecked, unconfirmed, missing, other}}` |
+
+**Datenformen**
+
+- `CollectorEdition` = `{edition_id, series_id, series_key, series, kind, year, variant, edition,
+  playlist_url, stats:ChecklistStats, job:CollectorJob|null, library, created, updated}`; `edition` =
+  Anzeigename («Defqon.1 Australia 2024»), `library` = Bibliothekseinträge (Status `done`) dieser Ausgabe.
+- `ChecklistStats` = `{total, missing, found, queued, downloaded, ignored, checked, to_confirm, ready,
+  to_search}`. `checked` = angehakt und nicht ignoriert; davon `to_confirm` = Treffer ohne Bestätigung,
+  `ready` = bestätigt + `found` (das lädt `queue_checklist`), `to_search` = ohne Treffer und noch nicht
+  gesucht (das kostet der nächste Suchauftrag).
+- `ChecklistRow` = `{id, edition_id, artist, stage, day, start, end, set_type, source, status, video_id,
+  video:CollectorVideo|null, confidence, candidates:[{confidence, video:CollectorVideo}], confirmed,
+  needs_confirmation, checked, ignored, edited, searched, position}`.
+  - `source`: `playlist` | `timetable` | `file` | `manual`. `edited` = von Hand geändert → diese Werte
+    gelten (ein späterer Import füllt nur leere Felder nicht editierter Zeilen).
+  - `status` (abgeleitet, immer aktuell): `ignored` (Flag `ignored`), sonst `missing` (kein Treffer),
+    `queued` (Video `queued`/`downloading`), `downloaded` (Video `done`), sonst `found`.
+  - `start`/`end` `"HH:MM"` oder `null`; `day`/`stage` freier Text (wie eingegeben, z.B. «Samstag, 28.06.»);
+    `set_type` Code (`festivals.SET_TYPES`) oder `null`.
+  - `confidence` 0–1 des Treffers; `needs_confirmation` = Treffer, aber nicht `confirmed` → die UI zeigt
+    «Bestätigen / anderer Kandidat / verwerfen». `searched` = ISO-Zeit der letzten Suche (`null` = noch
+    nicht gesucht). Playlist-Zeilen sind immer `confirmed` (Veranstalter-Playlist), Bibliotheks-/Such-
+    treffer nur, wenn sie sicher sind (s.u.).
+- `CollectorVideo` = `{id, title, status, duration, channel_name, upload_date, thumbnail, url, platform}`.
+- `CollectorJob` = `{edition_id, state, total, done, searches, hits, note, started, updated, finished}`;
+  `state`: `pending` (wartet/unterbrochen – geht beim nächsten App-Start automatisch weiter), `running`,
+  `paused` (3 Fehler in Folge), `done`, `cancelled` (vom User; «Start» setzt fort). `total`/`done` =
+  Zeilen dieses Auftrags, `searches` = Suchanfragen, `hits` = Zeilen mit Treffer, `note` = übersetzter
+  Grund (z.B. «Nächste Suche um 14:30 …», «Backoff bis …», «Fehler: …»).
+- `TimetableRow` = `{artist, stage, day, start, end, set_type}` (Parser-Ergebnis, bearbeitbar).
+- `TimetableFile` = `{file, series_key, series_id, series, edition, year, variant, source, updated, sets}`
+  oder `{file, error, series_key?: …}` bei einer kaputten Datei (`series` `null` = Serie hier unbekannt
+  oder ausgeblendet → Import nicht möglich).
+
+**Regeln**
+
+- **Parser** (`timetable.parse`): Zeilen wie `18:00 - 19:00 Headhunterz`, `Headhunterz 18:00–19:00`,
+  `Headhunterz | 18:00–19:00 | RED` (Zellen mit `|` oder Tab, beliebige Reihenfolge), `18.00`, `18h00`,
+  `1800-1900`, `6pm`; Bühne in Klammern/nach `@`/` - ` (nur bekannte Bühnen), `(Live)` → `live_set`,
+  Set-Art-Begriffe (Endshow, Warm-up …). Überschriften: Tag (`Saturday`, `Samstag, 28.06.`, `Zaterdag`,
+  `Day 2`, auch `## …`) setzt den Tag und löscht die Bühne; Bühne (bekannte Bühne, `Stage: X`, `[X]`,
+  `X:`, Zeile mit «Stage/Bühne/Area/Arena/Tent/Hall/Floor», `== X ==`); `Saturday – RED` setzt beides.
+  Titelzeilen mit «Timetable/Line-up/Schedule/Zeitplan» werden übergangen. Eine Zeile ohne Zeit, die keine
+  Überschrift ist, ist ein Set ohne Zeit (reine Line-up-Liste, Aufzählungszeichen werden entfernt).
+  **CSV/TSV/`;`/Markdown-Tabelle** mit Kopfzeile: Spalten artist/dj/act/name/Künstler/artiest, stage/
+  Bühne/area, day/Tag/dag/date, start/from/von, end/to/bis, time (Bereich), type/set type. Doppelte
+  (Artist + Bühne + Tag + Start) fallen weg; höchstens 2000 Zeilen.
+- **Import/Zusammenführen:** gleiche Zeile (Artist + Bühne + Tag, ohne Gross/Klein/Akzente) wird nicht
+  doppelt angelegt; eine Playlist-Zeile desselben Artists ohne Tag bekommt Tag/Zeiten aus dem Timetable.
+  Eine Timetable-Zeile ohne Treffer bekommt beim Playlist-Import den Eintrag als Treffer. Höchstens 1000
+  Zeilen pro Ausgabe.
+- **Playlist** (`import_checklist_playlist`): eine flache Liste, seitenweise wie «Alles einlesen» (jede
+  Seitenanfrage über den Throttle, Tempo `watchlist.backfill_requests_per_hour`, höchstens
+  `watchlist.backfill_max_entries` Einträge), Thread `hcloader-collector-import`. Jeder Eintrag = Zeile mit
+  `video_id` = Eintrag, `confirmed:true`, Artist aus dem Titel (Segmente mit Serienname, Jahr, Bühne,
+  Set-Art fallen weg), Bühne/Set-Art aus dem Titel. Zu kurz (`filters.min_duration`) oder
+  Aftermovie/Trailer (negative Begriffe) → Zeile `checked:false`; Livestreams/Premieren werden übergangen. Einträge werden wie Suchtreffer
+  gespeichert (Status `new`, Genre, Festival-Erkennung) – nie Eingang, nie Queue.
+- **Abgleich** (kostenlos, offline): vor jeder Suche und nach jedem Import gegen gespeicherte Videos
+  (Bibliothek, Eingang, frühere Treffer; nicht `ignored`, keine Previews). Bewertung `score`: alle Namen
+  der Zeile im Titel +0.45 (bei «A b2b B» nur einer: +0.30; keiner = kein Treffer), Serienname +0.25,
+  Jahr der Ausgabe +0.20 (nur andere Jahre −0.30; kein Jahr, Upload im Jahr/Folgejahr +0.10), Bühne
+  +0.05, Set-Art +0.05, andere Variante («Australia» bei Defqon.1) −0.30 bzw. fehlende Variante −0.15,
+  negative Begriffe −0.40, Dauer unbekannt −0.05; zu kurz/Livestream/Preview = kein Treffer. Treffer ab
+  0.50; **sicher** (ohne Bestätigung) nur mit Artist + Serie + Jahr im Titel und ≥
+  `festivals.collector_auto_confirm` (Standard 0.85). Gleiche Sicherheit → das schon geladene Video
+  gewinnt (nie doppelt). Ein Video ist pro Ausgabe nur einer Zeile zugeordnet.
+- **Suchauftrag** (`start_checklist_matching`, Thread `hcloader-collector`, einer nach dem anderen): nur
+  angehakte, nicht ignorierte Zeilen ohne Treffer, die noch nicht gesucht wurden. Pro Zeile eine flache
+  Suche `<Artist> <Serie [Variante]> <Jahr>` über `YtClient.search` (YouTube; Throttle: Backoff,
+  `sleep_requests`, `max_searches_per_hour` wird gezählt), `festivals.collector_results_per_search`
+  Treffer. Abstand zwischen zwei Suchen = `3600 / min(festivals.collector_searches_per_hour,
+  throttle.max_searches_per_hour)` s (Standard 10/h = alle 6 Min.), persistent; ist das Stundenlimit
+  durch andere Suchen erschöpft, wartet der Auftrag bis zur freien Stelle. `estimate…`: `seconds` =
+  `(rows − 1) × Abstand`, `searches_left_hour` = freie Suchen dieser Stunde, `matched_offline` = Zeilen,
+  die der Gratis-Abgleich vorher gefunden hat. Gefundene Videos werden wie Suchtreffer gespeichert.
+  Backoff/429 → `pending` mit `note`, keine weitere Anfrage; 3 Fehler → `paused`; `cancel` / App-Ende →
+  vor der nächsten Suche (ein Ergebnis, das noch nicht gespeichert war, wird verworfen und die Zeile
+  später neu gesucht). `start` nach `done` oder mit `restart:true` sucht alle Zeilen ohne Treffer erneut,
+  sonst geht es beim Cursor weiter. Abgelehnt bei Backoff (YouTube), yt-dlp-Update, «Neustart nötig».
+  Unterbrochene Aufträge (`pending`) setzen 90 s nach dem App-Start fort. Headless-Läufe suchen nicht.
+- **Queue** (`queue_checklist`): nur angehakt + nicht ignoriert + `confirmed` + Video ladbar
+  (`new`/`inbox`/`failed`, keine Preview/Geo-Sperre); normale Warteschlange (eins nach dem anderen,
+  alle Limits). Vorher bekommt das Video die Werte der Zeile als **manuelle** Festival-Werte
+  (`set_festival`-Semantik: Ausgabe, Bühne, Set-Art; die Erkennung überschreibt sie nie): editierte
+  Zeilen exakt, sonst füllt die eigene Erkennung des Videos leere Felder. Schon geladene Videos bekommen
+  die Werte ebenso und werden im Wartungs-Thread neu getaggt (`retag` = Anzahl). Ändert
+  `update_checklist_row` eine bestätigte, wartende/geladene Zeile, gilt dasselbe.
+- **Mitgelieferte Timetable-Dateien** `app/data/timetables/<series-key>/<year>[-<variant>].json`
+  (Beschreibung: `app/data/timetables/README.md`). Es wird nur ausgeliefert, was nachweislich stimmt
+  (Quelle `source` Pflicht in Beiträgen); v0.5.0 liefert **keine** Dateien aus. Format:
+
+  ```json
+  {
+    "format": 1,
+    "series": "defqon1",
+    "year": 2024,
+    "variant": "",
+    "source": "https://… (official timetable)",
+    "updated": "2024-06-20",
+    "sets": [
+      {"artist": "…", "stage": "RED", "day": "Saturday", "start": "18:00", "end": "19:00",
+       "set_type": null}
+    ]
+  }
+  ```
+  `series` = Ordnername = `Series.key`; `year` 1990–2100; `sets` nicht leer, `artist` Pflicht, Zeiten
+  `HH:MM`, `set_type` Code oder `null`. Import → `source:"file"`.
+
 ## Datenformen
 
 Siehe Kommentarblock in `ui/js/bridge.js` (Video, Source, QueueItem, LibraryItem, LogLine, Run,
@@ -634,6 +772,9 @@ Status). Ergänzungen der Python-Seite:
 | `backfill` | `Backfill` \| `{source_id, state:"none"}` | «Alles einlesen»: bei Start/Fortsetzen (`pending`), Beginn (`running`), nach jeder gespeicherten Seite, Pause, Abbruch, Unterbrechung (`pending` + `note`) und Ende (`done`); `none` = Zeile gibt es nicht (mehr). Die UI aktualisiert nur die Fortschrittszeile der Quelle | 0.4.0 |
 | `watchlist_done` | `{checked, found}` | Watchlist-Lauf beendet; `checked` = bearbeitete Quellen (auch fehlerhafte), `found` = neu gespeicherte Videos | 4 |
 | `festival_assign` | `{phase, scope, done?, total?, assigned?, suggested?, none?, manual?, unchanged?, cancelled?, ok?, error?}` | «Festivals zuordnen»: `phase` `start` (einmal), `progress` (alle 25 Einträge und am Ende), `done` (Ergebnis wie `assign_pass`: `{ok, cancelled, total, done, assigned, suggested, none, manual, unchanged}`) oder `error` (`{ok:false, error}`). Danach lädt die UI Bibliothek/Gruppen neu | 0.3.0 |
+| `collector_rows` | `{edition_id, rows:[ChecklistRow], deleted:[id], reload, stats:ChecklistStats}` | Festival-Sammler: Zeilen geändert (Import, Bearbeiten, Haken, Bestätigen, Treffer des Suchauftrags, Status-Wechsel durch die Queue: `queued` → `downloaded`). `reload:true` (leere `rows`, keine `deleted`) = mehrere Zeilen geändert → `get_checklist` neu holen | 0.5.0 |
+| `collector_job` | `CollectorJob` + `{stats}` \| `{edition_id, state:"none", stats}` | Suchauftrag: Start (`pending`), Beginn (`running`), nach jeder Zeile, beim Warten (`note` = nächste Suche), Abbruch, Unterbrechung, Ende | 0.5.0 |
+| `collector_import` | `{phase, kind:"playlist", edition_id, entries, added, merged, unchecked, requests, cancelled, error}` | Playlist-Import: `phase` `start`, `progress` (nach jeder Seite), `done` oder `error` (`error` = übersetzter Text) | 0.5.0 |
 
 ## Download-Queue (Phase 3)
 

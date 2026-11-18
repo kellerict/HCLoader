@@ -10,6 +10,44 @@ appears after «Show all changes» (`docs/RELEASING.md`).
 
 ## [Unreleased]
 
+### Highlights
+- Festival collector (backend): a checklist of the expected sets of one festival edition
+- Fill it from the organiser's playlist, a pasted timetable (text or CSV), a shared timetable file or by hand
+- Missing sets are found in your library first (free), then searched one by one – gently spread over the hour
+- Only ticked and confirmed sets are queued; downloads are tagged with edition, stage and set type from the checklist
+
+### Added
+- Festival collector backend (`app/core/collector.py`, `app/core/timetable.py`), UI follows: per
+  edition a checklist of sets (DJ/artist, stage, day, start/end, set type, source playlist / timetable /
+  file / manual, status missing / found / queued / downloaded / ignored, match + confidence +
+  candidates, confirmed and ticked flags).
+- Organiser playlist import: one flat listing, page by page through the throttle with the «Read
+  everything» pacing; every entry becomes a confirmed row, trailers/aftermovies/short clips stay
+  unticked. Entries are stored like search hits, never in the inbox or queue.
+- Timetable parser for pasted text: `18:00 - 19:00 Artist`, `Artist | 18:00–19:00 | RED`, dotted/`h`/
+  four-digit/am-pm times, day headings (English, German, Dutch, French, Spanish, Nordic; `Day 2`),
+  stage headings, CSV/TSV/semicolon/Markdown tables with a header row; preview before import.
+- Shared timetable files `app/data/timetables/<series>/<year>.json` (format documented in
+  `app/data/timetables/README.md`; none shipped yet – only verified data will be added).
+- Matching: against the stored videos first (library, inbox, earlier hits; free, offline), then a
+  resumable search job – one flat search `<artist> <festival> <year>` per row, counted against
+  `max_searches_per_hour` and spread evenly by `festivals.collector_searches_per_hour` (default 10/h).
+  Estimate of searches and time before it starts; continues after restart, stops on backoff. Only hits
+  with artist, festival and year in the title are confirmed automatically; all others need a click.
+- Queueing ticked + confirmed rows through the normal sequential queue; the row's edition, stage and
+  set type are stored on the video as manual festival values (tags, album, path follow), already
+  downloaded matches are re-tagged.
+- Bridge: 19 methods (`get_collector_editions`, `open_collector_edition`, `get_checklist`,
+  `import_checklist_playlist`, `parse_timetable`, `import_timetable`, `get_timetable_files`,
+  `import_timetable_file`, row editing, `confirm_checklist_match`, `estimate/start/cancel_checklist_matching`,
+  `queue_checklist`, …) and events `collector_rows`, `collector_job`, `collector_import`
+  (docs/bridge-api.md «Festival collector»).
+- Settings `festivals.collector_searches_per_hour`, `festivals.collector_results_per_search`,
+  `festivals.collector_auto_confirm`; backend texts in all languages.
+
+### Changed
+- Database migration 9 (`checklists`, `checklist_rows`) with the automatic pre-migration backup.
+
 ## [0.4.0] - 2026-11-18
 
 ### Highlights

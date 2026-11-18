@@ -1250,3 +1250,46 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
   `if: always()`-Aufräumschritt; `release` hängt davon ab. Helfer in `.github/scripts/installer_smoke.ps1`.
 - **Grund:** ein Hänger darf Build und Artefakte nicht mitreissen, und ein Teil-Log muss zeigen, wo es
   stehen blieb; der Restart Manager darf auf dem Runner nichts schliessen.
+
+## 2026-11-18 – Festival-Sammler (v0.5.0, Backend)
+
+- **Datenmodell:** Migration 9 mit zwei Tabellen statt Spalten an `editions`: `checklists` (eine Zeile pro
+  Ausgabe mit Checkliste: Playlist-URL + Zustand des Suchauftrags) und `checklist_rows` (ein erwartetes
+  Set). `status` wird gespeichert (Statistik per SQL), ist aber **abgeleitet** (`collector.sync`: Flag
+  `ignored`, sonst aus dem Status des Treffer-Videos) und wird bei jedem Lesen und bei jedem `video`/
+  `done`/`failed`-Event nachgeführt – so braucht die Download-Queue keinen Sammler-Code. Ein Video ist pro
+  Ausgabe höchstens einer Zeile zugeordnet; abgelehnte Kandidaten (`rejected`) kommen nie wieder.
+  **Grund:** eine Quelle der Wahrheit (Videostatus), keine zweite Statusmaschine in `worker.py`.
+- **Abgleich zuerst offline:** vor jeder Suche und nach jedem Import gegen gespeicherte Videos (kostet
+  nichts). Bewertung additiv wie die Festival-Erkennung (Gewichte in `collector.py`, Doku in
+  docs/bridge-api.md); «sicher» (ohne Klick) nur mit Artist + Serie + Jahr im Titel und
+  `festivals.collector_auto_confirm` (0.85). Alles andere ab 0.50 braucht eine Bestätigung.
+  **Grund:** Konzept «uncertain hits need a click»; ein falsches Set zu laden kostet einen Download.
+- **Suchauftrag:** eine flache Suche pro Zeile über `YtClient.search` (Throttle zählt sie gegen
+  `max_searches_per_hour`) und zusätzlich gleichmässig verteilt mit eigenem Tempo
+  `festivals.collector_searches_per_hour` (Standard 10/h, nie über dem globalen Limit, letzter Zeitpunkt
+  persistent). Cursor = `searched` pro Zeile (nicht ein Index wie beim Backfill: Zeilen ändern sich
+  während des Auftrags). Unterbrochen (`pending`) → 90 s nach dem App-Start weiter; `cancelled` →
+  «Start» setzt fort; `done`/`restart` → alle Zeilen ohne Treffer neu. Kein eigener prozessübergreifender
+  Lock, weil Headless-Läufe nicht suchen (eine 50-Zeilen-Checkliste braucht ~5 h – das passt in kein
+  Stundenbudget). Eigene Threads `hcloader-collector` (lang) und `hcloader-collector-import` (kurz),
+  damit ein stundenlanger Suchauftrag den Playlist-Import nicht blockiert; beide gehen durch denselben
+  Throttle. **Grund:** YouTube schonen ohne den User stundenlang warten zu lassen, wo es nicht nötig ist.
+- **Playlist des Veranstalters:** über `list_source_paged` (dasselbe Seiten-Tor wie «Alles einlesen»,
+  Tempo `backfill_requests_per_hour`, Obergrenze `backfill_max_entries`) – ein Lauf, nicht fortsetzbar
+  (Festival-Playlists haben 1–3 Seiten). Einträge = bestätigte Zeilen; Trailer/Aftermovies/zu kurze
+  bleiben als Zeile, aber nicht angehakt. Gespeichert wie Suchtreffer (Status `new`), nie Eingang/Queue.
+- **Queue und Tags («manual = authoritative»):** vor dem Einreihen bekommt das Video Ausgabe, Bühne und
+  Set-Art der Zeile als manuelle Festival-Werte (`series.set_manual`), damit Download, Tags, Album und
+  Pfad sie ohne neuen Code übernehmen und keine Erkennung sie später ändert. Von Hand bearbeitete Zeilen
+  gelten exakt (auch ein geleertes Feld), sonst füllt die eigene Erkennung des Videos leere Felder.
+  Schon geladene Treffer werden neu getaggt (`library.retag`, Wartungs-Thread). Eine schon vorhandene
+  manuelle Zuordnung des Videos wird dabei überschrieben – der User hat die Zeile ausdrücklich
+  eingereiht. **Grund:** die Checkliste ist die bewusstere Angabe als eine frühere Einzelzuordnung.
+- **Timetable-Dateien:** Format 1 unter `app/data/timetables/<series-key>/<year>[-<variant>].json`.
+  v0.5.0 liefert **keine** Datei aus: ohne geprüfte Quelle wäre jede Zeile geraten. Beiträge nur mit
+  `source` (offizieller Timetable), ein Test prüft jede mitgelieferte Datei.
+- **Parser:** heuristisch, aber deterministisch (keine Netzwerk-/Website-Daten); Zeitangaben brauchen
+  Minuten (`18:00`, `18.00`, `18h00`, `1800-1900`) oder am/pm, damit Zahlen in Artistnamen nie als Zeit
+  gelesen werden. Tage/Bühnen werden als Text übernommen, wie der User sie eingibt (keine Übersetzung,
+  keine Normalisierung von «Samstag» zu «Saturday»).

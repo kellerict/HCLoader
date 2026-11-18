@@ -106,6 +106,24 @@ Entscheide: docs/decisions.md «Alles einlesen», Vertrag docs/bridge-api.md «A
   Prüfen, dass yt-dlp jede Seite über `YoutubeDL.urlopen` holt – yt-dlp 2026.10.26 geprüft)
 - [ ] 3 Release v0.4.0 (Version, CHANGELOG `[0.4.0]`, Merge nach `main` → Release-Automatik)
 
+## v0.5.0 – Festival-Sammler «Eine ganze Ausgabe sammeln» (Konzept `docs/concepts/festivals.md`)
+Checkliste pro Ausgabe (Playlist des Veranstalters, Timetable einfügen, mitgelieferte Datei, von Hand),
+Abgleich mit der Bibliothek, gedrosselte Einzelsuche, nur Angehaktes + Bestätigtes in die Queue.
+Entscheide: docs/decisions.md «Festival-Sammler (v0.5.0)», Vertrag docs/bridge-api.md «Festival collector».
+- [x] 1 Backend (`integrator`): Migration 9 (`checklists`, `checklist_rows`), `app/core/timetable.py`
+  (Parser Text/CSV/TSV/Markdown, Tages-/Bühnen-Überschriften, Datei-Format 1 unter
+  `app/data/timetables/`, keine Dateien ausgeliefert), `app/core/collector.py` (Zeilen, Zusammenführen,
+  Bewertung, Gratis-Abgleich, Playlist-Import über das Seiten-Tor, fortsetzbarer Suchauftrag mit
+  eigenem Tempo `festivals.collector_searches_per_hour`, Queue mit manuellen Festival-Werten + Retag),
+  19 Bridge-Methoden + Events `collector_rows`/`collector_job`/`collector_import`, 3 Einstellungen,
+  Texte in 18 Sprachen (nl-BE erbt von nl), Tests `tests/test_collector.py` (36 Parser-Fälle)
+- [ ] 2 UI (`ui-designer`): Ansicht «Festival-Sammler» (Ausgabe wählen/anlegen, Checkliste mit Haken,
+  Alle/keine, Filter Bühne/Tag/Status, Bestätigen/Kandidat/verwerfen, Timetable-Dialog mit Vorschau,
+  Playlist-Import, Schätzungsdialog + Fortschritt, «In die Queue»), Einstellungen, Mock, UI-Kataloge,
+  Screenshots; ca. 4–5 Std.
+- [ ] 3 QA + Review (u.a. echte Veranstalter-Playlist und eine echte Einzelsuche unter Windows)
+- [ ] 4 Release v0.5.0
+
 ## Geplant für spätere Versionen
 - Phase 7b: Mixcloud + hearthis.at (Watchlist); 7c: archive.org (optional)
 
