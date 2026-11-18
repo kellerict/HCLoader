@@ -52,7 +52,7 @@ function Write-Step([string]$Text) {
     Write-Host ('==> [{0:00}:{1:00}] {2}' -f [int][math]::Floor($t.TotalMinutes), $t.Seconds, $Text) -ForegroundColor Cyan
 }
 
-function Save-Download([string]$Url, [string]$OutFile) {
+function Save-DownloadOnce([string]$Url, [string]$OutFile) {
     # Download with a live progress line ("  12.3 / 98.0 MB (13%) - 6.1 MB/s"), so long downloads
     # visibly move. Streams to disk; no module dependency (works in PS 5.1 and 7).
     [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
@@ -91,6 +91,27 @@ function Save-Download([string]$Url, [string]$OutFile) {
         if ($out) { $out.Dispose() }
         if ($in) { $in.Dispose() }
         $resp.Close()
+    }
+}
+
+function Save-Download([string]$Url, [string]$OutFile) {
+    # Download servers (e.g. gyan.dev) are sometimes briefly unavailable (503): up to 3 attempts
+    # with 30 s / 60 s pauses for transient errors; anything else fails at once.
+    $waits = @(30, 60)
+    for ($attempt = 1; ; $attempt++) {
+        try {
+            Save-DownloadOnce $Url $OutFile
+            return
+        }
+        catch {
+            $msg = $_.Exception.ToString()
+            $transient = $msg -match '\((5\d\d)\)|timed out|Zeitlimit|unvollstaendig|connection was closed|Verbindung'
+            if (-not $transient -or $attempt -gt $waits.Count) { throw }
+            $wait = $waits[$attempt - 1]
+            Write-Host ("    Download fehlgeschlagen ({0}), neuer Versuch in {1} s ..." -f $_.Exception.Message, $wait)
+            if (Test-Path -LiteralPath $OutFile) { Remove-Item -LiteralPath $OutFile -Force -ErrorAction SilentlyContinue }
+            Start-Sleep -Seconds $wait
+        }
     }
 }
 
