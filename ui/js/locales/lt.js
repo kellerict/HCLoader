@@ -534,7 +534,10 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "continue": "Klausyti toliau",
     "continue_title": "Tęsti „{title}“ nuo {t}",
     "continue_left": "liko {t}",
-    "continue_forget": "Pašalinti iš „Klausyti toliau“"
+    "continue_forget": "Pašalinti iš „Klausyti toliau“",
+    "export": "M3U",
+    "export_title": "Eksportuoti rodomą turinį kaip M3U8 grojaraštį",
+    "export_continue": "Eksportuoti „Klausyti toliau“ kaip grojaraštį"
   },
   "player": {
     "label": "Mini grotuvas",
@@ -579,7 +582,9 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "sleep_off": "Išjungti",
     "sleep_on": "Laikmatis: sustos po {t}",
     "sleep_end_on": "Laikmatis: sustos šio seto pabaigoje",
-    "sleep_done": "Laikmatis: atkūrimas sustabdytas"
+    "sleep_done": "Laikmatis: atkūrimas sustabdytas",
+    "queue_pos": "{i}/{n}",
+    "queue_title": "Groti viską · {label}: setas {i} iš {n}"
   },
   "log": {
     "title": "Žurnalas",
@@ -726,7 +731,8 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
       "backfill": "Nuskaityti viską (vieną kartą)",
       "loudness": "Garsumas",
       "memory": "Atmintis ir bangos forma",
-      "analysis": "Analizė (neprisijungus, ffmpeg)"
+      "analysis": "Analizė (neprisijungus, ffmpeg)",
+      "playlists": "Grojaraščiai (M3U8)"
     },
     "general": {
       "language": {
@@ -1297,6 +1303,31 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
       "running": "Analizuojama … {done} / {total}",
       "no_ffmpeg_title": "Trūksta ffmpeg",
       "no_ffmpeg": "Garsumui ir bangos formoms reikia ffmpeg (bin\\ffmpeg.exe, įdiegia setup.ps1). Nustatymai › Priežiūra rodo būseną."
+    },
+    "playlists": {
+      "folder": {
+        "label": "Grojaraščių aplankas",
+        "help": "Čia saugomi eksportuoti grojaraščiai. Tuščia = „Playlists“ tiksliniame aplanke.",
+        "ph": "„Playlists“ tiksliniame aplanke"
+      },
+      "relative_paths": {
+        "label": "Santykiniai keliai",
+        "help": "Įrašai santykiniai grojaraščio atžvilgiu, kad jis veiktų ir perkėlus muzikos aplanką (pvz., į USB atmintuką). Failai kitame diske visada gauna pilną kelią."
+      },
+      "sync_after_download": {
+        "label": "Atnaujinti išsaugotus grojaraščius po atsisiuntimų",
+        "help": "Su „Atnaujinti“ eksportuoti grojaraščiai perrašomi po kiekvieno atsisiuntimo – tik vietoje, be tinklo."
+      }
+    },
+    "playlists_saved": {
+      "label": "Išsaugoti grojaraščiai",
+      "help": "Kiekvienas eksportas įsimenamas čia. „Atnaujinti“ jį perrašo po atsisiuntimų.",
+      "none": "Grojaraščių dar neeksportuota – naudokite „M3U“ bibliotekoje, DJ puslapyje ar kontroliniame sąraše.",
+      "gone": "failo nėra",
+      "sync": "Atnaujinti",
+      "sync_title": "Perrašyti šį grojaraštį po atsisiuntimų",
+      "forget": "Pašalinti iš sąrašo (failas lieka)",
+      "now": "Atnaujinti dabar"
     }
   },
   "opt": {
@@ -1858,7 +1889,9 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "q_unconfirmed": "nepatvirtinta: {n}",
     "q_missing": "be atitikmens: {n}",
     "q_other": "negalima atsisiųsti: {n}",
-    "q_retag": "žymės atnaujintos: {n}"
+    "q_retag": "žymės atnaujintos: {n}",
+    "export": "Grojaraštis",
+    "export_title": "Eksportuoti šio kontrolinio sąrašo atsisiųstus setus kaip M3U8 grojaraštį"
   },
   "tracks": {
     "nav": "Takeliai",
@@ -1937,5 +1970,110 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "play_set": "Groti setą nuo pradžios",
     "toast_done": "Takelių sąrašai nuskaityti: {sets}, {tracks}",
     "toast_cancelled": "Takelių sąrašų nuskaitymas nutrauktas"
+  },
+  "pl": {
+    "title": "Eksportuoti grojaraštį",
+    "export": "Eksportuoti",
+    "overwrite": "Perrašyti",
+    "exists": "Šiame aplanke jau yra tokio pavadinimo grojaraštis. „Perrašyti“ jį pakeis.",
+    "nothing": "Nėra ką eksportuoti – čia nėra atsisiųstų setų.",
+    "missing": "Trūksta failų: {n} – jie praleidžiami",
+    "name": "Failo pavadinimas",
+    "folder": "Aplankas",
+    "browse": "Naršyti …",
+    "paths": "Keliai grojaraštyje",
+    "relative": "Santykiniai",
+    "absolute": "Absoliutūs",
+    "relative_help": "Santykiniai grojaraščio atžvilgiu – veikia ir perkėlus visą muzikos aplanką. Failai kitame diske įrašomi su pilnu keliu.",
+    "absolute_help": "Pilni keliai – grojaraštį galima laikyti bet kur, bet jis nebeveiks perkėlus muziką.",
+    "sync": "Atnaujinti po atsisiuntimų",
+    "sync_help": "Po kiekvieno atsisiuntimo perrašomas automatiškai.",
+    "sync_off": "Įsiminta – veiks, kai bus įjungta „Atnaujinti išsaugotus grojaraščius po atsisiuntimų“ (Nustatymai › Saugykla).",
+    "done": "Grojaraštis išsaugotas ({sets}): {path}",
+    "skipped": "praleista trūkstamų: {n}",
+    "fallback": "kitame diske su pilnu keliu: {n}",
+    "synced": "Atnaujinta grojaraščių: {n}",
+    "sync_failed": "Neatnaujinta grojaraščių: {n} (žr. žurnalą)"
+  },
+  "djs": {
+    "nav": "DJ",
+    "open_title": "DJ puslapiai: visi jūsų bibliotekos atlikėjai su slapyvardžiais ir b2b setais",
+    "title": "DJ",
+    "sub": "Atlikėjai jūsų bibliotekoje",
+    "back_library": "Atgal į biblioteką",
+    "back": "Visi DJ",
+    "add": "Pridėti DJ / projektą",
+    "search": "Ieškoti DJ ar slapyvardžių",
+    "sort": "Rikiuoti",
+    "sort_sets": "Setai",
+    "sort_recent": "Naujausi",
+    "sort_name": "Vardas",
+    "hidden_chip": "Paslėpta: {n}",
+    "n_festivals": "Festivaliai: {n}",
+    "n_b2b": "b2b: {n}",
+    "aka": "dar žinomas kaip {names}",
+    "unhide": "Vėl rodyti sąraše",
+    "none_title": "DJ nerastas",
+    "none_text": "Pabandykite kitą vardą ar slapyvardį.",
+    "empty_title": "DJ dar nėra",
+    "empty_text": "DJ atpažįstami neprisijungus pagal atsisiųstų setų pavadinimus, festivalių kontrolinius sąrašus ir atlikėjų kanalus.",
+    "b2b_title": "Grota kartu (b2b) – setas įskaitomas kiekvienam atlikėjui",
+    "b2b_with": "b2b su {names}",
+    "aliases": "Slapyvardžiai",
+    "no_aliases": "Slapyvardžių nėra",
+    "split_title": "Atskirti „{alias}“ – laikyti atskiru DJ",
+    "play_all": "Groti viską",
+    "export": "Eksportuoti M3U",
+    "export_title": "Eksportuoti grojaraštį: {name}",
+    "watch": "Į stebimus",
+    "discover": "Ieškoti paieškoje",
+    "stat_sets": "Setai",
+    "stat_hours": "Valandos",
+    "stat_festivals": "Festivaliai",
+    "stat_years": "Metai",
+    "stat_b2b": "b2b",
+    "other_sets": "Kiti setai · {year}",
+    "tracks": "Dažniausiai grojama setuose",
+    "track_sets": "{n}×",
+    "tracks_none": "Šiems setams dar nėra takelių sąrašų – „Biblioteka › Takeliai“ juos nuskaito neprisijungus.",
+    "play_all_external": "„Groti viską“ veikia tik su integruotu grotuvu (Nustatymai › Atkūrimas).",
+    "watch_exists": "Jau stebimas: {name}",
+    "watch_title": "Stebėti {name}",
+    "watch_ok": "Pridėti prie stebimų",
+    "watch_channel": "Nauji setai iš {name} kanalo pasirodys gautuosiuose:",
+    "watch_search": "Nuosavas kanalas nežinomas – stebėjimas reguliariai ieškos „YouTube“:",
+    "watch_note": "Niekas nesiunčiama automatiškai. Šaltinį stebimuose galite bet kada pakeisti ar pašalinti.",
+    "watch_added": "Pridėta prie stebimų: {name}",
+    "split_q_title": "Atskirti slapyvardį",
+    "split_q": "Setus su „{alias}“ laikyti atskiru DJ, o ne {name}?",
+    "split_ok": "Atskirti",
+    "split_done": "„{alias}“ vėl atskiras DJ",
+    "edit": "Redaguoti vardą ir slapyvardžius",
+    "edit_title": "Redaguoti: {name}",
+    "add_title": "Pridėti DJ ar projektą",
+    "f_name": "Vardas",
+    "f_aliases": "Slapyvardžiai",
+    "f_aliases_help": "Kiti rašymo variantai ir trumpi vardai (pvz., „HH“). Setai su slapyvardžiu įskaitomi šiam DJ.",
+    "f_act_help": "Neprivaloma. Duetas su „&“ pavadinime (pvz., „D-Block & S-te-Fan“) tada laikomas vienu projektu, o ne b2b.",
+    "f_alias_add": "+ slapyvardis",
+    "f_channel": "Nuosavas kanalas (neprivaloma)",
+    "f_channel_help": "„YouTube“ ar „SoundCloud“ kanalo URL – naudoja „Į stebimus“.",
+    "saved": "Išsaugota",
+    "merge": "Sujungti su kitu DJ …",
+    "merge_title": "Sujungti: {name}",
+    "merge_text": "Visi {name} setai ir rašymo variantai bus įskaitomi pasirinktam DJ. Vėliau galėsite atskirti.",
+    "merge_into": "Sujungti su",
+    "merge_ok": "Sujungti",
+    "merge_none": "Nėra kito DJ sujungimui.",
+    "merged": "{name}: sujungta",
+    "hide": "Ne DJ – paslėpti",
+    "hidden_done": "Paslėpta DJ sąraše",
+    "unhidden_done": "Vėl DJ sąraše",
+    "sub_n": {
+      "one": "{n} DJ",
+      "few": "{n} DJ",
+      "many": "{n} DJ",
+      "other": "{n} DJ"
+    }
   }
 });

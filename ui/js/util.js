@@ -269,6 +269,10 @@
     radio: svg('<circle cx="12" cy="12" r="1.6"/><path d="M8.5 8.5a5 5 0 000 7M15.5 8.5a5 5 0 010 7M5.6 5.6a9 9 0 000 12.8M18.4 5.6a9 9 0 010 12.8"/>'),
     /* v0.4.0 «Alles einlesen (einmalig)»: Stapel = ganze Liste */
     layers: svg('<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 17l9 5 9-5"/>'),
+    /* v0.8.0: DJ (Kopfhörer), Playlist-Export, zusammenführen */
+    dj: svg('<path d="M4 15v-3a8 8 0 0116 0v3"/><rect x="3" y="14" width="4" height="6" rx="1"/><rect x="17" y="14" width="4" height="6" rx="1"/>'),
+    playlist: svg('<path d="M4 6h12M4 11h12M4 16h7"/><path d="M15 15l3 3 3-3"/><path d="M18 11v7"/>'),
+    merge: svg('<path d="M6 4v5a6 6 0 006 6h0a6 6 0 016 6"/><path d="M18 4v5a6 6 0 01-3 5.2"/><path d="M3 7l3-3 3 3"/><path d="M15 7l3-3 3 3"/>'),
     mic: svg('<path d="M12 3a3 3 0 00-3 3v5a3 3 0 006 0V6a3 3 0 00-3-3z"/><path d="M5.5 11a6.5 6.5 0 0013 0"/><path d="M12 17.5V21"/>'),
   };
 

@@ -520,7 +520,10 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "continue": "Turpināt klausīties",
     "continue_title": "Turpināt “{title}” no {t}",
     "continue_left": "atlikušas {t}",
-    "continue_forget": "Noņemt no “Turpināt klausīties”"
+    "continue_forget": "Noņemt no “Turpināt klausīties”",
+    "export": "M3U",
+    "export_title": "Eksportēt redzamo kā M3U8 sarakstu",
+    "export_continue": "Eksportēt “Turpināt klausīties” kā sarakstu"
   },
   "player": {
     "label": "Mini atskaņotājs",
@@ -564,7 +567,9 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "sleep_off": "Izslēgt",
     "sleep_on": "Taimeris: apstāsies pēc {t}",
     "sleep_end_on": "Taimeris: apstāsies šī seta beigās",
-    "sleep_done": "Taimeris: atskaņošana apturēta"
+    "sleep_done": "Taimeris: atskaņošana apturēta",
+    "queue_pos": "{i}/{n}",
+    "queue_title": "Atskaņot visu · {label}: sets {i} no {n}"
   },
   "log": {
     "title": "Žurnāls",
@@ -706,7 +711,8 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
       "backfill": "Ielasīt visu (vienreiz)",
       "loudness": "Skaļums",
       "memory": "Atmiņa un viļņforma",
-      "analysis": "Analīze (bezsaistē, ffmpeg)"
+      "analysis": "Analīze (bezsaistē, ffmpeg)",
+      "playlists": "Atskaņošanas saraksti (M3U8)"
     },
     "general": {
       "language": {
@@ -1276,6 +1282,31 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
       "running": "Analizē … {done} / {total}",
       "no_ffmpeg_title": "Trūkst ffmpeg",
       "no_ffmpeg": "Skaļumam un viļņformām vajag ffmpeg (bin\\ffmpeg.exe, instalē setup.ps1). Iestatījumi › Apkope rāda statusu."
+    },
+    "playlists": {
+      "folder": {
+        "label": "Sarakstu mape",
+        "help": "Šeit tiek saglabāti eksportētie saraksti. Tukšs = “Playlists” mērķa mapē.",
+        "ph": "“Playlists” mērķa mapē"
+      },
+      "relative_paths": {
+        "label": "Relatīvi ceļi",
+        "help": "Ieraksti relatīvi pret sarakstu, lai tas darbotos arī pēc mūzikas mapes pārvietošanas (piem., uz USB zibatmiņu). Faili citā diskā vienmēr saņem pilnu ceļu."
+      },
+      "sync_after_download": {
+        "label": "Atjaunināt saglabātos sarakstus pēc lejupielādēm",
+        "help": "Ar “Atjaunināt” eksportētie saraksti tiek pārrakstīti pēc katras lejupielādes – tikai lokāli, bez tīkla."
+      }
+    },
+    "playlists_saved": {
+      "label": "Saglabātie saraksti",
+      "help": "Šeit tiek iegaumēts katrs eksports. “Atjaunināt” to pārraksta pēc lejupielādēm.",
+      "none": "Saraksti vēl nav eksportēti – izmanto “M3U” bibliotēkā, DJ lapā vai kontrolsarakstā.",
+      "gone": "fails trūkst",
+      "sync": "Atjaunināt",
+      "sync_title": "Pārrakstīt šo sarakstu pēc lejupielādēm",
+      "forget": "Noņemt no saraksta (fails paliek)",
+      "now": "Atjaunināt tagad"
     }
   },
   "opt": {
@@ -1824,7 +1855,9 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "q_unconfirmed": "neapstiprināti: {n}",
     "q_missing": "bez rezultāta: {n}",
     "q_other": "nevar lejupielādēt: {n}",
-    "q_retag": "tagi atjaunināti: {n}"
+    "q_retag": "tagi atjaunināti: {n}",
+    "export": "Saraksts",
+    "export_title": "Eksportēt šī kontrolsaraksta lejupielādētos setus kā M3U8 sarakstu"
   },
   "tracks": {
     "nav": "Dziesmas",
@@ -1898,5 +1931,109 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "play_set": "Atskaņot setu no sākuma",
     "toast_done": "Dziesmu saraksti nolasīti: {sets}, {tracks}",
     "toast_cancelled": "Dziesmu sarakstu nolasīšana atcelta"
+  },
+  "pl": {
+    "title": "Eksportēt atskaņošanas sarakstu",
+    "export": "Eksportēt",
+    "overwrite": "Pārrakstīt",
+    "exists": "Šajā mapē jau ir saraksts ar šādu nosaukumu. “Pārrakstīt” to aizstās.",
+    "nothing": "Nav ko eksportēt – šeit nav lejupielādētu setu.",
+    "missing": "Trūkst failu: {n} – tie tiek izlaisti",
+    "name": "Faila nosaukums",
+    "folder": "Mape",
+    "browse": "Pārlūkot …",
+    "paths": "Ceļi sarakstā",
+    "relative": "Relatīvi",
+    "absolute": "Absolūti",
+    "relative_help": "Relatīvi pret sarakstu – darbojas arī pēc visas mūzikas mapes pārvietošanas. Faili citā diskā tiek ierakstīti ar pilnu ceļu.",
+    "absolute_help": "Pilni ceļi – sarakstu var glabāt jebkur, bet tas vairs nedarbosies, ja mūzika tiks pārvietota.",
+    "sync": "Atjaunināt pēc lejupielādēm",
+    "sync_help": "Pēc katras lejupielādes tiek automātiski pārrakstīts.",
+    "sync_off": "Iegaumēts – darbosies, kad ieslēgts “Atjaunināt saglabātos sarakstus pēc lejupielādēm” (Iestatījumi › Glabātuve).",
+    "done": "Saraksts saglabāts ({sets}): {path}",
+    "skipped": "izlaisti trūkstošie: {n}",
+    "fallback": "citā diskā ar pilnu ceļu: {n}",
+    "synced": "Atjaunināti saraksti: {n}",
+    "sync_failed": "Neatjaunināti saraksti: {n} (skatīt žurnālu)"
+  },
+  "djs": {
+    "nav": "DJ",
+    "open_title": "DJ lapas: visi tavas bibliotēkas mākslinieki ar aizstājvārdiem un b2b setiem",
+    "title": "DJ",
+    "sub": "Mākslinieki tavā bibliotēkā",
+    "back_library": "Atpakaļ uz bibliotēku",
+    "back": "Visi DJ",
+    "add": "Pievienot DJ / projektu",
+    "search": "Meklēt DJ vai aizstājvārdus",
+    "sort": "Kārtot",
+    "sort_sets": "Seti",
+    "sort_recent": "Jaunākie",
+    "sort_name": "Vārds",
+    "hidden_chip": "Paslēpti: {n}",
+    "n_festivals": "Festivāli: {n}",
+    "n_b2b": "b2b: {n}",
+    "aka": "arī {names}",
+    "unhide": "Atkal rādīt sarakstā",
+    "none_title": "DJ nav atrasts",
+    "none_text": "Izmēģini citu vārdu vai aizstājvārdu.",
+    "empty_title": "DJ vēl nav",
+    "empty_text": "DJ tiek atpazīti bezsaistē pēc lejupielādēto setu nosaukumiem, festivālu kontrolsarakstiem un mākslinieku kanāliem.",
+    "b2b_title": "Spēlēts kopā (b2b) – sets tiek ieskaitīts katram māksliniekam",
+    "b2b_with": "b2b ar {names}",
+    "aliases": "Aizstājvārdi",
+    "no_aliases": "Nav aizstājvārdu",
+    "split_title": "Atdalīt “{alias}” – skaitīt kā atsevišķu DJ",
+    "play_all": "Atskaņot visu",
+    "export": "Eksportēt M3U",
+    "export_title": "Eksportēt sarakstu: {name}",
+    "watch": "Pievienot vērojamajiem",
+    "discover": "Meklēt meklēšanā",
+    "stat_sets": "Seti",
+    "stat_hours": "Stundas",
+    "stat_festivals": "Festivāli",
+    "stat_years": "Gadi",
+    "stat_b2b": "b2b",
+    "other_sets": "Citi seti · {year}",
+    "tracks": "Visbiežāk spēlētie setos",
+    "track_sets": "{n}×",
+    "tracks_none": "Šiem setiem vēl nav dziesmu sarakstu – “Bibliotēka › Dziesmas” tos nolasa bezsaistē.",
+    "play_all_external": "“Atskaņot visu” darbojas tikai ar iebūvēto atskaņotāju (Iestatījumi › Atskaņošana).",
+    "watch_exists": "Jau vērojamajos: {name}",
+    "watch_title": "Vērot {name}",
+    "watch_ok": "Pievienot vērojamajiem",
+    "watch_channel": "Jauni seti no {name} kanāla parādīsies ienākošajos:",
+    "watch_search": "Savs kanāls nav zināms – vērošana regulāri meklēs YouTube:",
+    "watch_note": "Nekas netiek lejupielādēts automātiski. Avotu vērojamajos var mainīt vai noņemt jebkurā laikā.",
+    "watch_added": "Pievienots vērojamajiem: {name}",
+    "split_q_title": "Atdalīt aizstājvārdu",
+    "split_q": "Skaitīt setus ar “{alias}” kā atsevišķu DJ, nevis {name}?",
+    "split_ok": "Atdalīt",
+    "split_done": "“{alias}” atkal ir atsevišķs DJ",
+    "edit": "Rediģēt vārdu un aizstājvārdus",
+    "edit_title": "Rediģēt: {name}",
+    "add_title": "Pievienot DJ vai projektu",
+    "f_name": "Vārds",
+    "f_aliases": "Aizstājvārdi",
+    "f_aliases_help": "Citas rakstības un īsie vārdi (piem., “HH”). Seti ar aizstājvārdu tiek ieskaitīti šim DJ.",
+    "f_act_help": "Neobligāti. Duets ar “&” nosaukumā (piem., “D-Block & S-te-Fan”) tad tiek skaitīts kā viens projekts, nevis b2b.",
+    "f_alias_add": "+ aizstājvārds",
+    "f_channel": "Savs kanāls (neobligāti)",
+    "f_channel_help": "YouTube vai SoundCloud kanāla URL – izmanto “Pievienot vērojamajiem”.",
+    "saved": "Saglabāts",
+    "merge": "Apvienot ar citu DJ …",
+    "merge_title": "Apvienot: {name}",
+    "merge_text": "Visi {name} seti un rakstības tiks ieskaitīti izvēlētajam DJ. Vēlāk to var atkal atdalīt.",
+    "merge_into": "Apvienot ar",
+    "merge_ok": "Apvienot",
+    "merge_none": "Nav cita DJ, ar ko apvienot.",
+    "merged": "{name}: apvienots",
+    "hide": "Nav DJ – paslēpt",
+    "hidden_done": "Paslēpts DJ sarakstā",
+    "unhidden_done": "Atkal DJ sarakstā",
+    "sub_n": {
+      "zero": "{n} DJ",
+      "one": "{n} DJ",
+      "other": "{n} DJ"
+    }
   }
 });

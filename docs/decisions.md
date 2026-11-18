@@ -1530,3 +1530,41 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
 - **Kleinere Punkte:** Timeout und während des Starts verschwundene Datei gelten nicht mehr als dauerhafter
   Fehler; ffmpeg wird auch bei einer Ausnahme in der Leseschleife beendet; verwaiste Wellenform-Dateien
   räumt `analysis.prune_peaks` beim GUI-Start im Hintergrund weg.
+
+## 2026-11-18 – DJ pages and playlist export (v0.8.0)
+
+- **Artists werden abgeleitet, nicht gespeichert.** Wer ein Set gespielt hat, rechnet `core/artists.py` bei
+  Bedarf aus vorhandenen Daten (bestätigte Checklisten-Zeile > Titel-Segmente > Kanalname) und hält das
+  Ergebnis im Speicher, bis sich Bibliothek, Artist-Tabelle, Checklisten oder Serien ändern (Signatur aus
+  Zählern/Zeitstempeln). Die Tabelle `artists` (Migration 13) enthält nur, was der User gesagt hat
+  (Anzeigename, Aliasse, eigener Kanal, «kein DJ») plus eine kleine Startliste (`app/data/artists.yaml`,
+  einmal übernommen). **Grund:** keine zweite Wahrheit neben Titel/Checkliste, die bei jedem Download,
+  Neu-Taggen oder Festival-Zuordnen nachgeführt werden müsste; Heuristik-Verbesserungen wirken sofort auf
+  die ganze Bibliothek. Kosten: ein Durchlauf über die Titel (Regex) nach jeder Änderung – bei 10 000 Sets
+  deutlich unter einer Sekunde, im eigenen Thread.
+- **Keine Track-Artists, nur Set-Artists.** Tracklisten liefern nur «Meistgespielt in seinen Sets» (Top 10,
+  eine Abfrage), keine DJ-Einträge für produzierende Artists. **Grund:** wer einen Track produziert hat, hat
+  das Set nicht gespielt; die DJ-Liste würde sonst von Track-Artists überschwemmt.
+- **Identität = gefalteter Name ohne Leerzeichen** («Sub-Zero Project» = «SubZero Project»). Aliasse sind
+  eine Liste am Ziel-Artist; Zusammenführen hängt Namen/Schreibweisen der Quelle an, Abtrennen entfernt einen
+  Alias wieder. Ein Alias, der nur abgeleitet existiert, ist erlaubt (= zusammenführen); einer, der einem
+  anderen gespeicherten Artist gehört, wird abgelehnt (sonst zwei Besitzer).
+- **b2b:** Starke Trenner (`b2b`, `b3b`, `vs`, `x`) trennen immer; `&`, `+`, `,` nur, wenn das Ganze kein
+  bekannter Act ist (Name/Alias eines gespeicherten Artists, z.B. «D-Block & S-te-Fan») und alle Teile wie
+  Namen aussehen. Jeder Beteiligte bekommt das Set (`role: b2b`). MC-Credits (`feat.`, `ft.`, `w/`) zählen
+  nicht. Ein «Act» anzulegen ist bewusst dasselbe wie einen DJ mit diesem Namen anzulegen.
+- **Kein Mix-Kanal als DJ:** Segmente/Kanäle mit Gattungswörtern («Mix», «Podcast», Genre-Namen …) und
+  Veranstalter-Kanäle der Serien zählen nicht; was trotzdem durchrutscht, blendet der User aus («kein DJ»).
+- **«Zur Watchlist» ohne neue Netzwerkzugriffe:** der Vorschlag (eigener Kanal, sonst Suche «<DJ> live set»)
+  kommt aus gespeicherten Daten; nach der Bestätigung läuft er durch den normalen `save_source`-Weg
+  (Validierung, Duplikat-Prüfung). Nichts wird automatisch geladen. Die Suchanfrage bleibt englisch (sie geht
+  an YouTube, nicht an den User).
+- **Playlists:** M3U8 (UTF-8 ohne BOM, `\n`), relativ zum Ort der Playlist als Standard. Unter Windows ist ein
+  relativer Pfad über Laufwerke/UNC-Freigaben hinweg unmöglich (`relpath` wirft) → dieser Eintrag absolut, der
+  Dialog meldet die Anzahl. Jeder Export wird gemerkt (eindeutig nach Pfad); «Aktuell halten» pro Playlist +
+  globaler Schalter `playlists.sync_after_download` (aus). Sync nach Downloads gebündelt im
+  Playlist-Thread (läuft einer, folgt genau ein weiterer), auch im Headless-Lauf. Überschreiben fragt der
+  Dialog in sich selbst (kein zweites Modal). «Auf Ordner/USB kopieren» ist ausdrücklich nicht Teil von v0.8.0.
+- **«Alle abspielen»** ist eine Warteschlange nur im eingebauten Player (UI-Zustand, nicht persistiert): am
+  Ende eines Sets folgt das nächste; ein von Hand gewähltes anderes Set beendet sie. Mit dem Standardplayer
+  gibt es stattdessen den Hinweis bzw. die exportierte Playlist.

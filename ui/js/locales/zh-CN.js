@@ -492,7 +492,10 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "continue": "继续收听",
     "continue_title": "从 {t} 继续「{title}」",
     "continue_left": "剩余 {t}",
-    "continue_forget": "从「继续收听」中移除"
+    "continue_forget": "从「继续收听」中移除",
+    "export": "M3U",
+    "export_title": "将当前显示内容导出为 M3U8 播放列表",
+    "export_continue": "将“继续收听”导出为播放列表"
   },
   "player": {
     "label": "迷你播放器",
@@ -534,7 +537,9 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "sleep_off": "关闭",
     "sleep_on": "睡眠定时器：{t} 后停止",
     "sleep_end_on": "睡眠定时器：本场结束时停止",
-    "sleep_done": "睡眠定时器：已停止播放"
+    "sleep_done": "睡眠定时器：已停止播放",
+    "queue_pos": "{i}/{n}",
+    "queue_title": "全部播放 · {label}：第 {i}/{n} 个 Set"
   },
   "log": {
     "title": "日志",
@@ -666,7 +671,8 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
       "backfill": "全部读取（一次性）",
       "loudness": "响度",
       "memory": "记忆与波形",
-      "analysis": "分析（离线，ffmpeg）"
+      "analysis": "分析（离线，ffmpeg）",
+      "playlists": "播放列表（M3U8）"
     },
     "general": {
       "language": {
@@ -1234,6 +1240,31 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
       "running": "正在分析 … {done} / {total}",
       "no_ffmpeg_title": "缺少 ffmpeg",
       "no_ffmpeg": "响度和波形需要 ffmpeg（bin\\ffmpeg.exe，由 setup.ps1 安装）。设置 › 维护中可查看状态。"
+    },
+    "playlists": {
+      "folder": {
+        "label": "播放列表文件夹",
+        "help": "导出的播放列表保存位置。留空 = 目标文件夹中的“Playlists”。",
+        "ph": "目标文件夹中的“Playlists”"
+      },
+      "relative_paths": {
+        "label": "相对路径",
+        "help": "条目相对于播放列表，音乐文件夹移动（如到 U 盘）后仍可使用。其他驱动器上的文件始终使用完整路径。"
+      },
+      "sync_after_download": {
+        "label": "下载后更新已保存的播放列表",
+        "help": "以“保持更新”导出的播放列表会在每次下载后重写——仅本地，不联网。"
+      }
+    },
+    "playlists_saved": {
+      "label": "已保存的播放列表",
+      "help": "每次导出都会记录在这里。“保持更新”会在下载后重写它。",
+      "none": "还没有导出过播放列表——可在媒体库、DJ 页面或清单中使用“M3U”。",
+      "gone": "文件缺失",
+      "sync": "保持更新",
+      "sync_title": "下载后重写此播放列表",
+      "forget": "从列表中移除（文件保留）",
+      "now": "立即更新"
     }
   },
   "opt": {
@@ -1756,7 +1787,9 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "q_unconfirmed": "未确认：{n}",
     "q_missing": "没有结果：{n}",
     "q_other": "无法下载：{n}",
-    "q_retag": "已重写标签：{n}"
+    "q_retag": "已重写标签：{n}",
+    "export": "播放列表",
+    "export_title": "将此清单中已下载的 Set 导出为 M3U8 播放列表"
   },
   "tracks": {
     "nav": "曲目",
@@ -1820,5 +1853,107 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "play_set": "从头播放混音",
     "toast_done": "曲目表已读取：{sets}，{tracks}",
     "toast_cancelled": "读取曲目表已取消"
+  },
+  "pl": {
+    "title": "导出播放列表",
+    "export": "导出",
+    "overwrite": "覆盖",
+    "exists": "此文件夹中已有同名播放列表。点击“覆盖”将其替换。",
+    "nothing": "没有可导出的内容——这里没有已下载的 Set。",
+    "missing": "缺少 {n} 个文件——将跳过",
+    "name": "文件名",
+    "folder": "文件夹",
+    "browse": "浏览 …",
+    "paths": "播放列表中的路径",
+    "relative": "相对",
+    "absolute": "绝对",
+    "relative_help": "相对于播放列表——整个音乐文件夹移动后仍可使用。其他驱动器上的文件会写入完整路径。",
+    "absolute_help": "完整路径——播放列表可放在任何位置，但音乐移动后会失效。",
+    "sync": "下载后保持更新",
+    "sync_help": "每次下载后自动重写。",
+    "sync_off": "已记住——开启“下载后更新已保存的播放列表”后生效（设置 › 存储）。",
+    "done": "播放列表已保存（{sets}）：{path}",
+    "skipped": "已跳过 {n} 个缺失",
+    "fallback": "{n} 个位于其他驱动器，使用完整路径",
+    "synced": "已更新 {n} 个播放列表",
+    "sync_failed": "{n} 个播放列表未更新（见日志）"
+  },
+  "djs": {
+    "nav": "DJ",
+    "open_title": "DJ 页面：媒体库中的所有艺人，含别名和 b2b Set",
+    "title": "DJ",
+    "sub": "媒体库中的艺人",
+    "back_library": "返回媒体库",
+    "back": "全部 DJ",
+    "add": "添加 DJ / 组合",
+    "search": "搜索 DJ 或别名",
+    "sort": "排序",
+    "sort_sets": "Set 数",
+    "sort_recent": "最近",
+    "sort_name": "名称",
+    "hidden_chip": "已隐藏：{n}",
+    "n_festivals": "音乐节：{n}",
+    "n_b2b": "b2b：{n}",
+    "aka": "又名 {names}",
+    "unhide": "重新在列表中显示",
+    "none_title": "未找到 DJ",
+    "none_text": "试试其他名称或别名。",
+    "empty_title": "还没有 DJ",
+    "empty_text": "DJ 会根据已下载 Set 的标题、音乐节清单和艺人频道离线识别。",
+    "b2b_title": "合作演出（b2b）——该 Set 计入每位艺人",
+    "b2b_with": "与 {names} b2b",
+    "aliases": "别名",
+    "no_aliases": "没有别名",
+    "split_title": "拆分“{alias}”——作为独立 DJ 计算",
+    "play_all": "全部播放",
+    "export": "导出 M3U",
+    "export_title": "导出播放列表：{name}",
+    "watch": "添加到关注列表",
+    "discover": "在“发现”中搜索",
+    "stat_sets": "Set",
+    "stat_hours": "小时",
+    "stat_festivals": "音乐节",
+    "stat_years": "年份",
+    "stat_b2b": "b2b",
+    "other_sets": "其他 Set · {year}",
+    "tracks": "其 Set 中最常播放",
+    "track_sets": "{n}×",
+    "tracks_none": "这些 Set 还没有曲目列表——“媒体库 › 曲目”会离线读取。",
+    "play_all_external": "“全部播放”需要内置播放器（设置 › 播放）。",
+    "watch_exists": "已在关注列表中：{name}",
+    "watch_title": "关注 {name}",
+    "watch_ok": "添加到关注列表",
+    "watch_channel": "{name} 自己频道的新 Set 将出现在收件箱中：",
+    "watch_search": "未知自有频道——关注列表将定期在 YouTube 上搜索：",
+    "watch_note": "不会自动下载任何内容。你可以随时在关注列表中修改或删除该来源。",
+    "watch_added": "已添加到关注列表：{name}",
+    "split_q_title": "拆分别名",
+    "split_q": "将署名为“{alias}”的 Set 作为独立 DJ 计算，而不是 {name}？",
+    "split_ok": "拆分",
+    "split_done": "“{alias}”重新成为独立 DJ",
+    "edit": "编辑名称和别名",
+    "edit_title": "编辑 {name}",
+    "add_title": "添加 DJ 或组合",
+    "f_name": "名称",
+    "f_aliases": "别名",
+    "f_aliases_help": "其他写法和简称（如“HH”）。署名为别名的 Set 计入此 DJ。",
+    "f_act_help": "可选。名称中带“&”的组合（如“D-Block & S-te-Fan”）将计为一个组合，而不是 b2b。",
+    "f_alias_add": "+ 别名",
+    "f_channel": "自有频道（可选）",
+    "f_channel_help": "YouTube 或 SoundCloud 频道网址——用于“添加到关注列表”。",
+    "saved": "已保存",
+    "merge": "与其他 DJ 合并 …",
+    "merge_title": "合并 {name}",
+    "merge_text": "{name} 的所有 Set 和写法将计入所选 DJ。之后可以再拆分。",
+    "merge_into": "合并到",
+    "merge_ok": "合并",
+    "merge_none": "没有可合并的其他 DJ。",
+    "merged": "已合并 {name}",
+    "hide": "不是 DJ——隐藏",
+    "hidden_done": "已从 DJ 列表中隐藏",
+    "unhidden_done": "已重新显示在 DJ 列表中",
+    "sub_n": {
+      "other": "{n} 位 DJ"
+    }
   }
 });

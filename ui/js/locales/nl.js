@@ -506,7 +506,10 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "continue": "Verder luisteren",
     "continue_title": "„{title}” hervatten bij {t}",
     "continue_left": "nog {t}",
-    "continue_forget": "Verwijderen uit „Verder luisteren”"
+    "continue_forget": "Verwijderen uit „Verder luisteren”",
+    "export": "M3U",
+    "export_title": "Wat je ziet als M3U8-playlist exporteren",
+    "export_continue": "“Verder luisteren” als playlist exporteren"
   },
   "player": {
     "label": "Miniplayer",
@@ -549,7 +552,9 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "sleep_off": "Uitzetten",
     "sleep_on": "Slaaptimer: stopt over {t}",
     "sleep_end_on": "Slaaptimer: stopt aan het einde van deze set",
-    "sleep_done": "Slaaptimer: afspelen gestopt"
+    "sleep_done": "Slaaptimer: afspelen gestopt",
+    "queue_pos": "{i}/{n}",
+    "queue_title": "Alles afspelen · {label}: set {i} van {n}"
   },
   "log": {
     "title": "Logboek",
@@ -686,7 +691,8 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
       "backfill": "Alles inlezen (eenmalig)",
       "loudness": "Luidheid",
       "memory": "Geheugen & golfvorm",
-      "analysis": "Analyse (offline, ffmpeg)"
+      "analysis": "Analyse (offline, ffmpeg)",
+      "playlists": "Playlists (M3U8)"
     },
     "general": {
       "language": {
@@ -1255,6 +1261,31 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
       "running": "Analyseren … {done} / {total}",
       "no_ffmpeg_title": "ffmpeg ontbreekt",
       "no_ffmpeg": "Luidheid en golfvormen hebben ffmpeg nodig (bin\\ffmpeg.exe, geïnstalleerd door setup.ps1). Instellingen › Onderhoud toont de status."
+    },
+    "playlists": {
+      "folder": {
+        "label": "Playlistmap",
+        "help": "Hier komen geëxporteerde playlists. Leeg = “Playlists” in de doelmap.",
+        "ph": "“Playlists” in de doelmap"
+      },
+      "relative_paths": {
+        "label": "Relatieve paden",
+        "help": "Items relatief ten opzichte van de playlist, zodat hij blijft werken als de muziekmap verhuist (bijv. naar een USB-stick). Bestanden op een ander station krijgen altijd het volledige pad."
+      },
+      "sync_after_download": {
+        "label": "Opgeslagen playlists bijwerken na downloads",
+        "help": "Playlists die met “Bijwerken” zijn geëxporteerd, worden na elke download opnieuw geschreven – alleen lokaal, geen netwerk."
+      }
+    },
+    "playlists_saved": {
+      "label": "Opgeslagen playlists",
+      "help": "Elke export wordt hier onthouden. “Bijwerken” schrijft hem na downloads opnieuw.",
+      "none": "Nog geen playlists geëxporteerd – gebruik “M3U” in de bibliotheek, op een DJ-pagina of in een checklist.",
+      "gone": "bestand ontbreekt",
+      "sync": "Bijwerken",
+      "sync_title": "Deze playlist na downloads opnieuw schrijven",
+      "forget": "Uit de lijst halen (het bestand blijft)",
+      "now": "Nu bijwerken"
     }
   },
   "opt": {
@@ -1790,7 +1821,9 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "q_unconfirmed": "onbevestigd: {n}",
     "q_missing": "zonder treffer: {n}",
     "q_other": "niet te downloaden: {n}",
-    "q_retag": "opnieuw getagd: {n}"
+    "q_retag": "opnieuw getagd: {n}",
+    "export": "Playlist",
+    "export_title": "De gedownloade sets van deze checklist als M3U8-playlist exporteren"
   },
   "tracks": {
     "nav": "Tracks",
@@ -1859,5 +1892,108 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "play_set": "Set vanaf het begin afspelen",
     "toast_done": "Tracklists ingelezen: {sets}, {tracks}",
     "toast_cancelled": "Tracklists inlezen geannuleerd"
+  },
+  "pl": {
+    "title": "Playlist exporteren",
+    "export": "Exporteren",
+    "overwrite": "Overschrijven",
+    "exists": "In deze map staat al een playlist met deze naam. “Overschrijven” vervangt hem.",
+    "nothing": "Niets te exporteren – hier zijn geen gedownloade sets.",
+    "missing": "{n} bestanden ontbreken – ze worden overgeslagen",
+    "name": "Bestandsnaam",
+    "folder": "Map",
+    "browse": "Bladeren …",
+    "paths": "Paden in de playlist",
+    "relative": "Relatief",
+    "absolute": "Absoluut",
+    "relative_help": "Relatief ten opzichte van de playlist – blijft werken als je de hele muziekmap verplaatst. Bestanden op een ander station krijgen hun volledige pad.",
+    "absolute_help": "Volledige paden – de playlist kan overal staan, maar werkt niet meer als de muziek verhuist.",
+    "sync": "Bijwerken na downloads",
+    "sync_help": "Wordt na elke download automatisch opnieuw geschreven.",
+    "sync_off": "Onthouden – werkt zodra “Opgeslagen playlists bijwerken na downloads” aan staat (Instellingen › Opslag).",
+    "done": "Playlist opgeslagen ({sets}): {path}",
+    "skipped": "{n} ontbrekende overgeslagen",
+    "fallback": "{n} op een ander station met volledig pad",
+    "synced": "Playlists bijgewerkt: {n}",
+    "sync_failed": "Playlists niet bijgewerkt: {n} (zie logboek)"
+  },
+  "djs": {
+    "nav": "DJ’s",
+    "open_title": "DJ-pagina’s: alle artiesten in je bibliotheek, met aliassen en b2b-sets",
+    "title": "DJ’s",
+    "sub": "Artiesten in je bibliotheek",
+    "back_library": "Terug naar de bibliotheek",
+    "back": "Alle DJ’s",
+    "add": "DJ / act toevoegen",
+    "search": "DJ’s of aliassen zoeken",
+    "sort": "Sorteren",
+    "sort_sets": "Sets",
+    "sort_recent": "Recent",
+    "sort_name": "Naam",
+    "hidden_chip": "Verborgen: {n}",
+    "n_festivals": "Festivals: {n}",
+    "n_b2b": "b2b: {n}",
+    "aka": "alias {names}",
+    "unhide": "Weer in de lijst tonen",
+    "none_title": "Geen DJ gevonden",
+    "none_text": "Probeer een andere naam of alias.",
+    "empty_title": "Nog geen DJ’s",
+    "empty_text": "DJ’s worden offline herkend aan de titels van je gedownloade sets, festival-checklists en artiestenkanalen.",
+    "b2b_title": "Samen gedraaid (b2b) – de set telt voor elke artiest",
+    "b2b_with": "b2b met {names}",
+    "aliases": "Aliassen",
+    "no_aliases": "Geen aliassen",
+    "split_title": "“{alias}” afsplitsen – als eigen DJ tellen",
+    "play_all": "Alles afspelen",
+    "export": "M3U exporteren",
+    "export_title": "Playlist exporteren: {name}",
+    "watch": "Aan volglijst toevoegen",
+    "discover": "Zoeken in Ontdekken",
+    "stat_sets": "Sets",
+    "stat_hours": "Uren",
+    "stat_festivals": "Festivals",
+    "stat_years": "Jaren",
+    "stat_b2b": "b2b",
+    "other_sets": "Andere sets · {year}",
+    "tracks": "Meest gedraaid in de sets",
+    "track_sets": "{n}×",
+    "tracks_none": "Nog geen tracklists voor deze sets – Bibliotheek › Tracks leest ze offline in.",
+    "play_all_external": "“Alles afspelen” werkt alleen met de ingebouwde speler (Instellingen › Afspelen).",
+    "watch_exists": "Staat al in de volglijst: {name}",
+    "watch_title": "{name} volgen",
+    "watch_ok": "Aan volglijst toevoegen",
+    "watch_channel": "Nieuwe sets van het eigen kanaal van {name} komen in je inbox:",
+    "watch_search": "Geen eigen kanaal bekend – de volglijst zoekt regelmatig op YouTube naar:",
+    "watch_note": "Er wordt niets automatisch gedownload. Je kunt de bron in de volglijst altijd wijzigen of verwijderen.",
+    "watch_added": "Toegevoegd aan de volglijst: {name}",
+    "split_q_title": "Alias afsplitsen",
+    "split_q": "Sets met “{alias}” als aparte DJ tellen in plaats van {name}?",
+    "split_ok": "Afsplitsen",
+    "split_done": "“{alias}” is weer een eigen DJ",
+    "edit": "Naam en aliassen bewerken",
+    "edit_title": "{name} bewerken",
+    "add_title": "DJ of act toevoegen",
+    "f_name": "Naam",
+    "f_aliases": "Aliassen",
+    "f_aliases_help": "Andere schrijfwijzen en korte namen (bijv. “HH”). Sets met een alias tellen voor deze DJ.",
+    "f_act_help": "Optioneel. Een duo met “&” in de naam (bijv. “D-Block & S-te-Fan”) telt dan als één act in plaats van als b2b.",
+    "f_alias_add": "+ alias",
+    "f_channel": "Eigen kanaal (optioneel)",
+    "f_channel_help": "URL van het YouTube- of SoundCloud-kanaal – voor “Aan volglijst toevoegen”.",
+    "saved": "Opgeslagen",
+    "merge": "Samenvoegen met andere DJ …",
+    "merge_title": "{name} samenvoegen",
+    "merge_text": "Alle sets en schrijfwijzen van {name} tellen dan voor de gekozen DJ. Je kunt hem later weer afsplitsen.",
+    "merge_into": "Samenvoegen met",
+    "merge_ok": "Samenvoegen",
+    "merge_none": "Er is geen andere DJ om mee samen te voegen.",
+    "merged": "{name} samengevoegd",
+    "hide": "Geen DJ – verbergen",
+    "hidden_done": "Verborgen in de DJ-lijst",
+    "unhidden_done": "Weer in de DJ-lijst",
+    "sub_n": {
+      "one": "{n} DJ",
+      "other": "{n} DJ’s"
+    }
   }
 });

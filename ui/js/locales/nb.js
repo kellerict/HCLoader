@@ -506,7 +506,10 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "continue": "Fortsett å lytte",
     "continue_title": "Fortsett «{title}» ved {t}",
     "continue_left": "{t} igjen",
-    "continue_forget": "Fjern fra «Fortsett å lytte»"
+    "continue_forget": "Fjern fra «Fortsett å lytte»",
+    "export": "M3U",
+    "export_title": "Eksporter det som vises som M3U8-spilleliste",
+    "export_continue": "Eksporter «Fortsett å lytte» som spilleliste"
   },
   "player": {
     "label": "Minispiller",
@@ -549,7 +552,9 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "sleep_off": "Slå av",
     "sleep_on": "Sovetimer: stopper om {t}",
     "sleep_end_on": "Sovetimer: stopper på slutten av dette settet",
-    "sleep_done": "Sovetimer: avspillingen stoppet"
+    "sleep_done": "Sovetimer: avspillingen stoppet",
+    "queue_pos": "{i}/{n}",
+    "queue_title": "Spill alle · {label}: sett {i} av {n}"
   },
   "log": {
     "title": "Logg",
@@ -686,7 +691,8 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
       "backfill": "Les inn alt (én gang)",
       "loudness": "Lydstyrke",
       "memory": "Minne og bølgeform",
-      "analysis": "Analyse (frakoblet, ffmpeg)"
+      "analysis": "Analyse (frakoblet, ffmpeg)",
+      "playlists": "Spillelister (M3U8)"
     },
     "general": {
       "language": {
@@ -1255,6 +1261,31 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
       "running": "Analyserer … {done} / {total}",
       "no_ffmpeg_title": "ffmpeg mangler",
       "no_ffmpeg": "Lydstyrke og bølgeformer trenger ffmpeg (bin\\ffmpeg.exe, installert av setup.ps1). Innstillinger › Vedlikehold viser status."
+    },
+    "playlists": {
+      "folder": {
+        "label": "Mappe for spillelister",
+        "help": "Her lagres eksporterte spillelister. Tomt = «Playlists» i målmappen.",
+        "ph": "«Playlists» i målmappen"
+      },
+      "relative_paths": {
+        "label": "Relative stier",
+        "help": "Oppføringer relativt til spillelisten, så den virker selv om musikkmappen flyttes (f.eks. til en minnepinne). Filer på en annen stasjon får alltid full sti."
+      },
+      "sync_after_download": {
+        "label": "Oppdater lagrede spillelister etter nedlastinger",
+        "help": "Spillelister eksportert med «Hold oppdatert» skrives på nytt etter hver nedlasting – bare lokalt, uten nettverk."
+      }
+    },
+    "playlists_saved": {
+      "label": "Lagrede spillelister",
+      "help": "Hver eksport huskes her. «Hold oppdatert» skriver den på nytt etter nedlastinger.",
+      "none": "Ingen spillelister eksportert ennå – bruk «M3U» i biblioteket, på en DJ-side eller i en sjekkliste.",
+      "gone": "filen mangler",
+      "sync": "Hold oppdatert",
+      "sync_title": "Skriv denne spillelisten på nytt etter nedlastinger",
+      "forget": "Fjern fra listen (filen blir liggende)",
+      "now": "Oppdater nå"
     }
   },
   "opt": {
@@ -1790,7 +1821,9 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "q_unconfirmed": "ubekreftet: {n}",
     "q_missing": "uten treff: {n}",
     "q_other": "kan ikke lastes: {n}",
-    "q_retag": "tagget på nytt: {n}"
+    "q_retag": "tagget på nytt: {n}",
+    "export": "Spilleliste",
+    "export_title": "Eksporter de nedlastede settene i sjekklisten som M3U8-spilleliste"
   },
   "tracks": {
     "nav": "Spor",
@@ -1859,5 +1892,108 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "play_set": "Spill settet fra starten",
     "toast_done": "Sporlister lest inn: {sets}, {tracks}",
     "toast_cancelled": "Innlesing av sporlister avbrutt"
+  },
+  "pl": {
+    "title": "Eksporter spilleliste",
+    "export": "Eksporter",
+    "overwrite": "Overskriv",
+    "exists": "Det finnes allerede en spilleliste med dette navnet i mappen. «Overskriv» erstatter den.",
+    "nothing": "Ingenting å eksportere – her er ingen nedlastede sett.",
+    "missing": "{n} filer mangler – de hoppes over",
+    "name": "Filnavn",
+    "folder": "Mappe",
+    "browse": "Bla gjennom …",
+    "paths": "Stier i spillelisten",
+    "relative": "Relative",
+    "absolute": "Absolutte",
+    "relative_help": "Relativt til spillelisten – virker fortsatt hvis du flytter hele musikkmappen. Filer på en annen stasjon skrives med full sti.",
+    "absolute_help": "Fulle stier – spillelisten kan ligge hvor som helst, men slutter å virke hvis musikken flyttes.",
+    "sync": "Hold oppdatert etter nedlastinger",
+    "sync_help": "Skrives automatisk på nytt etter hver nedlasting.",
+    "sync_off": "Notert – gjelder når «Oppdater lagrede spillelister etter nedlastinger» er på (Innstillinger › Lagring).",
+    "done": "Spilleliste lagret ({sets}): {path}",
+    "skipped": "{n} manglende hoppet over",
+    "fallback": "{n} på annen stasjon med full sti",
+    "synced": "Spillelister oppdatert: {n}",
+    "sync_failed": "Spillelister ikke oppdatert: {n} (se loggen)"
+  },
+  "djs": {
+    "nav": "DJ-er",
+    "open_title": "DJ-sider: alle artister i biblioteket ditt, med alias og b2b-sett",
+    "title": "DJ-er",
+    "sub": "Artister i biblioteket ditt",
+    "back_library": "Tilbake til biblioteket",
+    "back": "Alle DJ-er",
+    "add": "Legg til DJ / akt",
+    "search": "Søk etter DJ-er eller alias",
+    "sort": "Sorter",
+    "sort_sets": "Sett",
+    "sort_recent": "Nylige",
+    "sort_name": "Navn",
+    "hidden_chip": "Skjult: {n}",
+    "n_festivals": "Festivaler: {n}",
+    "n_b2b": "b2b: {n}",
+    "aka": "alias {names}",
+    "unhide": "Vis i listen igjen",
+    "none_title": "Fant ingen DJ",
+    "none_text": "Prøv et annet navn eller alias.",
+    "empty_title": "Ingen DJ-er ennå",
+    "empty_text": "DJ-er gjenkjennes frakoblet fra titlene på de nedlastede settene dine, festivalsjekklister og artistkanaler.",
+    "b2b_title": "Spilt sammen (b2b) – settet teller for hver artist",
+    "b2b_with": "b2b med {names}",
+    "aliases": "Alias",
+    "no_aliases": "Ingen alias",
+    "split_title": "Skill ut «{alias}» – tell som egen DJ",
+    "play_all": "Spill alle",
+    "export": "Eksporter M3U",
+    "export_title": "Eksporter spilleliste: {name}",
+    "watch": "Legg til i overvåking",
+    "discover": "Søk i Oppdag",
+    "stat_sets": "Sett",
+    "stat_hours": "Timer",
+    "stat_festivals": "Festivaler",
+    "stat_years": "År",
+    "stat_b2b": "b2b",
+    "other_sets": "Andre sett · {year}",
+    "tracks": "Mest spilt i settene",
+    "track_sets": "{n}×",
+    "tracks_none": "Ingen sporlister for disse settene ennå – Bibliotek › Spor leser dem inn frakoblet.",
+    "play_all_external": "«Spill alle» krever den innebygde spilleren (Innstillinger › Avspilling).",
+    "watch_exists": "Allerede i overvåkingen: {name}",
+    "watch_title": "Overvåk {name}",
+    "watch_ok": "Legg til i overvåking",
+    "watch_channel": "Nye sett fra {name}s egen kanal havner i innboksen din:",
+    "watch_search": "Ingen egen kanal kjent – overvåkingen søker jevnlig på YouTube etter:",
+    "watch_note": "Ingenting lastes ned automatisk. Du kan endre eller fjerne kilden i overvåkingen når som helst.",
+    "watch_added": "Lagt til i overvåkingen: {name}",
+    "split_q_title": "Skill ut alias",
+    "split_q": "Telle sett kreditert som «{alias}» som en egen DJ i stedet for {name}?",
+    "split_ok": "Skill ut",
+    "split_done": "«{alias}» er en egen DJ igjen",
+    "edit": "Rediger navn og alias",
+    "edit_title": "Rediger {name}",
+    "add_title": "Legg til DJ eller akt",
+    "f_name": "Navn",
+    "f_aliases": "Alias",
+    "f_aliases_help": "Andre stavemåter og korte navn (f.eks. «HH»). Sett med et alias teller for denne DJ-en.",
+    "f_act_help": "Valgfritt. En duo med «&» i navnet (f.eks. «D-Block & S-te-Fan») telles da som én akt i stedet for b2b.",
+    "f_alias_add": "+ alias",
+    "f_channel": "Egen kanal (valgfritt)",
+    "f_channel_help": "URL til YouTube- eller SoundCloud-kanalen – brukes av «Legg til i overvåking».",
+    "saved": "Lagret",
+    "merge": "Slå sammen med annen DJ …",
+    "merge_title": "Slå sammen {name}",
+    "merge_text": "Alle sett og stavemåter av {name} teller da for valgt DJ. Du kan skille den ut igjen senere.",
+    "merge_into": "Slå sammen med",
+    "merge_ok": "Slå sammen",
+    "merge_none": "Det finnes ingen annen DJ å slå sammen med.",
+    "merged": "{name} slått sammen",
+    "hide": "Ikke en DJ – skjul",
+    "hidden_done": "Skjult i DJ-listen",
+    "unhidden_done": "Vises i DJ-listen igjen",
+    "sub_n": {
+      "one": "{n} DJ",
+      "other": "{n} DJ-er"
+    }
   }
 });

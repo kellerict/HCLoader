@@ -463,6 +463,7 @@
     $('#pl-artist', el).textContent = chapters.length ? media.artist || '' : '';
     $('#pl-artist2', el).textContent = chapters.length ? '' : media.artist || '';
     $('#pl-artist', el).title = media.artist || '';
+    paintQueue();
     /* Cover: echtes Bild (file:-URL vom Backend), sonst der generierte Platzhalter aus id + Genre-Farbe.
        ui.thumb() lässt sein <div class="thumb"> offen (wie bei allen Aufrufern); das </div> schliesst es,
        der Equalizer liegt danach direkt in #pl-cover. */
@@ -561,6 +562,9 @@
   async function play(item, o) {
     if (!el || !item || item.id == null) return;
     const opt = o || {};
+    /* v0.8.0: ein Set von Hand gewählt (nicht aus der Warteschlange) -> «Alle abspielen» endet. */
+    if (queue && !opt.fromQueue && !queue.items.some((x) => x.id === item.id)) { queue = null; paintQueue(); }
+    if (queue && !opt.fromQueue) queue.i = Math.max(0, queue.items.findIndex((x) => x.id === item.id));
     if (media && media.id === item.id && !opt.reload) { toggle(); return; }
     const seq = ++loadSeq;
     const r = await HC.bridge.safe('get_media', item.id);
@@ -593,7 +597,32 @@
     }
     return play(item, { reload: !!media && media.id === item.id, at: to });
   }
+  /* ---------- Warteschlange (v0.8.0 «Alle abspielen», z.B. alle Sets eines DJs) ---------- */
+  let queue = null; // {items:[LibraryItem], i, label}
+  function paintQueue() {
+    const q = el && $('#pl-queue', el);
+    if (!q) return;
+    const on = !!(queue && media && queue.items[queue.i] && queue.items[queue.i].id === media.id);
+    q.hidden = !on;
+    q.textContent = on ? t('player.queue_pos', { i: queue.i + 1, n: queue.items.length }) : '';
+    q.title = on ? t('player.queue_title', { label: queue.label || '', i: queue.i + 1, n: queue.items.length }) : '';
+  }
+  /** Sets nacheinander spielen (nur vorhandene Dateien); am Ende eines Sets folgt das nächste. */
+  function playAll(items, label) {
+    const list = (items || []).filter((x) => x && x.id != null && !x.missing);
+    if (!list.length) return Promise.resolve();
+    queue = { items: list, i: 0, label: label || '' };
+    return play(list[0], { fromQueue: true, reload: !!media && media.id === list[0].id, at: 0 });
+  }
+  function nextInQueue() {
+    if (!queue || !media || !queue.items[queue.i] || queue.items[queue.i].id !== media.id) return false;
+    if (queue.i + 1 >= queue.items.length) { queue = null; paintQueue(); return false; }
+    queue.i++;
+    play(queue.items[queue.i], { fromQueue: true, at: 0 });
+    return true;
+  }
   function close(silent) {
+    queue = null;
     loadSeq++;
     if (!el) return;
     const had = !!media;
@@ -684,7 +713,11 @@
     const on = (type, fn) => a.addEventListener(type, (e) => { if (a === audio) fn(e); });
     on('play', () => { paintState(); emit(); });
     on('pause', () => { paintState(); paint(); emit(); if (!audio.ended) savePos(true); });
-    on('ended', () => { paintState(); paint(); emit(); savePos(true); if (sleep && sleep.mode === 'end') { setSleep(null); ui.toast(t('player.sleep_done'), 'info'); } });
+    on('ended', () => {
+      paintState(); paint(); emit(); savePos(true);
+      if (sleep && sleep.mode === 'end') { setSleep(null); ui.toast(t('player.sleep_done'), 'info'); return; }
+      nextInQueue();
+    });
     on('timeupdate', () => { paint(); if (playing() && Date.now() - lastSave > SAVE_EVERY_MS) savePos(false); });
     on('seeked', () => { lastSec = -1; paint(); if (resumeBox && resumeBox.mode === 'auto' && Math.abs(audio.currentTime - resumeBox.at) > 2) hideResume(); });
     on('loadedmetadata', () => {
@@ -716,7 +749,7 @@
         <div class="pl-cover" id="pl-cover"></div>
         <div class="pl-meta">
           <div class="pl-head"><span class="pl-title" id="pl-title"></span><span class="pl-artist" id="pl-artist"></span></div>
-          <div class="pl-sub"><span id="pl-pbadge"></span><span class="pl-artist2" id="pl-artist2"></span><button type="button" class="pl-track" id="pl-track" aria-expanded="false" hidden>${I.play}<span></span></button><span class="pl-norm mono" id="pl-norm" hidden></span></div>
+          <div class="pl-sub"><span class="pl-queue mono" id="pl-queue" hidden></span><span id="pl-pbadge"></span><span class="pl-artist2" id="pl-artist2"></span><button type="button" class="pl-track" id="pl-track" aria-expanded="false" hidden>${I.play}<span></span></button><span class="pl-norm mono" id="pl-norm" hidden></span></div>
         </div>
       </div>
       <div class="pl-mid">
@@ -852,7 +885,10 @@
   }
 
   HC.player = {
-    init, play, playAt, toggle, close, seek, suspend, resume, release,
+    init, play, playAt, toggle, close, seek, suspend, resume, release, playAll,
+    /** v0.8.0: Warteschlange von «Alle abspielen» -> {ids, i, label} | null */
+    queue: () => (queue ? { ids: queue.items.map((x) => x.id), i: queue.i, label: queue.label } : null),
+    nextInQueue,
     pause() { if (audio && media) audio.pause(); },
     openList: (open) => { if (el && media) setList(open !== false); },
     /** -> {id, playing} – id null = nichts geladen */

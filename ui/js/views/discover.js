@@ -439,5 +439,13 @@
     renderQuota();
   }
 
-  HC.views.discover = { init, show, reset() { loaded = false; results = null; last = null; sel.clear(); Object.keys(stash).forEach((k) => delete stash[k]); } };
+  /** v0.8.0 (DJ-Seite «In Entdecken suchen»): Suchbegriff vorbelegen – gesucht wird erst auf Klick/Enter (Kontingent). */
+  function prefill(q) {
+    const inp = el && $('#q', el);
+    if (!inp) return;
+    inp.value = String(q || '');
+    inp.focus();
+    inp.select();
+  }
+  HC.views.discover = { init, show, prefill, reset() { loaded = false; results = null; last = null; sel.clear(); Object.keys(stash).forEach((k) => delete stash[k]); } };
 })();

@@ -267,7 +267,7 @@
       inited = true;
     }
     setStatus(await HC.bridge.safe('get_status'));
-    const m = /^#([a-z]+)(?:\/([a-z0-9_-]+))?/.exec(location.hash || '');
+    const m = /^#([a-z]+)(?:\/([\w%.-]+))?/.exec(location.hash || ''); // v0.8.0: dj-<key> (encodeURIComponent)
     go(m && VIEWS.includes(m[1]) ? m[1] : s.values.general.start_view, m ? m[2] : undefined);
     document.body.classList.add('ready');
   }

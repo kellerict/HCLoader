@@ -492,7 +492,10 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "continue": "Lanjutkan mendengarkan",
     "continue_title": "Lanjutkan “{title}” di {t}",
     "continue_left": "sisa {t}",
-    "continue_forget": "Hapus dari “Lanjutkan mendengarkan”"
+    "continue_forget": "Hapus dari “Lanjutkan mendengarkan”",
+    "export": "M3U",
+    "export_title": "Ekspor yang ditampilkan sebagai playlist M3U8",
+    "export_continue": "Ekspor “Lanjutkan mendengarkan” sebagai playlist"
   },
   "player": {
     "label": "Pemutar mini",
@@ -534,7 +537,9 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "sleep_off": "Matikan",
     "sleep_on": "Timer: berhenti dalam {t}",
     "sleep_end_on": "Timer: berhenti di akhir set ini",
-    "sleep_done": "Timer: pemutaran dihentikan"
+    "sleep_done": "Timer: pemutaran dihentikan",
+    "queue_pos": "{i}/{n}",
+    "queue_title": "Putar semua · {label}: set {i} dari {n}"
   },
   "log": {
     "title": "Log",
@@ -666,7 +671,8 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
       "backfill": "Baca semua (sekali)",
       "loudness": "Kenyaringan",
       "memory": "Memori & bentuk gelombang",
-      "analysis": "Analisis (offline, ffmpeg)"
+      "analysis": "Analisis (offline, ffmpeg)",
+      "playlists": "Playlist (M3U8)"
     },
     "general": {
       "language": {
@@ -1234,6 +1240,31 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
       "running": "Menganalisis … {done} / {total}",
       "no_ffmpeg_title": "ffmpeg tidak ada",
       "no_ffmpeg": "Kenyaringan dan bentuk gelombang memerlukan ffmpeg (bin\\ffmpeg.exe, dipasang oleh setup.ps1). Pengaturan › Pemeliharaan menampilkan statusnya."
+    },
+    "playlists": {
+      "folder": {
+        "label": "Folder playlist",
+        "help": "Tempat playlist hasil ekspor disimpan. Kosong = “Playlists” di folder tujuan.",
+        "ph": "“Playlists” di folder tujuan"
+      },
+      "relative_paths": {
+        "label": "Jalur relatif",
+        "help": "Entri relatif terhadap playlist agar tetap berfungsi saat folder musik dipindahkan (mis. ke USB). File di drive lain selalu mendapat jalur lengkap."
+      },
+      "sync_after_download": {
+        "label": "Perbarui playlist tersimpan setelah unduhan",
+        "help": "Playlist yang diekspor dengan “Selalu perbarui” ditulis ulang setelah setiap unduhan – hanya lokal, tanpa jaringan."
+      }
+    },
+    "playlists_saved": {
+      "label": "Playlist tersimpan",
+      "help": "Setiap ekspor diingat di sini. “Selalu perbarui” menulis ulang setelah unduhan.",
+      "none": "Belum ada playlist yang diekspor – gunakan “M3U” di pustaka, di halaman DJ, atau di daftar periksa.",
+      "gone": "file hilang",
+      "sync": "Selalu perbarui",
+      "sync_title": "Tulis ulang playlist ini setelah unduhan",
+      "forget": "Hapus dari daftar (file tetap ada)",
+      "now": "Perbarui sekarang"
     }
   },
   "opt": {
@@ -1756,7 +1787,9 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "q_unconfirmed": "belum dikonfirmasi: {n}",
     "q_missing": "tanpa hasil: {n}",
     "q_other": "tidak bisa diunduh: {n}",
-    "q_retag": "tag diperbarui: {n}"
+    "q_retag": "tag diperbarui: {n}",
+    "export": "Playlist",
+    "export_title": "Ekspor set yang diunduh dari daftar periksa ini sebagai playlist M3U8"
   },
   "tracks": {
     "nav": "Lagu",
@@ -1820,5 +1853,107 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "play_set": "Putar set dari awal",
     "toast_done": "Tracklist dibaca: {sets}, {tracks}",
     "toast_cancelled": "Membaca tracklist dibatalkan"
+  },
+  "pl": {
+    "title": "Ekspor playlist",
+    "export": "Ekspor",
+    "overwrite": "Timpa",
+    "exists": "Sudah ada playlist dengan nama ini di folder tersebut. “Timpa” akan menggantinya.",
+    "nothing": "Tidak ada yang bisa diekspor – tidak ada set yang diunduh di sini.",
+    "missing": "{n} file hilang – akan dilewati",
+    "name": "Nama file",
+    "folder": "Folder",
+    "browse": "Telusuri …",
+    "paths": "Jalur dalam playlist",
+    "relative": "Relatif",
+    "absolute": "Absolut",
+    "relative_help": "Relatif terhadap playlist – tetap berfungsi jika seluruh folder musik dipindahkan. File di drive lain ditulis dengan jalur lengkap.",
+    "absolute_help": "Jalur lengkap – playlist bisa disimpan di mana saja, tetapi rusak jika musik dipindahkan.",
+    "sync": "Selalu perbarui setelah unduhan",
+    "sync_help": "Ditulis ulang otomatis setelah setiap unduhan.",
+    "sync_off": "Dicatat – berlaku setelah “Perbarui playlist tersimpan setelah unduhan” aktif (Pengaturan › Penyimpanan).",
+    "done": "Playlist disimpan ({sets}): {path}",
+    "skipped": "{n} yang hilang dilewati",
+    "fallback": "{n} di drive lain dengan jalur lengkap",
+    "synced": "Playlist diperbarui: {n}",
+    "sync_failed": "Playlist tidak diperbarui: {n} (lihat log)"
+  },
+  "djs": {
+    "nav": "DJ",
+    "open_title": "Halaman DJ: semua artis di pustaka Anda, dengan alias dan set b2b",
+    "title": "DJ",
+    "sub": "Artis di pustaka Anda",
+    "back_library": "Kembali ke pustaka",
+    "back": "Semua DJ",
+    "add": "Tambah DJ / grup",
+    "search": "Cari DJ atau alias",
+    "sort": "Urutkan",
+    "sort_sets": "Set",
+    "sort_recent": "Terbaru",
+    "sort_name": "Nama",
+    "hidden_chip": "Tersembunyi: {n}",
+    "n_festivals": "Festival: {n}",
+    "n_b2b": "b2b: {n}",
+    "aka": "alias {names}",
+    "unhide": "Tampilkan lagi di daftar",
+    "none_title": "DJ tidak ditemukan",
+    "none_text": "Coba nama atau alias lain.",
+    "empty_title": "Belum ada DJ",
+    "empty_text": "DJ dikenali secara offline dari judul set yang diunduh, daftar periksa festival, dan kanal artis.",
+    "b2b_title": "Dimainkan bersama (b2b) – set dihitung untuk setiap artis",
+    "b2b_with": "b2b dengan {names}",
+    "aliases": "Alias",
+    "no_aliases": "Tanpa alias",
+    "split_title": "Pisahkan “{alias}” – hitung sebagai DJ sendiri",
+    "play_all": "Putar semua",
+    "export": "Ekspor M3U",
+    "export_title": "Ekspor playlist: {name}",
+    "watch": "Tambahkan ke daftar pantau",
+    "discover": "Cari di Temukan",
+    "stat_sets": "Set",
+    "stat_hours": "Jam",
+    "stat_festivals": "Festival",
+    "stat_years": "Tahun",
+    "stat_b2b": "b2b",
+    "other_sets": "Set lain · {year}",
+    "tracks": "Paling sering diputar di set-nya",
+    "track_sets": "{n}×",
+    "tracks_none": "Belum ada daftar lagu untuk set ini – Pustaka › Lagu membacanya secara offline.",
+    "play_all_external": "“Putar semua” memerlukan pemutar bawaan (Pengaturan › Pemutaran).",
+    "watch_exists": "Sudah ada di daftar pantau: {name}",
+    "watch_title": "Pantau {name}",
+    "watch_ok": "Tambahkan ke daftar pantau",
+    "watch_channel": "Set baru dari kanal milik {name} akan masuk ke kotak masuk Anda:",
+    "watch_search": "Kanal sendiri tidak diketahui – daftar pantau akan rutin mencari di YouTube:",
+    "watch_note": "Tidak ada yang diunduh otomatis. Anda bisa mengubah atau menghapus sumber di daftar pantau kapan saja.",
+    "watch_added": "Ditambahkan ke daftar pantau: {name}",
+    "split_q_title": "Pisahkan alias",
+    "split_q": "Hitung set dengan “{alias}” sebagai DJ terpisah, bukan {name}?",
+    "split_ok": "Pisahkan",
+    "split_done": "“{alias}” kembali menjadi DJ sendiri",
+    "edit": "Edit nama dan alias",
+    "edit_title": "Edit {name}",
+    "add_title": "Tambah DJ atau grup",
+    "f_name": "Nama",
+    "f_aliases": "Alias",
+    "f_aliases_help": "Ejaan lain dan nama pendek (mis. “HH”). Set dengan alias dihitung untuk DJ ini.",
+    "f_act_help": "Opsional. Duo dengan “&” di namanya (mis. “D-Block & S-te-Fan”) lalu dihitung sebagai satu grup, bukan b2b.",
+    "f_alias_add": "+ alias",
+    "f_channel": "Kanal sendiri (opsional)",
+    "f_channel_help": "URL kanal YouTube atau SoundCloud – dipakai oleh “Tambahkan ke daftar pantau”.",
+    "saved": "Disimpan",
+    "merge": "Gabungkan dengan DJ lain …",
+    "merge_title": "Gabungkan {name}",
+    "merge_text": "Semua set dan ejaan {name} akan dihitung untuk DJ yang dipilih. Nanti bisa dipisahkan lagi.",
+    "merge_into": "Gabungkan ke",
+    "merge_ok": "Gabungkan",
+    "merge_none": "Tidak ada DJ lain untuk digabungkan.",
+    "merged": "{name} digabungkan",
+    "hide": "Bukan DJ – sembunyikan",
+    "hidden_done": "Disembunyikan dari daftar DJ",
+    "unhidden_done": "Kembali di daftar DJ",
+    "sub_n": {
+      "other": "{n} DJ"
+    }
   }
 });

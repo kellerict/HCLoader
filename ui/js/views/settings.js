@@ -117,6 +117,12 @@
       { k: 'storage.artist_from_title', type: 'bool' },
       { k: 'storage.album_from_edition', type: 'bool' },
       { k: 'storage.title_cleanup_patterns', type: 'chips', lower: false, commaSplits: false, placeholder: 'set.storage.title_cleanup_patterns.ph' },
+      /* v0.8.0 Playlist-Export (M3U8) */
+      { h: 'set.h.playlists' },
+      { k: 'playlists.folder', type: 'text', mono: true, wide: true, browse: true, placeholder: 'set.playlists.folder.ph' },
+      { k: 'playlists.relative_paths', type: 'bool' },
+      { k: 'playlists.sync_after_download', type: 'bool' },
+      { custom: 'playlists' },
     ] },
     { id: 'throttle', fields: [
       { custom: 'backoff', arg: 'youtube' },
@@ -208,7 +214,7 @@
   let cur = 'general';
   let genreKeys = []; // stabile Schlüssel für die Genre-Zeilen (FLIP)
   let gk = 0;
-  const cache = { task: null, versions: null, blacklist: null, poTest: null, update: null, before: null, restart: false, backups: [], freshBackup: '', fest: null, assign: null, series: null, seriesHidden: false, analysis: null, anRun: null };
+  const cache = { task: null, versions: null, blacklist: null, poTest: null, update: null, before: null, restart: false, backups: [], freshBackup: '', fest: null, assign: null, series: null, seriesHidden: false, analysis: null, anRun: null, playlists: null };
 
   const isDirtyKey = (k) => !eq(get(work, k), get(saved, k));
   const dirtyKeys = () => [...new Set(TABS.flatMap(tabKeys))].filter(isDirtyKey); // ein Feld kann in zwei Tabs stehen
@@ -426,6 +432,43 @@
       });
       paint();
       HC.bridge.safe('get_blacklist').then((l) => { if (l) { cache.blacklist = l; paint(); } });
+    },
+
+    /* v0.8.0: gespeicherte (exportierte) Playlists – «Aktuell halten» an/aus, aus der Liste nehmen, jetzt neu schreiben */
+    playlists(host) {
+      const paint = () => {
+        const d = cache.playlists;
+        const items = d ? d.playlists : null;
+        const list = !items ? `<span class="unit">${t('common.loading')}</span>`
+          : !items.length ? `<span class="unit">${esc(t('set.playlists_saved.none'))}</span>`
+            : `<ul class="pl-saved">${items.map((p) => `<li data-pl="${p.id}"><span class="pl-s-t"><b title="${esc(p.path)}">${esc(p.name)}</b><small class="mono" title="${esc(p.path)}">${esc(p.path)}</small></span>
+                <span class="pl-s-n mono">${esc(t('tracks.n_sets', { n: util.fmtNum(p.count), count: p.count }))}${p.exists ? '' : ` · ${esc(t('set.playlists_saved.gone'))}`}</span>
+                <label class="pl-s-sync" title="${esc(t('set.playlists_saved.sync_title'))}">${ui.toggle(p.sync, `data-pls="${p.id}"`)}<span>${esc(t('set.playlists_saved.sync'))}</span></label>
+                <button type="button" class="iconbtn" data-plf="${p.id}" title="${esc(t('set.playlists_saved.forget'))}" aria-label="${esc(t('set.playlists_saved.forget'))}">${I.x}</button></li>`).join('')}</ul>
+              <div class="pl-s-foot"><button type="button" class="btn sm ghost" data-pl-now${items.some((p) => p.sync) ? '' : ' disabled'}>${I.refresh}${esc(t('set.playlists_saved.now'))}</button></div>`;
+        host.innerHTML = row('set.playlists_saved', list);
+      };
+      const load = async () => { const d = await HC.bridge.safe('get_saved_playlists'); if (d && d.ok) { cache.playlists = d; if (host.isConnected) paint(); } };
+      host._paint = paint;
+      host.addEventListener('click', async (e) => {
+        const tg = e.target.closest('[data-pls]'), fg = e.target.closest('[data-plf]'), now = e.target.closest('[data-pl-now]');
+        if (tg) {
+          const p = cache.playlists.playlists.find((x) => String(x.id) === tg.dataset.pls);
+          const r = await HC.bridge.safe('set_playlist_sync', p.id, !p.sync);
+          if (r && r.ok) { p.sync = !p.sync; paint(); } else if (r) ui.toast(r.error || t('err.generic'), 'err');
+        } else if (fg) {
+          const r = await HC.bridge.safe('forget_playlist', +fg.dataset.plf);
+          if (r && r.ok) load(); else if (r) ui.toast(r.error || t('err.generic'), 'err');
+        } else if (now && !now.disabled) {
+          ui.busy(now, true);
+          const r = await HC.bridge.safe('sync_playlists');
+          ui.busy(now, false);
+          if (r && r.ok) load();
+        }
+      });
+      HC.bridge.on('playlists_changed', () => { if (host.isConnected) load(); });
+      paint();
+      load();
     },
 
     /* Vorschau des Ablagepfads */
@@ -1233,5 +1276,5 @@
     render();
   }
 
-  HC.views.settings = { init, show, reset() { saved = null; Object.assign(cache, { task: null, versions: null, blacklist: null, poTest: null, update: null, before: null, restart: false, backups: [], freshBackup: '', fest: null, assign: null, series: null, seriesHidden: false, analysis: null, anRun: null }); } };
+  HC.views.settings = { init, show, reset() { saved = null; Object.assign(cache, { task: null, versions: null, blacklist: null, poTest: null, update: null, before: null, restart: false, backups: [], freshBackup: '', fest: null, assign: null, series: null, seriesHidden: false, analysis: null, anRun: null, playlists: null }); } };
 })();

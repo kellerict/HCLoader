@@ -506,7 +506,10 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "continue": "Weiterhören",
     "continue_title": "«{title}» bei {t} fortsetzen",
     "continue_left": "noch {t}",
-    "continue_forget": "Aus «Weiterhören» entfernen"
+    "continue_forget": "Aus «Weiterhören» entfernen",
+    "export": "M3U",
+    "export_title": "Das Angezeigte als M3U8-Playlist exportieren",
+    "export_continue": "«Weiterhören» als Playlist exportieren"
   },
   "player": {
     "label": "Mini-Player",
@@ -549,7 +552,9 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "sleep_off": "Ausschalten",
     "sleep_on": "Schlaf-Timer: stoppt in {t}",
     "sleep_end_on": "Schlaf-Timer: stoppt am Ende dieses Sets",
-    "sleep_done": "Schlaf-Timer: Wiedergabe gestoppt"
+    "sleep_done": "Schlaf-Timer: Wiedergabe gestoppt",
+    "queue_pos": "{i}/{n}",
+    "queue_title": "Alle abspielen · {label}: Set {i} von {n}"
   },
   "log": {
     "title": "Protokoll",
@@ -686,7 +691,8 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
       "backfill": "Alles einlesen (einmalig)",
       "loudness": "Lautheit",
       "memory": "Gedächtnis & Wellenform",
-      "analysis": "Analyse (offline, ffmpeg)"
+      "analysis": "Analyse (offline, ffmpeg)",
+      "playlists": "Playlists (M3U8)"
     },
     "general": {
       "start_view": {
@@ -1255,6 +1261,31 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
       "running": "Analysiere … {done} / {total}",
       "no_ffmpeg_title": "ffmpeg fehlt",
       "no_ffmpeg": "Lautheit und Wellenformen brauchen ffmpeg (bin\\ffmpeg.exe, installiert von setup.ps1). Einstellungen › Wartung zeigt den Stand."
+    },
+    "playlists": {
+      "folder": {
+        "label": "Playlist-Ordner",
+        "help": "Hier landen exportierte Playlists. Leer = «Playlists» im Zielordner.",
+        "ph": "«Playlists» im Zielordner"
+      },
+      "relative_paths": {
+        "label": "Relative Pfade",
+        "help": "Einträge relativ zur Playlist, damit sie weiter funktioniert, wenn der Musikordner umzieht (z.B. auf einen USB-Stick). Dateien auf einem anderen Laufwerk bekommen immer den vollen Pfad."
+      },
+      "sync_after_download": {
+        "label": "Gespeicherte Playlists nach Downloads aktualisieren",
+        "help": "Mit «Aktuell halten» exportierte Playlists werden nach jedem Download neu geschrieben – nur lokal, kein Netzwerk."
+      }
+    },
+    "playlists_saved": {
+      "label": "Gespeicherte Playlists",
+      "help": "Jeder Export wird hier gemerkt. «Aktuell halten» schreibt ihn nach Downloads neu.",
+      "none": "Noch keine Playlists exportiert – mit «M3U» in der Bibliothek, auf einer DJ-Seite oder in einer Checkliste.",
+      "gone": "Datei fehlt",
+      "sync": "Aktuell halten",
+      "sync_title": "Diese Playlist nach Downloads neu schreiben",
+      "forget": "Aus der Liste nehmen (die Datei bleibt)",
+      "now": "Jetzt aktualisieren"
     }
   },
   "opt": {
@@ -1790,7 +1821,9 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "q_unconfirmed": "unbestätigt: {n}",
     "q_missing": "ohne Treffer: {n}",
     "q_other": "nicht ladbar: {n}",
-    "q_retag": "neu getaggt: {n}"
+    "q_retag": "neu getaggt: {n}",
+    "export": "Playlist",
+    "export_title": "Die geladenen Sets dieser Checkliste als M3U8-Playlist exportieren"
   },
   "tracks": {
     "nav": "Tracks",
@@ -1859,5 +1892,108 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "play_set": "Set von Anfang an abspielen",
     "toast_done": "Tracklisten eingelesen: {sets}, {tracks}",
     "toast_cancelled": "Tracklisten einlesen abgebrochen"
+  },
+  "pl": {
+    "title": "Playlist exportieren",
+    "export": "Exportieren",
+    "overwrite": "Überschreiben",
+    "exists": "In diesem Ordner gibt es schon eine Playlist mit diesem Namen. «Überschreiben» ersetzt sie.",
+    "nothing": "Nichts zu exportieren – hier gibt es keine geladenen Sets.",
+    "missing": "{n} Dateien fehlen – sie werden übersprungen",
+    "name": "Dateiname",
+    "folder": "Ordner",
+    "browse": "Durchsuchen …",
+    "paths": "Pfade in der Playlist",
+    "relative": "Relativ",
+    "absolute": "Absolut",
+    "relative_help": "Relativ zur Playlist – funktioniert weiter, wenn du den ganzen Musikordner verschiebst. Dateien auf einem anderen Laufwerk werden mit vollem Pfad geschrieben.",
+    "absolute_help": "Volle Pfade – die Playlist kann überall liegen, passt aber nicht mehr, wenn die Musik umzieht.",
+    "sync": "Nach Downloads aktuell halten",
+    "sync_help": "Wird nach jedem Download automatisch neu geschrieben.",
+    "sync_off": "Vorgemerkt – wirkt, sobald «Gespeicherte Playlists nach Downloads aktualisieren» an ist (Einstellungen › Ablage).",
+    "done": "Playlist gespeichert ({sets}): {path}",
+    "skipped": "{n} fehlende übersprungen",
+    "fallback": "{n} auf anderem Laufwerk mit vollem Pfad",
+    "synced": "Playlists aktualisiert: {n}",
+    "sync_failed": "Playlists nicht aktualisiert: {n} (siehe Protokoll)"
+  },
+  "djs": {
+    "nav": "DJs",
+    "open_title": "DJ-Seiten: alle Artists deiner Bibliothek, mit Aliassen und b2b-Sets",
+    "title": "DJs",
+    "sub": "Artists in deiner Bibliothek",
+    "back_library": "Zurück zur Bibliothek",
+    "back": "Alle DJs",
+    "add": "DJ / Act hinzufügen",
+    "search": "DJs oder Aliasse suchen",
+    "sort": "Sortieren",
+    "sort_sets": "Sets",
+    "sort_recent": "Zuletzt",
+    "sort_name": "Name",
+    "hidden_chip": "Ausgeblendet: {n}",
+    "n_festivals": "Festivals: {n}",
+    "n_b2b": "b2b: {n}",
+    "aka": "alias {names}",
+    "unhide": "Wieder in der Liste zeigen",
+    "none_title": "Kein DJ gefunden",
+    "none_text": "Versuch es mit einem anderen Namen oder Alias.",
+    "empty_title": "Noch keine DJs",
+    "empty_text": "DJs werden offline aus den Titeln deiner geladenen Sets, aus Festival-Checklisten und aus Artist-Kanälen erkannt.",
+    "b2b_title": "Zusammen gespielt (b2b) – das Set zählt für jeden Artist",
+    "b2b_with": "b2b mit {names}",
+    "aliases": "Aliasse",
+    "no_aliases": "Keine Aliasse",
+    "split_title": "«{alias}» abtrennen – als eigenen DJ zählen",
+    "play_all": "Alle abspielen",
+    "export": "M3U exportieren",
+    "export_title": "Playlist exportieren: {name}",
+    "watch": "Zur Watchlist",
+    "discover": "In Entdecken suchen",
+    "stat_sets": "Sets",
+    "stat_hours": "Stunden",
+    "stat_festivals": "Festivals",
+    "stat_years": "Jahre",
+    "stat_b2b": "b2b",
+    "other_sets": "Weitere Sets · {year}",
+    "tracks": "Am meisten gespielt in diesen Sets",
+    "track_sets": "{n}×",
+    "tracks_none": "Für diese Sets gibt es noch keine Tracklisten – Bibliothek › Tracks liest sie offline ein.",
+    "play_all_external": "«Alle abspielen» braucht den eingebauten Player (Einstellungen › Wiedergabe).",
+    "watch_exists": "Schon in der Watchlist: {name}",
+    "watch_title": "{name} beobachten",
+    "watch_ok": "Zur Watchlist hinzufügen",
+    "watch_channel": "Neue Sets aus dem eigenen Kanal von {name} landen in deinem Eingang:",
+    "watch_search": "Kein eigener Kanal bekannt – die Watchlist sucht regelmässig auf YouTube nach:",
+    "watch_note": "Es wird nichts automatisch geladen. Du kannst die Quelle in der Watchlist jederzeit ändern oder entfernen.",
+    "watch_added": "Zur Watchlist hinzugefügt: {name}",
+    "split_q_title": "Alias abtrennen",
+    "split_q": "Sets mit «{alias}» als eigenen DJ zählen statt für {name}?",
+    "split_ok": "Abtrennen",
+    "split_done": "«{alias}» ist wieder ein eigener DJ",
+    "edit": "Name und Aliasse bearbeiten",
+    "edit_title": "{name} bearbeiten",
+    "add_title": "DJ oder Act hinzufügen",
+    "f_name": "Name",
+    "f_aliases": "Aliasse",
+    "f_aliases_help": "Andere Schreibweisen und Kurznamen (z.B. «HH»). Sets mit einem Alias zählen für diesen DJ.",
+    "f_act_help": "Optional. Ein Duo mit «&» im Namen (z.B. «D-Block & S-te-Fan») zählt dann als ein Act statt als b2b.",
+    "f_alias_add": "+ Alias",
+    "f_channel": "Eigener Kanal (optional)",
+    "f_channel_help": "URL des YouTube- oder SoundCloud-Kanals – für «Zur Watchlist».",
+    "saved": "Gespeichert",
+    "merge": "Mit anderem DJ zusammenführen …",
+    "merge_title": "{name} zusammenführen",
+    "merge_text": "Alle Sets und Schreibweisen von {name} zählen dann für den gewählten DJ. Du kannst ihn später wieder abtrennen.",
+    "merge_into": "Zusammenführen mit",
+    "merge_ok": "Zusammenführen",
+    "merge_none": "Es gibt keinen anderen DJ zum Zusammenführen.",
+    "merged": "{name} zusammengeführt",
+    "hide": "Kein DJ – ausblenden",
+    "hidden_done": "Aus der DJ-Liste ausgeblendet",
+    "unhidden_done": "Wieder in der DJ-Liste",
+    "sub_n": {
+      "one": "{n} DJ",
+      "other": "{n} DJs"
+    }
   }
 });

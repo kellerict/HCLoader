@@ -506,7 +506,10 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "continue": "Fortsätt lyssna",
     "continue_title": "Fortsätt ”{title}” vid {t}",
     "continue_left": "{t} kvar",
-    "continue_forget": "Ta bort från ”Fortsätt lyssna”"
+    "continue_forget": "Ta bort från ”Fortsätt lyssna”",
+    "export": "M3U",
+    "export_title": "Exportera det som visas som M3U8-spellista",
+    "export_continue": "Exportera ”Fortsätt lyssna” som spellista"
   },
   "player": {
     "label": "Minispelare",
@@ -549,7 +552,9 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "sleep_off": "Stäng av",
     "sleep_on": "Timer: stoppar om {t}",
     "sleep_end_on": "Timer: stoppar i slutet av det här setet",
-    "sleep_done": "Timer: uppspelningen stoppad"
+    "sleep_done": "Timer: uppspelningen stoppad",
+    "queue_pos": "{i}/{n}",
+    "queue_title": "Spela alla · {label}: set {i} av {n}"
   },
   "log": {
     "title": "Logg",
@@ -686,7 +691,8 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
       "backfill": "Läs in allt (en gång)",
       "loudness": "Ljudstyrka",
       "memory": "Minne & vågform",
-      "analysis": "Analys (offline, ffmpeg)"
+      "analysis": "Analys (offline, ffmpeg)",
+      "playlists": "Spellistor (M3U8)"
     },
     "general": {
       "language": {
@@ -1255,6 +1261,31 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
       "running": "Analyserar … {done} / {total}",
       "no_ffmpeg_title": "ffmpeg saknas",
       "no_ffmpeg": "Ljudstyrka och vågformer kräver ffmpeg (bin\\ffmpeg.exe, installeras av setup.ps1). Inställningar › Underhåll visar status."
+    },
+    "playlists": {
+      "folder": {
+        "label": "Mapp för spellistor",
+        "help": "Här sparas exporterade spellistor. Tomt = ”Playlists” i målmappen.",
+        "ph": "”Playlists” i målmappen"
+      },
+      "relative_paths": {
+        "label": "Relativa sökvägar",
+        "help": "Poster relativt spellistan så att den fungerar även när musikmappen flyttas (t.ex. till ett USB-minne). Filer på en annan enhet får alltid full sökväg."
+      },
+      "sync_after_download": {
+        "label": "Uppdatera sparade spellistor efter nedladdningar",
+        "help": "Spellistor som exporterats med ”Håll uppdaterad” skrivs om efter varje nedladdning – bara lokalt, inget nätverk."
+      }
+    },
+    "playlists_saved": {
+      "label": "Sparade spellistor",
+      "help": "Varje export sparas här. ”Håll uppdaterad” skriver om den efter nedladdningar.",
+      "none": "Inga spellistor exporterade än – använd ”M3U” i biblioteket, på en DJ-sida eller i en checklista.",
+      "gone": "filen saknas",
+      "sync": "Håll uppdaterad",
+      "sync_title": "Skriv om den här spellistan efter nedladdningar",
+      "forget": "Ta bort från listan (filen finns kvar)",
+      "now": "Uppdatera nu"
     }
   },
   "opt": {
@@ -1790,7 +1821,9 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "q_unconfirmed": "obekräftade: {n}",
     "q_missing": "utan träff: {n}",
     "q_other": "kan inte laddas: {n}",
-    "q_retag": "omtaggade: {n}"
+    "q_retag": "omtaggade: {n}",
+    "export": "Spellista",
+    "export_title": "Exportera checklistans nedladdade set som M3U8-spellista"
   },
   "tracks": {
     "nav": "Låtar",
@@ -1859,5 +1892,108 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "play_set": "Spela setet från början",
     "toast_done": "Spellistor inlästa: {sets}, {tracks}",
     "toast_cancelled": "Inläsning av spellistor avbruten"
+  },
+  "pl": {
+    "title": "Exportera spellista",
+    "export": "Exportera",
+    "overwrite": "Skriv över",
+    "exists": "Det finns redan en spellista med det här namnet i mappen. ”Skriv över” ersätter den.",
+    "nothing": "Inget att exportera – här finns inga nedladdade set.",
+    "missing": "{n} filer saknas – de hoppas över",
+    "name": "Filnamn",
+    "folder": "Mapp",
+    "browse": "Bläddra …",
+    "paths": "Sökvägar i spellistan",
+    "relative": "Relativa",
+    "absolute": "Absoluta",
+    "relative_help": "Relativt spellistan – fungerar även om du flyttar hela musikmappen. Filer på en annan enhet skrivs med full sökväg.",
+    "absolute_help": "Fullständiga sökvägar – spellistan kan ligga var som helst, men slutar fungera om musiken flyttas.",
+    "sync": "Håll uppdaterad efter nedladdningar",
+    "sync_help": "Skrivs om automatiskt efter varje nedladdning.",
+    "sync_off": "Noterat – gäller när ”Uppdatera sparade spellistor efter nedladdningar” är på (Inställningar › Lagring).",
+    "done": "Spellista sparad ({sets}): {path}",
+    "skipped": "{n} saknade överhoppade",
+    "fallback": "{n} på annan enhet med full sökväg",
+    "synced": "Spellistor uppdaterade: {n}",
+    "sync_failed": "Spellistor ej uppdaterade: {n} (se loggen)"
+  },
+  "djs": {
+    "nav": "DJ:er",
+    "open_title": "DJ-sidor: alla artister i ditt bibliotek, med alias och b2b-set",
+    "title": "DJ:er",
+    "sub": "Artister i ditt bibliotek",
+    "back_library": "Tillbaka till biblioteket",
+    "back": "Alla DJ:er",
+    "add": "Lägg till DJ / akt",
+    "search": "Sök DJ:er eller alias",
+    "sort": "Sortera",
+    "sort_sets": "Set",
+    "sort_recent": "Senaste",
+    "sort_name": "Namn",
+    "hidden_chip": "Dolda: {n}",
+    "n_festivals": "Festivaler: {n}",
+    "n_b2b": "b2b: {n}",
+    "aka": "alias {names}",
+    "unhide": "Visa i listan igen",
+    "none_title": "Ingen DJ hittades",
+    "none_text": "Prova ett annat namn eller alias.",
+    "empty_title": "Inga DJ:er än",
+    "empty_text": "DJ:er känns igen offline från titlarna på dina nedladdade set, festivalchecklistor och artistkanaler.",
+    "b2b_title": "Spelat tillsammans (b2b) – setet räknas för varje artist",
+    "b2b_with": "b2b med {names}",
+    "aliases": "Alias",
+    "no_aliases": "Inga alias",
+    "split_title": "Dela av ”{alias}” – räkna som egen DJ",
+    "play_all": "Spela alla",
+    "export": "Exportera M3U",
+    "export_title": "Exportera spellista: {name}",
+    "watch": "Lägg till i bevakning",
+    "discover": "Sök i Upptäck",
+    "stat_sets": "Set",
+    "stat_hours": "Timmar",
+    "stat_festivals": "Festivaler",
+    "stat_years": "År",
+    "stat_b2b": "b2b",
+    "other_sets": "Andra set · {year}",
+    "tracks": "Mest spelat i setten",
+    "track_sets": "{n}×",
+    "tracks_none": "Inga låtlistor för de här setten än – Bibliotek › Låtar läser in dem offline.",
+    "play_all_external": "”Spela alla” kräver den inbyggda spelaren (Inställningar › Uppspelning).",
+    "watch_exists": "Finns redan i bevakningen: {name}",
+    "watch_title": "Bevaka {name}",
+    "watch_ok": "Lägg till i bevakning",
+    "watch_channel": "Nya set från {name}s egen kanal hamnar i din inkorg:",
+    "watch_search": "Ingen egen kanal känd – bevakningen söker regelbundet på YouTube efter:",
+    "watch_note": "Inget laddas ner automatiskt. Du kan ändra eller ta bort källan i bevakningen när som helst.",
+    "watch_added": "Tillagd i bevakningen: {name}",
+    "split_q_title": "Dela av alias",
+    "split_q": "Räkna set krediterade som ”{alias}” som en egen DJ i stället för {name}?",
+    "split_ok": "Dela av",
+    "split_done": "”{alias}” är en egen DJ igen",
+    "edit": "Redigera namn och alias",
+    "edit_title": "Redigera {name}",
+    "add_title": "Lägg till DJ eller akt",
+    "f_name": "Namn",
+    "f_aliases": "Alias",
+    "f_aliases_help": "Andra stavningar och korta namn (t.ex. ”HH”). Set med ett alias räknas för den här DJ:n.",
+    "f_act_help": "Valfritt. En duo med ”&” i namnet (t.ex. ”D-Block & S-te-Fan”) räknas då som en akt i stället för b2b.",
+    "f_alias_add": "+ alias",
+    "f_channel": "Egen kanal (valfritt)",
+    "f_channel_help": "URL till YouTube- eller SoundCloud-kanalen – används av ”Lägg till i bevakning”.",
+    "saved": "Sparat",
+    "merge": "Slå ihop med annan DJ …",
+    "merge_title": "Slå ihop {name}",
+    "merge_text": "Alla set och stavningar av {name} räknas då för vald DJ. Du kan dela av senare.",
+    "merge_into": "Slå ihop med",
+    "merge_ok": "Slå ihop",
+    "merge_none": "Det finns ingen annan DJ att slå ihop med.",
+    "merged": "{name} ihopslagen",
+    "hide": "Inte en DJ – dölj",
+    "hidden_done": "Dold i DJ-listan",
+    "unhidden_done": "Visas i DJ-listan igen",
+    "sub_n": {
+      "one": "{n} DJ",
+      "other": "{n} DJ:er"
+    }
   }
 });

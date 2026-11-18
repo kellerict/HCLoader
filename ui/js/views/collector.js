@@ -363,7 +363,7 @@
       <button type="button" class="linkbtn" data-co="none"${on ? '' : ' disabled'}>${esc(t('collector.select_none'))}</button>
       ${filtersOn() ? `<span class="co-filtered">${esc(t('collector.shown', { n: list.length, total: rows.length }))}</span><button type="button" class="linkbtn" data-co="clear">${esc(t('library.clear'))}</button>` : ''}
       ${s.to_confirm ? `<button type="button" class="chip warnchip${filter.status === 'to_confirm' ? ' on' : ''}" data-co="to-confirm" aria-pressed="${filter.status === 'to_confirm'}" title="${esc(t('collector.to_confirm_title'))}">${I.warn}<span>${esc(t('collector.to_confirm', { n: s.to_confirm }))}</span></button>` : ''}
-      <span class="co-go"><button type="button" class="btn" data-co="find" title="${esc(findTitle)}"${busy || !findN ? ' disabled' : ''}>${I.search}${esc(t(s.to_search || !again ? 'collector.find' : 'collector.find_again', { n: findN }))}</button>
+      <span class="co-go">${s.downloaded ? `<button type="button" class="btn ghost" data-co="export" title="${esc(t('collector.export_title'))}">${I.playlist}${esc(t('collector.export', { n: s.downloaded }))}</button>` : ''}<button type="button" class="btn" data-co="find" title="${esc(findTitle)}"${busy || !findN ? ' disabled' : ''}>${I.search}${esc(t(s.to_search || !again ? 'collector.find' : 'collector.find_again', { n: findN }))}</button>
       <button type="button" class="btn primary" data-co="queue" title="${esc(t(s.ready ? 'collector.queue_title' : 'collector.queue_none'))}"${s.ready ? '' : ' disabled'}>${I.download}${esc(t('collector.queue', { n: s.ready }))}</button></span>`;
   }
   function paintAll(animate) {
@@ -806,6 +806,7 @@
     if (act === 'menu') return editionMenu(b);
     if (act === 'clear') return clearFilters();
     if (act === 'find') return findAsk();
+    if (act === 'export') return HC.playlist.export({ kind: 'checklist', edition_id: ed.edition_id }); // v0.8.0
     if (act === 'queue') return queueChecked(b);
     if (act === 'job-cancel') return findCancel();
     if (act === 'job-resume') return findStart(false, true);

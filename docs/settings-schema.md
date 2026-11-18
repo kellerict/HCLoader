@@ -90,6 +90,9 @@ Leitfaden `docs/TRANSLATING.md`); Validierungsmeldungen aus `app/locales/<code>.
 | | `collector_searches_per_hour` | int | 10 | 1–200 (v0.5.0 Festival-Sammler): Suchen pro Stunde für fehlende Sets, gleichmässig verteilt (10 = alle 6 Min.); nie mehr als `throttle.max_searches_per_hour` |
 | | `collector_results_per_search` | int | 10 | 1–20: Treffer pro Suche (eine Anfrage pro Suche, YouTube liefert etwa 20 pro Seite) |
 | | `collector_auto_confirm` | float | 0.85 | 0.5–1.0: ab dieser Sicherheit gilt ein Treffer ohne Bestätigung – nur mit DJ, Festival und Jahr im Titel |
+| `playlists` (Tab «Ablage & Tags», Abschnitt «Playlists (M3U8)», v0.8.0) | `folder` | str | `""` | Ordner für exportierte Playlists (`%USERPROFILE%` usw. wie beim Zielordner); leer = `<storage.target_dir>\\Playlists`. Der Export-Dialog schlägt ihn vor und erlaubt einen anderen (Ordnerdialog) |
+| | `relative_paths` | bool | true | Standard im Export-Dialog: Einträge relativ zum Ort der Playlist; Datei auf anderem Laufwerk/UNC → immer absolut (Hinweis) |
+| | `sync_after_download` | bool | false | Gespeicherte Playlists mit «Aktuell halten» nach jedem Download (GUI und Headless-Lauf) neu schreiben – nur lokal |
 | `maintenance` (Wartung) | `check_updates_on_start` | bool | true | max. 1×/Tag |
 | | `check_app_updates_on_start` | bool | true | HCLoader-Update (GitHub-Release) einmal pro Start prüfen |
 | | `apply_update_on_exit` | bool | true | bereitgelegtes App-Update beim Beenden einspielen |
@@ -165,3 +168,13 @@ Bridge (`ui/js/bridge.js`): `get_settings()` → `{values, defaults}`; `save_set
   die ReplayGain-2.0-Referenz −18 LUFS (Opus: R128 auf −23 LUFS), damit andere Player sie richtig lesen.
 - Der Schlaf-Timer ist bewusst **keine** Einstellung: er gilt nur für die laufende Sitzung und wird im
   Player gewählt (15/30/45/60 Min. oder Ende des Sets; die letzten 10 s blenden aus).
+
+## v0.8.0 – Playlists & DJ-Seiten (Entscheid)
+- Neuer Abschnitt `playlists` statt Schlüsseln unter `storage`: der Export hat eigene Optionen; in der GUI steht
+  er trotzdem im Tab «Ablage & Tags» (Ordner, relative Pfade, Sync) zusammen mit der Liste «Gespeicherte
+  Playlists» (`get_saved_playlists`, «Aktuell halten» pro Playlist, aus der Liste nehmen, «Jetzt aktualisieren»).
+- Welche Playlists aktuell gehalten werden, steht in der DB (Tabelle `playlists`, Migration 13), nicht in
+  `config.yaml`; der Schalter `sync_after_download` ist der globale Hauptschalter.
+- DJ-Aliasse, Zusammenführungen und eigene Kanäle stehen ebenfalls in der DB (Tabelle `artists`), nicht in
+  `config.yaml` – es sind Daten, keine Einstellungen. Startliste bekannter Aliasse: `app/data/artists.yaml`
+  (wird einmal übernommen, danach gelten die Änderungen des Users).

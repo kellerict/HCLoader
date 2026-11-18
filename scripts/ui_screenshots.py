@@ -690,6 +690,63 @@ class Shooter:
         page.keyboard.press("Escape")
         self.clear_toasts()
 
+    def djs_scenes(self) -> None:
+        """v0.8.0 DJ pages + playlist export: DJ list, a DJ page (aliases, b2b, festivals, most
+        played tracks), «Add to watchlist» confirmation, edit dialog, export dialog (also the
+        overwrite question), saved playlists in Settings › Storage."""
+        page = self.page
+        self.go("library")
+        page.click("#lib-djs-btn")
+        page.wait_for_selector(".dj-card")
+        self.settle()
+        self.shot("library-djs")
+        page.click('.dj-card[data-key="headhunterz"]')
+        page.wait_for_selector(".dj-set")
+        self.settle()
+        self.shot("library-dj-page")
+        page.click("[data-dj=watch]")
+        page.wait_for_selector(".modal .pathbox")
+        self.settle()
+        self.shot("library-dj-watch")
+        page.keyboard.press("Escape")
+        page.click("[data-dj=list]")
+        page.wait_for_selector(".dj-card")
+        page.click('.dj-card[data-key="angerfist"]')
+        page.wait_for_selector(".dj-role")
+        self.settle()
+        self.shot("library-dj-b2b")
+        page.click("[data-dj=more]")
+        page.click('.menu [data-k="edit"]')
+        page.wait_for_selector("#dj-f-aliases .tags input")
+        self.settle()
+        self.shot("library-dj-edit")
+        page.keyboard.press("Escape")
+        page.click("[data-dj=export]")
+        page.wait_for_selector(".pl-dlg")
+        self.settle()
+        self.shot("library-playlist-export")
+        page.click(".modal [data-act=ok]")
+        page.wait_for_selector(".modal", state="detached")
+        self.clear_toasts()
+        page.click("[data-dj=export]")
+        page.wait_for_selector(".pl-dlg")
+        page.click(".modal [data-act=ok]")
+        page.wait_for_selector("#pl-msg .notice")
+        self.settle()
+        self.shot("library-playlist-exists")
+        page.keyboard.press("Escape")
+        page.click("[data-dj=back]")
+        self.settle()
+        self.clear_toasts()
+        self.go("settings")
+        self.tab("storage")
+        page.evaluate(
+            "document.querySelector('[data-custom=playlists]').scrollIntoView({block: 'center'})"
+        )
+        page.wait_for_selector(".pl-saved li")
+        self.settle()
+        self.shot("settings-playlists")
+
     def log_scenes(self) -> None:
         """Phase 5: Live-Log (Filter, Suche, Pause beim Hochscrollen), Lauf-Historie als Tabelle."""
         page = self.page
@@ -951,6 +1008,7 @@ class Shooter:
         self.backfill_scenes()
         self.collector_scenes()
         self.tracks_scenes()
+        self.djs_scenes()
 
         # m9: in pywebview gestartet, Backend antwortet nicht -> Fehlerzustand statt Mock
         page.clock.install(time=FIXED_NOW)

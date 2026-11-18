@@ -670,6 +670,68 @@ Beispiel `get_waveform("dQw4w9WgXcQ")` → `{"ok": true, "status": "pending"}`, 
 `waveform` `{"id": "dQw4w9WgXcQ", "ok": true, "peaks": [0, 12, 180, 255, …], "duration": 3712,
 "loudness": {"lufs": -7.9, "true_peak": 1.1, "gain": -10.1, "peak": 1.135011, "source": "analysis"}}`.
 
+### DJ pages, playlist export (v0.8.0)
+
+Entscheide: `docs/decisions.md` «DJ pages and playlist export (v0.8.0)». Alles **lokal** (kein Netz, kein
+Throttle). Backend: `app/core/artists.py` (Ableitung, Aliasse, Zusammenführen/Abtrennen, Watchlist-Vorschlag),
+`app/core/playlists.py` (M3U8, Pfade, gespeicherte Playlists, Sync). Tabellen `artists` und `playlists`
+(Migration 13, automatisches Backup vorher). Index-Aufbau, Export und Sync laufen im Thread
+`hcloader-playlists` (`Api._pl_worker`), nie im pywebview-Callback-Thread.
+
+**Wer hat ein Set gespielt?** 1. bestätigte Zeile einer Festival-Checkliste (`checklist_rows.artist`),
+2. Titel-Segmente ohne Serie/Jahr/Bühne/Set-Art/Gattungswörter, «… by <DJ>», 3. Kanalname (nicht bei
+Veranstalter-Kanälen und zugeordneten Festival-Sets). Getrennt wird an `b2b`, `b3b`, `vs`, `x` und – ausser
+bei einem bekannten Act wie «D-Block & S-te-Fan» – an `&`, `+`, `,`. Jeder Artist eines b2b-Sets bekommt das
+Set (`role: "b2b"`). Identität = `key` (gefaltet, ohne Leerzeichen: «Sub-Zero Project» = «subzeroproject»).
+
+| Methode | Parameter | Rückgabe |
+|---|---|---|
+| `get_artists(opts?)` | `{search, sort: "sets" (Standard) \| "recent" \| "name", hidden: bool}` | `{ok:true, artists:[ArtistSummary], hidden}` – `hidden` = Anzahl ausgeblendeter; `hidden:true` listet nur diese |
+| `get_artist(key)` | Schlüssel oder Alias/Schreibweise | `{ok:true, artist: ArtistSummary, sets:[LibraryItem + role + with], tracks:[{artist, title, version, sets}]}` \| `{ok:false, error}` – Sets neueste zuerst; `with` = Namen der b2b-Partner; `tracks` = Top 10 aus den Tracklisten (ohne ID-Tracks) |
+| `save_artist(data)` | `{key?, name, aliases:[…], channel_url?}` (ohne `key` = neuer DJ/Act) | `{ok:true, key}` \| `{ok:false, errors:{name\|aliases\|channel_url: Meldung}, error}` – Name/Alias eines **anderen gespeicherten** Artists = Fehler (zusammenführen); Alias eines nur abgeleiteten Artists = zusammenführen |
+| `merge_artists(keys, into)` | Liste der Quell-Schlüssel, Ziel-Schlüssel | `{ok:true, key}` \| `{ok:false, errors, error}` – Namen, Aliasse, Schreibweisen der Quellen werden Aliasse des Ziels |
+| `split_artist(key, alias)` | | `{ok:true, key, split}` \| `{ok:false, errors, error}` – Alias wieder eigener Artist |
+| `hide_artist(key, hidden)` | | `{ok:true, key, hidden}` – «kein DJ»; ausgeblendete zählen nirgends mehr als Credit |
+| `get_artist_watch(key)` | | `{ok:true, source:{type, name, url_or_query, platform?}, existing: Source\|null}` – speichert **nichts**; eigener Kanal (gespeichertes `channel_url` oder ein Kanal der Sets mit dem Namen des DJs) → `channel`, sonst `search` «<DJ> live set». Die UI bestätigt und ruft `save_source(source)` |
+| `preview_playlist(spec)` | Spec (siehe unten) | `{ok:true, spec, name, folder, relative, count, missing, seconds, saved: SavedPlaylist\|null}` \| `{ok:false, error}` |
+| `export_playlist(spec, opts?)` | `{name, folder, relative, overwrite, sync}` | `{ok:true, path, count, skipped, absolute_fallback, relative, sync}` \| `{ok:false, exists:true, path}` (fragen, dann mit `overwrite:true`) \| `{ok:false, error}` |
+| `get_saved_playlists()` | | `{ok:true, playlists:[SavedPlaylist], sync_enabled}` |
+| `set_playlist_sync(id, sync)` | | `{ok:true}` \| `{ok:false, error}` |
+| `forget_playlist(id)` | | `{ok:true}` – nur aus der Liste; die Datei bleibt |
+| `sync_playlists(ids?)` | ohne `ids`: alle mit `sync` | `{ok:true, synced, failed, paths}` + Event `playlists_synced` |
+
+`ArtistSummary` = `{key, name, initials, aliases, spellings, channel_url, edited, hidden, sets, b2b, seconds,
+festivals, years:[YYYY], last ("YYYY-MM-DD"|null)}` – `festivals` = verschiedene Serien der Art «festival»,
+`years` = Event-Jahr der Ausgabe, sonst Upload-Jahr, `edited` = vom User geändert (nicht nur Startliste).
+
+`SavedPlaylist` = `{id, name, path, kind, relative, sync, count, updated, exists}`.
+
+**Spec** (sprachneutral, wird bei gespeicherten Playlists abgelegt):
+`{kind:"edition", edition_id}` · `{kind:"series", series_id}` · `{kind:"genre", genre}` · `{kind:"artist", key}` ·
+`{kind:"filter", filters:{search, genre, channel, year, platform, series_id, edition_id}, sort:"newest"|"title"|"channel"|"duration"}` ·
+`{kind:"checklist", edition_id}` (nur Zeilen mit Status `downloaded`) · `{kind:"continue"}` (bis 20).
+
+**Datei:** UTF-8 ohne BOM, `\n`, erste Zeile `#EXTM3U`, je Set `#EXTINF:<Sekunden|-1>,<Artist> - <Titel>` und der
+Pfad. Artist = gutgeschriebene DJs (b2b mit « b2b » verbunden), sonst Kanal; ein Titel-Segment, das nur den
+Artist wiederholt, entfällt. Relativ zum Ordner der Playlist (`os.path.relpath`; unter Windows wirft das bei
+einem anderen Laufwerk/UNC-Freigabe → absoluter Pfad, gezählt in `absolute_fallback`). Fehlende Dateien
+werden übersprungen (`skipped`). Dateiname: `sanitize_filename` + `.m3u8`, gekürzt bis der Pfad unter
+`storage.max_path_length` bleibt; Ordner Standard `playlists.folder` bzw. `<Zielordner>\Playlists`. Atomar
+geschrieben (`.tmp` + `os.replace`). Jeder Export landet in `playlists` (eindeutig nach Pfad).
+
+**Sync:** mit `playlists.sync_after_download` schreibt `Api._after_download` die Playlists mit `sync` neu
+(gebündelt: läuft schon ein Sync, folgt genau einer); der Headless-Lauf ebenso nach seinen Downloads.
+
+Beispiel `export_playlist({"kind": "artist", "key": "headhunterz"}, {"relative": true})` →
+`{"ok": true, "path": "D:\\Musik\\HCLoader\\Playlists\\Headhunterz.m3u8", "count": 4, "skipped": 0,
+"absolute_fallback": 0, "relative": true, "sync": false}`; Datei:
+
+```
+#EXTM3U
+#EXTINF:3660,Headhunterz - Intents Festival 2023 | Mainstage
+..\Hardstyle\Q-dance\2023\2023-06-05 - Headhunterz Intents Festival 2023 Mainstage [iInt23Headh].mp3
+```
+
 ### Festival collector (v0.5.0)
 
 Konzept: `docs/concepts/festivals.md` «v0.5.0 – Collect a whole edition», Entscheide: `docs/decisions.md`
@@ -913,6 +975,7 @@ Status). Ergänzungen der Python-Seite:
 | `collector_rows` | `{edition_id, rows:[ChecklistRow], deleted:[id], reload, stats:ChecklistStats}` | Festival-Sammler: Zeilen geändert (Import, Bearbeiten, Haken, Bestätigen, Treffer des Suchauftrags, Status-Wechsel durch die Queue: `queued` → `downloaded`). `reload:true` (leere `rows`, keine `deleted`) = mehrere Zeilen geändert → `get_checklist` neu holen | 0.5.0 |
 | `collector_job` | `CollectorJob` + `{stats}` \| `{edition_id, state:"none", stats}` | Suchauftrag: Start (`pending`), Beginn (`running`), nach jeder Zeile, beim Warten (`note` = nächste Suche), Abbruch, Unterbrechung, Ende | 0.5.0 |
 | `collector_import` | `{phase, kind:"playlist", edition_id, entries, added, merged, unchecked, requests, cancelled, error}` | Playlist-Import: `phase` `start`, `progress` (nach jeder Seite), `done` oder `error` (`error` = übersetzter Text) | 0.5.0 |
+| `playlists_synced` | `{synced, failed}` | gespeicherte Playlists mit «Aktuell halten» wurden neu geschrieben (nach Downloads mit `playlists.sync_after_download` oder per `sync_playlists`); nur gesendet, wenn mindestens eine geschrieben wurde oder fehlschlug. Die UI zeigt einen leisen Toast und lädt die Liste in den Einstellungen neu | 0.8.0 |
 
 ## Download-Queue (Phase 3)
 
