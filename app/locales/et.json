@@ -567,5 +567,42 @@
     "pass_done": "Valjus analüüsitud: {n} faili, {analysed} valmis, {failed} ebaõnnestus",
     "pass_cancelled": "Valjuse analüüs katkestati: {n} faili, {analysed} valmis, {failed} ebaõnnestus",
     "pass_failed": "Valjuse analüüs ebaõnnestus: {error}"
+  },
+  "artist": {
+    "seed_unreadable": "Artistide loendit ei saa lugeda ({path}): {error}",
+    "aliases_invalid": "Aliased peavad olema nimede loend",
+    "alias_too_long": "Aliases võib olla kuni {max} märki",
+    "too_many_aliases": "Kuni {max} alias artisti kohta",
+    "channel_invalid": "See ei ole kanali URL",
+    "name_missing": "Sisesta nimi",
+    "name_too_long": "Nimes võib olla kuni {max} märki",
+    "name_taken": "„{name}“ kuulub juba artistile {owner} – ühenda pigem need kaks artisti",
+    "saved": "Artist salvestatud: {name}",
+    "unknown": "Artisti ei leitud (kogu muutunud?)",
+    "nothing_to_merge": "Vali ühendamiseks vähemalt üks teine artist",
+    "merged": "Ühendatud artistiga {name}: {names}",
+    "alias_unknown": "„{alias}“ ei ole selle artisti alias",
+    "split": "„{alias}“ eraldatud artistist {name}"
+  },
+  "playlist": {
+    "spec_invalid": "Tundmatu esitusloendi tüüp",
+    "name_edition": "Festival",
+    "name_checklist": "{name} – kontrollnimekiri",
+    "name_continue": "Jätka kuulamist",
+    "name_library": "Kogu",
+    "name_missing": "Sisesta failinimi",
+    "path_too_long": "Esitusloendi tee oleks pikem kui {max} märki – vali lühem kaust",
+    "folder_relative": "Vali täielik kaustatee (nt D:\\Muusika\\Playlists)",
+    "exported": {
+      "one": "Esitusloend kirjutatud: {path} ({n} sett)",
+      "other": "Esitusloend kirjutatud: {path} ({n} setti)"
+    },
+    "write_failed": "Esitusloendit ei saanud kirjutada: {error}",
+    "sync_failed": "Esitusloendit {path} ei saanud uuendada: {error}",
+    "synced": {
+      "one": "{n} esitusloend uuendatud",
+      "other": "{n} esitusloendit uuendatud"
+    },
+    "unknown": "Esitusloendit ei leitud"
   }
 }

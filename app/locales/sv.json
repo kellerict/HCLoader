@@ -567,5 +567,42 @@
     "pass_done": "Ljudstyrka analyserad: {n} filer, {analysed} klara, {failed} misslyckade",
     "pass_cancelled": "Ljudstyrkeanalysen avbröts: {n} filer, {analysed} klara, {failed} misslyckade",
     "pass_failed": "Ljudstyrkeanalysen misslyckades: {error}"
+  },
+  "artist": {
+    "seed_unreadable": "Artistlistan går inte att läsa ({path}): {error}",
+    "aliases_invalid": "Alias måste vara en lista med namn",
+    "alias_too_long": "Ett alias får ha högst {max} tecken",
+    "too_many_aliases": "Högst {max} alias per artist",
+    "channel_invalid": "Det här är ingen kanal-URL",
+    "name_missing": "Ange ett namn",
+    "name_too_long": "Namnet får ha högst {max} tecken",
+    "name_taken": "”{name}” hör redan till {owner} – slå ihop de två artisterna i stället",
+    "saved": "Artist sparad: {name}",
+    "unknown": "Artisten hittades inte (biblioteket ändrat?)",
+    "nothing_to_merge": "Välj minst en annan artist att slå ihop",
+    "merged": "Ihopslaget i {name}: {names}",
+    "alias_unknown": "”{alias}” är inget alias för den här artisten",
+    "split": "”{alias}” delat från {name}"
+  },
+  "playlist": {
+    "spec_invalid": "Okänd spellistetyp",
+    "name_edition": "Festival",
+    "name_checklist": "{name} – checklista",
+    "name_continue": "Fortsätt lyssna",
+    "name_library": "Bibliotek",
+    "name_missing": "Ange ett filnamn",
+    "path_too_long": "Spellistans sökväg skulle bli längre än {max} tecken – välj en kortare mapp",
+    "folder_relative": "Välj en fullständig mappsökväg (t.ex. D:\\Musik\\Playlists)",
+    "exported": {
+      "one": "Spellista skriven: {path} ({n} set)",
+      "other": "Spellista skriven: {path} ({n} set)"
+    },
+    "write_failed": "Spellistan kunde inte skrivas: {error}",
+    "sync_failed": "Spellistan {path} kunde inte uppdateras: {error}",
+    "synced": {
+      "one": "{n} spellista uppdaterad",
+      "other": "{n} spellistor uppdaterade"
+    },
+    "unknown": "Spellistan hittades inte"
   }
 }

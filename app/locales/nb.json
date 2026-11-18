@@ -567,5 +567,42 @@
     "pass_done": "Lydstyrke analysert: {n} filer, {analysed} ferdige, {failed} mislyktes",
     "pass_cancelled": "Lydstyrkeanalysen ble avbrutt: {n} filer, {analysed} ferdige, {failed} mislyktes",
     "pass_failed": "Lydstyrkeanalysen mislyktes: {error}"
+  },
+  "artist": {
+    "seed_unreadable": "Artistlisten kan ikke leses ({path}): {error}",
+    "aliases_invalid": "Alias må være en liste med navn",
+    "alias_too_long": "Et alias kan ha maks {max} tegn",
+    "too_many_aliases": "Maks {max} alias per artist",
+    "channel_invalid": "Dette er ikke en kanal-URL",
+    "name_missing": "Skriv inn et navn",
+    "name_too_long": "Navnet kan ha maks {max} tegn",
+    "name_taken": "«{name}» hører allerede til {owner} – slå heller sammen de to artistene",
+    "saved": "Artist lagret: {name}",
+    "unknown": "Fant ikke artisten (biblioteket endret?)",
+    "nothing_to_merge": "Velg minst én annen artist å slå sammen",
+    "merged": "Slått sammen i {name}: {names}",
+    "alias_unknown": "«{alias}» er ikke et alias for denne artisten",
+    "split": "«{alias}» skilt ut fra {name}"
+  },
+  "playlist": {
+    "spec_invalid": "Ukjent spillelistetype",
+    "name_edition": "Festival",
+    "name_checklist": "{name} – sjekkliste",
+    "name_continue": "Fortsett å lytte",
+    "name_library": "Bibliotek",
+    "name_missing": "Skriv inn et filnavn",
+    "path_too_long": "Stien til spillelisten ville blitt lengre enn {max} tegn – velg en kortere mappe",
+    "folder_relative": "Velg en fullstendig mappesti (f.eks. D:\\Musikk\\Playlists)",
+    "exported": {
+      "one": "Spilleliste skrevet: {path} ({n} sett)",
+      "other": "Spilleliste skrevet: {path} ({n} sett)"
+    },
+    "write_failed": "Spillelisten kunne ikke skrives: {error}",
+    "sync_failed": "Spillelisten {path} kunne ikke oppdateres: {error}",
+    "synced": {
+      "one": "{n} spilleliste oppdatert",
+      "other": "{n} spillelister oppdatert"
+    },
+    "unknown": "Fant ikke spillelisten"
   }
 }

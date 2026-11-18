@@ -566,5 +566,42 @@
     "pass_done": "Volume analisado: {n} arquivos, {analysed} concluídos, {failed} com falha",
     "pass_cancelled": "Análise de volume cancelada: {n} arquivos, {analysed} concluídos, {failed} com falha",
     "pass_failed": "A análise de volume falhou: {error}"
+  },
+  "artist": {
+    "seed_unreadable": "Lista de artistas ilegível ({path}): {error}",
+    "aliases_invalid": "Os aliases devem ser uma lista de nomes",
+    "alias_too_long": "Um alias pode ter no máximo {max} caracteres",
+    "too_many_aliases": "No máximo {max} aliases por artista",
+    "channel_invalid": "Isto não é uma URL de canal",
+    "name_missing": "Digite um nome",
+    "name_too_long": "O nome pode ter no máximo {max} caracteres",
+    "name_taken": "“{name}” já pertence a {owner} – mescle os dois artistas",
+    "saved": "Artista salvo: {name}",
+    "unknown": "Artista não encontrado (biblioteca mudou?)",
+    "nothing_to_merge": "Escolha pelo menos outro artista para mesclar",
+    "merged": "Mesclado em {name}: {names}",
+    "alias_unknown": "“{alias}” não é um alias deste artista",
+    "split": "“{alias}” separado de {name}"
+  },
+  "playlist": {
+    "spec_invalid": "Tipo de playlist desconhecido",
+    "name_edition": "Festival",
+    "name_checklist": "{name} – checklist",
+    "name_continue": "Continuar ouvindo",
+    "name_library": "Biblioteca",
+    "name_missing": "Digite um nome de arquivo",
+    "path_too_long": "O caminho da playlist passaria de {max} caracteres – escolha uma pasta mais curta",
+    "folder_relative": "Escolha um caminho de pasta completo (ex.: D:\\Música\\Playlists)",
+    "exported": {
+      "one": "Playlist gravada: {path} ({n} set)",
+      "other": "Playlist gravada: {path} ({n} sets)"
+    },
+    "write_failed": "Não foi possível gravar a playlist: {error}",
+    "sync_failed": "Não foi possível atualizar a playlist {path}: {error}",
+    "synced": {
+      "one": "{n} playlist atualizada",
+      "other": "{n} playlists atualizadas"
+    },
+    "unknown": "Playlist não encontrada"
   }
 }

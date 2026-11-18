@@ -567,5 +567,42 @@
     "pass_done": "Loudness analysed: {n} files, {analysed} done, {failed} failed",
     "pass_cancelled": "Loudness analysis cancelled: {n} files, {analysed} done, {failed} failed",
     "pass_failed": "Loudness analysis failed: {error}"
+  },
+  "artist": {
+    "seed_unreadable": "Artist list not readable ({path}): {error}",
+    "aliases_invalid": "Aliases must be a list of names",
+    "alias_too_long": "An alias may have at most {max} characters",
+    "too_many_aliases": "At most {max} aliases per artist",
+    "channel_invalid": "This is not a channel URL",
+    "name_missing": "Please enter a name",
+    "name_too_long": "The name may have at most {max} characters",
+    "name_taken": "“{name}” already belongs to {owner} – merge the two artists instead",
+    "saved": "Artist saved: {name}",
+    "unknown": "Artist not found (library changed?)",
+    "nothing_to_merge": "Choose at least one other artist to merge",
+    "merged": "Merged into {name}: {names}",
+    "alias_unknown": "“{alias}” is not an alias of this artist",
+    "split": "“{alias}” split off from {name}"
+  },
+  "playlist": {
+    "spec_invalid": "Unknown playlist type",
+    "name_edition": "Festival",
+    "name_checklist": "{name} – checklist",
+    "name_continue": "Continue listening",
+    "name_library": "Library",
+    "name_missing": "Please enter a file name",
+    "path_too_long": "The playlist path would be longer than {max} characters – choose a shorter folder",
+    "folder_relative": "Please choose a full folder path (e.g. D:\\Music\\Playlists)",
+    "exported": {
+      "one": "Playlist written: {path} ({n} set)",
+      "other": "Playlist written: {path} ({n} sets)"
+    },
+    "write_failed": "Playlist could not be written: {error}",
+    "sync_failed": "Playlist {path} could not be updated: {error}",
+    "synced": {
+      "one": "{n} playlist updated",
+      "other": "{n} playlists updated"
+    },
+    "unknown": "Playlist not found"
   }
 }

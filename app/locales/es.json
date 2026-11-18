@@ -566,5 +566,42 @@
     "pass_done": "Volumen analizado: {n} archivos, {analysed} listos, {failed} con error",
     "pass_cancelled": "Análisis de volumen cancelado: {n} archivos, {analysed} listos, {failed} con error",
     "pass_failed": "Falló el análisis de volumen: {error}"
+  },
+  "artist": {
+    "seed_unreadable": "Lista de artistas ilegible ({path}): {error}",
+    "aliases_invalid": "Los alias deben ser una lista de nombres",
+    "alias_too_long": "Un alias puede tener como máximo {max} caracteres",
+    "too_many_aliases": "Como máximo {max} alias por artista",
+    "channel_invalid": "Esto no es una URL de canal",
+    "name_missing": "Introduce un nombre",
+    "name_too_long": "El nombre puede tener como máximo {max} caracteres",
+    "name_taken": "«{name}» ya pertenece a {owner}: fusiona ambos artistas",
+    "saved": "Artista guardado: {name}",
+    "unknown": "Artista no encontrado (¿cambió la biblioteca?)",
+    "nothing_to_merge": "Elige al menos otro artista para fusionar",
+    "merged": "Fusionado en {name}: {names}",
+    "alias_unknown": "«{alias}» no es un alias de este artista",
+    "split": "«{alias}» separado de {name}"
+  },
+  "playlist": {
+    "spec_invalid": "Tipo de playlist desconocido",
+    "name_edition": "Festival",
+    "name_checklist": "{name} – checklist",
+    "name_continue": "Seguir escuchando",
+    "name_library": "Biblioteca",
+    "name_missing": "Introduce un nombre de archivo",
+    "path_too_long": "La ruta de la playlist superaría los {max} caracteres: elige una carpeta más corta",
+    "folder_relative": "Elige una ruta de carpeta completa (p. ej. D:\\Música\\Playlists)",
+    "exported": {
+      "one": "Playlist escrita: {path} ({n} set)",
+      "other": "Playlist escrita: {path} ({n} sets)"
+    },
+    "write_failed": "No se pudo escribir la playlist: {error}",
+    "sync_failed": "No se pudo actualizar la playlist {path}: {error}",
+    "synced": {
+      "one": "{n} playlist actualizada",
+      "other": "{n} playlists actualizadas"
+    },
+    "unknown": "Playlist no encontrada"
   }
 }

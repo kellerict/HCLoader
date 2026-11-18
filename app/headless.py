@@ -182,6 +182,15 @@ def run_watchlist(
         release_locks()
 
 
+def _sync_playlists(db: Any, settings: Any) -> None:
+    from .core import playlists
+
+    try:
+        playlists.sync_all(db, settings)
+    except Exception:
+        log.warning("Playlist sync failed", exc_info=True)
+
+
 def _shared_pot(
     port: int, gui_probe: Callable[[], bool], pot_ping: Callable[[int], bool]
 ) -> SharedPotWatchdog | None:
@@ -340,6 +349,8 @@ def _run(
                 session = queue.last_session
                 downloaded = session["downloaded"]
                 errors += session["errors"]
+                if downloaded and settings.playlists.sync_after_download:
+                    _sync_playlists(db, settings)  # v0.8.0: local files only, no network
                 if session["note"]:
                     notes.append(session["note"])
                     backoff_noted = backoff_noted or session.get("note_code") == "backoff"

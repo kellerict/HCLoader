@@ -573,5 +573,44 @@
     "pass_done": "Skaļums analizēts: {n} faili, {analysed} gatavi, {failed} neizdevās",
     "pass_cancelled": "Skaļuma analīze atcelta: {n} faili, {analysed} gatavi, {failed} neizdevās",
     "pass_failed": "Skaļuma analīze neizdevās: {error}"
+  },
+  "artist": {
+    "seed_unreadable": "Mākslinieku sarakstu nevar nolasīt ({path}): {error}",
+    "aliases_invalid": "Aizstājvārdiem jābūt vārdu sarakstam",
+    "alias_too_long": "Aizstājvārdā drīkst būt ne vairāk kā {max} rakstzīmes",
+    "too_many_aliases": "Ne vairāk kā {max} aizstājvārdi vienam māksliniekam",
+    "channel_invalid": "Šis nav kanāla URL",
+    "name_missing": "Ievadiet vārdu",
+    "name_too_long": "Vārdā drīkst būt ne vairāk kā {max} rakstzīmes",
+    "name_taken": "“{name}” jau pieder {owner} – labāk apvienojiet abus māksliniekus",
+    "saved": "Mākslinieks saglabāts: {name}",
+    "unknown": "Mākslinieks nav atrasts (bibliotēka mainījusies?)",
+    "nothing_to_merge": "Izvēlieties vismaz vienu citu mākslinieku apvienošanai",
+    "merged": "Apvienots ar {name}: {names}",
+    "alias_unknown": "“{alias}” nav šī mākslinieka aizstājvārds",
+    "split": "“{alias}” atdalīts no {name}"
+  },
+  "playlist": {
+    "spec_invalid": "Nezināms atskaņošanas saraksta veids",
+    "name_edition": "Festivāls",
+    "name_checklist": "{name} – kontrolsaraksts",
+    "name_continue": "Turpināt klausīties",
+    "name_library": "Bibliotēka",
+    "name_missing": "Ievadiet faila nosaukumu",
+    "path_too_long": "Atskaņošanas saraksta ceļš būtu garāks par {max} rakstzīmēm – izvēlieties īsāku mapi",
+    "folder_relative": "Izvēlieties pilnu mapes ceļu (piem., D:\\Music\\Playlists)",
+    "exported": {
+      "zero": "Saraksts ierakstīts: {path} ({n} setu)",
+      "one": "Saraksts ierakstīts: {path} ({n} sets)",
+      "other": "Saraksts ierakstīts: {path} ({n} seti)"
+    },
+    "write_failed": "Atskaņošanas sarakstu neizdevās ierakstīt: {error}",
+    "sync_failed": "Sarakstu {path} neizdevās atjaunināt: {error}",
+    "synced": {
+      "zero": "Atjaunināti {n} saraksti",
+      "one": "Atjaunināts {n} saraksts",
+      "other": "Atjaunināti {n} saraksti"
+    },
+    "unknown": "Atskaņošanas saraksts nav atrasts"
   }
 }

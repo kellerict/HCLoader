@@ -567,5 +567,42 @@
     "pass_done": "লাউডনেস বিশ্লেষিত: {n}টি ফাইল, {analysed}টি সম্পন্ন, {failed}টি ব্যর্থ",
     "pass_cancelled": "লাউডনেস বিশ্লেষণ বাতিল: {n}টি ফাইল, {analysed}টি সম্পন্ন, {failed}টি ব্যর্থ",
     "pass_failed": "লাউডনেস বিশ্লেষণ ব্যর্থ: {error}"
+  },
+  "artist": {
+    "seed_unreadable": "শিল্পী তালিকা পড়া যায়নি ({path}): {error}",
+    "aliases_invalid": "উপনামগুলো নামের তালিকা হতে হবে",
+    "alias_too_long": "একটি উপনামে সর্বোচ্চ {max}টি অক্ষর",
+    "too_many_aliases": "প্রতি শিল্পীর সর্বোচ্চ {max}টি উপনাম",
+    "channel_invalid": "এটি চ্যানেল URL নয়",
+    "name_missing": "একটি নাম লিখুন",
+    "name_too_long": "নামে সর্বোচ্চ {max}টি অক্ষর",
+    "name_taken": "“{name}” ইতিমধ্যে {owner}-এর – বরং দুই শিল্পীকে একত্র করুন",
+    "saved": "শিল্পী সংরক্ষিত: {name}",
+    "unknown": "শিল্পী পাওয়া যায়নি (লাইব্রেরি বদলেছে?)",
+    "nothing_to_merge": "একত্র করতে অন্তত আরেকজন শিল্পী বেছে নিন",
+    "merged": "{name}-এ একত্র করা হয়েছে: {names}",
+    "alias_unknown": "“{alias}” এই শিল্পীর উপনাম নয়",
+    "split": "“{alias}” {name} থেকে আলাদা করা হয়েছে"
+  },
+  "playlist": {
+    "spec_invalid": "অজানা প্লেলিস্ট ধরন",
+    "name_edition": "ফেস্টিভ্যাল",
+    "name_checklist": "{name} – চেকলিস্ট",
+    "name_continue": "শোনা চালিয়ে যান",
+    "name_library": "লাইব্রেরি",
+    "name_missing": "একটি ফাইলের নাম লিখুন",
+    "path_too_long": "প্লেলিস্টের পথ {max} অক্ষরের বেশি হবে – ছোট ফোল্ডার বেছে নিন",
+    "folder_relative": "সম্পূর্ণ ফোল্ডার পথ বেছে নিন (যেমন D:\\Music\\Playlists)",
+    "exported": {
+      "one": "প্লেলিস্ট লেখা হয়েছে: {path} ({n}টি সেট)",
+      "other": "প্লেলিস্ট লেখা হয়েছে: {path} ({n}টি সেট)"
+    },
+    "write_failed": "প্লেলিস্ট লেখা যায়নি: {error}",
+    "sync_failed": "প্লেলিস্ট {path} আপডেট করা যায়নি: {error}",
+    "synced": {
+      "one": "{n}টি প্লেলিস্ট আপডেট হয়েছে",
+      "other": "{n}টি প্লেলিস্ট আপডেট হয়েছে"
+    },
+    "unknown": "প্লেলিস্ট পাওয়া যায়নি"
   }
 }

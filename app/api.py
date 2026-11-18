@@ -24,6 +24,7 @@ from typing import Any
 
 from .core import (
     analysis,
+    artists,
     backfill,
     binaries,
     collector,
@@ -38,6 +39,7 @@ from .core import (
     platforms,
     playback,
     player,
+    playlists,
     potoken,
     scheduler,
     selfupdate,
@@ -243,6 +245,10 @@ class Api:
         self._col_current: int | None = None
         self._col_timer: threading.Timer | None = None
         self._bus.subscribe(self._on_collector_event)
+        # v0.8.0 DJ pages + playlist export: index builds, exports and syncs (local only) in
+        # their own thread; `_pl_dirty` makes a sync that is already running go once more
+        self._pl_worker = Worker("hcloader-playlists")
+        self._pl_dirty = threading.Event()
 
     # ================================================================== lifecycle (internal)
 
@@ -307,6 +313,7 @@ class Api:
         self._col_import_worker.stop(WATCHLIST_STOP_TIMEOUT_S)
         collector.release_running(self._db, tr("collector.note_interrupted"))
         self._analysis.stop()  # v0.7.0: a running ffmpeg analysis is killed (nothing written)
+        self._pl_worker.stop()  # v0.8.0: a running playlist export finishes its file first
         self._updater.stop()  # a running app-update download is aborted and discarded
         self._update_worker.stop()
         ended = self._queue.stop(queue_timeout)
@@ -2089,6 +2096,8 @@ class Api:
     def _after_download(self, vid: str) -> None:
         if self._settings.loudness.analyse_after_download:
             self._analysis.request(vid)
+        if self._settings.playlists.sync_after_download:
+            self._request_playlist_sync()
 
     def _startup_analysis(self) -> None:
         """Downloads since the first v0.7.0 start that were never analysed (e.g. by the
@@ -2162,6 +2171,180 @@ class Api:
     def cancel_analyse_library(self) -> dict[str, Any]:
         self._analysis.cancel_pass()
         return {"ok": True, "running": self._analysis.pass_running()}
+
+    # ======================================================== DJ pages + playlists (v0.8.0)
+
+    def _pl(self, key: str, fn: Callable[..., Any], *args: Any) -> Any:
+        """Run in the playlist thread (index build / file writes) and wait for the answer."""
+        return self._pl_worker.run(key, fn, *args, timeout=JOB_TIMEOUT_S)
+
+    @staticmethod
+    def _artist_error(exc: artists.ArtistError) -> dict[str, Any]:
+        return {"ok": False, "errors": exc.errors, "error": next(iter(exc.errors.values()), "")}
+
+    def get_artists(self, opts: dict[str, Any] | None = None) -> dict[str, Any]:
+        """DJ list: {ok, artists: [ArtistSummary], hidden: n}. opts {search, sort: sets |
+        recent | name, hidden: true = only the hidden ones}."""
+        o = opts if isinstance(opts, dict) else {}
+
+        def run() -> dict[str, Any]:
+            items = artists.list_artists(self._db, self._cfg, o)
+            hidden = len(artists.list_artists(self._db, self._cfg, {"hidden": True}))
+            return {"ok": True, "artists": items, "hidden": hidden}
+
+        return self._pl("artists", run)
+
+    def get_artist(self, key: str) -> dict[str, Any]:
+        """DJ page: {ok, artist, sets: [LibraryItem + role + with], tracks}."""
+
+        def run() -> dict[str, Any]:
+            d = artists.detail(self._db, self._cfg, str(key or ""))
+            if d is None:
+                return {"ok": False, "error": tr("artist.unknown")}
+            root = self._cfg.target_dir_path()
+            ok = library.target_reachable(root)
+            editions = series.edition_map(self._db)
+            sets = []
+            for s in d["sets"]:
+                row = self._db.get_video(s["id"])
+                if row:
+                    item = library.library_item(row, root=root, root_ok=ok, editions=editions)
+                    sets.append({**item, "role": s["role"], "with": s["with"]})
+            return {"ok": True, "artist": d["artist"], "sets": sets, "tracks": d["tracks"]}
+
+        return self._pl(f"artist:{key}", run)
+
+    def save_artist(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Create/edit an artist {key?, name, aliases, channel_url} -> {ok, key} | {ok: false,
+        errors}."""
+        if not isinstance(data, dict):
+            return {"ok": False, "error": tr("artist.unknown"), "errors": {}}
+        try:
+            return {
+                "ok": True,
+                **self._pl("artist-edit", artists.save_artist, self._db, self._cfg, data),
+            }
+        except artists.ArtistError as exc:
+            return self._artist_error(exc)
+
+    def merge_artists(self, keys: list[str], into: str) -> dict[str, Any]:
+        try:
+            return {
+                "ok": True,
+                **self._pl(
+                    "artist-edit", artists.merge, self._db, self._cfg, list(keys or []), str(into)
+                ),
+            }
+        except artists.ArtistError as exc:
+            return self._artist_error(exc)
+
+    def split_artist(self, key: str, alias: str) -> dict[str, Any]:
+        try:
+            return {
+                "ok": True,
+                **self._pl("artist-edit", artists.split, self._db, self._cfg, str(key), str(alias)),
+            }
+        except artists.ArtistError as exc:
+            return self._artist_error(exc)
+
+    def hide_artist(self, key: str, hidden: bool = True) -> dict[str, Any]:
+        try:
+            return {
+                "ok": True,
+                **self._pl(
+                    "artist-edit", artists.set_hidden, self._db, self._cfg, str(key), bool(hidden)
+                ),
+            }
+        except artists.ArtistError as exc:
+            return self._artist_error(exc)
+
+    def get_artist_watch(self, key: str) -> dict[str, Any]:
+        """«Add to watchlist»: the source that would be created ({type, name, url_or_query,
+        platform?}) and an existing source with the same target, if any. Nothing is saved:
+        after the user confirms, the UI calls `save_source(source)`."""
+        prop = self._pl("artist-watch", artists.watch_proposal, self._db, self._cfg, str(key))
+        if prop is None:
+            return {"ok": False, "error": tr("artist.unknown")}
+        source = {k: v for k, v in prop.items() if k != "artist"}
+        _clean, errors = watchlist.validate_source(
+            source, self._cfg, existing=self._db.list_sources()
+        )
+        existing = None
+        if errors.get("url_or_query"):
+            target = str(source["url_or_query"]).rstrip("/").lower()
+            existing = next(
+                (
+                    s
+                    for s in self.get_sources()
+                    if s["type"] == source["type"]
+                    and str(s["url_or_query"]).rstrip("/").lower() == target
+                ),
+                None,
+            )
+        return {"ok": True, "source": source, "existing": existing}
+
+    def preview_playlist(self, spec: dict[str, Any]) -> dict[str, Any]:
+        """Export dialog: {ok, spec, name, folder, relative, count, missing, seconds, saved}."""
+        try:
+            return {
+                "ok": True,
+                **self._pl("pl-preview", playlists.preview, self._db, self._cfg, spec),
+            }
+        except playlists.PlaylistError as exc:
+            return {"ok": False, "error": str(exc)}
+
+    def export_playlist(
+        self, spec: dict[str, Any], opts: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        """Write an M3U8 file. opts {name, folder, relative, overwrite, sync} -> {ok, path, count,
+        skipped, absolute_fallback, relative, sync} | {ok: false, exists: true, path} (ask,
+        then again with overwrite) | {ok: false, error}."""
+        o = opts if isinstance(opts, dict) else {}
+        try:
+            return self._pl("pl-export", playlists.export, self._db, self._cfg, spec, o)
+        except playlists.PlaylistError as exc:
+            return {"ok": False, "error": str(exc)}
+
+    def get_saved_playlists(self) -> dict[str, Any]:
+        return {
+            "ok": True,
+            "playlists": playlists.saved(self._db),
+            "sync_enabled": self._cfg.playlists.sync_after_download,
+        }
+
+    def set_playlist_sync(self, playlist_id: int, sync: bool) -> dict[str, Any]:
+        if not playlists.set_sync(self._db, int(playlist_id), bool(sync)):
+            return {"ok": False, "error": tr("playlist.unknown")}
+        return {"ok": True}
+
+    def forget_playlist(self, playlist_id: int) -> dict[str, Any]:
+        """Remove a playlist from the saved list (the file stays where it is)."""
+        if not playlists.forget(self._db, int(playlist_id)):
+            return {"ok": False, "error": tr("playlist.unknown")}
+        return {"ok": True}
+
+    def sync_playlists(self, ids: list[int] | None = None) -> dict[str, Any]:
+        """Rewrite saved playlists now (`ids` or all marked «keep up to date»)."""
+        only = [int(i) for i in ids] if isinstance(ids, list) else None
+        res = self._pl("pl-sync-now", lambda: playlists.sync_all(self._db, self._cfg, only=only))
+        self._bus.emit("playlists_synced", {k: res[k] for k in ("synced", "failed")})
+        return res
+
+    def _request_playlist_sync(self) -> None:
+        self._pl_dirty.set()
+        self._pl_worker.submit("pl-sync", self._playlist_sync_job)
+
+    def _playlist_sync_job(self) -> None:
+        res: dict[str, Any] | None = None
+        while self._pl_dirty.is_set():  # a download finished while we were writing: again
+            self._pl_dirty.clear()
+            try:
+                res = playlists.sync_all(self._db, self._cfg)
+            except Exception:
+                log.warning("Playlist sync failed", exc_info=True)
+                return
+        if res and (res["synced"] or res["failed"]):
+            self._bus.emit("playlists_synced", {k: res[k] for k in ("synced", "failed")})
 
 
 def _now_iso() -> str:

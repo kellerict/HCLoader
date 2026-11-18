@@ -567,5 +567,42 @@
     "pass_done": "Lautheit analysiert: {n} Dateien, {analysed} fertig, {failed} fehlgeschlagen",
     "pass_cancelled": "Lautheitsanalyse abgebrochen: {n} Dateien, {analysed} fertig, {failed} fehlgeschlagen",
     "pass_failed": "Lautheitsanalyse fehlgeschlagen: {error}"
+  },
+  "artist": {
+    "seed_unreadable": "Artist-Liste nicht lesbar ({path}): {error}",
+    "aliases_invalid": "Aliasse müssen eine Liste von Namen sein",
+    "alias_too_long": "Ein Alias darf höchstens {max} Zeichen haben",
+    "too_many_aliases": "Höchstens {max} Aliasse pro Artist",
+    "channel_invalid": "Das ist keine Kanal-URL",
+    "name_missing": "Bitte einen Namen eingeben",
+    "name_too_long": "Der Name darf höchstens {max} Zeichen haben",
+    "name_taken": "«{name}» gehört schon zu {owner} – die beiden Artists stattdessen zusammenführen",
+    "saved": "Artist gespeichert: {name}",
+    "unknown": "Artist nicht gefunden (Bibliothek geändert?)",
+    "nothing_to_merge": "Mindestens einen anderen Artist zum Zusammenführen wählen",
+    "merged": "Zusammengeführt in {name}: {names}",
+    "alias_unknown": "«{alias}» ist kein Alias dieses Artists",
+    "split": "«{alias}» von {name} abgetrennt"
+  },
+  "playlist": {
+    "spec_invalid": "Unbekannte Playlist-Art",
+    "name_edition": "Festival",
+    "name_checklist": "{name} – Checkliste",
+    "name_continue": "Weiterhören",
+    "name_library": "Bibliothek",
+    "name_missing": "Bitte einen Dateinamen eingeben",
+    "path_too_long": "Der Pfad der Playlist wäre länger als {max} Zeichen – einen kürzeren Ordner wählen",
+    "folder_relative": "Bitte einen vollständigen Ordnerpfad wählen (z.B. D:\\Musik\\Playlists)",
+    "exported": {
+      "one": "Playlist geschrieben: {path} ({n} Set)",
+      "other": "Playlist geschrieben: {path} ({n} Sets)"
+    },
+    "write_failed": "Playlist konnte nicht geschrieben werden: {error}",
+    "sync_failed": "Playlist {path} konnte nicht aktualisiert werden: {error}",
+    "synced": {
+      "one": "{n} Playlist aktualisiert",
+      "other": "{n} Playlists aktualisiert"
+    },
+    "unknown": "Playlist nicht gefunden"
   }
 }

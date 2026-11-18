@@ -567,5 +567,42 @@
     "pass_done": "Luidheid geanalyseerd: {n} bestanden, {analysed} klaar, {failed} mislukt",
     "pass_cancelled": "Luidheidsanalyse geannuleerd: {n} bestanden, {analysed} klaar, {failed} mislukt",
     "pass_failed": "Luidheidsanalyse mislukt: {error}"
+  },
+  "artist": {
+    "seed_unreadable": "Artiestenlijst niet leesbaar ({path}): {error}",
+    "aliases_invalid": "Aliassen moeten een lijst met namen zijn",
+    "alias_too_long": "Een alias mag hoogstens {max} tekens hebben",
+    "too_many_aliases": "Hoogstens {max} aliassen per artiest",
+    "channel_invalid": "Dit is geen kanaal-URL",
+    "name_missing": "Vul een naam in",
+    "name_too_long": "De naam mag hoogstens {max} tekens hebben",
+    "name_taken": "“{name}” hoort al bij {owner} – voeg de twee artiesten liever samen",
+    "saved": "Artiest opgeslagen: {name}",
+    "unknown": "Artiest niet gevonden (bibliotheek gewijzigd?)",
+    "nothing_to_merge": "Kies minstens één andere artiest om samen te voegen",
+    "merged": "Samengevoegd in {name}: {names}",
+    "alias_unknown": "“{alias}” is geen alias van deze artiest",
+    "split": "“{alias}” afgesplitst van {name}"
+  },
+  "playlist": {
+    "spec_invalid": "Onbekend playlisttype",
+    "name_edition": "Festival",
+    "name_checklist": "{name} – checklist",
+    "name_continue": "Verder luisteren",
+    "name_library": "Bibliotheek",
+    "name_missing": "Vul een bestandsnaam in",
+    "path_too_long": "Het pad van de playlist zou langer zijn dan {max} tekens – kies een kortere map",
+    "folder_relative": "Kies een volledig mappad (bijv. D:\\Muziek\\Playlists)",
+    "exported": {
+      "one": "Playlist geschreven: {path} ({n} set)",
+      "other": "Playlist geschreven: {path} ({n} sets)"
+    },
+    "write_failed": "Playlist kon niet worden geschreven: {error}",
+    "sync_failed": "Playlist {path} kon niet worden bijgewerkt: {error}",
+    "synced": {
+      "one": "{n} playlist bijgewerkt",
+      "other": "{n} playlists bijgewerkt"
+    },
+    "unknown": "Playlist niet gevonden"
   }
 }

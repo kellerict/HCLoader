@@ -567,5 +567,42 @@
     "pass_done": "Äänenvoimakkuus analysoitu: {n} tiedostoa, {analysed} valmis, {failed} epäonnistui",
     "pass_cancelled": "Äänenvoimakkuusanalyysi keskeytetty: {n} tiedostoa, {analysed} valmis, {failed} epäonnistui",
     "pass_failed": "Äänenvoimakkuusanalyysi epäonnistui: {error}"
+  },
+  "artist": {
+    "seed_unreadable": "Artistiluetteloa ei voi lukea ({path}): {error}",
+    "aliases_invalid": "Aliasten on oltava nimiluettelo",
+    "alias_too_long": "Aliaksessa voi olla enintään {max} merkkiä",
+    "too_many_aliases": "Enintään {max} aliasta artistia kohden",
+    "channel_invalid": "Tämä ei ole kanavan URL",
+    "name_missing": "Anna nimi",
+    "name_too_long": "Nimessä voi olla enintään {max} merkkiä",
+    "name_taken": "”{name}” kuuluu jo artistille {owner} – yhdistä mieluummin artistit",
+    "saved": "Artisti tallennettu: {name}",
+    "unknown": "Artistia ei löydy (kirjasto muuttunut?)",
+    "nothing_to_merge": "Valitse vähintään yksi toinen artisti yhdistettäväksi",
+    "merged": "Yhdistetty artistiin {name}: {names}",
+    "alias_unknown": "”{alias}” ei ole tämän artistin alias",
+    "split": "”{alias}” erotettu artistista {name}"
+  },
+  "playlist": {
+    "spec_invalid": "Tuntematon soittolistatyyppi",
+    "name_edition": "Festivaali",
+    "name_checklist": "{name} – tarkistuslista",
+    "name_continue": "Jatka kuuntelua",
+    "name_library": "Kirjasto",
+    "name_missing": "Anna tiedostonimi",
+    "path_too_long": "Soittolistan polku olisi yli {max} merkkiä – valitse lyhyempi kansio",
+    "folder_relative": "Valitse täydellinen kansiopolku (esim. D:\\Musiikki\\Playlists)",
+    "exported": {
+      "one": "Soittolista kirjoitettu: {path} ({n} setti)",
+      "other": "Soittolista kirjoitettu: {path} ({n} settiä)"
+    },
+    "write_failed": "Soittolistaa ei voitu kirjoittaa: {error}",
+    "sync_failed": "Soittolistaa {path} ei voitu päivittää: {error}",
+    "synced": {
+      "one": "{n} soittolista päivitetty",
+      "other": "{n} soittolistaa päivitetty"
+    },
+    "unknown": "Soittolistaa ei löydy"
   }
 }

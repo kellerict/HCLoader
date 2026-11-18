@@ -561,5 +561,40 @@
     "pass_done": "Kenyaringan dianalisis: {n} file, {analysed} selesai, {failed} gagal",
     "pass_cancelled": "Analisis kenyaringan dibatalkan: {n} file, {analysed} selesai, {failed} gagal",
     "pass_failed": "Analisis kenyaringan gagal: {error}"
+  },
+  "artist": {
+    "seed_unreadable": "Daftar artis tidak terbaca ({path}): {error}",
+    "aliases_invalid": "Alias harus berupa daftar nama",
+    "alias_too_long": "Alias maksimal {max} karakter",
+    "too_many_aliases": "Maksimal {max} alias per artis",
+    "channel_invalid": "Ini bukan URL kanal",
+    "name_missing": "Masukkan nama",
+    "name_too_long": "Nama maksimal {max} karakter",
+    "name_taken": "“{name}” sudah milik {owner} – gabungkan kedua artis",
+    "saved": "Artis disimpan: {name}",
+    "unknown": "Artis tidak ditemukan (pustaka berubah?)",
+    "nothing_to_merge": "Pilih setidaknya satu artis lain untuk digabung",
+    "merged": "Digabung ke {name}: {names}",
+    "alias_unknown": "“{alias}” bukan alias artis ini",
+    "split": "“{alias}” dipisahkan dari {name}"
+  },
+  "playlist": {
+    "spec_invalid": "Jenis playlist tidak dikenal",
+    "name_edition": "Festival",
+    "name_checklist": "{name} – daftar periksa",
+    "name_continue": "Lanjutkan mendengarkan",
+    "name_library": "Pustaka",
+    "name_missing": "Masukkan nama file",
+    "path_too_long": "Jalur playlist akan lebih dari {max} karakter – pilih folder yang lebih pendek",
+    "folder_relative": "Pilih jalur folder lengkap (mis. D:\\Music\\Playlists)",
+    "exported": {
+      "other": "Playlist ditulis: {path} ({n} set)"
+    },
+    "write_failed": "Playlist tidak dapat ditulis: {error}",
+    "sync_failed": "Playlist {path} tidak dapat diperbarui: {error}",
+    "synced": {
+      "other": "{n} playlist diperbarui"
+    },
+    "unknown": "Playlist tidak ditemukan"
   }
 }

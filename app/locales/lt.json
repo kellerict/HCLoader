@@ -579,5 +579,46 @@
     "pass_done": "Garsumas išanalizuotas: failų {n}, baigta {analysed}, nepavyko {failed}",
     "pass_cancelled": "Garsumo analizė atšaukta: failų {n}, baigta {analysed}, nepavyko {failed}",
     "pass_failed": "Garsumo analizė nepavyko: {error}"
+  },
+  "artist": {
+    "seed_unreadable": "Atlikėjų sąrašo nepavyko perskaityti ({path}): {error}",
+    "aliases_invalid": "Slapyvardžiai turi būti vardų sąrašas",
+    "alias_too_long": "Slapyvardis gali turėti ne daugiau kaip {max} simbolių",
+    "too_many_aliases": "Ne daugiau kaip {max} slapyvardžių vienam atlikėjui",
+    "channel_invalid": "Tai ne kanalo URL",
+    "name_missing": "Įveskite vardą",
+    "name_too_long": "Vardas gali turėti ne daugiau kaip {max} simbolių",
+    "name_taken": "„{name}“ jau priklauso {owner} – geriau sujunkite abu atlikėjus",
+    "saved": "Atlikėjas išsaugotas: {name}",
+    "unknown": "Atlikėjas nerastas (biblioteka pasikeitė?)",
+    "nothing_to_merge": "Pasirinkite bent vieną kitą atlikėją sujungimui",
+    "merged": "Sujungta į {name}: {names}",
+    "alias_unknown": "„{alias}“ nėra šio atlikėjo slapyvardis",
+    "split": "„{alias}“ atskirtas nuo {name}"
+  },
+  "playlist": {
+    "spec_invalid": "Nežinomas grojaraščio tipas",
+    "name_edition": "Festivalis",
+    "name_checklist": "{name} – kontrolinis sąrašas",
+    "name_continue": "Tęsti klausymą",
+    "name_library": "Biblioteka",
+    "name_missing": "Įveskite failo pavadinimą",
+    "path_too_long": "Grojaraščio kelias būtų ilgesnis nei {max} simbolių – pasirinkite trumpesnį aplanką",
+    "folder_relative": "Pasirinkite pilną aplanko kelią (pvz., D:\\Music\\Playlists)",
+    "exported": {
+      "one": "Grojaraštis įrašytas: {path} ({n} setas)",
+      "few": "Grojaraštis įrašytas: {path} ({n} setai)",
+      "many": "Grojaraštis įrašytas: {path} ({n} seto)",
+      "other": "Grojaraštis įrašytas: {path} ({n} setų)"
+    },
+    "write_failed": "Nepavyko įrašyti grojaraščio: {error}",
+    "sync_failed": "Nepavyko atnaujinti grojaraščio {path}: {error}",
+    "synced": {
+      "one": "Atnaujintas {n} grojaraštis",
+      "few": "Atnaujinti {n} grojaraščiai",
+      "many": "Atnaujinta {n} grojaraščio",
+      "other": "Atnaujinta {n} grojaraščių"
+    },
+    "unknown": "Grojaraštis nerastas"
   }
 }

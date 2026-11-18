@@ -567,5 +567,42 @@
     "pass_done": "लाउडनेस विश्लेषित: {n} फ़ाइलें, {analysed} पूरी, {failed} विफल",
     "pass_cancelled": "लाउडनेस विश्लेषण रद्द: {n} फ़ाइलें, {analysed} पूरी, {failed} विफल",
     "pass_failed": "लाउडनेस विश्लेषण विफल: {error}"
+  },
+  "artist": {
+    "seed_unreadable": "कलाकार सूची पढ़ी नहीं जा सकी ({path}): {error}",
+    "aliases_invalid": "उपनाम नामों की सूची होने चाहिए",
+    "alias_too_long": "उपनाम में अधिकतम {max} अक्षर हो सकते हैं",
+    "too_many_aliases": "प्रति कलाकार अधिकतम {max} उपनाम",
+    "channel_invalid": "यह चैनल URL नहीं है",
+    "name_missing": "कृपया नाम दर्ज करें",
+    "name_too_long": "नाम में अधिकतम {max} अक्षर हो सकते हैं",
+    "name_taken": "“{name}” पहले से {owner} का है – इसके बजाय दोनों कलाकारों को मिलाएँ",
+    "saved": "कलाकार सहेजा गया: {name}",
+    "unknown": "कलाकार नहीं मिला (लाइब्रेरी बदली?)",
+    "nothing_to_merge": "मिलाने के लिए कम से कम एक और कलाकार चुनें",
+    "merged": "{name} में मिलाया गया: {names}",
+    "alias_unknown": "“{alias}” इस कलाकार का उपनाम नहीं है",
+    "split": "“{alias}” को {name} से अलग किया गया"
+  },
+  "playlist": {
+    "spec_invalid": "अज्ञात प्लेलिस्ट प्रकार",
+    "name_edition": "फ़ेस्टिवल",
+    "name_checklist": "{name} – चेकलिस्ट",
+    "name_continue": "सुनना जारी रखें",
+    "name_library": "लाइब्रेरी",
+    "name_missing": "कृपया फ़ाइल नाम दर्ज करें",
+    "path_too_long": "प्लेलिस्ट का पथ {max} अक्षरों से लंबा होगा – छोटा फ़ोल्डर चुनें",
+    "folder_relative": "कृपया पूरा फ़ोल्डर पथ चुनें (जैसे D:\\Music\\Playlists)",
+    "exported": {
+      "one": "प्लेलिस्ट लिखी गई: {path} ({n} सेट)",
+      "other": "प्लेलिस्ट लिखी गई: {path} ({n} सेट)"
+    },
+    "write_failed": "प्लेलिस्ट नहीं लिखी जा सकी: {error}",
+    "sync_failed": "प्लेलिस्ट {path} अपडेट नहीं हो सकी: {error}",
+    "synced": {
+      "one": "{n} प्लेलिस्ट अपडेट हुई",
+      "other": "{n} प्लेलिस्ट अपडेट हुईं"
+    },
+    "unknown": "प्लेलिस्ट नहीं मिली"
   }
 }

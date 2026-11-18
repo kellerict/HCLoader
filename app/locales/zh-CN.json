@@ -561,5 +561,40 @@
     "pass_done": "响度已分析：{n} 个文件，{analysed} 个完成，{failed} 个失败",
     "pass_cancelled": "响度分析已取消：{n} 个文件，{analysed} 个完成，{failed} 个失败",
     "pass_failed": "响度分析失败：{error}"
+  },
+  "artist": {
+    "seed_unreadable": "艺人列表无法读取（{path}）：{error}",
+    "aliases_invalid": "别名必须是名称列表",
+    "alias_too_long": "别名最多 {max} 个字符",
+    "too_many_aliases": "每位艺人最多 {max} 个别名",
+    "channel_invalid": "这不是频道网址",
+    "name_missing": "请输入名称",
+    "name_too_long": "名称最多 {max} 个字符",
+    "name_taken": "“{name}”已属于 {owner}——请改为合并这两位艺人",
+    "saved": "艺人已保存：{name}",
+    "unknown": "未找到艺人（媒体库已更改？）",
+    "nothing_to_merge": "请至少选择另一位要合并的艺人",
+    "merged": "已合并到 {name}：{names}",
+    "alias_unknown": "“{alias}”不是该艺人的别名",
+    "split": "已将“{alias}”从 {name} 拆分"
+  },
+  "playlist": {
+    "spec_invalid": "未知的播放列表类型",
+    "name_edition": "音乐节",
+    "name_checklist": "{name} – 清单",
+    "name_continue": "继续收听",
+    "name_library": "媒体库",
+    "name_missing": "请输入文件名",
+    "path_too_long": "播放列表路径将超过 {max} 个字符——请选择更短的文件夹",
+    "folder_relative": "请选择完整的文件夹路径（例如 D:\\Music\\Playlists）",
+    "exported": {
+      "other": "播放列表已写入：{path}（{n} 个 Set）"
+    },
+    "write_failed": "无法写入播放列表：{error}",
+    "sync_failed": "无法更新播放列表 {path}：{error}",
+    "synced": {
+      "other": "已更新 {n} 个播放列表"
+    },
+    "unknown": "未找到播放列表"
   }
 }

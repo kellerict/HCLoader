@@ -566,5 +566,42 @@
     "pass_done": "Volume analysé : {n} fichiers, {analysed} terminés, {failed} en échec",
     "pass_cancelled": "Analyse du volume annulée : {n} fichiers, {analysed} terminés, {failed} en échec",
     "pass_failed": "Échec de l’analyse du volume : {error}"
+  },
+  "artist": {
+    "seed_unreadable": "Liste des artistes illisible ({path}) : {error}",
+    "aliases_invalid": "Les alias doivent être une liste de noms",
+    "alias_too_long": "Un alias peut avoir au plus {max} caractères",
+    "too_many_aliases": "Au plus {max} alias par artiste",
+    "channel_invalid": "Ce n’est pas une URL de chaîne",
+    "name_missing": "Saisissez un nom",
+    "name_too_long": "Le nom peut avoir au plus {max} caractères",
+    "name_taken": "« {name} » appartient déjà à {owner} – fusionnez plutôt les deux artistes",
+    "saved": "Artiste enregistré : {name}",
+    "unknown": "Artiste introuvable (bibliothèque modifiée ?)",
+    "nothing_to_merge": "Choisissez au moins un autre artiste à fusionner",
+    "merged": "Fusionné dans {name} : {names}",
+    "alias_unknown": "« {alias} » n’est pas un alias de cet artiste",
+    "split": "« {alias} » séparé de {name}"
+  },
+  "playlist": {
+    "spec_invalid": "Type de playlist inconnu",
+    "name_edition": "Festival",
+    "name_checklist": "{name} – checklist",
+    "name_continue": "Reprendre l’écoute",
+    "name_library": "Bibliothèque",
+    "name_missing": "Saisissez un nom de fichier",
+    "path_too_long": "Le chemin de la playlist dépasserait {max} caractères – choisissez un dossier plus court",
+    "folder_relative": "Choisissez un chemin de dossier complet (p. ex. D:\\Musique\\Playlists)",
+    "exported": {
+      "one": "Playlist écrite : {path} ({n} set)",
+      "other": "Playlist écrite : {path} ({n} sets)"
+    },
+    "write_failed": "Impossible d’écrire la playlist : {error}",
+    "sync_failed": "Impossible de mettre à jour la playlist {path} : {error}",
+    "synced": {
+      "one": "{n} playlist mise à jour",
+      "other": "{n} playlists mises à jour"
+    },
+    "unknown": "Playlist introuvable"
   }
 }
