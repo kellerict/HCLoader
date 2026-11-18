@@ -289,3 +289,12 @@ festivals:
   collector_results_per_search: 10
   # Festival-Sammler: ab dieser Sicherheit gilt ein Treffer ohne Bestätigung (0.5-1.0; nur mit DJ, Festival und Jahr im Titel)
   collector_auto_confirm: 0.85
+
+# --- Playlists (M3U8) ---
+playlists:
+  # Ordner für exportierte Playlists; leer = «Playlists» im Zielordner
+  folder: ''
+  # Pfade in der Playlist relativ zum Ort der Playlist (anderes Laufwerk: absolut)
+  relative_paths: true
+  # Gespeicherte Playlists mit «Aktuell halten» nach jedem Download neu schreiben
+  sync_after_download: false

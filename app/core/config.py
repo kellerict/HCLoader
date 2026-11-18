@@ -478,6 +478,19 @@ class LoudnessSettings(_Section):
     waveforms: bool = True
 
 
+class PlaylistSettings(_Section):
+    """v0.8.0 playlist export (M3U8). `folder` empty = «Playlists» inside the target folder."""
+
+    folder: str = ""
+    relative_paths: bool = True
+    sync_after_download: bool = False
+
+    @field_validator("folder", mode="before")
+    @classmethod
+    def _folder(cls, v: Any) -> Any:
+        return v.strip() if isinstance(v, str) else ("" if v is None else v)
+
+
 # v0.3.0 festivals & series: codes = app/core/festivals.py SET_TYPES (UI translates them)
 SET_TYPE_CODES = (
     "live_set",
@@ -584,12 +597,19 @@ class Settings(BaseModel):
     player: PlayerSettings = Field(default_factory=PlayerSettings)
     loudness: LoudnessSettings = Field(default_factory=LoudnessSettings)
     festivals: FestivalSettings = Field(default_factory=FestivalSettings)
+    playlists: PlaylistSettings = Field(default_factory=PlaylistSettings)
 
     def to_dict(self) -> dict[str, Any]:
         return self.model_dump(mode="json")
 
     def target_dir_path(self) -> Path:
         return expand_path(self.storage.target_dir)
+
+    def playlist_dir_path(self) -> Path:
+        """v0.8.0: default folder for exported playlists."""
+        if self.playlists.folder:
+            return expand_path(self.playlists.folder)
+        return self.target_dir_path() / "Playlists"
 
     def throttle_for(self, platform: str) -> ThrottleSettings:
         """Throttle limits of a platform (`throttle` = YouTube, `soundcloud` = SoundCloud)."""
@@ -734,6 +754,7 @@ SECTION_TITLES = {
     "player": "Player",
     "loudness": "Lautheit & Wellenform",
     "festivals": "Festivals & Serien",
+    "playlists": "Playlists (M3U8)",
 }
 
 COMMENTS = {
@@ -812,6 +833,9 @@ COMMENTS = {
     "loudness.analyse_after_download": "Nach jedem Download Lautheit und Wellenform offline mit ffmpeg berechnen (niedrige Priorität, eine Datei nach der anderen)",
     "loudness.write_tags": "ReplayGain-2.0-Tags in die Dateien schreiben (MP3: TXXX, M4A: Atome, Opus: R128_TRACK_GAIN); nie neu kodieren",
     "loudness.waveforms": "Wellenform bei Analyse/Durchlauf vorberechnen (aus = erst beim ersten Abspielen)",
+    "playlists.folder": "Ordner für exportierte Playlists; leer = «Playlists» im Zielordner",
+    "playlists.relative_paths": "Pfade in der Playlist relativ zum Ort der Playlist (anderes Laufwerk: absolut)",
+    "playlists.sync_after_download": "Gespeicherte Playlists mit «Aktuell halten» nach jedem Download neu schreiben",
     "maintenance.check_updates_on_start": "Beim Start auf yt-dlp-Updates prüfen (max. 1x pro Tag)",
     "maintenance.check_app_updates_on_start": "Beim Start prüfen, ob eine neue HCLoader-Version da ist (GitHub)",
     "maintenance.apply_update_on_exit": "Ein heruntergeladenes App-Update beim Beenden automatisch einspielen",

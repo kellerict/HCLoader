@@ -492,6 +492,49 @@ def _m12_audio_and_playback(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX idx_playback_updated ON playback(updated)")
 
 
+def _m13_artists_and_playlists(conn: sqlite3.Connection) -> None:
+    """v0.8.0 DJ pages and playlist export (core/artists.py, core/playlists.py).
+
+    - `artists`: only the artists the user (or the shipped seed list, app/data/artists.yaml)
+      said something about - every other artist is derived on the fly from the library
+      (checklist rows, title, channel). `key` = stable id (folded name without spaces, e.g.
+      «subzeroproject»), `name` = display name, `aliases` = JSON list of other spellings /
+      merged artists («HH» -> Headhunterz); a name or alias with a joiner («D-Block &
+      S-te-Fan») is one act and never split into a b2b. `channel_url` = own channel for «Add to
+      watchlist», `hidden` = not an artist (e.g. a mix series that was parsed as one),
+      `builtin` = came from the seed list (afterwards the row is the user's like any other).
+    - `playlists`: exported M3U8 files that can be regenerated. `spec` = JSON {kind, ...} of
+      what was exported, `path` = the file, `relative` = relative entries, `sync` = rewrite
+      it after downloads (only with `playlists.sync_after_download`).
+    """
+    conn.execute(
+        """CREATE TABLE artists(
+          id INTEGER PRIMARY KEY,
+          key TEXT NOT NULL UNIQUE,
+          name TEXT NOT NULL,
+          aliases TEXT NOT NULL DEFAULT '[]',
+          channel_url TEXT,
+          hidden INTEGER NOT NULL DEFAULT 0,
+          builtin INTEGER NOT NULL DEFAULT 0,
+          created TEXT,
+          updated TEXT
+        )"""
+    )
+    conn.execute(
+        """CREATE TABLE playlists(
+          id INTEGER PRIMARY KEY,
+          name TEXT NOT NULL,
+          spec TEXT NOT NULL,
+          path TEXT NOT NULL UNIQUE,
+          relative INTEGER NOT NULL DEFAULT 1,
+          sync INTEGER NOT NULL DEFAULT 0,
+          count INTEGER NOT NULL DEFAULT 0,
+          created TEXT,
+          updated TEXT
+        )"""
+    )
+
+
 # Append new steps at the end; never edit existing ones. Step i upgrades version i -> i+1.
 MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [
     _m1_initial,
@@ -506,6 +549,7 @@ MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [
     _m10_tracklists,
     _m11_tracks_key_index,
     _m12_audio_and_playback,
+    _m13_artists_and_playlists,
 ]
 # statuses a user may put into the download queue (enqueue / retry)
 ENQUEUEABLE = ("new", "inbox", "failed")

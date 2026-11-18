@@ -1,0 +1,44 @@
+# HCLoader – known artists (v0.8.0, app/core/artists.py)
+# Seeded once into the database (table `artists`); afterwards the user's edits win and an
+# update never overwrites them. `aliases`: other spellings or short names that mean the same
+# artist. A name with a joiner (&, x, vs) listed here is one act and never counted as a b2b.
+# Spelling variants that only differ in spaces, hyphens, dots or case («Sub-Zero Project»,
+# «SubZero Project») need no alias: they fold to the same key anyway.
+format: 1
+artists:
+  - name: Headhunterz
+    aliases: [HH, Headhunterz Live]
+  - name: Sub Zero Project
+    aliases: [SZP]
+  - name: D-Block & S-te-Fan
+    aliases: [D-Block and S-te-Fan, D-Block & Stefan]
+  - name: Brennan Heart
+    aliases: [I-Mi]
+  - name: Wildstylez
+    aliases: [Wildstylez Live]
+  - name: Noisecontrollers
+    aliases: [Noise Controllers]
+  - name: Da Tweekaz
+    aliases: [Tweekaz]
+  - name: Ran-D
+    aliases: [Ran D, RanD]
+  - name: Angerfist
+    aliases: [Angerfist Live]
+  - name: Miss K8
+    aliases: [Miss Kate]
+  - name: Dr. Peacock
+    aliases: [Dr Peacock, Doctor Peacock]
+  - name: Showtek
+    aliases: []
+  - name: Atmozfears
+    aliases: [Atmos Fears]
+  - name: Frontliner
+    aliases: []
+  - name: Coone
+    aliases: []
+  - name: The Prophet
+    aliases: [Prophet]
+  - name: Partyraiser
+    aliases: [Party Raiser]
+  - name: N-Vitral
+    aliases: [N Vitral, NVitral]
