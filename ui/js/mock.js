@@ -69,6 +69,7 @@
     },
     player: { mode: 'internal', normalize: true, target_lufs: -18, resume: 'ask', waveform: true },
     loudness: { analyse_after_download: true, write_tags: true, waveforms: true },
+    playlists: { folder: '', relative_paths: true, sync_after_download: false },
     festivals: { detect: true, min_confidence: 0.65, year_from_upload_date: true, match_description: true, extra_stages: [], extra_set_types: [], collector_searches_per_hour: 10, collector_results_per_search: 10, collector_auto_confirm: 0.85 },
     schedule: { watchlist_interval_hours: 24, in_app_check: true, task_scheduler_enabled: false, task_time: '03:00', entries_per_source: 30 },
     watchlist: { backfill_max_entries: 2000, backfill_requests_per_hour: 120 },
@@ -171,6 +172,9 @@
     'loudness.analyse_after_download': { bool: 1 },
     'loudness.write_tags': { bool: 1 },
     'loudness.waveforms': { bool: 1 },
+    'playlists.folder': { str: 1 },
+    'playlists.relative_paths': { bool: 1 },
+    'playlists.sync_after_download': { bool: 1 },
   };
   /* Abschnitt «soundcloud» erbt die Schonungs-Felder (gleiche Grenzen und Meldungen wie «throttle»). */
   Object.keys(RULES).filter((k) => k.startsWith('throttle.')).forEach((k) => { RULES[k.replace('throttle.', 'soundcloud.')] = RULES[k]; });
@@ -608,6 +612,13 @@
     FL('aMoh24MainE', 'Masters of Hardcore 2024 | The Endshow', 'aod', 'Hardcore', 21, 'moh', 2024, null, 'endshow', { md: '03-25', assign: false }),
     FL('bHrdBss19Gr', 'Hard Bass Team Green – Full Liveset', 'b2s', 'Hardstyle', 88, 'hardbass', 2019, null, 'full_show', { md: '02-11', assign: false }),
     FL('bDcb23MainR', 'Decibel outdoor 2023 | Mainstage | Rooler', 'b2s', 'Hardstyle', 58, 'decibel', 2023, 'Mainstage', 'live_set', { md: '08-21', assign: false }),
+  );
+  /* v0.8.0 DJ-Seiten: ein b2b-Set, Alias-Schreibweisen («HH», «SubZero Project») – zählen für denselben DJ. */
+  LIBRARY.push(
+    FL('aDom22AngMk', 'Angerfist b2b Miss K8 | Dominator 2022 | Mainstage', 'aod', 'Hardcore', 62, 'dominator', 2022, 'Mainstage', 'live_set', { md: '07-18' }),
+    FL('bRvz23HHzLv', 'HH @ Reverze 2023 (Live)', 'b2s', 'Hardstyle', 60, 'reverze', 2023, null, 'live_set', { md: '03-06' }),
+    FL('bRvz22SZPrj', 'SubZero Project | Reverze 2022', 'b2s', 'Hardstyle', 58, 'reverze', 2022, null, 'live_set', { md: '03-02' }),
+    FL('iInt23Headh', 'Headhunterz | Intents Festival 2023 | Mainstage', 'b2s', 'Hardstyle', 61, 'intents', 2023, 'Mainstage', 'live_set', { md: '06-05' }),
   );
   /* Bestehende Einträge: Podcast-Folgen der eigenen Serie, ein unsicherer Vorschlag (Tribute-Mix). */
   const libById = (id) => LIBRARY.find((x) => x.id === id);
@@ -1502,6 +1513,131 @@
   const tlFold = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ß/g, 'ss').replace(/&/g, ' and ').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
   const tlIndexed = () => (tlState.lastPass ? LIBRARY.filter((l) => TRACKLISTS[l.id]) : []);
   const tlSearchText = (x) => (x.is_id && x.artist === 'ID' ? '' : tlFold(`${x.artist === 'ID' ? '' : x.artist} ${x.is_id ? '' : x.title} ${x.version}`));
+
+  /* ---------- DJ-Seiten + Playlist-Export (v0.8.0, docs/bridge-api.md «DJ pages, playlist export») ---------- */
+  /* Vereinfachte Nachbildung von core/artists.py: Titel-Segmente ohne Serie/Jahr/Bühne/Set-Art, «… by DJ»,
+     b2b/vs/x und «&» trennen (bekannte Acts nicht), Kanal als Rückfall ausser Veranstalter-Kanälen. */
+  let ART_ROWS = [['Headhunterz', ['HH']], ['Sub Zero Project', ['SZP']], ['D-Block & S-te-Fan', []], ['Angerfist', []], ['Miss K8', []],
+    ['Dr. Peacock', ['Dr Peacock']], ['Coone', []], ['Partyraiser', []], ['N-Vitral', []]]
+    .map(([name, aliases]) => ({ key: foldName(name), name, aliases, channel_url: null, hidden: false, builtin: true }));
+  ART_ROWS.push({ key: 'kickdrumcollective', name: 'Kickdrum Collective', aliases: [], channel_url: null, hidden: true, builtin: false });
+  const ART_GENERIC = new Set(('mix mixes yearmix megamix podcast radio fm episode session sessions classics classic anthems anthem tribute special edition vol marathon continuous '
+    + 'hour hours minute minutes bpm show livestream stream recording recorded full warmup liveset closing opening ceremony endshow official music records tv festival '
+    + 'hardstyle hardcore uptempo frenchcore rawstyle gabber gabba terror terrorcore speedcore industrial euphoric oldschool mainstream rave underground vault archive '
+    + 'afterhours weekend tape tapes power').split(' '));
+  let artSig = 0, artCache = null;
+  const artWords = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').split(/[^a-z0-9]+/).filter(Boolean);
+  const artRow = (k) => ART_ROWS.find((r) => r.key === k || foldName(r.name) === k || r.aliases.some((a) => foldName(a) === k));
+  const artClean = (x) => String(x || '').replace(/\s*[([{][^)\]}]*[)\]}]\s*/g, ' ').replace(/\s+(feat\.?|ft\.?|featuring|with|hosted by)\s+.*$/i, '')
+    .replace(/\s+(live( ?set)?|liveset|dj ?set|full set|set)$/i, '').replace(/\s+/g, ' ').trim();
+  const artPlausible = (n) => !!n && /[a-z]/i.test(n) && n.length <= 80 && !artWords(n).some((w) => ART_GENERIC.has(w)) && !artWords(n).every((w) => /^\d+$/.test(w));
+  function artSplit(text) {
+    const whole = artClean(text), out = [];
+    if (artRow(foldName(whole))) return [whole];
+    whole.split(/\s+(?:b2b|b3b|vs\.?|x)\s+/i).forEach((p0) => {
+      const p = artClean(p0);
+      if (!p) return;
+      if (artRow(foldName(p))) { out.push(p); return; }
+      const parts = p.split(/\s*(?:&|\+|,)\s*/).map(artClean).filter(Boolean);
+      if (parts.length > 1 && parts.every(artPlausible)) out.push(...parts);
+      else if (artPlausible(p)) out.push(p);
+    });
+    return out.filter((n, i, a) => a.findIndex((m) => foldName(m) === foldName(n)) === i);
+  }
+  function artCredit(l) {
+    const series = SERIES.flatMap((x) => [x.name, ...x.aliases, ...(x.weak_aliases || [])]).map((a) => artWords(a).join(' ')).filter(Boolean);
+    for (const seg of String(l.title).split(/\s+[|@~•·]\s+|\s+[-–—]\s+/)) {
+      const by = /\b(?:mix|mixed|hosted|presented|set)\s+by\s+(.+)$/i.exec(seg);
+      if (by) return artClean(by[1]);
+      const w = artWords(seg).join(' ');
+      if (!w || series.some((a) => ` ${w} `.includes(` ${a} `)) || /^(19|20)\d\d$/.test(w) || STAGES.some((x) => x.toLowerCase() === w)) continue;
+      if (/^(the )?(closing|opening) ceremony|^(saturday |sunday )?endshow|^power hour|^full (show|stream)|anthem show/.test(w)) continue;
+      const n = artClean(seg);
+      if (artSplit(n).length) return n;
+    }
+    if (!l.festival && artPlausible(l.artist) && !SERIES.some((x) => (x.channels || []).includes(l.artist))) return l.artist;
+    return null;
+  }
+  function artIndex() {
+    if (artCache && artCache.n === LIBRARY.length && artCache.sig === artSig) return artCache;
+    const A = new Map(), byVid = new Map();
+    ART_ROWS.forEach((r) => A.set(r.key, { key: r.key, row: r, spell: {}, vids: new Map() }));
+    LIBRARY.forEach((l) => {
+      const c = artCredit(l), keys = [];
+      (c ? artSplit(c) : []).forEach((n) => {
+        const r = artRow(foldName(n)), k = r ? r.key : foldName(n);
+        if (!k || keys.includes(k)) return;
+        if (!A.has(k)) A.set(k, { key: k, row: null, spell: {}, vids: new Map() });
+        A.get(k).spell[n] = (A.get(k).spell[n] || 0) + 1;
+        keys.push(k);
+      });
+      keys.forEach((k) => A.get(k).vids.set(l.id, keys.length > 1 ? 'b2b' : 'solo'));
+      if (keys.length) byVid.set(l.id, keys);
+    });
+    artCache = { n: LIBRARY.length, sig: artSig, A, byVid };
+    return artCache;
+  }
+  const artName = (a) => (a.row ? a.row.name : Object.entries(a.spell).sort((x, y) => y[1] - x[1])[0][0]);
+  function artInitials(name) {
+    const w = String(name).split(/[^\p{L}\p{N}]+/u).filter((x) => x && !/^\d+$/.test(x));
+    if (!w.length) return '?';
+    return (w.length === 1 ? w[0].slice(0, 2) : w[0][0] + (w.length === 2 ? w[1][0] : w[1][0])).toUpperCase();
+  }
+  function artSummary(a) {
+    const ls = [...a.vids.keys()].map(libById).filter(Boolean), name = artName(a);
+    const years = [...new Set(ls.map((l) => (l.festival && l.festival.event_year) || +String(l.upload_date).slice(0, 4)).filter(Boolean))].sort();
+    return {
+      key: a.key, name, initials: artInitials(name), aliases: a.row ? a.row.aliases.slice() : [], spellings: Object.keys(a.spell),
+      channel_url: (a.row && a.row.channel_url) || null, edited: !!(a.row && !a.row.builtin), hidden: !!(a.row && a.row.hidden),
+      sets: ls.length, b2b: [...a.vids.values()].filter((r) => r === 'b2b').length, seconds: ls.reduce((n, l) => n + (l.duration || 0), 0),
+      festivals: new Set(ls.filter((l) => l.festival && l.festival.kind === 'festival').map((l) => l.festival.series_id)).size, years,
+      last: ls.map((l) => String(l.upload_date || '')).sort().pop() || null,
+    };
+  }
+  const artFind = (key) => { const A = artIndex().A; const r = artRow(foldName(key)); return A.get(key) || (r && A.get(r.key)) || A.get(foldName(key)) || null; };
+  const artErr = (errors) => ({ ok: false, errors, error: Object.values(errors)[0] });
+  const artTaken = (except) => new Set(ART_ROWS.filter((r) => r.key !== except).flatMap((r) => [r.key, foldName(r.name), ...r.aliases.map(foldName)]));
+  function artSets(a) {
+    return [...a.vids.keys()].map(libById).filter(Boolean).sort((x, y) => String(y.upload_date).localeCompare(String(x.upload_date)));
+  }
+
+  /* Playlists: «Dateien» nur im Speicher; ein Ordner auf einem anderen Laufwerk als die Musik = absolute Pfade. */
+  const PL_FILES = new Set();
+  let PLAYLISTS = [], plSeq = 0;
+  const plFolder = () => (settings.playlists && settings.playlists.folder) || `${TARGET}\\Playlists`;
+  const plKinds = ['edition', 'series', 'genre', 'artist', 'filter', 'checklist', 'continue'];
+  function plItems(spec) {
+    const done = (l) => l;
+    switch (spec.kind) {
+      case 'edition': return LIBRARY.filter((l) => l.festival && l.festival.edition_id === +spec.edition_id).map(done);
+      case 'series': return LIBRARY.filter((l) => l.festival && l.festival.series_id === +spec.series_id);
+      case 'genre': return LIBRARY.filter((l) => l.genre === spec.genre);
+      case 'artist': { const a = artFind(spec.key); return a ? artSets(a) : []; }
+      case 'checklist': { const c = CL.get(+spec.edition_id); return c ? c.rows.map(clRowView).filter((r) => r.status === 'downloaded' && r.video_id).map((r) => libById(r.video_id)).filter(Boolean) : []; }
+      case 'continue': return [...PB.keys()].map(libById).filter(Boolean);
+      default: {
+        const f = spec.filters || {}, q = foldName(f.search);
+        return LIBRARY.filter((l) => (!f.genre || l.genre === f.genre) && (!f.channel || l.artist === f.channel) && (!f.year || String(l.year) === String(f.year))
+          && (!f.edition_id || (l.festival && l.festival.edition_id === +f.edition_id)) && (!f.series_id || (l.festival && l.festival.series_id === +f.series_id))
+          && (!q || foldName(`${l.title} ${l.artist} ${l.genre} ${l.festival ? l.festival.edition : ''}`).includes(q)));
+      }
+    }
+  }
+  function plName(spec) {
+    const ed = (id) => { const l = LIBRARY.find((x) => x.festival && x.festival.edition_id === +id); return l ? l.festival.edition : 'Festival'; };
+    switch (spec.kind) {
+      case 'edition': return ed(spec.edition_id);
+      case 'checklist': return `${ed(spec.edition_id)} – checklist`;
+      case 'series': { const x = seriesById(spec.series_id); return x ? x.name : 'Festival'; }
+      case 'genre': return spec.genre;
+      case 'artist': { const a = artFind(spec.key); return a ? artName(a) : spec.key; }
+      case 'continue': return 'Continue listening';
+      default: { const f = spec.filters || {}; const parts = [f.edition_id ? ed(f.edition_id) : '', f.search, f.genre, f.channel, f.year].filter(Boolean); return parts.length ? parts.join(' · ') : 'Library'; }
+    }
+  }
+  const plSpecKey = (spec) => JSON.stringify(Object.keys(spec).sort().reduce((o, k) => { o[k] = spec[k]; return o; }, {}));
+  const plSaved = (p) => ({ id: p.id, name: p.name, path: p.path, kind: p.spec.kind, relative: p.relative, sync: p.sync, count: p.count, updated: p.updated, exists: PL_FILES.has(p.path) });
+  const plSan = (n) => String(n || '').replace(/[:/\\|]/g, '-').replace(/"/g, "'").replace(/[<>?*]/g, '').replace(/\s+/g, ' ').trim().replace(/[. ]+$/, '');
 
   const api = {
     /* Einstellungen */
@@ -2529,6 +2665,149 @@
         emit('queue', {});
         pushStatus();
         return { ok: true, queued, retag, skipped };
+      });
+    },
+
+    /* v0.8.0 DJ-Seiten */
+    get_artists(opts) {
+      return later(60, () => {
+        const o = opts || {}, q = foldName(o.search);
+        let list = [...artIndex().A.values()].filter((a) => a.vids.size).map(artSummary);
+        const hidden = list.filter((a) => a.hidden).length;
+        list = list.filter((a) => a.hidden === !!o.hidden && (!q || foldName([a.name, ...a.aliases, ...a.spellings].join(' ')).includes(q)));
+        const sort = o.sort || 'sets';
+        list.sort(sort === 'recent' ? (a, b) => String(b.last).localeCompare(String(a.last)) || b.sets - a.sets
+          : sort === 'name' ? (a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }) : (a, b) => b.sets - a.sets || b.seconds - a.seconds || a.name.localeCompare(b.name));
+        return { ok: true, artists: list, hidden };
+      });
+    },
+    get_artist(key) {
+      return later(60, () => {
+        const a = artFind(key);
+        if (!a || !a.vids.size) return { ok: false, error: 'Artist not found (library changed?)' };
+        const idx = artIndex(), sets = artSets(a).map((l) => Object.assign(clone(l), { role: a.vids.get(l.id), with: (idx.byVid.get(l.id) || []).filter((k) => k !== a.key).map((k) => artName(idx.A.get(k))) }));
+        const count = new Map();
+        sets.forEach((l) => (TRACKLISTS[l.id] ? TRACKLISTS[l.id].tracks : []).filter((x) => !x.is_id).forEach((x) => {
+          const k = foldName(`${x.artist}|${x.title}|${x.version}`), c = count.get(k) || { artist: x.artist, title: x.title, version: x.version || '', sets: new Set() };
+          c.sets.add(l.id); count.set(k, c);
+        }));
+        const tracks = [...count.values()].map((c) => ({ artist: c.artist, title: c.title, version: c.version, sets: c.sets.size })).sort((x, y) => y.sets - x.sets || x.title.localeCompare(y.title)).slice(0, 10);
+        return { ok: true, artist: artSummary(a), sets, tracks };
+      });
+    },
+    save_artist(data) {
+      return later(80, () => {
+        const d = data || {}, errors = {}, name = String(d.name || '').replace(/\s+/g, ' ').trim();
+        if (!name) errors.name = 'Please enter a name';
+        else if (name.length > 80) errors.name = 'The name may have at most 80 characters';
+        if (d.channel_url && !/^https:\/\/(www\.youtube\.com\/(channel\/|@)|soundcloud\.com\/)[^/?#]+/.test(d.channel_url)) errors.channel_url = 'This is not a channel URL';
+        const key = String(d.key || '') || foldName(name);
+        const aliases = (Array.isArray(d.aliases) ? d.aliases : []).map((x) => String(x).trim()).filter((x) => x && foldName(x) !== key && foldName(x) !== foldName(name));
+        const taken = artTaken(key);
+        [[name, 'name'], ...aliases.map((x) => [x, 'aliases'])].some(([n, f]) => {
+          if (!taken.has(foldName(n))) return false;
+          const owner = ART_ROWS.find((r) => r.key === foldName(n) || foldName(r.name) === foldName(n) || r.aliases.some((x) => foldName(x) === foldName(n)));
+          errors[f] = `“${n}” already belongs to ${owner ? owner.name : n} – merge the two artists instead`;
+          return true;
+        });
+        if (Object.keys(errors).length) return artErr(errors);
+        const row = ART_ROWS.find((r) => r.key === key);
+        if (row) Object.assign(row, { name, aliases, channel_url: d.channel_url || null, builtin: false });
+        else ART_ROWS.push({ key, name, aliases, channel_url: d.channel_url || null, hidden: false, builtin: false });
+        artSig++;
+        return { ok: true, key };
+      });
+    },
+    merge_artists(keys, into) {
+      return later(80, () => {
+        const A = artIndex().A, target = A.get(into);
+        if (!target) return artErr({ key: 'Artist not found (library changed?)' });
+        const src = (keys || []).filter((k) => k !== into).map((k) => A.get(k)).filter(Boolean);
+        if (!src.length) return artErr({ keys: 'Choose at least one other artist to merge' });
+        let row = ART_ROWS.find((r) => r.key === into);
+        if (!row) ART_ROWS.push((row = { key: into, name: artName(target), aliases: [], channel_url: null, hidden: false, builtin: false }));
+        src.forEach((a) => {
+          [artName(a), ...(a.row ? a.row.aliases : []), ...Object.keys(a.spell)].forEach((n) => { if (foldName(n) !== into && !row.aliases.some((x) => foldName(x) === foldName(n))) row.aliases.push(n); });
+          ART_ROWS = ART_ROWS.filter((r) => r.key !== a.key);
+        });
+        row.builtin = false;
+        artSig++;
+        return { ok: true, key: into };
+      });
+    },
+    split_artist(key, alias) {
+      return later(80, () => {
+        const row = ART_ROWS.find((r) => r.key === key);
+        if (!row || !row.aliases.some((x) => foldName(x) === foldName(alias))) return artErr({ alias: `“${alias}” is not an alias of this artist` });
+        row.aliases = row.aliases.filter((x) => foldName(x) !== foldName(alias));
+        row.builtin = false;
+        artSig++;
+        return { ok: true, key, split: foldName(alias) };
+      });
+    },
+    hide_artist(key, hidden) {
+      return later(60, () => {
+        const a = artIndex().A.get(key);
+        if (!a) return artErr({ key: 'Artist not found (library changed?)' });
+        if (a.row) a.row.hidden = !!hidden;
+        else ART_ROWS.push({ key, name: artName(a), aliases: [], channel_url: null, hidden: !!hidden, builtin: false });
+        artSig++;
+        return { ok: true, key, hidden: !!hidden };
+      });
+    },
+    get_artist_watch(key) {
+      return later(60, () => {
+        const a = artFind(key);
+        if (!a) return { ok: false, error: 'Artist not found (library changed?)' };
+        const name = artName(a), names = new Set([a.key, foldName(name), ...(a.row ? a.row.aliases.map(foldName) : [])]);
+        let url = a.row && a.row.channel_url;
+        if (!url) { const own = artSets(a).find((l) => names.has(foldName(l.artist)) && /^UC/.test(l.channel_id || '')); if (own) url = `https://www.youtube.com/channel/${own.channel_id}`; }
+        const source = url ? { type: 'channel', name, url_or_query: url } : { type: 'search', name: `${name} live set`, url_or_query: `${name} live set`, platform: 'youtube' };
+        const ex = SOURCES.find((x) => x.type === source.type && String(x.url_or_query).toLowerCase().replace(/\/$/, '') === source.url_or_query.toLowerCase().replace(/\/$/, ''));
+        return { ok: true, source, existing: ex ? sourceView(ex) : null };
+      });
+    },
+    /* v0.8.0 Playlist-Export */
+    preview_playlist(spec) {
+      return later(60, () => {
+        if (!spec || !plKinds.includes(spec.kind)) return { ok: false, error: 'Unknown playlist type' };
+        const all = plItems(spec), ok = all.filter((l) => !l.missing), saved = PLAYLISTS.filter((p) => plSpecKey(p.spec) === plSpecKey(spec)).pop();
+        return { ok: true, spec: clone(spec), name: plName(spec), folder: plFolder(), relative: settings.playlists ? settings.playlists.relative_paths : true,
+          count: ok.length, missing: all.length - ok.length, seconds: ok.reduce((n, l) => n + (l.duration || 0), 0), saved: saved ? plSaved(saved) : null };
+      });
+    },
+    export_playlist(spec, opts) {
+      return later(220, () => {
+        const o = opts || {};
+        if (!spec || !plKinds.includes(spec.kind)) return { ok: false, error: 'Unknown playlist type' };
+        const folder = String(o.folder || '').trim() || plFolder();
+        if (!/^([a-z]:\\|\\\\)/i.test(folder)) return { ok: false, error: 'Please choose a full folder path (e.g. D:\\Music\\Playlists)' };
+        const base = plSan(o.name || plName(spec));
+        if (!base) return { ok: false, error: 'Please enter a file name' };
+        const path = `${folder.replace(/\\+$/, '')}\\${base}.m3u8`;
+        if (PL_FILES.has(path) && !o.overwrite) return { ok: false, exists: true, path };
+        const all = plItems(spec), ok = all.filter((l) => !l.missing), relative = o.relative !== false;
+        const other = relative && folder.slice(0, 2).toLowerCase() !== TARGET.slice(0, 2).toLowerCase();
+        PL_FILES.add(path);
+        let p = PLAYLISTS.find((x) => x.path === path);
+        if (!p) PLAYLISTS.push((p = { id: ++plSeq, path }));
+        Object.assign(p, { name: base, spec: clone(spec), relative, sync: !!o.sync, count: ok.length, updated: nowIso() });
+        return { ok: true, path, count: ok.length, skipped: all.length - ok.length, absolute_fallback: other ? ok.length : 0, relative, sync: !!o.sync };
+      });
+    },
+    get_saved_playlists: () => later(40, () => ({ ok: true, playlists: PLAYLISTS.slice().sort((a, b) => b.updated.localeCompare(a.updated)).map(plSaved), sync_enabled: !!(settings.playlists && settings.playlists.sync_after_download) })),
+    set_playlist_sync(id, sync) {
+      return later(30, () => { const p = PLAYLISTS.find((x) => x.id === id); if (!p) return { ok: false, error: 'Playlist not found' }; p.sync = !!sync; return { ok: true }; });
+    },
+    forget_playlist(id) {
+      return later(30, () => { const n = PLAYLISTS.length; PLAYLISTS = PLAYLISTS.filter((x) => x.id !== id); return n === PLAYLISTS.length ? { ok: false, error: 'Playlist not found' } : { ok: true }; });
+    },
+    sync_playlists(ids) {
+      return later(200, () => {
+        const list = PLAYLISTS.filter((p) => (ids ? ids.includes(p.id) : p.sync));
+        list.forEach((p) => { p.count = plItems(p.spec).filter((l) => !l.missing).length; p.updated = nowIso(); PL_FILES.add(p.path); });
+        emit('playlists_synced', { synced: list.length, failed: 0 });
+        return { ok: true, synced: list.length, failed: 0, paths: list.map((p) => p.path) };
       });
     },
 

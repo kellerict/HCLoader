@@ -228,6 +228,32 @@
      get_media(id) liefert zusätzlich: loudness {lufs, true_peak, gain, peak, source}|null, resume {position, duration,
                                            updated}|null, peaks [0..255]|null
 
+   DJ-Seiten + Playlist-Export (v0.8.0, offline; Vertrag + Datenformen: docs/bridge-api.md «DJ pages, playlist export»)
+     get_artists(opts?)                 -> {ok, artists:[ArtistSummary], hidden}   opts {search, sort:"sets"|"recent"|"name",
+                                           hidden:true = nur ausgeblendete}; ArtistSummary = {key, name, initials, aliases,
+                                           spellings, channel_url, edited, hidden, sets, b2b, seconds, festivals, years, last}
+     get_artist(key)                    -> {ok, artist: ArtistSummary, sets:[LibraryItem + role "solo"|"b2b" + with:[Name]],
+                                           tracks:[{artist, title, version, sets}]} | {ok:false, error}   key auch Alias
+     save_artist(data)                  -> {ok, key} | {ok:false, errors:{name|aliases|channel_url: "Meldung"}, error}
+                                           data {key?, name, aliases:[..], channel_url?}; Alias eines anderen gespeicherten
+                                           Artists -> Fehler (zusammenführen); Alias eines abgeleiteten Artists = zusammenführen
+     merge_artists(keys, into)          -> {ok, key} | {ok:false, errors, error}   Namen werden Aliasse von into
+     split_artist(key, alias)           -> {ok, key, split} | {ok:false, errors, error}   Alias wieder eigener Artist
+     hide_artist(key, hidden)           -> {ok, key, hidden} | {ok:false, errors, error}   «kein DJ» (aus der Liste)
+     get_artist_watch(key)              -> {ok, source:{type:"channel"|"search", name, url_or_query, platform?},
+                                           existing: Source|null}   speichert nichts; nach Bestätigung save_source(source)
+     preview_playlist(spec)             -> {ok, spec, name, folder, relative, count, missing, seconds, saved: SavedPlaylist|null}
+                                           | {ok:false, error}   spec {kind:"edition"|"series"|"genre"|"artist"|"filter"|
+                                           "checklist"|"continue", edition_id|series_id|genre|key|filters+sort}
+     export_playlist(spec, opts?)       -> {ok, path, count, skipped, absolute_fallback, relative, sync}
+                                           | {ok:false, exists:true, path} (fragen, dann overwrite:true) | {ok:false, error}
+                                           opts {name, folder, relative, overwrite, sync}
+     get_saved_playlists()              -> {ok, playlists:[SavedPlaylist], sync_enabled}
+                                           SavedPlaylist = {id, name, path, kind, relative, sync, count, updated, exists}
+     set_playlist_sync(id, sync)        -> {ok} | {ok:false, error}
+     forget_playlist(id)                -> {ok} | {ok:false, error}   nur aus der Liste, die Datei bleibt
+     sync_playlists(ids?)               -> {ok, synced, failed, paths}   jetzt neu schreiben (ohne ids: alle mit sync)
+
    Festival-Sammler (v0.5.0; Vertrag, Datenformen, Events: docs/bridge-api.md «Festival collector»)
      get_collector_editions()           -> [CollectorEdition]   Ausgaben mit Checkliste (offline)
      open_collector_edition(data)       -> {ok, edition: CollectorEdition} | {ok:false, errors, error}
@@ -399,6 +425,7 @@
                      phase: "start"|"progress"|"done"|"error" (v0.7.0, «Lautheit & Wellenform analysieren»)
      media_analysed  {id, ok, loudness?, peaks, tagged, error?}   v0.7.0 eine Datei analysiert (nach Download/Durchlauf)
      waveform        {id, ok, peaks?, duration?, loudness?, error?}   v0.7.0 angeforderte Wellenform ist fertig
+     playlists_synced {synced, failed}                 v0.8.0 gespeicherte Playlists nach Downloads neu geschrieben
      toast           {msg, kind?}                      kind: "ok"|"info"|"warn"|"err"
 
    UI-seitig abonnieren:  HC.bridge.on('progress', fn)
