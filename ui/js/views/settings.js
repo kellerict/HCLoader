@@ -265,7 +265,7 @@
     const range = rangeText(def);
     d.innerHTML = `
       <div class="fl"><b>${esc(t(`set.${def.k}.label`))}</b><span class="help">${t(`set.${def.k}.help`)}</span>
-        <em>${t('set.default')}: ${esc(fmtValue(def, get(defaults, def.k)))}${range ? ` · ${t('set.range')} ${esc(range)}` : ''}</em></div>
+        <em>${t('set.default')}: ${esc(fmtValue(def, get(defaults, def.k)))}${range ? ` · <span class="nw">${t('set.range')} ${esc(range)}</span>` : ''}</em></div>
       <div class="fc"><div class="fc-main">${controlHtml(def)}</div>
         <button type="button" class="linkbtn reset" data-reset>${t('common.reset')}</button>
         <div class="field-error" hidden></div></div>`;

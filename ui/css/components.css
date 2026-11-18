@@ -288,6 +288,7 @@ tr.checking td:first-child::before{content:"";position:absolute;left:0;top:0;bot
 .field.dirty .fl b::after{opacity:1;transform:none}
 .field .fl .help{display:block;color:var(--muted);font-size:12.5px;line-height:1.45}
 .field .fl em{display:block;margin-top:5px;font:11px var(--f-mono);color:var(--dim);font-style:normal;overflow-wrap:anywhere}
+.field .fl em .nw{white-space:nowrap} /* Bereich «-30 … -6» nie mitten im Wert umbrechen */
 .field .fc{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;align-items:start}
 .field .fc-main{display:flex;gap:8px;align-items:center;flex-wrap:wrap;min-height:36px;min-width:0}
 .field .fc-main .input,.field .fc-main .select{max-width:360px}

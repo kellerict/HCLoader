@@ -533,7 +533,7 @@ HC.i18n.register({"code": "ru", "name": "Русский", "dir": "ltr", "intl": 
     "group_unknown": "Неизвестно",
     "continue": "Продолжить прослушивание",
     "continue_title": "Продолжить «{title}» с {t}",
-    "continue_left": "осталось {t}",
+    "continue_left": "−{t}",
     "continue_forget": "Убрать из «Продолжить прослушивание»"
   },
   "player": {
