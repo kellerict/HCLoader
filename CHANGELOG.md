@@ -10,6 +10,8 @@ appears after «Show all changes» (`docs/RELEASING.md`).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-18
+
 ### Highlights
 - **Loudness normalisation**: every set plays at the same perceived loudness in the built-in player – never clipping
 - Offline **loudness analysis** with ffmpeg writes **ReplayGain tags** into your files (MP3, M4A, Opus) – the audio is never re-encoded
@@ -45,7 +47,7 @@ appears after «Show all changes» (`docs/RELEASING.md`).
   (`analyse_after_download`, `write_tags`, `waveforms`).
 - Database migration 12 (automatic backup first): tables `audio_analysis` and `playback`.
 - Bridge methods `get_waveform`, `save_position`, `forget_position`, `get_continue_listening`,
-  `get_analysis_status`, `analyse_library`, `cancel_analyse_library`; `get_media` now also returns
+  `get_analysis_status`, `analyse_library`, `cancel_analyse_library`, `set_now_playing`; `get_media` now also returns
   `loudness`, `resume` and `peaks`; events `audio_analysis`, `media_analysed`, `waveform`
   (`docs/bridge-api.md`).
 - Texts in all languages; wiki pages *Library and player* and *Settings reference* updated.
