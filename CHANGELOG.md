@@ -10,6 +10,8 @@ appears after «Show all changes» (`docs/RELEASING.md`).
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-18
+
 ### Highlights
 - **Statistics view**: sets, hours and GB of your library, by genre, festival, year and DJ – charts that work offline
 - **Downloads over time**, YouTube vs. SoundCloud, most played tracks and watchlist activity, with a date range filter
@@ -36,7 +38,8 @@ appears after «Show all changes» (`docs/RELEASING.md`).
   Shown through Windows PowerShell 5.1 (part of Windows, no extra package) or, if installed, the
   optional pywinrt packages; without either the events are only logged.
 - A click on a notification opens HCLoader at the matching view (inbox, downloads or library) –
-  also when the app is already running. New command-line option `--open <view>` (`hcloader://<view>`);
+  also when the app is already running. New command-line option `--open <view>`; the
+  `hcloader://open/<view>` link can only navigate (fixed allow-list, any extra argument is refused);
   the app registers its notification name/icon and the `hcloader:` link per user (HKCU, no admin
   rights); the uninstaller removes both.
 - Plex/Jellyfin library scan (new settings tab **Media server**): server type, address, library
