@@ -582,7 +582,8 @@
     "nothing_to_merge": "Välj minst en annan artist att slå ihop",
     "merged": "Ihopslaget i {name}: {names}",
     "alias_unknown": "”{alias}” är inget alias för den här artisten",
-    "split": "”{alias}” delat från {name}"
+    "split": "”{alias}” delat från {name}",
+    "merge_too_many": "Efter sammanslagningen skulle {name} ha fler än {max} alias – ta bort några alias först"
   },
   "playlist": {
     "spec_invalid": "Okänd spellistetyp",
@@ -603,6 +604,8 @@
       "one": "{n} spellista uppdaterad",
       "other": "{n} spellistor uppdaterade"
     },
-    "unknown": "Spellistan hittades inte"
+    "unknown": "Spellistan hittades inte",
+    "gone_unsynced": "Spellistan {path} finns inte längre – den hålls inte längre uppdaterad",
+    "sync_crashed": "Spellistorna kunde inte uppdateras: {error}"
   }
 }

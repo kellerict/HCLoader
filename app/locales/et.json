@@ -582,7 +582,8 @@
     "nothing_to_merge": "Vali ühendamiseks vähemalt üks teine artist",
     "merged": "Ühendatud artistiga {name}: {names}",
     "alias_unknown": "„{alias}“ ei ole selle artisti alias",
-    "split": "„{alias}“ eraldatud artistist {name}"
+    "split": "„{alias}“ eraldatud artistist {name}",
+    "merge_too_many": "Pärast ühendamist oleks artistil {name} üle {max} aliase – eemalda enne mõned aliased"
   },
   "playlist": {
     "spec_invalid": "Tundmatu esitusloendi tüüp",
@@ -603,6 +604,8 @@
       "one": "{n} esitusloend uuendatud",
       "other": "{n} esitusloendit uuendatud"
     },
-    "unknown": "Esitusloendit ei leitud"
+    "unknown": "Esitusloendit ei leitud",
+    "gone_unsynced": "Esitusloendit {path} enam ei ole – seda ei hoita enam ajakohasena",
+    "sync_crashed": "Esitusloendeid ei saanud uuendada: {error}"
   }
 }

@@ -214,6 +214,7 @@
   let cur = 'general';
   let genreKeys = []; // stabile Schlüssel für die Genre-Zeilen (FLIP)
   let gk = 0;
+  let plReload = null; // «Gespeicherte Playlists» neu laden (ein Listener aus init, Review m10)
   const cache = { task: null, versions: null, blacklist: null, poTest: null, update: null, before: null, restart: false, backups: [], freshBackup: '', fest: null, assign: null, series: null, seriesHidden: false, analysis: null, anRun: null, playlists: null };
 
   const isDirtyKey = (k) => !eq(get(work, k), get(saved, k));
@@ -466,7 +467,7 @@
           if (r && r.ok) load();
         }
       });
-      HC.bridge.on('playlists_changed', () => { if (host.isConnected) load(); });
+      plReload = () => { if (host.isConnected) load(); };
       paint();
       load();
     },
@@ -1241,6 +1242,7 @@
       if (HC.app.current() === 'settings' && e.ctrlKey && e.key.toLowerCase() === 's') { e.preventDefault(); if (!$('#btn-save', el).disabled) save(); }
     });
     HC.bridge.on('log', onUpdateLog);
+    HC.bridge.on('playlists_changed', () => { if (plReload) plReload(); });
     /* v0.7.0 «Lautheit & Wellenform analysieren»: Fortschritt in den Tab, Ergebnis als Toast. */
     HC.bridge.on('audio_analysis', (d) => {
       const host = $('[data-custom=analysis]', el);

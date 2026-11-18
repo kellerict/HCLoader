@@ -588,7 +588,8 @@
     "nothing_to_merge": "Izvēlieties vismaz vienu citu mākslinieku apvienošanai",
     "merged": "Apvienots ar {name}: {names}",
     "alias_unknown": "“{alias}” nav šī mākslinieka aizstājvārds",
-    "split": "“{alias}” atdalīts no {name}"
+    "split": "“{alias}” atdalīts no {name}",
+    "merge_too_many": "Pēc apvienošanas {name} būtu vairāk nekā {max} aizstājvārdu – vispirms noņem dažus"
   },
   "playlist": {
     "spec_invalid": "Nezināms atskaņošanas saraksta veids",
@@ -611,6 +612,8 @@
       "one": "Atjaunināts {n} saraksts",
       "other": "Atjaunināti {n} saraksti"
     },
-    "unknown": "Atskaņošanas saraksts nav atrasts"
+    "unknown": "Atskaņošanas saraksts nav atrasts",
+    "gone_unsynced": "Atskaņošanas saraksts {path} vairs nepastāv – tas vairs netiek atjaunināts",
+    "sync_crashed": "Atskaņošanas sarakstus neizdevās atjaunināt: {error}"
   }
 }

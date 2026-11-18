@@ -17,6 +17,7 @@ rewritten after downloads when `playlists.sync_after_download` is on.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import ntpath
@@ -24,6 +25,7 @@ import os
 import posixpath
 import re
 import sys
+import tempfile
 from collections.abc import Mapping
 from pathlib import Path
 from types import ModuleType
@@ -38,6 +40,8 @@ from .i18n import tr
 log = logging.getLogger(__name__)
 
 EXT = ".m3u8"
+# length of the temporary file name «.hcl-XXXXXXXX.tmp» (tempfile.mkstemp)
+TMP_NAME_LEN = 17
 KINDS = ("edition", "series", "genre", "artist", "filter", "checklist", "continue")
 MAX_NAME = 120
 CONTINUE_MAX = 20
@@ -206,7 +210,8 @@ def entry_path(
         return file, True
 
 
-_LINE = re.compile(r"[\r\n]+")
+# line breaks of any kind (some parsers also break at U+0085, U+2028, U+2029)
+_LINE = re.compile(r"[\r\n\x0b\x0c\x85\u2028\u2029]+")
 _TITLE_SPLIT = re.compile(r"\s+[|@~•·]\s+|\s+[-–—]\s+|\s*\|\s*")
 
 
@@ -246,8 +251,16 @@ def render(
             continue
         p, fell_back = entry_path(fp, base, relative, m)
         counts["absolute_fallback"] += int(fell_back)
+        p = _LINE.sub(" ", p)
+        if not fell_back and relative and (p.lstrip().startswith("#") or p[:1].isspace()):
+            # «#HardstyleMixes\…» would read as a comment line, and players strip leading
+            # whitespace (« #Mix\…» likewise): anchor it as «.\…»
+            p = m.curdir + m.sep + p
         dur = int(r["duration"]) if r.get("duration") else -1
-        lines.append(f"#EXTINF:{dur},{labels.get(r['id']) or r.get('title') or r['id']}")
+        text = _LINE.sub(" ", str(labels.get(r["id"]) or "")).strip()
+        if not text:
+            text = _LINE.sub(" ", str(r.get("title") or "")).strip() or str(r["id"])
+        lines.append(f"#EXTINF:{dur},{text}")
         lines.append(p)
         counts["count"] += 1
     return "\n".join(lines) + "\n", counts
@@ -263,10 +276,16 @@ def _exists(fp: str) -> bool:
 def target_path(folder: Path | str, name: str, settings: Settings) -> Path:
     """Folder + sanitised name + .m3u8, shortened to fit `storage.max_path_length`."""
     folder = Path(folder)
-    base = paths.sanitize_filename(paths.truncate(str(name or "").strip(), MAX_NAME), fallback="")
+    raw = str(name or "").strip()
+    if raw.lower().endswith(EXT):  # «foo.m3u8» -> foo.m3u8, not foo.m3u8.m3u8
+        raw = raw[: -len(EXT)].strip()
+    base = paths.sanitize_filename(paths.truncate(raw, MAX_NAME), fallback="")
     if not base:
         raise PlaylistError(tr("playlist.name_missing"))
     limit = settings.storage.max_path_length
+    # the temporary file next to it must fit as well (see `_write`)
+    if paths.windows_length(folder / ("x" * TMP_NAME_LEN)) >= limit:
+        raise PlaylistError(tr("playlist.path_too_long", max=limit))
     while paths.windows_length(folder / f"{base}{EXT}") >= limit:
         shorter = paths.truncate(base, len(base) - 1)
         if len(shorter) < 3 or shorter == base:
@@ -344,13 +363,24 @@ def _write(
     idx = artists.index(db, settings)
     labels = {r["id"]: label(r, idx.names_of(r["id"]), settings) for r in rows}
     text, counts = render(rows, target, relative=relative, labels=labels, mod=mod)
+    tmp: str | None = None
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
-        tmp = target.with_name(target.name + ".tmp")
-        tmp.write_text(text, encoding="utf-8", newline="\n")
+        # own unique temporary file (a GUI and a headless sync never share one, an unrelated
+        # «<name>.tmp» is never overwritten); short name, checked in `target_path`
+        fd, tmp = tempfile.mkstemp(prefix=".hcl-", suffix=".tmp", dir=target.parent)
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(text)
+        with contextlib.suppress(OSError):  # mkstemp creates 0600; a playlist is shared
+            os.chmod(tmp, 0o644)
         os.replace(tmp, target)
+        tmp = None
     except OSError as exc:
         raise PlaylistError(tr("playlist.write_failed", error=exc)) from exc
+    finally:
+        if tmp is not None:
+            with contextlib.suppress(OSError):
+                os.unlink(tmp)
     return counts
 
 
@@ -421,8 +451,15 @@ def sync_all(
         rows = db.query(f"SELECT * FROM playlists WHERE id IN ({marks})", [int(i) for i in only])
     else:
         rows = db.query("SELECT * FROM playlists WHERE sync = 1 ORDER BY id")
-    done, failed = [], 0
+    done, failed, gone = [], 0, 0
     for r in rows:
+        if only is None and not _exists(r["path"]):
+            # deleted in Explorer: do not bring it back - stop keeping it up to date (the
+            # settings list shows it as «gone»; «Write now» or a new export recreate it)
+            db.execute("UPDATE playlists SET sync = 0 WHERE id = ?", (r["id"],))
+            gone += 1
+            log.info(tr("playlist.gone_unsynced", path=r["path"]))
+            continue
         try:
             spec = clean_spec(json.loads(r["spec"]))
             counts = _write(db, settings, spec, Path(r["path"]), bool(r["relative"]), mod=mod)
@@ -436,4 +473,4 @@ def sync_all(
             log.warning(tr("playlist.sync_failed", path=r["path"], error=exc))
     if done:
         log.info(tr("playlist.synced", n=len(done)))
-    return {"ok": True, "synced": len(done), "failed": failed, "paths": done}
+    return {"ok": True, "synced": len(done), "failed": failed, "gone": gone, "paths": done}

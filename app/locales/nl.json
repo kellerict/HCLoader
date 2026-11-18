@@ -582,7 +582,8 @@
     "nothing_to_merge": "Kies minstens één andere artiest om samen te voegen",
     "merged": "Samengevoegd in {name}: {names}",
     "alias_unknown": "“{alias}” is geen alias van deze artiest",
-    "split": "“{alias}” afgesplitst van {name}"
+    "split": "“{alias}” afgesplitst van {name}",
+    "merge_too_many": "Na het samenvoegen zou {name} meer dan {max} aliassen hebben – verwijder eerst enkele aliassen"
   },
   "playlist": {
     "spec_invalid": "Onbekend playlisttype",
@@ -603,6 +604,8 @@
       "one": "{n} playlist bijgewerkt",
       "other": "{n} playlists bijgewerkt"
     },
-    "unknown": "Playlist niet gevonden"
+    "unknown": "Playlist niet gevonden",
+    "gone_unsynced": "Playlist {path} bestaat niet meer – wordt niet meer bijgewerkt",
+    "sync_crashed": "Playlists konden niet worden bijgewerkt: {error}"
   }
 }

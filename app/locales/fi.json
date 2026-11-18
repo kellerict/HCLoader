@@ -582,7 +582,8 @@
     "nothing_to_merge": "Valitse vähintään yksi toinen artisti yhdistettäväksi",
     "merged": "Yhdistetty artistiin {name}: {names}",
     "alias_unknown": "”{alias}” ei ole tämän artistin alias",
-    "split": "”{alias}” erotettu artistista {name}"
+    "split": "”{alias}” erotettu artistista {name}",
+    "merge_too_many": "Yhdistämisen jälkeen artistilla {name} olisi yli {max} aliasta – poista ensin joitakin aliaksia"
   },
   "playlist": {
     "spec_invalid": "Tuntematon soittolistatyyppi",
@@ -603,6 +604,8 @@
       "one": "{n} soittolista päivitetty",
       "other": "{n} soittolistaa päivitetty"
     },
-    "unknown": "Soittolistaa ei löydy"
+    "unknown": "Soittolistaa ei löydy",
+    "gone_unsynced": "Soittolistaa {path} ei ole enää – sitä ei enää pidetä ajan tasalla",
+    "sync_crashed": "Soittolistoja ei voitu päivittää: {error}"
   }
 }

@@ -594,7 +594,8 @@
     "nothing_to_merge": "Pasirinkite bent vieną kitą atlikėją sujungimui",
     "merged": "Sujungta į {name}: {names}",
     "alias_unknown": "„{alias}“ nėra šio atlikėjo slapyvardis",
-    "split": "„{alias}“ atskirtas nuo {name}"
+    "split": "„{alias}“ atskirtas nuo {name}",
+    "merge_too_many": "Sujungus {name} turėtų daugiau nei {max} slapyvardžių – pirma pašalink kelis"
   },
   "playlist": {
     "spec_invalid": "Nežinomas grojaraščio tipas",
@@ -619,6 +620,8 @@
       "many": "Atnaujinta {n} grojaraščio",
       "other": "Atnaujinta {n} grojaraščių"
     },
-    "unknown": "Grojaraštis nerastas"
+    "unknown": "Grojaraštis nerastas",
+    "gone_unsynced": "Grojaraščio {path} nebėra – jis nebebus atnaujinamas",
+    "sync_crashed": "Nepavyko atnaujinti grojaraščių: {error}"
   }
 }

@@ -576,7 +576,8 @@
     "nothing_to_merge": "请至少选择另一位要合并的艺人",
     "merged": "已合并到 {name}：{names}",
     "alias_unknown": "“{alias}”不是该艺人的别名",
-    "split": "已将“{alias}”从 {name} 拆分"
+    "split": "已将“{alias}”从 {name} 拆分",
+    "merge_too_many": "合并后 {name} 的别名将超过 {max} 个 – 请先删除一些别名"
   },
   "playlist": {
     "spec_invalid": "未知的播放列表类型",
@@ -595,6 +596,8 @@
     "synced": {
       "other": "已更新 {n} 个播放列表"
     },
-    "unknown": "未找到播放列表"
+    "unknown": "未找到播放列表",
+    "gone_unsynced": "播放列表 {path} 已不存在 – 不再自动更新",
+    "sync_crashed": "无法更新播放列表：{error}"
   }
 }

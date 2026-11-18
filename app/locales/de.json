@@ -582,7 +582,8 @@
     "nothing_to_merge": "Mindestens einen anderen Artist zum Zusammenführen wählen",
     "merged": "Zusammengeführt in {name}: {names}",
     "alias_unknown": "«{alias}» ist kein Alias dieses Artists",
-    "split": "«{alias}» von {name} abgetrennt"
+    "split": "«{alias}» von {name} abgetrennt",
+    "merge_too_many": "Nach dem Zusammenführen hätte {name} mehr als {max} Aliasse – zuerst einige Aliasse entfernen"
   },
   "playlist": {
     "spec_invalid": "Unbekannte Playlist-Art",
@@ -603,6 +604,8 @@
       "one": "{n} Playlist aktualisiert",
       "other": "{n} Playlists aktualisiert"
     },
-    "unknown": "Playlist nicht gefunden"
+    "unknown": "Playlist nicht gefunden",
+    "gone_unsynced": "Playlist {path} gibt es nicht mehr – sie wird nicht mehr aktuell gehalten",
+    "sync_crashed": "Playlists konnten nicht aktualisiert werden: {error}"
   }
 }

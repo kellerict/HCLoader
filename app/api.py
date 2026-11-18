@@ -2313,26 +2313,41 @@ class Api:
         }
 
     def set_playlist_sync(self, playlist_id: int, sync: bool) -> dict[str, Any]:
-        if not playlists.set_sync(self._db, int(playlist_id), bool(sync)):
+        pid = _int_or_none(playlist_id)
+        if pid is None or not playlists.set_sync(self._db, pid, bool(sync)):
             return {"ok": False, "error": tr("playlist.unknown")}
         return {"ok": True}
 
     def forget_playlist(self, playlist_id: int) -> dict[str, Any]:
         """Remove a playlist from the saved list (the file stays where it is)."""
-        if not playlists.forget(self._db, int(playlist_id)):
+        pid = _int_or_none(playlist_id)
+        if pid is None or not playlists.forget(self._db, pid):
             return {"ok": False, "error": tr("playlist.unknown")}
         return {"ok": True}
 
     def sync_playlists(self, ids: list[int] | None = None) -> dict[str, Any]:
         """Rewrite saved playlists now (`ids` or all marked «keep up to date»)."""
-        only = [int(i) for i in ids] if isinstance(ids, list) else None
+        only = None
+        if isinstance(ids, list):
+            only = [i for i in (_int_or_none(x) for x in ids) if i is not None]
+            if len(only) != len(ids):
+                return {"ok": False, "error": tr("playlist.unknown")}
         res = self._pl("pl-sync-now", lambda: playlists.sync_all(self._db, self._cfg, only=only))
         self._bus.emit("playlists_synced", {k: res[k] for k in ("synced", "failed")})
         return res
 
     def _request_playlist_sync(self) -> None:
         self._pl_dirty.set()
-        self._pl_worker.submit("pl-sync", self._playlist_sync_job)
+        fut = self._pl_worker.submit("pl-sync", self._playlist_sync_job)
+        # a request that arrives after the running job's last dirty check reuses that job's
+        # future (same key): check again once it is done (review v0.8.0 m5)
+        fut.add_done_callback(self._playlist_sync_done)
+
+    def _playlist_sync_done(self, fut: Any) -> None:
+        if fut.cancelled() or fut.exception() is not None:  # worker stopped: no new job
+            return
+        if self._pl_dirty.is_set():
+            self._request_playlist_sync()
 
     def _playlist_sync_job(self) -> None:
         res: dict[str, Any] | None = None
@@ -2340,11 +2355,21 @@ class Api:
             self._pl_dirty.clear()
             try:
                 res = playlists.sync_all(self._db, self._cfg)
-            except Exception:
-                log.warning("Playlist sync failed", exc_info=True)
+            except Exception as exc:
+                log.warning(tr("playlist.sync_crashed", error=exc), exc_info=True)
                 return
         if res and (res["synced"] or res["failed"]):
             self._bus.emit("playlists_synced", {k: res[k] for k in ("synced", "failed")})
+
+
+def _int_or_none(value: Any) -> int | None:
+    """Id from JS (number or numeric string); None for anything else (no exception to JS)."""
+    if isinstance(value, bool):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _now_iso() -> str:

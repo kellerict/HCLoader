@@ -582,7 +582,8 @@
     "nothing_to_merge": "Velg minst én annen artist å slå sammen",
     "merged": "Slått sammen i {name}: {names}",
     "alias_unknown": "«{alias}» er ikke et alias for denne artisten",
-    "split": "«{alias}» skilt ut fra {name}"
+    "split": "«{alias}» skilt ut fra {name}",
+    "merge_too_many": "Etter sammenslåingen ville {name} hatt mer enn {max} aliaser – fjern noen aliaser først"
   },
   "playlist": {
     "spec_invalid": "Ukjent spillelistetype",
@@ -603,6 +604,8 @@
       "one": "{n} spilleliste oppdatert",
       "other": "{n} spillelister oppdatert"
     },
-    "unknown": "Fant ikke spillelisten"
+    "unknown": "Fant ikke spillelisten",
+    "gone_unsynced": "Spillelisten {path} finnes ikke lenger – den holdes ikke lenger oppdatert",
+    "sync_crashed": "Spillelistene kunne ikke oppdateres: {error}"
   }
 }

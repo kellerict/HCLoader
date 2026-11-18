@@ -187,8 +187,8 @@ def _sync_playlists(db: Any, settings: Any) -> None:
 
     try:
         playlists.sync_all(db, settings)
-    except Exception:
-        log.warning("Playlist sync failed", exc_info=True)
+    except Exception as exc:
+        log.warning(tr("playlist.sync_crashed", error=exc), exc_info=True)
 
 
 def _shared_pot(

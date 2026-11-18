@@ -576,7 +576,8 @@
     "nothing_to_merge": "Pilih setidaknya satu artis lain untuk digabung",
     "merged": "Digabung ke {name}: {names}",
     "alias_unknown": "“{alias}” bukan alias artis ini",
-    "split": "“{alias}” dipisahkan dari {name}"
+    "split": "“{alias}” dipisahkan dari {name}",
+    "merge_too_many": "Setelah digabung, {name} akan punya lebih dari {max} alias – hapus beberapa alias dulu"
   },
   "playlist": {
     "spec_invalid": "Jenis playlist tidak dikenal",
@@ -595,6 +596,8 @@
     "synced": {
       "other": "{n} playlist diperbarui"
     },
-    "unknown": "Playlist tidak ditemukan"
+    "unknown": "Playlist tidak ditemukan",
+    "gone_unsynced": "Playlist {path} sudah tidak ada – tidak lagi diperbarui",
+    "sync_crashed": "Playlist tidak dapat diperbarui: {error}"
   }
 }

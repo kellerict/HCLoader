@@ -581,7 +581,8 @@
     "nothing_to_merge": "Choisissez au moins un autre artiste à fusionner",
     "merged": "Fusionné dans {name} : {names}",
     "alias_unknown": "« {alias} » n’est pas un alias de cet artiste",
-    "split": "« {alias} » séparé de {name}"
+    "split": "« {alias} » séparé de {name}",
+    "merge_too_many": "Après la fusion, {name} aurait plus de {max} alias – supprime d’abord quelques alias"
   },
   "playlist": {
     "spec_invalid": "Type de playlist inconnu",
@@ -602,6 +603,8 @@
       "one": "{n} playlist mise à jour",
       "other": "{n} playlists mises à jour"
     },
-    "unknown": "Playlist introuvable"
+    "unknown": "Playlist introuvable",
+    "gone_unsynced": "La playlist {path} n’existe plus – elle n’est plus tenue à jour",
+    "sync_crashed": "Les playlists n’ont pas pu être mises à jour : {error}"
   }
 }
