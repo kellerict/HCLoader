@@ -65,7 +65,7 @@ DEFAULT_CLEANUP_PATTERNS = [
     r"\[Official[^\]]*\]",
 ]
 
-VIEWS = ("discover", "inbox", "watchlist", "downloads", "library", "log")
+VIEWS = ("discover", "inbox", "watchlist", "downloads", "library", "stats", "log")
 
 
 # --------------------------------------------------------------------------- paths
@@ -183,9 +183,9 @@ class GeneralSettings(_Section):
         *("en", "de", "zh-CN", "hi", "es", "fr", "bn", "pt", "ru", "id", "nl", "nl-BE"),
         *("sv", "nb", "fi", "lt", "lv", "et", "de-x-frk"),
     ] = "en"
-    start_view: Literal["discover", "inbox", "watchlist", "downloads", "library", "log"] = (
-        "discover"
-    )
+    start_view: Literal[
+        "discover", "inbox", "watchlist", "downloads", "library", "stats", "log"
+    ] = "discover"
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     confirm_delete: bool = True
 
@@ -491,6 +491,79 @@ class PlaylistSettings(_Section):
         return v.strip() if isinstance(v, str) else ("" if v is None else v)
 
 
+_HHMM = r"^([01]\d|2[0-3]):[0-5]\d$"
+
+
+class NotificationSettings(_Section):
+    """v0.9.0 Windows notifications (core/notify.py). One aggregated toast per batch of events,
+    nothing during the quiet hours (collected and shown as one summary afterwards)."""
+
+    enabled: bool = True
+    new_sets: bool = True  # a watchlist check (app or scheduled task) put new sets in the inbox
+    downloads_done: bool = True
+    downloads_failed: bool = True
+    quiet_hours: bool = False
+    quiet_from: str = Field("22:00", pattern=_HHMM)
+    quiet_to: str = Field("07:00", pattern=_HHMM)
+
+
+MEDIA_SERVER_TYPES = ("off", "plex", "jellyfin")
+
+
+class MediaServerSettings(_Section):
+    """v0.9.0 Plex/Jellyfin library scan after downloads (core/mediaserver.py). The token / API
+    key is NOT here: it lives in the Windows Credential Manager (core/credentials.py)."""
+
+    type: Literal["off", "plex", "jellyfin"] = "off"
+    url: str = ""
+    # Plex section key / Jellyfin library id; "" = all libraries
+    library: str = ""
+    library_name: str = ""  # display only (chosen from the «Test connection» list)
+    # the target folder as the server sees it (NAS, Docker: /data/music); "" = same path
+    server_root: str = ""
+    delay_seconds: int = Field(120, ge=10, le=3600)
+    verify_tls: bool = True
+
+    @field_validator("url", "library", "library_name", "server_root", mode="before")
+    @classmethod
+    def _strip(cls, v: Any) -> Any:
+        return v.strip() if isinstance(v, str) else ("" if v is None else v)
+
+    @field_validator("url")
+    @classmethod
+    def _url(cls, v: str, info: Any) -> str:
+        v = v.rstrip("/")
+        if not v:
+            if info.data.get("type", "off") != "off":
+                raise ValueError(tr("config.media_url_missing"))
+            return v
+        from urllib.parse import urlsplit
+
+        try:
+            parts = urlsplit(v)
+            parts.port  # noqa: B018 - raises ValueError on a bad port
+        except ValueError:
+            raise ValueError(tr("config.media_url_invalid")) from None
+        if (
+            parts.scheme not in ("http", "https")
+            or not parts.hostname
+            or parts.username
+            or parts.password
+            or parts.query
+            or parts.fragment
+            or any(c.isspace() for c in v)
+        ):
+            raise ValueError(tr("config.media_url_invalid"))
+        return v
+
+    @field_validator("library", "library_name", "server_root")
+    @classmethod
+    def _len(cls, v: str) -> str:
+        if len(v) > 400 or any(c in v for c in "\r\n\x00"):
+            raise ValueError(tr("config.invalid_format"))
+        return v
+
+
 # v0.3.0 festivals & series: codes = app/core/festivals.py SET_TYPES (UI translates them)
 SET_TYPE_CODES = (
     "live_set",
@@ -598,6 +671,8 @@ class Settings(BaseModel):
     loudness: LoudnessSettings = Field(default_factory=LoudnessSettings)
     festivals: FestivalSettings = Field(default_factory=FestivalSettings)
     playlists: PlaylistSettings = Field(default_factory=PlaylistSettings)
+    notifications: NotificationSettings = Field(default_factory=NotificationSettings)
+    media_server: MediaServerSettings = Field(default_factory=MediaServerSettings)
 
     def to_dict(self) -> dict[str, Any]:
         return self.model_dump(mode="json")
@@ -755,11 +830,13 @@ SECTION_TITLES = {
     "loudness": "Lautheit & Wellenform",
     "festivals": "Festivals & Serien",
     "playlists": "Playlists (M3U8)",
+    "notifications": "Benachrichtigungen",
+    "media_server": "Medienserver (Plex/Jellyfin)",
 }
 
 COMMENTS = {
     "general.language": "Sprache der Oberfläche: auto (Windows-Sprache), en, de, zh-CN, hi, es, fr, bn, pt, ru, id, nl, nl-BE (Vlaams), sv, nb, fi, lt, lv, et, de-x-frk (Fränggisch)",
-    "general.start_view": "Startansicht: discover, inbox, watchlist, downloads, library, log",
+    "general.start_view": "Startansicht: discover, inbox, watchlist, downloads, library, stats, log",
     "general.log_level": "Log-Stufe: DEBUG, INFO, WARNING, ERROR",
     "general.confirm_delete": "Vor dem Löschen aus der Bibliothek nachfragen",
     "search.results_count": "Anzahl Treffer pro Suche (1-100)",
@@ -836,6 +913,20 @@ COMMENTS = {
     "playlists.folder": "Ordner für exportierte Playlists; leer = «Playlists» im Zielordner",
     "playlists.relative_paths": "Pfade in der Playlist relativ zum Ort der Playlist (anderes Laufwerk: absolut)",
     "playlists.sync_after_download": "Gespeicherte Playlists mit «Aktuell halten» nach jedem Download neu schreiben",
+    "notifications.enabled": "Windows-Benachrichtigungen anzeigen (gebündelt, Klick öffnet die App)",
+    "notifications.new_sets": "Benachrichtigen, wenn eine Watchlist-Prüfung neue Sets in den Eingang legt (App oder geplante Aufgabe)",
+    "notifications.downloads_done": "Benachrichtigen, wenn Downloads fertig sind (eine Meldung pro Lauf)",
+    "notifications.downloads_failed": "Benachrichtigen, wenn Downloads fehlschlagen",
+    "notifications.quiet_hours": "Ruhezeit: keine Benachrichtigungen; danach eine Zusammenfassung",
+    "notifications.quiet_from": "Beginn der Ruhezeit (HH:MM)",
+    "notifications.quiet_to": "Ende der Ruhezeit (HH:MM); kleiner als der Beginn = über Mitternacht",
+    "media_server.type": "Bibliothek nach Downloads neu einlesen lassen: off, plex, jellyfin (Token/API-Key liegt in der Windows-Anmeldeinformationsverwaltung, nie hier)",
+    "media_server.url": "Adresse des Servers, z.B. http://192.168.1.10:32400 (Plex) oder http://nas:8096 (Jellyfin)",
+    "media_server.library": "Plex-Bibliotheks-ID bzw. Jellyfin-Bibliotheks-ID; leer = alle Bibliotheken",
+    "media_server.library_name": "Name der gewählten Bibliothek (nur Anzeige)",
+    "media_server.server_root": "Zielordner aus Sicht des Servers (NAS/Docker, z.B. /data/music/HCLoader); leer = gleicher Pfad",
+    "media_server.delay_seconds": "Wartezeit nach dem letzten Download, bevor der Scan ausgelöst wird (10-3600 s, bündelt mehrere Downloads)",
+    "media_server.verify_tls": "HTTPS-Zertifikat prüfen (aus nur für selbst signierte Zertifikate im Heimnetz)",
     "maintenance.check_updates_on_start": "Beim Start auf yt-dlp-Updates prüfen (max. 1x pro Tag)",
     "maintenance.check_app_updates_on_start": "Beim Start prüfen, ob eine neue HCLoader-Version da ist (GitHub)",
     "maintenance.apply_update_on_exit": "Ein heruntergeladenes App-Update beim Beenden automatisch einspielen",

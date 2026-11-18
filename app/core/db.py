@@ -71,6 +71,16 @@ def now_iso() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
 
 
+def file_size_of(path: str | Path | None) -> int | None:
+    """Size of a library file in bytes (v0.9.0 statistics); None = no path / not readable."""
+    if not path:
+        return None
+    try:
+        return Path(path).stat().st_size
+    except (OSError, ValueError):
+        return None
+
+
 # --------------------------------------------------------------------------- migrations
 
 
@@ -610,6 +620,18 @@ def _m14_artist_index_revision(conn: sqlite3.Connection) -> None:
             )
 
 
+def _m15_stats(conn: sqlite3.Connection) -> None:
+    """v0.9.0 statistics view (core/stats.py).
+
+    - `videos.file_size`: size of the library file in bytes, written whenever `file_path` is set
+      (download, re-tag move). NULL = not measured yet (libraries from before v0.9.0): the
+      statistics view measures those once in the background (local `stat`, no network).
+    - `idx_videos_downloaded`: library rows by download time (date range filter, per month).
+    """
+    conn.execute("ALTER TABLE videos ADD COLUMN file_size INTEGER")
+    conn.execute("CREATE INDEX idx_videos_downloaded ON videos(status, downloaded_at)")
+
+
 # Append new steps at the end; never edit existing ones. Step i upgrades version i -> i+1.
 MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [
     _m1_initial,
@@ -626,6 +648,7 @@ MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [
     _m12_audio_and_playback,
     _m13_artists_and_playlists,
     _m14_artist_index_revision,
+    _m15_stats,
 ]
 # statuses a user may put into the download queue (enqueue / retry)
 ENQUEUEABLE = ("new", "inbox", "failed")
@@ -859,6 +882,8 @@ class Database:
         if file_path is not None:
             sets.append("file_path=?")
             params.append(file_path)
+            sets.append("file_size=?")
+            params.append(file_size_of(file_path))
         if status == "done":
             sets.append("downloaded_at=?")
             params.append(now_iso())
@@ -866,14 +891,18 @@ class Database:
 
     def set_file_path(self, video_id: str, file_path: str | None) -> None:
         """Change only `file_path` (re-tag move); status and `downloaded_at` stay."""
-        self.execute("UPDATE videos SET file_path=? WHERE id=?", (file_path, video_id))
+        self.execute(
+            "UPDATE videos SET file_path=?, file_size=? WHERE id=?",
+            (file_path, file_size_of(file_path), video_id),
+        )
 
     def mark_removed(self, video_id: str) -> None:
         """Library item deleted by the user: status `ignored` (never loaded again), no file.
         Its tracklist goes too (no «most played» spelling or index row from a deleted set)."""
         with self.transaction():
             self.execute(
-                "UPDATE videos SET status='ignored', file_path=NULL, error=NULL, queue_pos=NULL "
+                "UPDATE videos SET status='ignored', file_path=NULL, file_size=NULL, error=NULL, "
+                "queue_pos=NULL "
                 "WHERE id=?",
                 (video_id,),
             )

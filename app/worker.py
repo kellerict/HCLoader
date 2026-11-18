@@ -455,9 +455,12 @@ class DownloadQueue:
         progress_interval: float = 0.5,
         monotonic: Callable[[], float] = time.monotonic,
         on_done: Callable[[str], Any] | None = None,
+        on_session_end: Callable[[dict[str, Any]], Any] | None = None,
     ) -> None:
         self._db = db
         self._on_done = on_done  # v0.7.0: e.g. queue the offline analysis of the new file
+        # v0.9.0: one call per run that loaded or failed something (aggregated notification)
+        self._on_session_end = on_session_end
         self._throttle = throttle
         self._bus = bus
         self._factory = client_factory
@@ -847,6 +850,8 @@ class DownloadQueue:
         log.info(tr("queue.run_started"))
         first = True
         refused: set[str] = set()  # platforms that refused a download in this run (7a)
+        titles: list[str] = []  # v0.9.0: for the aggregated notification
+        failed_titles: list[str] = []
         try:
             while not self._stop.is_set() and not self._paused:
                 if self._db.next_queued() is None:
@@ -870,10 +875,12 @@ class DownloadQueue:
                 outcome = self._process(client, row)
                 if outcome == "done":
                     downloaded += 1
+                    titles.append(str(row.get("title") or row["id"]))
                     run.success = True
                     run.platforms.add(platform)
                 elif outcome == "failed":
                     errors += 1
+                    failed_titles.append(str(row.get("title") or row["id"]))
                 elif outcome == "blocked" and self._local_block is None:
                     refused.add(platform)  # throttle refusal: the other platform may go on
                     continue
@@ -888,11 +895,18 @@ class DownloadQueue:
                 "errors": errors,
                 "note": note,
                 "note_code": note_code if note else None,
+                "titles": titles,
+                "failed_titles": failed_titles,
             }
             if run_id is not None:
                 self._db.finish_run(run_id, downloaded=downloaded, errors=errors, note=note or None)
             log.info(tr("queue.run_finished", n=downloaded, errors=errors))
             self._changed()
+            if self._on_session_end is not None and (downloaded or errors):
+                try:
+                    self._on_session_end(dict(self.last_session))
+                except Exception:
+                    log.debug("on_session_end hook failed", exc_info=True)
 
     def _blocked_platforms(self) -> set[str]:
         """Platforms with waiting entries whose throttle refuses downloads right now; notes a
@@ -1745,3 +1759,249 @@ class _AnyEvent:
 
     def wait(self, timeout: float | None = None) -> bool:
         return self._events[0].wait(timeout) or self.is_set()
+
+
+class NotificationService:
+    """v0.9.0 aggregated Windows notifications of the GUI (core/notify.py).
+
+    `note(...)` collects events in the DB batch and schedules one flush `delay` seconds after
+    the last event (a watchlist check that auto-queues downloads and the end of a queue run
+    become one toast when they are close together). `tick()` (status ticker) delivers a batch
+    that waited for the end of the quiet hours or for the minimum gap - also one left by the
+    scheduled headless run. Sending happens in this service's own short-lived thread, never in
+    a pywebview callback or the queue thread.
+    """
+
+    def __init__(
+        self,
+        db: Any,
+        settings_provider: Callable[[], Any],
+        sender_factory: Callable[[], Any],
+        *,
+        delay: float = 15.0,
+        timer_factory: Callable[..., Any] = threading.Timer,
+        registrar: Callable[[], Any] | None = None,
+    ) -> None:
+        self._db = db
+        self._settings = settings_provider
+        self._sender_factory = sender_factory
+        self._delay = delay
+        self._timer_factory = timer_factory
+        self._registrar = registrar
+        self._registered = False
+        self._lock = threading.Lock()
+        self._timer: Any = None
+        self._stopped = False
+        self.last: dict[str, Any] | None = None
+
+    def _cfg(self) -> Any:
+        return self._settings().notifications
+
+    def note(self, **counts: Any) -> bool:
+        from .core import notify
+
+        try:
+            added = notify.add(self._db, self._cfg(), **counts)
+        except Exception:
+            log.debug("Notification not collected", exc_info=True)
+            return False
+        if added:
+            self._schedule(self._delay)
+        return added
+
+    def _schedule(self, delay: float) -> None:
+        with self._lock:
+            if self._stopped:
+                return
+            if self._timer is not None:
+                self._timer.cancel()
+            self._timer = self._timer_factory(max(0.0, delay), self.flush)
+            self._timer.daemon = True
+            self._timer.start()
+
+    def tick(self) -> None:
+        """Periodic check (status ticker): deliver a waiting batch once that is allowed."""
+        from .core import notify
+
+        with self._lock:
+            if self._stopped or self._timer is not None:
+                return
+        try:
+            if notify.has_pending(notify.pending(self._db)):
+                self._schedule(0)
+        except Exception:
+            log.debug("Pending notifications not readable", exc_info=True)
+
+    def flush(self) -> dict[str, Any]:
+        from .core import notify
+
+        with self._lock:
+            self._timer = None
+            if self._stopped:
+                return {"sent": False, "reason": "stopped"}
+        cfg = self._cfg()
+        if cfg.enabled and not self._registered and self._registrar is not None:
+            self._registered = True  # once per session (cheap, idempotent)
+            try:
+                self._registrar()
+            except Exception:
+                log.debug("Notification registration failed", exc_info=True)
+        try:
+            res = notify.flush(self._db, cfg, self._sender_factory())
+        except Exception:
+            log.debug("Notification flush failed", exc_info=True)
+            return {"sent": False, "reason": "error"}
+        self.last = res
+        if res.get("reason") == "gap":
+            self._schedule(float(res.get("retry_in") or 1) + 0.5)
+        return res
+
+    def stop(self) -> None:
+        with self._lock:
+            self._stopped = True
+            if self._timer is not None:
+                self._timer.cancel()
+                self._timer = None
+
+
+class MediaScanQueue:
+    """v0.9.0 Plex/Jellyfin library scan after downloads (core/mediaserver.py), batched and
+    debounced: every finished download restarts a timer of `media_server.delay_seconds`; when it
+    fires, the files collected so far go to the server in one batch (a few requests at most).
+    Runs in its own thread; a failure is logged and shown as a toast, never retried."""
+
+    def __init__(
+        self,
+        db: Any,
+        settings_provider: Callable[[], Any],
+        secret_provider: Callable[[str], str | None],
+        bus: EventBus,
+        *,
+        transport: Callable[..., Any] | None = None,
+        timer_factory: Callable[..., Any] = threading.Timer,
+    ) -> None:
+        self._db = db
+        self._settings = settings_provider
+        self._secret = secret_provider
+        self._bus = bus
+        self._transport = transport
+        self._timer_factory = timer_factory
+        self._lock = threading.Lock()
+        self._run_lock = threading.Lock()
+        self._files: list[str] = []
+        self._full = False
+        self._timer: Any = None
+        self._stopped = False
+
+    @property
+    def pending(self) -> int:
+        with self._lock:
+            return len(self._files) + (1 if self._full else 0)
+
+    def add(self, video_id: str) -> bool:
+        cfg = self._settings().media_server
+        if cfg.type == "off" or not cfg.url:
+            return False
+        row = self._db.get_video(video_id) or {}
+        if not row.get("file_path"):
+            return False
+        with self._lock:
+            if self._stopped:
+                return False
+            self._files.append(str(row["file_path"]))
+            if self._timer is not None:
+                self._timer.cancel()
+            self._timer = self._timer_factory(float(cfg.delay_seconds), self.fire)
+            self._timer.daemon = True
+            self._timer.start()
+        return True
+
+    def scan_now(self) -> dict[str, Any]:
+        """Full scan of the configured library right now (button «Scan now»), synchronous."""
+        with self._lock:
+            self._full = True
+        return self.fire()
+
+    def fire(self) -> dict[str, Any]:
+        from .core import mediaserver
+
+        with self._lock:
+            self._timer = None
+            files, full = self._files, self._full
+            self._files, self._full = [], False
+        if not files and not full:
+            return {"ok": True, "requests": 0}
+        settings = self._settings()
+        cfg = settings.media_server
+        with self._run_lock:  # one batch at a time
+            res = run_scan(
+                self._db,
+                settings,
+                self._secret,
+                [] if full else files,
+                transport=self._transport or mediaserver.urllib_transport,
+            )
+        self._bus.emit("media_scan", res)
+        if not res["ok"]:
+            self._bus.toast(res["error"], "warn")
+        elif cfg.type != "off":
+            log.info(tr("media.scan_done", server=res.get("server", ""), n=res["files"]))
+        return res
+
+    def stop(self) -> None:
+        with self._lock:
+            self._stopped = True
+            if self._timer is not None:
+                self._timer.cancel()
+                self._timer = None
+
+
+def run_scan(
+    db: Any,
+    settings: Any,
+    secret_provider: Callable[[str], str | None],
+    files: list[str],
+    *,
+    transport: Callable[..., Any],
+) -> dict[str, Any]:
+    """One scan batch (GUI queue and headless run). `files` empty = full library scan.
+    -> {ok, server, files, requests, partial, at} | {ok: false, error, code, ...}; the outcome
+    is remembered in `state.media_scan_last` for the settings view."""
+    from .core import mediaserver
+
+    cfg = settings.media_server
+    out: dict[str, Any] = {
+        "server": cfg.type,
+        "files": len(files),
+        "at": datetime.now(UTC).isoformat(timespec="seconds"),
+    }
+    try:
+        if cfg.type == "off" or not cfg.url:
+            raise mediaserver.MediaServerError("config")
+        secret = secret_provider(cfg.type)
+        if not secret:
+            raise mediaserver.MediaServerError("no_secret")
+        paths = mediaserver.server_paths(files, settings.target_dir_path(), cfg.server_root)
+        res = mediaserver.scan(
+            cfg.type,
+            cfg.url,
+            secret,
+            cfg.library,
+            paths or [None],
+            verify_tls=cfg.verify_tls,
+            transport=transport,
+        )
+        out.update(ok=True, **res)
+    except mediaserver.MediaServerError as exc:
+        msg = tr("media.scan_failed", error=exc.message())
+        log.warning(msg)
+        out.update(ok=False, error=msg, code=exc.code)
+    except Exception as exc:  # never break the queue/headless run
+        msg = tr("media.scan_failed", error=redact(exc))
+        log.warning(msg, exc_info=True)
+        out.update(ok=False, error=msg, code="error")
+    try:
+        db.set_state("media_scan_last", json.dumps(out, ensure_ascii=False))
+    except Exception:
+        log.debug("Scan result not stored", exc_info=True)
+    return out
