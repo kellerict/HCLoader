@@ -343,7 +343,7 @@ def test_migration_v10_adds_tables_keeps_rows_and_backs_up(tmp_path):
     conn.execute("INSERT INTO videos(id, title, status) VALUES ('abcdefghijk', 'Alt', 'done')")
     conn.close()
     with Database(path) as d:
-        assert d.schema_version() == len(dbmod.MIGRATIONS) == 11
+        assert d.schema_version() == len(dbmod.MIGRATIONS) == 12
         assert d.get_video("abcdefghijk")["title"] == "Alt"
         cols = {r["name"] for r in d.query("PRAGMA table_info(tracks)")}
         assert {

@@ -251,6 +251,23 @@ maintenance:
 player:
   # Abspielen: internal (eingebauter Player) oder external (Standardplayer von Windows)
   mode: internal
+  # Eingebauter Player: Lautheit angleichen (ReplayGain aus der Analyse bzw. den Tags, mit Schutz vor Übersteuern)
+  normalize: true
+  # Ziel-Lautheit des eingebauten Players in LUFS (-30 bis -6; -18 = ReplayGain-2.0-Referenz)
+  target_lufs: -18.0
+  # Wiedergabeposition pro Set merken: ask (nachfragen), auto (automatisch fortsetzen), off (nichts merken)
+  resume: ask
+  # Wellenform als Zeitleiste im Player (sonst einfacher Balken)
+  waveform: true
+
+# --- Lautheit & Wellenform ---
+loudness:
+  # Nach jedem Download Lautheit und Wellenform offline mit ffmpeg berechnen (niedrige Priorität, eine Datei nach der anderen)
+  analyse_after_download: true
+  # ReplayGain-2.0-Tags in die Dateien schreiben (MP3: TXXX, M4A: Atome, Opus: R128_TRACK_GAIN); nie neu kodieren
+  write_tags: true
+  # Wellenform bei Analyse/Durchlauf vorberechnen (aus = erst beim ersten Abspielen)
+  waveforms: true
 
 # --- Festivals & Serien ---
 festivals:

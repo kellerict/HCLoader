@@ -456,6 +456,42 @@ def _m11_tracks_key_index(conn: sqlite3.Connection) -> None:
     conn.execute("DROP INDEX IF EXISTS idx_tracks_key")
 
 
+def _m12_audio_and_playback(conn: sqlite3.Connection) -> None:
+    """v0.7.0 loudness, waveform and player memory (core/analysis.py, core/playback.py).
+
+    - `audio_analysis`: one row per analysed library item. `lufs` = integrated loudness
+      (EBU R128), `true_peak` = true peak in dBTP, `lra` = loudness range (LU); NULL = not
+      measured (e.g. only the waveform was computed). `tagged` = ReplayGain tags written into
+      the file (0 = not yet / format without tags / write failed -> the next pass retries the
+      tag write without measuring again). `peaks` = waveform cached (file under
+      `<app_home>/cache/peaks/`). `analysed` = time of the last measurement, `error` = last
+      local error (ffmpeg missing, unreadable file ...).
+    - `playback`: remembered position per set (seconds) for «resume» and «continue listening»;
+      positions in the first/last 30 s are not stored (the row is removed instead).
+    """
+    conn.execute(
+        """CREATE TABLE audio_analysis(
+          video_id TEXT PRIMARY KEY REFERENCES videos(id) ON DELETE CASCADE,
+          lufs REAL,
+          true_peak REAL,
+          lra REAL,
+          tagged INTEGER NOT NULL DEFAULT 0,
+          peaks INTEGER NOT NULL DEFAULT 0,
+          analysed TEXT,
+          error TEXT
+        )"""
+    )
+    conn.execute(
+        """CREATE TABLE playback(
+          video_id TEXT PRIMARY KEY REFERENCES videos(id) ON DELETE CASCADE,
+          position REAL NOT NULL,
+          duration REAL,
+          updated TEXT NOT NULL
+        )"""
+    )
+    conn.execute("CREATE INDEX idx_playback_updated ON playback(updated)")
+
+
 # Append new steps at the end; never edit existing ones. Step i upgrades version i -> i+1.
 MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [
     _m1_initial,
@@ -469,6 +505,7 @@ MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [
     _m9_collector,
     _m10_tracklists,
     _m11_tracks_key_index,
+    _m12_audio_and_playback,
 ]
 # statuses a user may put into the download queue (enqueue / retry)
 ENQUEUEABLE = ("new", "inbox", "failed")

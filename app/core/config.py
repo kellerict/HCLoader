@@ -459,6 +459,23 @@ class PlayerSettings(_Section):
     """Phase 8: `internal` = built-in player bar, `external` = system default player."""
 
     mode: Literal["internal", "external"] = "internal"
+    # v0.7.0: loudness normalisation in the built-in player (ReplayGain from the analysis/tags)
+    normalize: bool = True
+    target_lufs: float = Field(-18.0, ge=-30.0, le=-6.0)
+    # v0.7.0 player memory: ask = offer to resume, auto = resume silently, off = forget nothing/
+    # remember nothing (no «continue listening» list)
+    resume: Literal["ask", "auto", "off"] = "ask"
+    # v0.7.0: waveform seek bar (peaks computed offline with ffmpeg, plain bar as fallback)
+    waveform: bool = True
+
+
+class LoudnessSettings(_Section):
+    """v0.7.0: offline audio analysis with ffmpeg (EBU R128 loudness + true peak, waveform
+    peaks). Never re-encodes: only tags are written (ReplayGain 2.0 / R128 for Opus)."""
+
+    analyse_after_download: bool = True
+    write_tags: bool = True
+    waveforms: bool = True
 
 
 # v0.3.0 festivals & series: codes = app/core/festivals.py SET_TYPES (UI translates them)
@@ -565,6 +582,7 @@ class Settings(BaseModel):
     appearance: AppearanceSettings = Field(default_factory=AppearanceSettings)
     maintenance: MaintenanceSettings = Field(default_factory=MaintenanceSettings)
     player: PlayerSettings = Field(default_factory=PlayerSettings)
+    loudness: LoudnessSettings = Field(default_factory=LoudnessSettings)
     festivals: FestivalSettings = Field(default_factory=FestivalSettings)
 
     def to_dict(self) -> dict[str, Any]:
@@ -714,6 +732,7 @@ SECTION_TITLES = {
     "appearance": "Darstellung",
     "maintenance": "Wartung",
     "player": "Player",
+    "loudness": "Lautheit & Wellenform",
     "festivals": "Festivals & Serien",
 }
 
@@ -786,6 +805,13 @@ COMMENTS = {
     "appearance.scanlines": "Scanlines-Overlay anzeigen",
     "appearance.pulse_bpm": "Takt des Fortschrittsbalkens in BPM (60-300)",
     "player.mode": "Abspielen: internal (eingebauter Player) oder external (Standardplayer von Windows)",
+    "player.normalize": "Eingebauter Player: Lautheit angleichen (ReplayGain aus der Analyse bzw. den Tags, mit Schutz vor Übersteuern)",
+    "player.target_lufs": "Ziel-Lautheit des eingebauten Players in LUFS (-30 bis -6; -18 = ReplayGain-2.0-Referenz)",
+    "player.resume": "Wiedergabeposition pro Set merken: ask (nachfragen), auto (automatisch fortsetzen), off (nichts merken)",
+    "player.waveform": "Wellenform als Zeitleiste im Player (sonst einfacher Balken)",
+    "loudness.analyse_after_download": "Nach jedem Download Lautheit und Wellenform offline mit ffmpeg berechnen (niedrige Priorität, eine Datei nach der anderen)",
+    "loudness.write_tags": "ReplayGain-2.0-Tags in die Dateien schreiben (MP3: TXXX, M4A: Atome, Opus: R128_TRACK_GAIN); nie neu kodieren",
+    "loudness.waveforms": "Wellenform bei Analyse/Durchlauf vorberechnen (aus = erst beim ersten Abspielen)",
     "maintenance.check_updates_on_start": "Beim Start auf yt-dlp-Updates prüfen (max. 1x pro Tag)",
     "maintenance.check_app_updates_on_start": "Beim Start prüfen, ob eine neue HCLoader-Version da ist (GitHub)",
     "maintenance.apply_update_on_exit": "Ein heruntergeladenes App-Update beim Beenden automatisch einspielen",

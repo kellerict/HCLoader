@@ -491,3 +491,159 @@ def _write_opus(path: Path, meta: Mapping[str, Any], cover: bytes | None) -> Non
         pic.data = cover
         audio["metadata_block_picture"] = [base64.b64encode(pic.write()).decode("ascii")]
     audio.save()
+
+
+# --------------------------------------------------------------------------- ReplayGain (v0.7.0)
+
+RG_REFERENCE_LUFS = -18.0  # ReplayGain 2.0 reference loudness
+R128_REFERENCE_LUFS = -23.0  # Opus R128_TRACK_GAIN (RFC 7845) is relative to EBU R128
+RG_GAIN = "REPLAYGAIN_TRACK_GAIN"
+RG_PEAK = "REPLAYGAIN_TRACK_PEAK"
+R128_GAIN = "R128_TRACK_GAIN"
+_MP4_FREEFORM = "----:com.apple.iTunes:"
+
+
+@dataclass
+class ReplayGain:
+    """Track gain in dB relative to the ReplayGain 2.0 reference (-18 LUFS) and the linear
+    true peak (1.0 = full scale; None = unknown)."""
+
+    gain: float
+    peak: float | None = None
+
+    @property
+    def lufs(self) -> float:
+        return RG_REFERENCE_LUFS - self.gain
+
+
+def replaygain_for(lufs: float, true_peak_db: float | None) -> ReplayGain:
+    """ReplayGain 2.0 values from a measurement: gain = -18 - I, peak = 10^(TP/20)."""
+    peak = None if true_peak_db is None else round(10 ** (true_peak_db / 20.0), 6)
+    return ReplayGain(round(RG_REFERENCE_LUFS - lufs, 2), peak)
+
+
+def format_gain(gain: float) -> str:
+    return f"{gain:+.2f} dB"
+
+
+def format_peak(peak: float) -> str:
+    return f"{peak:.6f}"
+
+
+def r128_gain(lufs: float) -> int:
+    """Opus R128_TRACK_GAIN: Q7.8 fixed point (1/256 dB) relative to -23 LUFS, int16 range."""
+    return max(-32768, min(32767, round((R128_REFERENCE_LUFS - lufs) * 256)))
+
+
+_GAIN_RE = re.compile(r"^\s*([+-]?\d+(?:[.,]\d+)?)\s*(?:dB)?\s*$", re.I)
+
+
+def parse_gain(text: Any) -> float | None:
+    m = _GAIN_RE.match(str(text or ""))
+    return float(m.group(1).replace(",", ".")) if m else None
+
+
+def parse_peak(text: Any) -> float | None:
+    try:
+        value = float(str(text).strip().replace(",", "."))
+    except (TypeError, ValueError):
+        return None
+    return value if value >= 0 else None
+
+
+def write_replaygain(path: Path, rg: ReplayGain) -> bool:
+    """Write ReplayGain tags without touching the audio data (mutagen tag write only).
+
+    MP3: ID3 TXXX:REPLAYGAIN_TRACK_GAIN / TXXX:REPLAYGAIN_TRACK_PEAK (other frames kept).
+    M4A: freeform atoms `----:com.apple.iTunes:replaygain_track_gain/_peak` (foobar2000 /
+    iTunes convention). Opus: R128_TRACK_GAIN (RFC 7845: Opus players ignore REPLAYGAIN_*;
+    no peak tag exists for Opus). Returns False for other containers (nothing written)."""
+    path = Path(path)
+    ext = path.suffix.lower()
+    if ext == ".mp3":
+        try:
+            tags = ID3(path)
+        except ID3NoHeaderError:
+            tags = ID3()
+        for frame in list(tags.getall("TXXX")):
+            if frame.desc.upper() in (RG_GAIN, RG_PEAK):
+                tags.delall(frame.HashKey)
+        tags.add(TXXX(encoding=3, desc=RG_GAIN, text=[format_gain(rg.gain)]))
+        if rg.peak is not None:
+            tags.add(TXXX(encoding=3, desc=RG_PEAK, text=[format_peak(rg.peak)]))
+        tags.save(path, v2_version=4)
+        return True
+    if ext in (".m4a", ".mp4"):
+        from mutagen.mp4 import MP4, MP4FreeForm
+
+        audio = MP4(path)
+        if audio.tags is None:
+            audio.add_tags()
+        for key in list(audio.tags.keys()):
+            if key.lower() in (
+                f"{_MP4_FREEFORM}{RG_GAIN}".lower(),
+                f"{_MP4_FREEFORM}{RG_PEAK}".lower(),
+            ):
+                del audio.tags[key]
+        audio.tags[f"{_MP4_FREEFORM}replaygain_track_gain"] = [
+            MP4FreeForm(format_gain(rg.gain).encode("utf-8"))
+        ]
+        if rg.peak is not None:
+            audio.tags[f"{_MP4_FREEFORM}replaygain_track_peak"] = [
+                MP4FreeForm(format_peak(rg.peak).encode("utf-8"))
+            ]
+        audio.save()
+        return True
+    if ext == ".opus":
+        from mutagen.oggopus import OggOpus
+
+        audio = OggOpus(path)
+        audio[R128_GAIN.lower()] = [str(r128_gain(rg.lufs))]
+        audio.save()
+        return True
+    return False
+
+
+def read_replaygain(path: Path) -> ReplayGain | None:
+    """ReplayGain of a file (our own tags or those of another tool), None if absent/unreadable.
+    Opus: R128_TRACK_GAIN is converted to the -18 LUFS reference (+5 dB)."""
+    path = Path(path)
+    ext = path.suffix.lower()
+    try:
+        if ext == ".mp3":
+            try:
+                tags = ID3(path)
+            except ID3NoHeaderError:
+                return None
+            vals = {f.desc.upper(): (f.text[0] if f.text else "") for f in tags.getall("TXXX")}
+            gain = parse_gain(vals.get(RG_GAIN))
+            return None if gain is None else ReplayGain(gain, parse_peak(vals.get(RG_PEAK)))
+        if ext in (".m4a", ".mp4"):
+            from mutagen.mp4 import MP4
+
+            tags = MP4(path).tags or {}
+            vals = {}
+            for key, value in tags.items():
+                if key.lower().startswith(_MP4_FREEFORM.lower()) and value:
+                    raw = value[0]
+                    vals[key[len(_MP4_FREEFORM) :].upper()] = bytes(raw).decode("utf-8", "replace")
+            gain = parse_gain(vals.get(RG_GAIN))
+            return None if gain is None else ReplayGain(gain, parse_peak(vals.get(RG_PEAK)))
+        if ext in (".opus", ".ogg"):
+            from mutagen import File as MutagenAny
+
+            f = MutagenAny(path)
+            tags = getattr(f, "tags", None) or {}
+            vals = {
+                str(k).upper(): (v[0] if isinstance(v, list) and v else v) for k, v in tags.items()
+            }
+            if (r128 := vals.get(R128_GAIN)) is not None:
+                try:
+                    return ReplayGain(round(int(str(r128).strip()) / 256 + 5.0, 2), None)
+                except ValueError:
+                    pass
+            gain = parse_gain(vals.get(RG_GAIN))
+            return None if gain is None else ReplayGain(gain, parse_peak(vals.get(RG_PEAK)))
+    except Exception:  # damaged/foreign file: no ReplayGain, never an exception for the player
+        log.debug("ReplayGain not readable: %s", path, exc_info=True)
+    return None
