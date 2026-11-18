@@ -10,6 +10,36 @@ appears after «Show all changes» (`docs/RELEASING.md`).
 
 ## [Unreleased]
 
+### Highlights
+- New **Tracks** search in the library: type an artist or title and see every set that plays it, with the timestamp
+- Click a timestamp to play the set from exactly that point in the built-in player
+- **Tracklist** panel for every set with clickable timestamps; unreleased "ID – ID" tracks shown discreetly
+- **Most played tracks**: the top 20 tracks across your sets
+- Tracklists come from chapters, descriptions, ID3 chapters and CUE files – offline, no extra requests to YouTube
+
+### Added
+- Tracklist extraction (`app/core/tracklist.py`): chapters and description from the metadata
+  sidecar, ID3 CHAP frames and `.cue` files. Understands timestamped lines (`00:00`, `[12:34]`,
+  `(1:02:03)`, timestamp at the end), numbered lists (`1.`, `01)`, `#3`) and plain "Tracklist:"
+  blocks; skips timetables, links and promo lines. Artists and titles are normalised (`feat.`, `x`,
+  `vs.`, `&`, remix/edit/VIP as version, trailing `[Label]`, unicode quotes and dashes).
+- Database migration 10 (automatic backup first): tables `tracklists` and `tracks` with an SQLite
+  FTS5 index for fast search over thousands of sets; falls back to a plain search if FTS5 is missing.
+- Tracklists are read after every download; the existing library is read once when the Tracks view
+  is opened for the first time (progress, cancel, "Read again" later).
+- Bridge methods `search_tracks`, `get_tracklist`, `get_top_tracks`, `get_tracklist_status`,
+  `build_tracklists`, `cancel_build_tracklists` and event `tracklist_index` (`docs/bridge-api.md`).
+- External player mode: clicking a timestamp opens the file and tells you where to jump.
+- Texts in all languages; wiki page "Tracklist search".
+
+### Changed
+- The metadata sidecar keeps the whole description (up to 5000 characters instead of 2000), so
+  tracklists at the end of long descriptions are found for new downloads.
+
+### Fixed
+- Chapters read from a description no longer lose a closing bracket at the end of the title
+  ("Title (X Remix" in CUE files and ID3 chapters).
+
 ## [0.5.1] - 2026-11-18
 
 ### Highlights

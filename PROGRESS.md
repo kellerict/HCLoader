@@ -124,6 +124,27 @@ Entscheide: docs/decisions.md «Festival-Sammler (v0.5.0)», Vertrag docs/bridge
 - [ ] 3 QA + Review (u.a. echte Veranstalter-Playlist und eine echte Einzelsuche unter Windows)
 - [ ] 4 Release v0.5.0
 
+## v0.6.0 – Tracklist-Suche «Welche Sets spielen Track X?» (docs/ROADMAP.md)
+Tracklisten offline aus Kapiteln, Beschreibungen, ID3-Kapiteln und CUE-Dateien; Suche über alle Sets mit
+Sprung zur Stelle im Player. Entscheide: docs/decisions.md «Tracklist search (v0.6.0)», Vertrag
+docs/bridge-api.md «Tracklist search».
+- [x] 1 Backend + Integration (`integrator`): Migration 10 (`tracklists`, `tracks`, FTS5-Index `tracks_fts`
+  mit Triggern, LIKE-Fallback ohne FTS5), `app/core/tracklist.py` (Parser für Beschreibungen mit
+  Zeitstempeln/Nummern/«Tracklist:»-Block, Normalisierung feat./x/vs./&, Version, Label, ID-Tracks,
+  Quellenwahl, Suche, «Meistgespielt», Status, Durchlauf mit Fortschritt/Abbruch), Einlesen nach jedem
+  Download (`YtClient`), 6 Bridge-Methoden + Event `tracklist_index` (Wartungs-Thread wie «Festivals
+  zuordnen»), Sidecar behält die ganze Beschreibung (5000 Zeichen), Fix Klammer am Kapitelende
+- [x] 2 UI: Unteransicht «Tracks» der Bibliothek (`#library/tracks`, `ui/js/views/tracks.js`): Suche mit
+  Hervorhebung, Treffer pro Set mit klickbaren Zeitstempeln (interner Player springt, externer Player +
+  Hinweis auf die Zeit), «Meistgespielt» (Top 20), Panel «Trackliste» (auch im Menü ⋯ der Bibliothek),
+  einmaliges Einlesen beim ersten Öffnen mit Fortschritt/Abbrechen, Leer-Zustände; `HC.player.playAt`;
+  Texte in allen Sprachen; Mock-Daten; Screenshots `library-tracks*` (en/de/ru)
+- [x] 3 Tests: `tests/test_tracklist.py` (34 Beschreibungs-Fälle, Migration, FTS/LIKE, Top, Durchlauf,
+  API, Download → Trackliste → Suche), `tests/test_tracks_ui.py` (Playwright); Wiki «Tracklist search»,
+  CHANGELOG [Unreleased]
+- [ ] 4 QA + Review (u.a. echte Sets mit Kapiteln/Beschreibung unter Windows, grosse Bibliothek)
+- [ ] 5 Release v0.6.0
+
 ## Geplant für spätere Versionen
 - Phase 7b: Mixcloud + hearthis.at (Watchlist); 7c: archive.org (optional)
 
@@ -171,3 +192,4 @@ Entscheide: docs/decisions.md «Festival-Sammler (v0.5.0)», Vertrag docs/bridge
 - 2026-11-18 – Nacht: v0.3.0 und v0.4.0 veröffentlicht; v0.5.0 fertig, Release zurückgehalten (Parser-QA 4× knapp nicht bestanden) → Entscheid User.
 - 2026-11-18 – User-Entscheid A: v0.5.0 mit Text-Import als «Beta» veröffentlicht; Parser-Verbesserung in v0.5.x.
 - 2026-11-18 – SignPath-Antrag abgelehnt (zu wenig Reputation). Neuer Antrag, sobald Downloads/Stars/Erwähnungen vorhanden (ca. 3–6 Monate). Alternativen notiert: Certum Open-Source-Zertifikat, Azure Artifact Signing (Verfügbarkeit CH prüfen).
+- 2026-11-18 – v0.6.0 Tracklist-Suche gebaut (Backend, UI, 19 Sprachen, Tests, Screenshots, Doku); offen: QA, Review, Release (ca. 1–2 Std.)

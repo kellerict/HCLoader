@@ -541,6 +541,69 @@ den die UI übersetzt (UI-Schlüssel z.B. `fest.set_type.<code>`, Sache der UI-K
   Reste wie « - », «()» werden entfernt, eine Ordnerebene, die nur daraus bestand, entfällt. Das
   Standardmuster bleibt unverändert; bestehende Dateien bewegen sich nur mit `retag`.
 
+### Tracklist search (v0.6.0)
+
+Entscheide: `docs/decisions.md` «Tracklist search (v0.6.0)». Alles **offline**: Tracklisten kommen aus
+dem, was schon gespeichert ist oder auf der Platte liegt – nie aus dem Netz. Backend: `app/core/tracklist.py`
+(Parser, Normalisierung, Speichern, Suche), Tabellen `tracklists` + `tracks` (+ FTS5-Index `tracks_fts`,
+Migration 10). Nur Bibliothekseinträge (Status `done`) werden gefunden.
+
+Quellen, in dieser Reihenfolge geprüft; die reichste gewinnt (Anzahl Tracks + Tracks mit Artist +
+Zeitstempel-Bonus, bei Gleichstand die frühere):
+
+1. `chapters` – Kapitel im Metadaten-Sidecar (yt-dlp-Kapitel oder beim Download aus der Beschreibung gelesen),
+2. `description` – Beschreibung im Sidecar: Zeilen mit Zeitstempel (`00:00`, `[12:34]`, `(1:02:03)`, auch
+   am Zeilenende), nummerierte Zeilen (`1.`, `01)`, `#3`, `4 -`) oder ein Block unter «Tracklist:»,
+3. `id3` – ID3-CHAP-Frames der MP3 (nur ohne Sidecar-Kapitel/-Beschreibung),
+4. `cue` – `.cue` neben der Audiodatei (Track-PERFORMER = Set-PERFORMER zählt nicht als Track-Artist).
+
+Normalisierung: `ft.`/`feat`/`featuring` → `feat.` (auch aus dem Titel oder aus Klammern in den Artist),
+`X`/`×` → `x`, `VS`/`versus` → `vs.`, `&` mit Leerzeichen; Remix/Edit/VIP/Bootleg … in Klammern,
+eckigen Klammern oder als letztes ` - `-Segment → `version`; ein abschliessendes `[Label]` → `label`;
+typografische Anführungszeichen/Striche → ASCII. «ID», «???», «Unknown», «TBA» → `is_id` (Titel
+«ID»; ganz unbekannt = Artist und Titel «ID»). Gross/Klein bleibt für die Anzeige, verglichen wird
+gefaltet (klein, ohne Akzente/Satzzeichen). Zeitstempel-Zeilen müssen streng steigen und innerhalb der
+Dauer liegen; Zeitspannen (`12:00 - 13:00 Artist`, Timetables) und Zeilen mit Links/Promo werden
+ignoriert; mindestens zwei Tracks, höchstens 300 pro Set.
+
+| Methode | Parameter | Rückgabe |
+|---|---|---|
+| `search_tracks(query, opts?)` | `query`: Wörter aus Artist/Titel/Version, Reihenfolge egal, Präfix pro Wort, ohne Gross/Klein und Akzente (max. 200 Zeichen) | `{ok:true, query, engine:"fts5"\|"like", sets:[TrackSet], hits, truncated}` \| `{ok:false, error}` |
+| `get_tracklist(id)` | Video-ID; noch nie untersucht → wird sofort (offline) gelesen und gespeichert | `{ok:true, video_id, source, extracted, tracks:[Track]}` \| `{ok:false, error}` (unbekannte ID) |
+| `get_top_tracks(limit=20)` | 1–100 | `{ok:true, tracks:[{key, artist, title, version, sets}]}` – Tracks in den meisten Sets (mind. 2), häufigste Schreibweise |
+| `get_tracklist_status()` | | `{total, scanned, sets, tracks, last_pass, engine, running}` |
+| `build_tracklists(opts?)` | `opts`: `{scope: "missing" (Standard: nur nie untersuchte) \| "all"}` | `{ok:true, started:true, scope}` \| `{ok:true, started:false, running:true}` \| `{ok:false, error}` (andere Wartung läuft) |
+| `cancel_build_tracklists()` | | `{ok:true, running}` – der Durchlauf endet nach dem aktuellen Eintrag |
+
+**Datenformen**
+
+- `Track` = `{position, start, artist, title, version, label, is_id}`; `start` = Sekunden (Zahl) oder
+  `null` (nummerierte Liste ohne Zeitstempel), `artist` `""` = nur Titel bekannt (z.B. «Intro»).
+- `TrackSet` = `{id, title, artist, duration, thumbnail, genre, platform, upload_date, downloaded_at,
+  hits:[Track], more}` – `artist` = Kanal; höchstens 12 Treffer pro Set (`more` = weitere), höchstens
+  100 Sets, neueste Downloads zuerst; `truncated` = es gäbe mehr.
+- `source` (`get_tracklist`) = `chapters` \| `description` \| `id3` \| `cue` \| `none`.
+- `engine` = `fts5` (SQLite-Volltextindex) oder `like` (Fallback, wenn diese SQLite kein FTS5 kennt).
+- «ID – ID» (Artist und Titel unbekannt) ist nie ein Suchtreffer und zählt nie für «Meistgespielt»;
+  «Artist – ID» wird über den Artist gefunden.
+
+**Ablauf:** nach jedem Download liest `YtClient` die Trackliste aus Sidecar und Datei (nie fatal). Für
+die bestehende Bibliothek öffnet die UI beim **ersten** Öffnen der Ansicht «Tracks» einmal
+`build_tracklists({scope:"missing"})`; danach «Neu einlesen» = `scope:"all"`. Der Durchlauf läuft im
+Wartungs-Thread (Schlüssel `tracklists`, wie «Festivals zuordnen»); ist der Zielordner nicht erreichbar,
+werden Dateien darunter (ID3/CUE) übersprungen statt zu hängen.
+
+Beispiel `search_tracks("dragonborn")`:
+
+```json
+{"ok": true, "query": "dragonborn", "engine": "fts5", "hits": 2, "truncated": false,
+ "sets": [{"id": "abcdefghijk", "title": "Qlimax 2023 | Headhunterz", "artist": "Q-dance",
+   "duration": 3600, "thumbnail": null, "genre": "Hardstyle", "platform": "youtube",
+   "upload_date": "20231125", "downloaded_at": "2026-11-12T10:00:00+00:00", "more": 0,
+   "hits": [{"position": 4, "start": 754.0, "artist": "Headhunterz", "title": "Dragonborn",
+     "version": "Extended Mix", "label": "", "is_id": false}]}]}
+```
+
 ### Festival collector (v0.5.0)
 
 Konzept: `docs/concepts/festivals.md` «v0.5.0 – Collect a whole edition», Entscheide: `docs/decisions.md`
@@ -777,6 +840,7 @@ Status). Ergänzungen der Python-Seite:
 | `backfill` | `Backfill` \| `{source_id, state:"none"}` | «Alles einlesen»: bei Start/Fortsetzen (`pending`), Beginn (`running`), nach jeder gespeicherten Seite, Pause, Abbruch, Unterbrechung (`pending` + `note`) und Ende (`done`); `none` = Zeile gibt es nicht (mehr). Die UI aktualisiert nur die Fortschrittszeile der Quelle | 0.4.0 |
 | `watchlist_done` | `{checked, found}` | Watchlist-Lauf beendet; `checked` = bearbeitete Quellen (auch fehlerhafte), `found` = neu gespeicherte Videos | 4 |
 | `festival_assign` | `{phase, scope, done?, total?, assigned?, suggested?, none?, manual?, unchanged?, cancelled?, ok?, error?}` | «Festivals zuordnen»: `phase` `start` (einmal), `progress` (alle 25 Einträge und am Ende), `done` (Ergebnis wie `assign_pass`: `{ok, cancelled, total, done, assigned, suggested, none, manual, unchanged}`) oder `error` (`{ok:false, error}`). Danach lädt die UI Bibliothek/Gruppen neu | 0.3.0 |
+| `tracklist_index` | `{phase, scope, done?, total?, sets?, tracks?, cancelled?, ok?, error?}` | «Tracklisten einlesen»: `phase` `start`, `progress` (alle 10 Einträge und am Ende), `done` (`{ok, cancelled, total, done, sets, tracks}`) oder `error` (`{ok:false, error}`). Danach lädt die UI Status, «Meistgespielt» und die Suche neu | 0.6.0 |
 | `collector_rows` | `{edition_id, rows:[ChecklistRow], deleted:[id], reload, stats:ChecklistStats}` | Festival-Sammler: Zeilen geändert (Import, Bearbeiten, Haken, Bestätigen, Treffer des Suchauftrags, Status-Wechsel durch die Queue: `queued` → `downloaded`). `reload:true` (leere `rows`, keine `deleted`) = mehrere Zeilen geändert → `get_checklist` neu holen | 0.5.0 |
 | `collector_job` | `CollectorJob` + `{stats}` \| `{edition_id, state:"none", stats}` | Suchauftrag: Start (`pending`), Beginn (`running`), nach jeder Zeile, beim Warten (`note` = nächste Suche), Abbruch, Unterbrechung, Ende | 0.5.0 |
 | `collector_import` | `{phase, kind:"playlist", edition_id, entries, added, merged, unchecked, requests, cancelled, error}` | Playlist-Import: `phase` `start`, `progress` (nach jeder Seite), `done` oder `error` (`error` = übersetzter Text) | 0.5.0 |

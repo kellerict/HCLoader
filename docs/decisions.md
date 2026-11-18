@@ -1402,3 +1402,34 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
   als nur der Subject-Regex.
 - **Entscheid:** CI-Smoke mit `/WEBVIEW2DRYRUN=timeout` (hängender `ping`-Stellvertreter, Frist 5 s)
   ohne `/SUPPRESSMSGBOXES`. **Grund:** prüft Frist, Kill und «silent ohne Meldung» real unter Windows.
+
+## 2026-11-18 – Tracklist search (v0.6.0)
+
+- **Nur offline:** Tracklisten kommen aus Sidecar (Kapitel, Beschreibung), ID3-CHAP und `.cue` – nie
+  aus einer Anfrage. Kein Nachladen von Beschreibungen für alte Downloads (wäre eine Anfrage pro Set).
+  **Grund:** «YouTube schonen» und «billig vor teuer»; was beim Download nicht gespeichert wurde, fehlt eben.
+- **Sidecar behält die ganze Beschreibung** (`DESCRIPTION_MAX` 2000 → 5000 Zeichen = YouTube-Maximum).
+  Tracklisten stehen oft am Ende langer Beschreibungen. Gilt für neue Downloads; alte Sidecars bleiben.
+- **Eigene Tabellen statt JSON-Spalte:** `tracklists` (was untersucht wurde, Quelle, Anzahl; `none` =
+  «nichts gefunden», damit «nur fehlende» sie überspringt) und `tracks` (ein Track pro Zeile, `key` für
+  «Meistgespielt», `search` = gefalteter Text). Migration 10, Backup vor der Migration wie gehabt.
+- **FTS5 mit LIKE-Fallback:** `tracks_fts` (unicode61, Diakritika entfernt) über `tracks.search`, per
+  Trigger synchron (auch bei `ON DELETE CASCADE`). Suche = alle Wörter als Präfix (`"wort"*`), Wörter
+  vorher auf Buchstaben/Ziffern gefaltet – keine FTS-Syntax vom User. Fehlt FTS5 (die Migration prüft es
+  mit einer temporären Tabelle), wird der Index nicht angelegt und die Suche nimmt `LIKE` mit Escape.
+  **Grund:** schnelle Suche über tausende Sets ohne neue Abhängigkeit; Python-Builds ohne FTS5 laufen trotzdem.
+- **Quelle wählen statt mischen:** pro Set gewinnt die reichste Quelle (Tracks + Tracks mit Artist +
+  Bonus für Zeitstempel); bei Gleichstand Kapitel vor Beschreibung. Generische Kapitel («Track 01»,
+  «<Untitled Chapter 1>») zählen nicht. **Grund:** Mischen erzeugt Dubletten mit verschiedenen Zeiten.
+- **Normalisieren für den Vergleich, nicht für die Anzeige:** Anzeige behält die Schreibweise (nur
+  Verbinder `feat.`/`x`/`vs.`/`&`, Versions-Klammern, Label, Unicode-Striche/-Anführungszeichen werden
+  vereinheitlicht); Suche und «Meistgespielt» vergleichen gefaltet. «Original/Extended Mix» zählt als
+  derselbe Track, ein Remix/VIP als anderer; Artists in beliebiger Reihenfolge (`A x B` = `B & A`).
+- **Wann wird gelesen:** nach jedem Download (in `YtClient`, nie fatal) und für den Bestand einmal beim
+  ersten Öffnen der Ansicht «Tracks» (Wartungs-Thread wie «Festivals zuordnen», Fortschritt, Abbrechen);
+  danach «Neu einlesen» von Hand. Kein automatischer Lauf beim App-Start: er würde andere Wartungsjobs
+  blockieren, ohne dass der User weiss, warum.
+- **Abspielen ab Zeitstempel:** interner Player springt (`HC.player.playAt`), Modus «extern» öffnet die
+  Datei im Standardplayer und nennt die Zeit im Toast (ein Sprung lässt sich dort nicht steuern).
+- **Nebenbei behoben:** `tagging.parse_timestamps` schnitt eine schliessende Klammer am Kapitelende ab
+  («Title (X Remix» in Kapiteln, CUE und CHAP).

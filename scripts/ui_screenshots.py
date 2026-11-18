@@ -570,6 +570,60 @@ class Shooter:
         page.click('[data-co="back"]')
         self.settle()
 
+    def tracks_scenes(self) -> None:
+        """v0.6.0 «Tracklist search»: most played, results with timestamps, tracklist panel,
+        no results, first read with progress, never-read empty state, menu entry in the library."""
+        page = self.page
+        self.go("library")
+        page.click("#lib-tracks-btn")
+        page.wait_for_selector(".tr-top-list li")
+        self.settle()
+        self.shot("library-tracks")
+        page.fill("#tr-q", "kernschmelze")
+        page.wait_for_selector(".tr-set")
+        self.settle()
+        self.shot("library-tracks-results")
+        page.locator(".tr-set [data-tr=panel]").first.click()
+        page.wait_for_selector(".tl-panel .tl-row")
+        self.settle()
+        self.shot("library-tracks-panel")
+        page.keyboard.press("Escape")
+        page.fill("#tr-q", "dragonborn")
+        page.wait_for_selector(".tr-empty")
+        self.settle()
+        self.shot("library-tracks-no-results")
+        page.fill("#tr-q", "")
+        page.click("[data-tr=back]")
+        self.settle()
+        # first open: reads the tracklists once (progress + cancel), then the explained empty state
+        page.evaluate("HC.tracks.reset(); HC.mock.demo.tracksFresh(); HC.mock.speed.factor = 4")
+        page.click("#lib-tracks-btn")
+        page.wait_for_function(
+            "document.querySelector('.tr-prog .unit') &&"
+            " /[1-9]/.test(document.querySelector('.tr-prog .unit').textContent)"
+        )
+        page.wait_for_timeout(400)
+        self.shot("library-tracks-reading")
+        page.click("[data-tr=cancel]")
+        page.wait_for_selector(".tr-status [data-tr=scan]")
+        page.evaluate("HC.mock.demo.tracksFresh(); HC.mock.speed.factor = 1")
+        page.click("[data-tr=back]")
+        self.settle()
+        page.click("#lib-tracks-btn")
+        page.wait_for_selector(".tr-empty [data-tr=scan]")
+        self.clear_toasts()
+        self.settle()
+        self.shot("library-tracks-fresh")
+        page.evaluate("HC.mock.demo.tracksFresh(false)")
+        page.click("[data-tr=back]")
+        self.settle()
+        self.row_menu("#lib-body tr[data-id]:nth-child(1)", "tracklist")
+        page.wait_for_selector(".tl-panel")
+        self.settle()
+        self.shot("library-tracklist-menu")
+        page.keyboard.press("Escape")
+        self.clear_toasts()
+
     def log_scenes(self) -> None:
         """Phase 5: Live-Log (Filter, Suche, Pause beim Hochscrollen), Lauf-Historie als Tabelle."""
         page = self.page
@@ -829,6 +883,7 @@ class Shooter:
         self.player_scenes()
         self.backfill_scenes()
         self.collector_scenes()
+        self.tracks_scenes()
 
         # m9: in pywebview gestartet, Backend antwortet nicht -> Fehlerzustand statt Mock
         page.clock.install(time=FIXED_NOW)
