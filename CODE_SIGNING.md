@@ -14,6 +14,11 @@ certificate by [SignPath Foundation](https://signpath.org/).
 - Only binaries built from this project's own source are signed. Bundled third-party components
   (embedded Python, Deno, ffmpeg, the bgutil PO-token provider, Python packages) are shipped as
   published by their upstream projects and are **not** re-signed by HCLoader.
+- The installer carries Microsoft's WebView2 Evergreen Bootstrapper
+  (`MicrosoftEdgeWebview2Setup.exe`, runs only if the WebView2 Runtime is missing). It is
+  **signed by Microsoft** and packed unmodified; HCLoader does **not** re-sign it. The release
+  workflow downloads it from Microsoft and refuses to build if its Authenticode signature is not
+  valid or not issued to Microsoft Corporation.
 - Every signing request is triggered by the release workflow and must be **manually approved**
   by an approver. Nothing is signed from a local machine.
 

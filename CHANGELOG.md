@@ -10,6 +10,29 @@ appears after «Show all changes» (`docs/RELEASING.md`).
 
 ## [Unreleased]
 
+### Highlights
+- The installer installs the Microsoft Edge WebView2 Runtime if it is missing (nothing happens if it is already there)
+- Portable build: a clear message with the download link when WebView2 is missing, instead of a broken window
+
+### Added
+- Installer: detects the WebView2 Runtime through the registry keys Microsoft documents (`pv` per
+  machine or per user, not empty and not 0.0.0.0). If it is missing, Microsoft's Evergreen
+  Bootstrapper (packed, signed by Microsoft) runs silently after the files are installed, with a
+  status text; it installs per user without admin rights. Without internet the installation still
+  completes and a message shows the download page; the setup log records every step. Texts in all
+  installer languages.
+- App start (all builds): if no WebView2 Runtime is registered, HCLoader stops before opening the
+  window and explains it, with the option to open Microsoft's download page (all languages).
+  `HCLOADER_SKIP_WEBVIEW2_CHECK=1` skips the check for setups it cannot see (Fixed Version runtime).
+
+### Changed
+- Release build: the bootstrapper is downloaded from Microsoft at build time and must carry a valid
+  Microsoft Authenticode signature, otherwise the build fails; it is never committed and not
+  re-signed. The installer smoke test checks the "already installed" path and a dry run of the
+  "missing" path (`/WEBVIEW2DRYRUN=1`).
+- Docs: README and wiki (Installation, Troubleshooting), third-party notes and code signing policy
+  mention the bootstrapper.
+
 ## [0.5.0] - 2026-11-18
 
 ### Highlights

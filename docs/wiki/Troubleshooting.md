@@ -12,8 +12,17 @@ First look at the **status bar** (yt-dlp version, Deno, ffmpeg, PO token, backof
 ## The window is blank, or an error mentions WebView2
 
 HCLoader uses the Microsoft Edge **WebView2 Runtime**. It is preinstalled on Windows 11 and most
-up-to-date Windows 10. If it is missing, pywebview falls back to an old engine (MSHTML) on which the
-UI does not work. Install the Evergreen WebView2 Runtime from Microsoft and start again.
+up-to-date Windows 10. If it is missing, pywebview would fall back to an old engine (MSHTML) on
+which the UI does not work, so HCLoader stops at start with a message and offers to open
+[Microsoft's download page](https://developer.microsoft.com/microsoft-edge/webview2/consumer/).
+Install the Evergreen WebView2 Runtime there and start again.
+
+- The **installer** installs the runtime itself if it is missing. If that failed (no internet during
+  the installation), install it from the page above; the setup log
+  (`%TEMP%\Setup Log *.txt`) has a line starting with `WebView2`.
+- HCLoader detects the runtime through the registry keys Microsoft documents. If you use a
+  runtime it cannot see there (e.g. a Fixed Version runtime), set the environment variable
+  `HCLOADER_SKIP_WEBVIEW2_CHECK=1` to skip the check.
 
 ## Portable build: `HCLoader.vbs` does nothing
 

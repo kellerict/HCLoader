@@ -34,3 +34,13 @@ JetBrains Mono                                                 licenses\fonts\)
 Nicht enthalten, aber benoetigt (Teil von Windows bzw. separat von Microsoft installiert):
 Microsoft Edge WebView2 Runtime, .NET Framework 4.x bzw. .NET Desktop Runtime,
 Visual C++ Runtime (ucrtbase.dll; vcruntime140*.dll liegt dem Python-Paket bei).
+
+Nur im Installer (HCLoader-Setup-*.exe), nicht in der Portable-ZIP und nicht im App-Ordner:
+Microsoft Edge WebView2 Evergreen Bootstrapper (MicrosoftEdgeWebview2Setup.exe). Unveraendert,
+von Microsoft signiert, vom Build ueber Microsofts offiziellen Link geladen
+(https://go.microsoft.com/fwlink/p/?LinkId=2124703). Der Installer startet ihn nur, wenn die
+WebView2 Runtime fehlt; er laedt die Runtime von Microsoft und installiert sie. Microsoft sieht
+das Mitliefern des Bootstrappers mit der eigenen App ausdruecklich vor ("Distribute your app and
+the WebView2 Runtime"). Es gelten die Lizenzbedingungen von Microsoft fuer die WebView2 Runtime
+(https://developer.microsoft.com/microsoft-edge/webview2/). Er gehoert nicht zu HCLoader und
+steht nicht unter dessen Lizenz.

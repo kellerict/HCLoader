@@ -87,12 +87,21 @@ The CHANGELOG section becomes the GitHub release text, and the app shows it in t
   Locally the same command works after `scripts\build_portable.ps1` (`SourceDir` defaults to
   `dist\HCLoader`, but a build folder used for testing contains `__pycache__`/`data\` - those are
   excluded anyway).
+- **WebView2 bootstrapper** (CI step "Installer: fetch the WebView2 bootstrapper"): before the
+  compile, `MicrosoftEdgeWebview2Setup.exe` is downloaded from Microsoft's official link
+  (`https://go.microsoft.com/fwlink/p/?LinkId=2124703`) to `installer\redist\` (git-ignored); the
+  step fails unless `Get-AuthenticodeSignature` says `Valid` and the signer is
+  `O=Microsoft Corporation`. ISCC stops with an error if the file is missing (locally: download it
+  there yourself, or pass `/DWebView2Bootstrapper=<path>`). The installer packs it with `dontcopy`
+  and runs it (`/silent /install`) only if the runtime is missing.
 - **Smoke** (job `installer-smoke`, steps "Smoke (f1)" to "Smoke (f4)" plus an always-run cleanup;
   helpers in `.github/scripts/installer_smoke.ps1`; setup and uninstaller run with
   `/NOCLOSEAPPLICATIONS /NORESTART`): silent install to `C:\hcl-smoke\HCLoader`, file and shortcut checks, no
   `portable.txt`, imports + `--help` + Deno/bgutil probe with the installed Python, `app_home()` =
-  `%APPDATA%\HCLoader`, self-update mode `installed`, upgrade over the installation, silent uninstall
-  (folder and its scheduled task gone, `%APPDATA%\HCLoader` untouched).
+  `%APPDATA%\HCLoader`, self-update mode `installed`, the setup log says
+  `WebView2 present, skipped` (the runner has the runtime), upgrade over the installation with
+  `/WEBVIEW2DRYRUN=1` (runtime treated as missing, bootstrapper extracted but not started), silent
+  uninstall (folder and its scheduled task gone, `%APPDATA%\HCLoader` untouched).
 - **Facts that must never change:** `AppId` (`{363DD978-CFF7-4D2A-B9B1-F9D6073903A4}`, identifies the
   installation for upgrades), the default folder `{localappdata}\Programs\HCLoader`,
   `PrivilegesRequired=lowest` (per user, no UAC).

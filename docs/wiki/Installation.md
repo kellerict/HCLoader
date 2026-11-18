@@ -21,8 +21,11 @@ There are three ways to run HCLoader. All give you the same app.
 
 - Windows 10 or 11, 64-bit
 - **Microsoft Edge WebView2 Runtime**: preinstalled on Windows 11 and most up-to-date Windows 10.
-  If the window stays blank or an error mentions WebView2, install the Evergreen runtime from
-  Microsoft.
+  - **Installer:** installs it for you if it is missing (see below).
+  - **Portable build and venv install:** cannot install it. If it is missing, HCLoader shows a
+    message at start and offers to open
+    [Microsoft's download page](https://developer.microsoft.com/microsoft-edge/webview2/consumer/);
+    install the "Evergreen Bootstrapper" there and start HCLoader again.
 - Internet access
 
 Only the **venv install** (from source, for developers) needs Python 3.12+ (`py -3.12` or `python`
@@ -43,6 +46,14 @@ on PATH); git is optional. `setup.ps1` fetches Deno, ffmpeg and the PO-token pro
    later in Settings › Maintenance; silent installs: `/UPDATECHECK=0`). The choice applies to a new
    configuration only – an existing one in `%APPDATA%\HCLoader` stays as it is. Optionally tick
    "Create a desktop shortcut", and finish. "Launch HCLoader" starts the app right away.
+4. **WebView2:** the installer checks whether the Microsoft Edge WebView2 Runtime is installed
+   (registry, as Microsoft documents it). If it is, nothing happens. If it is missing, it runs
+   Microsoft's Evergreen Bootstrapper (included, signed by Microsoft) while the status line reads
+   "Installing the Microsoft Edge WebView2 Runtime": it downloads the runtime from Microsoft
+   (internet needed, a few minutes) and installs it for your user account (or for the whole PC if
+   Microsoft Edge's updater is installed per machine). If that fails (offline, proxy), HCLoader is
+   installed anyway and a message shows the download page to install it later. The uninstaller
+   leaves the runtime in place - other apps use it too.
 
 Afterwards HCLoader is in the Start menu. Settings, database, download archive and logs live in
 `%APPDATA%\HCLoader\` - the same place as a venv install, so switching from a venv install keeps

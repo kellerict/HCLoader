@@ -58,8 +58,10 @@ such as Plex or Jellyfin.
 provider are already included.
 
 - Windows 10 or 11, 64-bit
-- Microsoft Edge **WebView2 Runtime** – preinstalled on Windows 11 and up-to-date Windows 10;
-  otherwise install the Evergreen runtime from Microsoft
+- Microsoft Edge **WebView2 Runtime** – preinstalled on Windows 11 and up-to-date Windows 10. The
+  **installer installs it if it is missing** (download from Microsoft, needs internet). The
+  **portable build cannot**: if it is missing, HCLoader says so at start and opens
+  [Microsoft's download page](https://developer.microsoft.com/microsoft-edge/webview2/consumer/)
 - Internet access
 - No admin rights needed
 
@@ -75,7 +77,9 @@ optionally git.
 2. Run it. The installer is not code-signed, so Windows SmartScreen may say "Windows protected your
    PC": click **More info** ("Weitere Informationen"), then **Run anyway** ("Trotzdem ausführen").
 3. Keep the default folder (`%LOCALAPPDATA%\Programs\HCLoader`, per user, no admin rights), optionally
-   tick the desktop shortcut, finish. Start HCLoader from the Start menu.
+   tick the desktop shortcut, finish. If the Microsoft Edge WebView2 Runtime is missing, the
+   installer installs it from Microsoft (internet needed; nothing happens if it is already there).
+   Start HCLoader from the Start menu.
 
 Your data lives in `%APPDATA%\HCLoader\`; the app updates itself (or install a newer setup over it).
 Uninstall via Windows Settings › Apps: it removes the program folder and its scheduled task, but
@@ -197,7 +201,9 @@ you configure, not in the data folder.
 
 ## Troubleshooting
 
-1. **Blank window or an error about WebView2**: install the Microsoft Edge WebView2 Runtime.
+1. **Blank window or an error about WebView2**: install the
+   [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/consumer/)
+   (the installer does this itself; the portable build cannot).
 2. **Portable build does not start or files are missing**: extract to a short path
    (for example `C:\Tools\`) and unblock the ZIP before extracting.
 3. **`HCLoader.vbs` does nothing**: VBScript can be disabled on recent Windows 11; use

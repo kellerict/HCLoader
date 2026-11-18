@@ -1342,3 +1342,33 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
   Tages-Überschriften zwischen Tabellenzeilen setzen den Tag; in Tab-/Pipe-Zeilen ohne Katalog
   gewinnt die Zelle mit Farbe/Bühnenwort als Bühne. Listen haben höchstens 60 Namen pro Zeile
   (Laufzeit-Schutz). **Grund:** QA-Befunde Tab-Tabelle und Tag in Tabellen, ohne Raten.
+
+## 2026-11-18 – WebView2 Runtime: Installer installiert sie, App prüft beim Start
+- **Entscheid:** Der Installer liefert Microsofts **Evergreen Bootstrapper**
+  (`MicrosoftEdgeWebview2Setup.exe`, ca. 2 MB) mit (`Flags: dontcopy`) und startet ihn nach dem
+  Kopieren der Dateien mit `/silent /install`, aber nur, wenn die Runtime fehlt. **Grund:** von
+  Microsoft für Online-Clients empfohlener Weg («Distribute your app and the WebView2 Runtime»,
+  Bootstrapper mitliefern ist ausdrücklich vorgesehen); der Standalone-Installer (> 100 MB) würde den
+  Installer vervielfachen, ein Download des Bootstrappers zur Installationszeit bräuchte eigenen
+  HTTP-Code im Installer.
+- **Entscheid:** Erkennung wie dokumentiert: Wert `pv` unter
+  `…\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}` in HKLM (WOW6432Node), HKCU und
+  HKLM ohne WOW6432Node; vorhanden = nicht leer und nicht `0.0.0.0`. Die App
+  (`app/core/webview2.py`) zählt zusätzlich Beta/Dev/Canary, wie pywebview. **Grund:** Installer und
+  App sollen dieselbe Wahrheit sehen; pywebview würde mit einem Preview-Kanal starten.
+- **Entscheid:** Ohne Adminrechte (`PrivilegesRequired=lowest`) installiert der Bootstrapper pro
+  Benutzer; scheitert er (offline, Proxy, Exitcode ≠ 0), bricht Setup **nicht** ab:
+  `SuppressibleMsgBox` mit Download-Seite, Log-Zeile `WebView2 install failed: …`. **Grund:** HCLoader
+  selbst ist installiert, die Runtime lässt sich nachholen; ein Abbruch würde nichts retten.
+- **Entscheid:** CI lädt den Bootstrapper bei jedem Build über den offiziellen fwlink und bricht ab,
+  wenn die Authenticode-Signatur nicht `Valid` ist oder nicht auf `O=Microsoft Corporation` lautet.
+  Nicht im Git (`/installer/redist/`), nicht neu signiert. **Grund:** immer die aktuelle Version,
+  keine Binärdatei im Repo, keine manipulierte Datei im Installer.
+- **Entscheid:** Die App prüft beim GUI-Start vor dem Fenster die Registry; fehlt die Runtime, kommt
+  eine lokalisierte Meldung mit Link und «Download-Seite jetzt öffnen?» (Ja = Browser), dann Ende.
+  `HCLOADER_SKIP_WEBVIEW2_CHECK=1` schaltet die Prüfung ab, Fehler der Prüfung selbst blockieren nie.
+  **Grund:** die Portable-ZIP kann nichts installieren, und pywebview fällt sonst still auf MSHTML
+  zurück, wo die UI nicht läuft (leeres/kaputtes Fenster ohne Hinweis).
+- **Entscheid:** Installer-Texte für diesen Schritt stehen in `installer/webview2-messages.isi`
+  (UTF-8 mit BOM, per `#include`), in allen zehn Installer-Sprachen. **Grund:** `HCLoader.iss` bleibt
+  ASCII (ISCC liest es als ANSI), Russisch braucht Unicode; ISPP liest Include-Dateien als UTF-8.
