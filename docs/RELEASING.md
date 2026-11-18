@@ -87,7 +87,9 @@ The CHANGELOG section becomes the GitHub release text, and the app shows it in t
   Locally the same command works after `scripts\build_portable.ps1` (`SourceDir` defaults to
   `dist\HCLoader`, but a build folder used for testing contains `__pycache__`/`data\` - those are
   excluded anyway).
-- **Smoke** (step "Smoke (f)"): silent install to a temp folder, file and shortcut checks, no
+- **Smoke** (job `installer-smoke`, steps "Smoke (f1)" to "Smoke (f4)" plus an always-run cleanup;
+  helpers in `.github/scripts/installer_smoke.ps1`; setup and uninstaller run with
+  `/NOCLOSEAPPLICATIONS /NORESTART`): silent install to `C:\hcl-smoke\HCLoader`, file and shortcut checks, no
   `portable.txt`, imports + `--help` + Deno/bgutil probe with the installed Python, `app_home()` =
   `%APPDATA%\HCLoader`, self-update mode `installed`, upgrade over the installation, silent uninstall
   (folder and its scheduled task gone, `%APPDATA%\HCLoader` untouched).

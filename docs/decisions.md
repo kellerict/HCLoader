@@ -1232,3 +1232,21 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
   einem Job, der nach 60 s gestoppt wird; `MsgBox` → `SuppressibleMsgBox`. **Grund:** ein Hänger muss
   in Minuten mit Diagnose scheitern statt den Runner zu blockieren; die Deinstallation beim User darf
   nie an der Aufgabenplanung hängen bleiben.
+
+## 2026-11-18 – Installer-Smoke als eigener Job (CI, portable.yml `installer-smoke`)
+
+- **Befund:** Trotz `Invoke-Bounded` (1e04ebe) hing «Smoke (f)» weiter > 19 Min.; weder die 300-s-Grenzen
+  noch `timeout-minutes: 20` griffen, das Job-Log fehlte (404). Muster: der Runner-Prozess selbst wird
+  beendet oder friert ein. Verdacht: Inno-Restart-Manager (`CloseApplications=yes`, Filter
+  `*.exe,*.dll,*.pyd`) schliesst Prozesse mit offenen Dateien, oder ein Neustart/Abmelden.
+- **Entscheid:** (1) Setup und Uninstaller im CI mit `/NOCLOSEAPPLICATIONS /NORESTART`. (2) Im `.iss`
+  bleibt `CloseApplications=yes` für den User, der Filter prüft aber nur noch `python.exe,pythonw.exe,
+  deno.exe` (Dateinamen der in `{app}` installierten Dateien, die in Gebrauch sind) – RM trifft so nur
+  Prozesse, die die Programme dieser Kopie ausführen. (3) Installationsordner `C:\hcl-smoke\HCLoader`,
+  ausserhalb der Runner-Ordner (`_work`, `_temp`); cwd nie darin, Kinder bekommen leeres stdin; nach jedem
+  Aufruf und vor Upgrade/Deinstallation werden Prozesse aus dem Ordner (nach Pfad) beendet. (4) Eigener
+  Job `installer-smoke` (`needs: portable`, lädt ZIP + Installer als Artefakte, 15 Min.), Phasen als
+  eigene Schritte f1–f4 mit eigenem `timeout-minutes`, Zeitstempel-Markern und `::group::`, plus
+  `if: always()`-Aufräumschritt; `release` hängt davon ab. Helfer in `.github/scripts/installer_smoke.ps1`.
+- **Grund:** ein Hänger darf Build und Artefakte nicht mitreissen, und ein Teil-Log muss zeigen, wo es
+  stehen blieb; der Restart Manager darf auf dem Runner nichts schliessen.

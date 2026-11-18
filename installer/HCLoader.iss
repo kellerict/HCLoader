@@ -75,9 +75,13 @@ UninstallDisplayName={#AppName}
 WizardStyle=modern
 Compression=lzma2/max
 SolidCompression=yes
-; upgrade over a running copy: the Restart Manager closes HCLoader (python\pythonw.exe and its DLLs)
+; upgrade over a running copy: the Restart Manager closes HCLoader. The filter names the files of
+; {app} that Setup checks for being in use (file names, wildcards): only the app's own executables,
+; so RM only ever touches processes running python\python(w).exe or bin\deno.exe of this copy
+; (GUI, headless run, bgutil server), never something that merely has a DLL/.pyd open. CI passes
+; /NOCLOSEAPPLICATIONS (docs\decisions.md "Installer-Smoke als eigener Job").
 CloseApplications=yes
-CloseApplicationsFilter=*.exe,*.dll,*.pyd
+CloseApplicationsFilter=python.exe,pythonw.exe,deno.exe
 RestartApplications=no
 SetupLogging=yes
 

@@ -53,6 +53,7 @@ appears after «Show all changes» (`docs/RELEASING.md`).
 
 ### Fixed
 - Uninstall could hang while removing the scheduled task; the cleanup now gives up after 60 s. Installer messages respect silent mode.
+- Installer upgrades only close HCLoader's own processes (python.exe, pythonw.exe, deno.exe in the install folder), never other programs that merely have one of its files open.
 
 ## [0.3.0] - 2026-11-18
 

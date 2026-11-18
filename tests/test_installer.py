@@ -242,6 +242,8 @@ def test_iss_setup_contract():
     assert re.search(r"^AppVersion=\{#AppVersion\}$", setup, re.M)
     assert re.search(r"^OutputBaseFilename=HCLoader-Setup-\{#AppVersion\}$", setup, re.M)
     assert re.search(r"^CloseApplications=yes$", setup, re.M)
+    # RM only for the app's own executables (never a runner process with an open DLL)
+    assert re.search(r"^CloseApplicationsFilter=python.exe,pythonw.exe,deno.exe$", setup, re.M)
     assert "#error" in text and "#ifndef AppVersion" in text
     icon = re.search(r"^SetupIconFile=(.+)$", setup, re.M).group(1).replace("\\", "/")
     assert (ISS.parent / icon).resolve() == (ROOT / "ui" / "img" / "hcloader.ico").resolve()
@@ -351,7 +353,51 @@ def test_workflow_builds_smokes_and_releases_the_installer():
         and "installer\\HCLoader.iss" in run
     )
     assert '"exe=$exe"' in run
-    smoke = next(s for s in steps if s.get("name", "").startswith("Smoke (f)"))["run"]
+    # own job after the build (a hang can't block it or lose its artifacts), one step per phase
+    assert not any(n.startswith("Smoke (f") for n in names)
+    job = data["jobs"]["installer-smoke"]
+    assert job["needs"] == "portable" and job["runs-on"] == "windows-latest"
+    assert job["timeout-minutes"] <= 15
+    assert data["jobs"]["portable"]["outputs"]["version"] == "${{ steps.build.outputs.version }}"
+    downloads = [
+        s for s in job["steps"] if s.get("uses", "").startswith("actions/download-artifact")
+    ]
+    got = {s["with"]["name"] for s in downloads}
+    assert got == {
+        "HCLoader-Setup-${{ needs.portable.outputs.version }}-win64",
+        "HCLoader-portable-${{ needs.portable.outputs.version }}-win64",
+    }
+    phases = [s for s in job["steps"] if s.get("name", "").startswith("Smoke (f")]
+    assert [s["name"][:10] for s in phases] == [
+        "Smoke (f1)",
+        "Smoke (f2)",
+        "Smoke (f3)",
+        "Smoke (f4)",
+        "Smoke (f):",
+    ]
+    assert all(0 < s["timeout-minutes"] <= 8 for s in phases)
+    assert phases[-1]["if"] == "always()"
+    helper_path = ROOT / ".github" / "scripts" / "installer_smoke.ps1"
+    helper = helper_path.read_text(encoding="ascii")
+    for s in phases:
+        assert "installer_smoke.ps1" in s["run"] and "Invoke-SmokeStep '" in s["run"]
+    smoke = "\n".join(s["run"] for s in phases) + "\n" + helper
+    # Restart Manager must never touch runner processes, nothing may reboot; never cd into {app}
+    assert helper.count("'/NOCLOSEAPPLICATIONS'") == 1 and helper.count("'/NORESTART'") == 1
+    assert smoke.count("'/NOCLOSEAPPLICATIONS'") == 2 and smoke.count("'/NORESTART'") == 2
+    assert (
+        "-WorkingDirectory $env:RUNNER_TEMP" in helper and "-RedirectStandardInput $StdIn" in helper
+    )
+    assert "$Dir = Join-Path $env:SystemDrive 'hcl-smoke\\HCLoader'" in helper
+    for ln in smoke.splitlines():
+        if re.search(r"\b(Set-Location|Push-Location|cd)\b", ln) and not ln.lstrip().startswith(
+            "#"
+        ):
+            assert "RUNNER_TEMP" in ln, ln
+    assert "Stop-AppProcesses $What" in helper  # leftovers in {app} killed after every call
+    assert "Stop-AppProcesses 'before setup'" in helper
+    assert "Stop-AppProcesses 'before uninstall'" in smoke
+    assert "::group::" in helper and "Write-Mark" in helper
     for needle in (
         "/VERYSILENT",
         "/SUPPRESSMSGBOXES",
@@ -373,7 +419,10 @@ def test_workflow_builds_smokes_and_releases_the_installer():
     code_lines = [ln for ln in smoke.splitlines() if not ln.lstrip().startswith("#")]
     starts = [ln for ln in code_lines if "Start-Process" in ln]
     assert starts and not any(re.search(r"-Wait\b", ln) for ln in starts), starts
-    assert "WaitForExit($Seconds * 1000)" in smoke and "taskkill.exe /PID $Id /T /F" in smoke
+    assert (
+        "WaitForExit($Seconds * 1000)" in smoke
+        and "'taskkill.exe' -ArgumentList @('/PID', \"$Id\", '/T', '/F')" in smoke
+    )
     assert "Get-Process" in smoke and "Show-Diag" in smoke
     assert smoke.count('"/LOG=`"$Log`""') == 1 and '"/LOG=`"$ulog`""' in smoke
     assert "_iu*" in smoke and "Invoke-Bounded 'Uninstaller" in smoke

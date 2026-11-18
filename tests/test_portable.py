@@ -550,14 +550,15 @@ def test_portable_workflow_contract():
     data = YAML(typ="safe").load(wf)
     assert data["permissions"] == {"contents": "read"}
     assert "permissions" not in data["jobs"]["portable"]
+    assert "permissions" not in data["jobs"]["installer-smoke"]
     rel = data["jobs"]["release"]
     # tags v* and new versions pushed to main (job plan decides), after build + smoke
     assert rel["if"] == "needs.plan.outputs.release == 'true'"
-    assert rel["needs"] == ["plan", "portable"]
+    assert rel["needs"] == ["plan", "portable", "installer-smoke"]
     assert rel["permissions"] == {"contents": "write"}
     assert "permissions" not in data["jobs"]["plan"]
     assert wf.count("contents: write") == 1
-    portable_job = wf[wf.index("  portable:") : wf.index("  release:")]
+    portable_job = wf[wf.index("\n  portable:") : wf.index("\n  release:")]
     assert "gh release" not in portable_job and "action-gh-release" not in portable_job
     steps = "\n".join(s.get("run", "") for s in rel["steps"])
     assert "gh release upload" in steps and "SHA256SUMS" in steps and "git archive" in steps
