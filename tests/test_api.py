@@ -168,6 +168,7 @@ def env():
         return a
 
     state.make = make
+    state.made = made
     yield state
     for a in made:
         a.shutdown()
@@ -994,6 +995,10 @@ def test_every_method_json_serializable(env):
         "start_checklist_matching": (999,),
         "cancel_checklist_matching": (999,),
         "queue_checklist": (999,),
+        # v0.7.0 loudness, waveform, player memory
+        "get_waveform": ("abcdefghijk",),
+        "save_position": ("abcdefghijk", 120.0, 3600.0),
+        "forget_position": ("abcdefghijk",),
     }
     for name in sorted(_bridge_comment_methods()):
         res = getattr(a, name)(*args.get(name, ()))

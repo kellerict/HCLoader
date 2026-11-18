@@ -549,5 +549,16 @@
     "skipped_archive": "已跳过（在下载存档中）：{id}",
     "skipped_done": "已跳过（已下载）：{id}",
     "unexpected": "下载 {id} 时出现意外错误"
+  },
+  "analysis": {
+    "no_ffmpeg": "缺少 ffmpeg —— 无法分析响度和波形（设置 › 维护）",
+    "ffmpeg_failed": "ffmpeg 无法分析该文件：{error}",
+    "tag_failed": "未写入 ReplayGain 标签（{path}）：{error} —— 将在下次分析时重试",
+    "no_peaks": "无法为此文件计算波形",
+    "item_failed": "{id} 分析失败：{error}",
+    "pass_started": "正在分析响度和波形（离线，逐个文件）…",
+    "pass_done": "响度已分析：{n} 个文件，{analysed} 个完成，{failed} 个失败",
+    "pass_cancelled": "响度分析已取消：{n} 个文件，{analysed} 个完成，{failed} 个失败",
+    "pass_failed": "响度分析失败：{error}"
   }
 }

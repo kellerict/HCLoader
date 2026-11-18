@@ -25,7 +25,7 @@ from typing import Any
 
 from mutagen import File as MutagenFile
 
-from . import config, library, platforms, sidecar, tagging
+from . import analysis, config, library, platforms, playback, sidecar, tagging
 from .config import UNSORTED, Settings
 from .db import Database
 from .i18n import tr
@@ -191,7 +191,26 @@ def get_media(db: Database, settings: Settings, video_id: str) -> dict[str, Any]
         "duration": _duration(row, path),
         "cover": file_url(cover) if cover else None,
         "chapters": chapters_for(row["id"], path, artist),
+        # v0.7.0: loudness (DB measurement or ReplayGain tags), remembered position, cached
+        # waveform (None = not computed yet: the UI asks get_waveform, computed lazily)
+        "loudness": _safe(lambda: analysis.loudness_of(db, row["id"], path)),
+        "resume": _safe(lambda: playback.get(db, settings, row["id"])),
+        "peaks": _safe(lambda: _peaks(row)),
     }
+
+
+def _peaks(row: dict[str, Any]) -> list[int] | None:
+    cached = analysis.load_peaks(row["id"], row.get("downloaded_at"))
+    return cached["peaks"] if cached else None
+
+
+def _safe(fn: Callable[[], Any]) -> Any:
+    """Extras of get_media must never keep a file from playing."""
+    try:
+        return fn()
+    except Exception:
+        log.debug("Player extra not available", exc_info=True)
+        return None
 
 
 def external_command(path: Path, platform: str) -> list[str]:

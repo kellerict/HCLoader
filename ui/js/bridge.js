@@ -213,6 +213,19 @@
                                            Fortschritt: Event "tracklist_index"
      cancel_build_tracklists()          -> {ok, running}
 
+   Lautheit, Wellenform, Player-Gedächtnis (v0.7.0, offline; Vertrag: docs/bridge-api.md «Loudness, waveform, player memory»)
+     get_waveform(id)                   -> {ok, status:"ready", peaks:[0..255], duration} | {ok, status:"pending"}
+                                           | {ok:false, status?:"unavailable", error}   pending: Event "waveform" folgt
+     save_position(id, position, duration?) -> {ok, stored}   stored false = erste/letzte 30 s (Eintrag entfernt) oder resume off
+     forget_position(id)                -> {ok}
+     get_continue_listening(limit?)     -> {ok, items:[{id, position, duration, updated, title, artist, genre, platform}]}
+     get_analysis_status()              -> {total, analysed, tagged, waveforms, failed, pending, last_pass, ffmpeg, running}
+     analyse_library(opts?)             -> {ok, started, scope} | {ok, started:false, running:true} | {ok:false, error}
+                                           opts {scope:"new"|"all"}; Fortschritt: Event "audio_analysis"
+     cancel_analyse_library()           -> {ok, running}
+     get_media(id) liefert zusätzlich: loudness {lufs, true_peak, gain, peak, source}|null, resume {position, duration,
+                                           updated}|null, peaks [0..255]|null
+
    Festival-Sammler (v0.5.0; Vertrag, Datenformen, Events: docs/bridge-api.md «Festival collector»)
      get_collector_editions()           -> [CollectorEdition]   Ausgaben mit Checkliste (offline)
      open_collector_edition(data)       -> {ok, edition: CollectorEdition} | {ok:false, errors, error}
@@ -380,6 +393,10 @@
                      phase: "start"|"progress"|"done"|"error" (v0.3.0, «Festivals zuordnen»)
      tracklist_index {phase, scope, done?, total?, sets?, tracks?, cancelled?, error?}
                      phase: "start"|"progress"|"done"|"error" (v0.6.0, «Tracklisten einlesen»)
+     audio_analysis  {phase, scope, done?, total?, analysed?, failed?, cancelled?, error?}
+                     phase: "start"|"progress"|"done"|"error" (v0.7.0, «Lautheit & Wellenform analysieren»)
+     media_analysed  {id, ok, loudness?, peaks, tagged, error?}   v0.7.0 eine Datei analysiert (nach Download/Durchlauf)
+     waveform        {id, ok, peaks?, duration?, loudness?, error?}   v0.7.0 angeforderte Wellenform ist fertig
      toast           {msg, kind?}                      kind: "ok"|"info"|"warn"|"err"
 
    UI-seitig abonnieren:  HC.bridge.on('progress', fn)

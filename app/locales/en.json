@@ -555,5 +555,16 @@
     "skipped_archive": "Skipped (in the download archive): {id}",
     "skipped_done": "Skipped (already downloaded): {id}",
     "unexpected": "Unexpected error while downloading {id}"
+  },
+  "analysis": {
+    "no_ffmpeg": "ffmpeg is missing – loudness and waveform cannot be analysed (Settings › Maintenance)",
+    "ffmpeg_failed": "ffmpeg could not analyse the file: {error}",
+    "tag_failed": "ReplayGain tags not written ({path}): {error} – retried on the next analysis",
+    "no_peaks": "No waveform could be computed for this file",
+    "item_failed": "Analysis of {id} failed: {error}",
+    "pass_started": "Analysing loudness and waveforms (offline, one file at a time) …",
+    "pass_done": "Loudness analysed: {n} files, {analysed} done, {failed} failed",
+    "pass_cancelled": "Loudness analysis cancelled: {n} files, {analysed} done, {failed} failed",
+    "pass_failed": "Loudness analysis failed: {error}"
   }
 }

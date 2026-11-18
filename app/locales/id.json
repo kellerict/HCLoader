@@ -549,5 +549,16 @@
     "skipped_archive": "Dilewati (ada di arsip unduhan): {id}",
     "skipped_done": "Dilewati (sudah diunduh): {id}",
     "unexpected": "Galat tak terduga saat mengunduh {id}"
+  },
+  "analysis": {
+    "no_ffmpeg": "ffmpeg tidak ada – kenyaringan dan bentuk gelombang tidak dapat dianalisis (Pengaturan › Pemeliharaan)",
+    "ffmpeg_failed": "ffmpeg tidak dapat menganalisis file: {error}",
+    "tag_failed": "Tag ReplayGain tidak ditulis ({path}): {error} – dicoba lagi pada analisis berikutnya",
+    "no_peaks": "Bentuk gelombang untuk file ini tidak dapat dihitung",
+    "item_failed": "Analisis {id} gagal: {error}",
+    "pass_started": "Menganalisis kenyaringan dan bentuk gelombang (offline, satu file per waktu) …",
+    "pass_done": "Kenyaringan dianalisis: {n} file, {analysed} selesai, {failed} gagal",
+    "pass_cancelled": "Analisis kenyaringan dibatalkan: {n} file, {analysed} selesai, {failed} gagal",
+    "pass_failed": "Analisis kenyaringan gagal: {error}"
   }
 }

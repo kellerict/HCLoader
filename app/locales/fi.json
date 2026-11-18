@@ -555,5 +555,16 @@
     "skipped_archive": "Ohitettu (latausarkistossa): {id}",
     "skipped_done": "Ohitettu (jo ladattu): {id}",
     "unexpected": "Odottamaton virhe ladattaessa {id}"
+  },
+  "analysis": {
+    "no_ffmpeg": "ffmpeg puuttuu – äänenvoimakkuutta ja aaltomuotoa ei voi analysoida (Asetukset › Ylläpito)",
+    "ffmpeg_failed": "ffmpeg ei pystynyt analysoimaan tiedostoa: {error}",
+    "tag_failed": "ReplayGain-tunnisteita ei kirjoitettu ({path}): {error} – yritetään uudelleen seuraavassa analyysissä",
+    "no_peaks": "Tälle tiedostolle ei voitu laskea aaltomuotoa",
+    "item_failed": "Kohteen {id} analyysi epäonnistui: {error}",
+    "pass_started": "Analysoidaan äänenvoimakkuutta ja aaltomuotoja (offline, tiedosto kerrallaan) …",
+    "pass_done": "Äänenvoimakkuus analysoitu: {n} tiedostoa, {analysed} valmis, {failed} epäonnistui",
+    "pass_cancelled": "Äänenvoimakkuusanalyysi keskeytetty: {n} tiedostoa, {analysed} valmis, {failed} epäonnistui",
+    "pass_failed": "Äänenvoimakkuusanalyysi epäonnistui: {error}"
   }
 }

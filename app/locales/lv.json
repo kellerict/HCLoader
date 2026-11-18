@@ -561,5 +561,16 @@
     "skipped_archive": "Izlaists (ir lejupielāžu arhīvā): {id}",
     "skipped_done": "Izlaists (jau lejupielādēts): {id}",
     "unexpected": "Neparedzēta kļūda, lejupielādējot {id}"
+  },
+  "analysis": {
+    "no_ffmpeg": "Trūkst ffmpeg – skaļumu un viļņformu nevar analizēt (Iestatījumi › Apkope)",
+    "ffmpeg_failed": "ffmpeg nevarēja analizēt failu: {error}",
+    "tag_failed": "ReplayGain birkas netika ierakstītas ({path}): {error} – mēģinās vēlreiz nākamajā analīzē",
+    "no_peaks": "Šim failam nevarēja aprēķināt viļņformu",
+    "item_failed": "{id} analīze neizdevās: {error}",
+    "pass_started": "Analizē skaļumu un viļņformas (bezsaistē, pa vienam failam) …",
+    "pass_done": "Skaļums analizēts: {n} faili, {analysed} gatavi, {failed} neizdevās",
+    "pass_cancelled": "Skaļuma analīze atcelta: {n} faili, {analysed} gatavi, {failed} neizdevās",
+    "pass_failed": "Skaļuma analīze neizdevās: {error}"
   }
 }

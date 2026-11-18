@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any
 
 from .core import (
+    analysis,
     backfill,
     binaries,
     collector,
@@ -35,6 +36,7 @@ from .core import (
     maintenance,
     paths,
     platforms,
+    playback,
     player,
     potoken,
     scheduler,
@@ -53,6 +55,7 @@ from .core.platforms import file_id
 from .core.redact import redact
 from .core.throttle import Throttle
 from .worker import (
+    AnalysisQueue,
     DownloadQueue,
     EventBus,
     GateBusy,
@@ -184,8 +187,11 @@ class Api:
                 self._settings, self._watchdog, wait=wait, stop=stop
             ),
             on_thread_start=self._cleanup_partials,  # n6: in the queue thread, before downloads
+            on_done=self._after_download,  # v0.7.0: offline analysis of the new file
             **qopts,
         )
+        # v0.7.0 loudness/waveform analysis: own low-priority thread, one file at a time
+        self._analysis = AnalysisQueue(self._db, lambda: self._settings, self._bus)
         # Watchlist checks: own thread (never blocks maintenance jobs), one check at a time
         self._wl_worker = Worker("hcloader-watchlist")
         self._wl_cancel = threading.Event()
@@ -261,6 +267,7 @@ class Api:
         self._ticker = Ticker(STATUS_INTERVAL_S, self._push)
         self._ticker.start()
         self._update_worker.start()
+        self._analysis.start()
         try:
             self._update_result = self._updater.take_result()  # outcome of apply_update.ps1
             self._updater.restore()  # an update staged in an earlier session is ready again
@@ -299,6 +306,7 @@ class Api:
         self._col_worker.stop(WATCHLIST_STOP_TIMEOUT_S)
         self._col_import_worker.stop(WATCHLIST_STOP_TIMEOUT_S)
         collector.release_running(self._db, tr("collector.note_interrupted"))
+        self._analysis.stop()  # v0.7.0: a running ffmpeg analysis is killed (nothing written)
         self._updater.stop()  # a running app-update download is aborted and discarded
         self._update_worker.stop()
         ended = self._queue.stop(queue_timeout)
@@ -326,6 +334,7 @@ class Api:
             self._startup_app_update()
             self._startup_backfills()
             self._startup_collector()
+            self._startup_analysis()
 
     def _on_run_finished(self, row: dict[str, Any]) -> None:
         """A run (watchlist, headless, manual queue) ended: event `run` for the log view."""
@@ -1826,6 +1835,8 @@ class Api:
         """Datei + CUE (+ leere Ordner) löschen, Eintrag auf `ignored`. Bestätigung: UI."""
         res = library.delete_item(self._db, self._cfg, str(video_id), delete_file=bool(delete_file))
         if res.get("ok"):
+            analysis.forget(self._db, str(video_id))  # v0.7.0: measurement + waveform cache
+            playback.forget(self._db, str(video_id))
             self._bus.emit("video", {"id": str(video_id), "status": "ignored", "genre": None})
             self._push()
         return res
@@ -2072,6 +2083,74 @@ class Api:
         log_ok(log, tr(key, n=res["done"], sets=res["sets"], tracks=res["tracks"]))
         self._bus.emit("tracklist_index", {"phase": "done", "scope": scope, **res})
         return res
+
+    # ======================================================== loudness, waveform, memory (v0.7.0)
+
+    def _after_download(self, vid: str) -> None:
+        if self._settings.loudness.analyse_after_download:
+            self._analysis.request(vid)
+
+    def _startup_analysis(self) -> None:
+        """Downloads since the first v0.7.0 start that were never analysed (e.g. by the
+        scheduled headless run, which does not analyse) are queued once after the start."""
+        try:
+            ids = analysis.since_pending(self._db, self._settings)
+        except Exception:
+            log.debug("Analysis backlog not readable", exc_info=True)
+            return
+        if self._settings.loudness.analyse_after_download:
+            for vid in ids:
+                self._analysis.request(vid)
+
+    def get_waveform(self, video_id: str) -> dict[str, Any]:
+        """Cached waveform of a library item, or {status: "pending"} and the computation is
+        queued (low priority, before downloads and passes); event `waveform` follows."""
+        vid = str(video_id)
+        try:
+            _row, _path = player.resolve_playable(self._db, self._cfg, vid)
+        except player.PlayerError as exc:
+            return {"ok": False, "error": str(exc)}
+        row = self._db.get_video(vid) or {}
+        cached = analysis.load_peaks(vid, row.get("downloaded_at"))
+        if cached:
+            return {"ok": True, "status": "ready", **cached}
+        if not binaries.ffmpeg_path().exists():
+            return {"ok": False, "status": "unavailable", "error": tr("analysis.no_ffmpeg")}
+        self._analysis.request_waveform(vid)
+        return {"ok": True, "status": "pending"}
+
+    def save_position(self, video_id: str, position: Any, duration: Any = None) -> dict[str, Any]:
+        """Remember where a set was left (not in the first/last 30 s; `player.resume` off:
+        nothing is stored). Quick DB write."""
+        return playback.save(self._db, self._cfg, str(video_id), position, duration)
+
+    def forget_position(self, video_id: str) -> dict[str, Any]:
+        playback.forget(self._db, str(video_id))
+        return {"ok": True}
+
+    def get_continue_listening(self, limit: int = playback.CONTINUE_LIMIT) -> dict[str, Any]:
+        """«Continue listening»: last unfinished sets still in the library, newest first."""
+        return {"ok": True, "items": playback.continue_listening(self._db, self._cfg, limit)}
+
+    def get_analysis_status(self) -> dict[str, Any]:
+        st = analysis.status(self._db, self._cfg)
+        st["running"] = self._analysis.pass_running()
+        return st
+
+    def analyse_library(self, opts: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Offline loudness/waveform pass over the library (one file at a time, low priority);
+        progress via `audio_analysis`. opts {scope: "new" (default) | "all"}."""
+        o = opts if isinstance(opts, dict) else {}
+        scope = "all" if o.get("scope") == "all" else "new"
+        if not binaries.ffmpeg_path().exists():
+            return {"ok": False, "error": tr("analysis.no_ffmpeg")}
+        if not self._analysis.start_pass(scope):
+            return {"ok": True, "started": False, "running": True}
+        return {"ok": True, "started": True, "scope": scope}
+
+    def cancel_analyse_library(self) -> dict[str, Any]:
+        self._analysis.cancel_pass()
+        return {"ok": True, "running": self._analysis.pass_running()}
 
 
 def _now_iso() -> str:

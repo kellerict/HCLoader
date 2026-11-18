@@ -555,5 +555,16 @@
     "skipped_archive": "Overgeslagen (staat in het downloadarchief): {id}",
     "skipped_done": "Overgeslagen (al gedownload): {id}",
     "unexpected": "Onverwachte fout bij het downloaden van {id}"
+  },
+  "analysis": {
+    "no_ffmpeg": "ffmpeg ontbreekt – luidheid en golfvorm kunnen niet worden geanalyseerd (Instellingen › Onderhoud)",
+    "ffmpeg_failed": "ffmpeg kon het bestand niet analyseren: {error}",
+    "tag_failed": "ReplayGain-tags niet geschreven ({path}): {error} – nieuwe poging bij de volgende analyse",
+    "no_peaks": "Voor dit bestand kon geen golfvorm worden berekend",
+    "item_failed": "Analyse van {id} mislukt: {error}",
+    "pass_started": "Luidheid en golfvormen worden geanalyseerd (offline, één bestand tegelijk) …",
+    "pass_done": "Luidheid geanalyseerd: {n} bestanden, {analysed} klaar, {failed} mislukt",
+    "pass_cancelled": "Luidheidsanalyse geannuleerd: {n} bestanden, {analysed} klaar, {failed} mislukt",
+    "pass_failed": "Luidheidsanalyse mislukt: {error}"
   }
 }

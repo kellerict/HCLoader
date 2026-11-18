@@ -442,6 +442,9 @@ def needs(
     measured = row.get("lufs") is not None and not stale
     # «looked, nothing measurable» (silence) also counts as done unless the file is newer
     looked = analysed is not None and not stale
+    if looked and row.get("lufs") is None and row.get("error"):
+        # ffmpeg could not read the file: not again until it is downloaded again (or «all»)
+        return {"loudness": False, "tags": False, "peaks": False}
     tags = bool(lo.write_tags and measured and not row.get("tagged") and _taggable(row))
     peaks = bool(lo.waveforms and (stale or not row.get("peaks")))
     return {"loudness": not (measured or looked), "tags": tags, "peaks": peaks}
@@ -678,3 +681,29 @@ def run_pass(
     if not res["cancelled"]:
         db.set_state(K_LAST_PASS, now_iso())
     return res
+
+
+def process_pending(
+    db: Database,
+    settings: config.Settings,
+    video_id: str,
+    *,
+    cancel: threading.Event | None = None,
+    runner: Callable[..., RunResult] = run_ffmpeg,
+) -> dict[str, Any]:
+    """Analyse one item as far as it still needs it (after a download: everything)."""
+    rows = [r for r in _rows(db) if r["id"] == video_id]
+    if not rows:
+        return {"ok": False, "id": video_id, "error": tr("library.not_in_library")}
+    n = needs(rows[0], settings)
+    if not any(n.values()):
+        return {"ok": True, "id": video_id, "skipped": True, "peaks": bool(rows[0].get("peaks"))}
+    return process(
+        db,
+        settings,
+        video_id,
+        loudness=n["loudness"],
+        peaks=n["peaks"],
+        cancel=cancel,
+        runner=runner,
+    )

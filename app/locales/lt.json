@@ -567,5 +567,16 @@
     "skipped_archive": "Praleista (yra atsisiuntimų archyve): {id}",
     "skipped_done": "Praleista (jau atsisiųsta): {id}",
     "unexpected": "Netikėta klaida atsisiunčiant {id}"
+  },
+  "analysis": {
+    "no_ffmpeg": "Trūksta ffmpeg – garsumo ir bangos formos analizuoti negalima (Nustatymai › Priežiūra)",
+    "ffmpeg_failed": "ffmpeg nepavyko išanalizuoti failo: {error}",
+    "tag_failed": "ReplayGain žymos neįrašytos ({path}): {error} – bus bandoma per kitą analizę",
+    "no_peaks": "Šiam failui nepavyko apskaičiuoti bangos formos",
+    "item_failed": "Nepavyko išanalizuoti {id}: {error}",
+    "pass_started": "Analizuojamas garsumas ir bangos formos (neprisijungus, po vieną failą) …",
+    "pass_done": "Garsumas išanalizuotas: failų {n}, baigta {analysed}, nepavyko {failed}",
+    "pass_cancelled": "Garsumo analizė atšaukta: failų {n}, baigta {analysed}, nepavyko {failed}",
+    "pass_failed": "Garsumo analizė nepavyko: {error}"
   }
 }

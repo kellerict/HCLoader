@@ -12,6 +12,8 @@
 - `YtdlpGate`: mutual exclusion "yt-dlp update" <-> "search uses yt-dlp" without TOCTOU.
 - `local_preflight()`: local download preconditions (PO-token server ready, target writable).
 - `LogForwarder`: live log records -> `log` events (LogLine).
+- `AnalysisQueue` (v0.7.0): offline loudness/waveform analysis, one file at a time, low
+  priority; urgent waveform requests (set being played) before downloads and library passes.
 
 Nothing here imports pywebview; the window is any object with `evaluate_js(str)`.
 """
@@ -24,6 +26,7 @@ import os
 import queue
 import threading
 import time
+from collections import deque
 from collections.abc import Callable, Iterator
 from concurrent.futures import Future
 from contextlib import contextmanager
@@ -31,7 +34,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from .core import binaries, locks, preflight, watchlist
+from .core import analysis, binaries, locks, preflight, watchlist
 from .core.discover import format_until
 from .core.i18n import tr
 from .core.logging_setup import live_handler
@@ -451,8 +454,10 @@ class DownloadQueue:
         idle_interval: float = 30.0,
         progress_interval: float = 0.5,
         monotonic: Callable[[], float] = time.monotonic,
+        on_done: Callable[[str], Any] | None = None,
     ) -> None:
         self._db = db
+        self._on_done = on_done  # v0.7.0: e.g. queue the offline analysis of the new file
         self._throttle = throttle
         self._bus = bus
         self._factory = client_factory
@@ -996,6 +1001,11 @@ class DownloadQueue:
             log_ok(log, "%s", tr("queue.finished", title=title))
             self._emit_video(vid)
             self._bus.emit("done", {"id": vid, "title": title})
+            if self._on_done is not None:
+                try:
+                    self._on_done(vid)
+                except Exception:
+                    log.debug("on_done hook failed", exc_info=True)
             return "done"
         if status == "skipped":
             current = self._db.get_video(vid)
@@ -1477,3 +1487,244 @@ class WatchlistScheduler:
         thread = self._thread
         if thread is not None and thread.is_alive() and thread is not threading.current_thread():
             thread.join(timeout=2)
+
+
+class AnalysisQueue:
+    """v0.7.0 offline audio analysis (core/analysis.py): one daemon thread, one file at a time,
+    ffmpeg at lowered priority. Three kinds of work, in this order:
+
+    1. urgent waveform requests (`request_waveform`, the set that is being played) -> event
+       `waveform` {id, ok, peaks?, duration?, loudness?, error?}
+    2. items after a download (`request`) -> event `media_analysed`
+    3. one library pass at a time (`start_pass`) -> events `audio_analysis` {phase ...} and
+       `media_analysed` per item; urgent requests and new downloads are served between files.
+
+    Cancelling a pass stops the running ffmpeg as well. Never touches the network."""
+
+    def __init__(
+        self,
+        db: Any,
+        settings_provider: Callable[[], Any],
+        bus: EventBus,
+        *,
+        runner: Callable[..., Any] | None = None,
+        name: str = "hcloader-analysis",
+    ) -> None:
+        self._db = db
+        self._settings = settings_provider
+        self._bus = bus
+        self._runner = runner or analysis.run_ffmpeg
+        self._name = name
+        self._cond = threading.Condition()
+        self._urgent: deque[str] = deque()
+        self._items: deque[str] = deque()
+        self._pass_scope: str | None = None
+        self._pass_running = False
+        self._pass_cancel = threading.Event()
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+        self.current: str | None = None
+
+    # ------------------------------------------------------------------ lifecycle
+
+    def start(self) -> None:
+        with self._cond:
+            if self._thread is None or not self._thread.is_alive():
+                self._stop.clear()
+                self._thread = threading.Thread(target=self._loop, name=self._name, daemon=True)
+                self._thread.start()
+
+    def stop(self, timeout: float = 5.0) -> None:
+        self._stop.set()
+        self._pass_cancel.set()
+        with self._cond:
+            self._cond.notify_all()
+        thread = self._thread
+        if thread is not None and thread.is_alive() and thread is not threading.current_thread():
+            thread.join(timeout)
+
+    # ------------------------------------------------------------------ requests
+
+    def request_waveform(self, video_id: str) -> None:
+        with self._cond:
+            if video_id not in self._urgent and self.current != f"waveform:{video_id}":
+                self._urgent.append(video_id)
+            self._cond.notify_all()
+        self.start()
+
+    def request(self, video_id: str) -> None:
+        with self._cond:
+            if video_id not in self._items:
+                self._items.append(video_id)
+            self._cond.notify_all()
+        self.start()
+
+    def start_pass(self, scope: str = "new") -> bool:
+        """False if a pass is already queued or running."""
+        with self._cond:
+            if self._pass_running or self._pass_scope is not None:
+                return False
+            self._pass_cancel.clear()
+            self._pass_scope = "all" if scope == "all" else "new"
+            self._cond.notify_all()
+        self.start()
+        return True
+
+    def cancel_pass(self) -> None:
+        with self._cond:
+            if self._pass_scope is not None and not self._pass_running:
+                scope, self._pass_scope = self._pass_scope, None
+                self._bus.emit(
+                    "audio_analysis",
+                    {
+                        "phase": "done",
+                        "scope": scope,
+                        "ok": True,
+                        "cancelled": True,
+                        "total": 0,
+                        "done": 0,
+                        "analysed": 0,
+                        "failed": 0,
+                    },
+                )
+            self._pass_cancel.set()
+
+    def pass_running(self) -> bool:
+        with self._cond:
+            return self._pass_running or self._pass_scope is not None
+
+    def idle(self) -> bool:
+        with self._cond:
+            return not (
+                self._urgent
+                or self._items
+                or self._pass_running
+                or self._pass_scope
+                or self.current
+            )
+
+    # ------------------------------------------------------------------ thread
+
+    def _loop(self) -> None:
+        while not self._stop.is_set():
+            with self._cond:
+                while not (self._stop.is_set() or self._urgent or self._items or self._pass_scope):
+                    self._cond.wait()
+                if self._stop.is_set():
+                    return
+                scope = None
+                if not self._urgent and not self._items:
+                    scope, self._pass_scope = self._pass_scope, None
+                    self._pass_running = scope is not None
+            try:
+                if scope is not None:
+                    self._run_pass(scope)
+                else:
+                    self._serve()
+            except Exception:
+                log.exception("Audio analysis failed")
+            finally:
+                with self._cond:
+                    if scope is not None:
+                        self._pass_running = False
+                    self.current = None
+
+    def _serve(self) -> None:
+        """All urgent requests and queued download items (also between files of a pass)."""
+        while not self._stop.is_set():
+            with self._cond:
+                if self._urgent:
+                    kind, vid = "waveform", self._urgent.popleft()
+                elif self._items:
+                    kind, vid = "item", self._items.popleft()
+                else:
+                    return
+                self.current = f"{kind}:{vid}"
+            try:
+                if kind == "waveform":
+                    self._waveform(vid)
+                else:
+                    self._item(vid)
+            finally:
+                with self._cond:
+                    self.current = None
+
+    def _waveform(self, vid: str) -> None:
+        try:
+            res = analysis.ensure_peaks(
+                self._db, self._settings(), vid, cancel=self._stop, runner=self._runner
+            )
+        except Exception as exc:
+            log.warning("Waveform failed: %s", vid, exc_info=True)
+            res = {"ok": False, "id": vid, "error": str(exc)}
+        if res.get("cancelled"):
+            return
+        self._bus.emit("waveform", {"id": vid, **{k: v for k, v in res.items() if k != "id"}})
+
+    def _item(self, vid: str) -> None:
+        try:
+            res = analysis.process_pending(
+                self._db, self._settings(), vid, cancel=self._stop, runner=self._runner
+            )
+        except Exception as exc:
+            log.warning("Analysis failed: %s", vid, exc_info=True)
+            res = {"ok": False, "id": vid, "error": str(exc)}
+        if res.get("cancelled") or res.get("skipped"):
+            return
+        if not res.get("ok"):
+            log.warning(tr("analysis.item_failed", id=vid, error=res.get("error") or "?"))
+        self._bus.emit("media_analysed", res)
+
+    def _run_pass(self, scope: str) -> None:
+        self._bus.emit("audio_analysis", {"phase": "start", "scope": scope})
+        log.info(tr("analysis.pass_started"))
+
+        def progress(data: dict[str, Any]) -> None:
+            self._bus.emit("audio_analysis", {"phase": "progress", "scope": scope, **data})
+
+        def between() -> None:
+            self._serve()
+
+        try:
+            res = analysis.run_pass(
+                self._db,
+                self._settings,
+                scope=scope,
+                progress=progress,
+                cancel=_AnyEvent(self._pass_cancel, self._stop),
+                between=between,
+                item_done=lambda r: self._bus.emit("media_analysed", r),
+                runner=self._runner,
+            )
+        except Exception as exc:
+            log.error(tr("analysis.pass_failed", error=exc))
+            self._bus.emit(
+                "audio_analysis",
+                {
+                    "phase": "error",
+                    "scope": scope,
+                    "ok": False,
+                    "error": tr("analysis.pass_failed", error=exc),
+                },
+            )
+            return
+        if not res.get("ok"):
+            log.error(res.get("error") or "")
+            self._bus.emit("audio_analysis", {"phase": "error", "scope": scope, **res})
+            return
+        key = "analysis.pass_cancelled" if res["cancelled"] else "analysis.pass_done"
+        log_ok(log, tr(key, n=res["done"], analysed=res["analysed"], failed=res["failed"]))
+        self._bus.emit("audio_analysis", {"phase": "done", "scope": scope, **res})
+
+
+class _AnyEvent:
+    """`is_set()` of several events (pass cancel OR app exit) for code that polls."""
+
+    def __init__(self, *events: threading.Event) -> None:
+        self._events = events
+
+    def is_set(self) -> bool:
+        return any(e.is_set() for e in self._events)
+
+    def wait(self, timeout: float | None = None) -> bool:
+        return self._events[0].wait(timeout) or self.is_set()

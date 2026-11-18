@@ -555,5 +555,16 @@
     "skipped_archive": "Übersprungen (im Download-Archiv): {id}",
     "skipped_done": "Übersprungen (bereits geladen): {id}",
     "unexpected": "Unerwarteter Fehler beim Download von {id}"
+  },
+  "analysis": {
+    "no_ffmpeg": "ffmpeg fehlt – Lautheit und Wellenform können nicht analysiert werden (Einstellungen › Wartung)",
+    "ffmpeg_failed": "ffmpeg konnte die Datei nicht analysieren: {error}",
+    "tag_failed": "ReplayGain-Tags nicht geschrieben ({path}): {error} – neuer Versuch bei der nächsten Analyse",
+    "no_peaks": "Für diese Datei liess sich keine Wellenform berechnen",
+    "item_failed": "Analyse von {id} fehlgeschlagen: {error}",
+    "pass_started": "Lautheit und Wellenformen werden analysiert (offline, eine Datei nach der anderen) …",
+    "pass_done": "Lautheit analysiert: {n} Dateien, {analysed} fertig, {failed} fehlgeschlagen",
+    "pass_cancelled": "Lautheitsanalyse abgebrochen: {n} Dateien, {analysed} fertig, {failed} fehlgeschlagen",
+    "pass_failed": "Lautheitsanalyse fehlgeschlagen: {error}"
   }
 }

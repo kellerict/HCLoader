@@ -554,5 +554,16 @@
     "skipped_archive": "Ignoré (dans l’archive des téléchargements) : {id}",
     "skipped_done": "Ignoré (déjà téléchargé) : {id}",
     "unexpected": "Erreur inattendue lors du téléchargement de {id}"
+  },
+  "analysis": {
+    "no_ffmpeg": "ffmpeg est absent – impossible d’analyser le volume et la forme d’onde (Paramètres › Maintenance)",
+    "ffmpeg_failed": "ffmpeg n’a pas pu analyser le fichier : {error}",
+    "tag_failed": "Tags ReplayGain non écrits ({path}) : {error} – nouvel essai à la prochaine analyse",
+    "no_peaks": "Impossible de calculer une forme d’onde pour ce fichier",
+    "item_failed": "Échec de l’analyse de {id} : {error}",
+    "pass_started": "Analyse du volume et des formes d’onde (hors ligne, un fichier à la fois) …",
+    "pass_done": "Volume analysé : {n} fichiers, {analysed} terminés, {failed} en échec",
+    "pass_cancelled": "Analyse du volume annulée : {n} fichiers, {analysed} terminés, {failed} en échec",
+    "pass_failed": "Échec de l’analyse du volume : {error}"
   }
 }

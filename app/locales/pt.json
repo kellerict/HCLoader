@@ -554,5 +554,16 @@
     "skipped_archive": "Ignorado (no arquivo de downloads): {id}",
     "skipped_done": "Ignorado (já baixado): {id}",
     "unexpected": "Erro inesperado ao baixar {id}"
+  },
+  "analysis": {
+    "no_ffmpeg": "O ffmpeg não está instalado – não é possível analisar volume e forma de onda (Configurações › Manutenção)",
+    "ffmpeg_failed": "O ffmpeg não conseguiu analisar o arquivo: {error}",
+    "tag_failed": "Tags ReplayGain não gravadas ({path}): {error} – nova tentativa na próxima análise",
+    "no_peaks": "Não foi possível calcular a forma de onda deste arquivo",
+    "item_failed": "A análise de {id} falhou: {error}",
+    "pass_started": "Analisando volume e formas de onda (offline, um arquivo por vez) …",
+    "pass_done": "Volume analisado: {n} arquivos, {analysed} concluídos, {failed} com falha",
+    "pass_cancelled": "Análise de volume cancelada: {n} arquivos, {analysed} concluídos, {failed} com falha",
+    "pass_failed": "A análise de volume falhou: {error}"
   }
 }
