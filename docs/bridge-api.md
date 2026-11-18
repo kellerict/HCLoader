@@ -630,13 +630,18 @@ Timetable (Text/CSV), mitgelieferte Timetable-Datei, von Hand. **Kein Scraping**
   gespeichert (Status `new`, Genre, Festival-Erkennung) – nie Eingang, nie Queue.
 - **Abgleich** (kostenlos, offline): vor jeder Suche und nach jedem Import gegen gespeicherte Videos
   (Bibliothek, Eingang, frühere Treffer; nicht `ignored`, keine Previews). Bewertung `score`: alle Namen
-  der Zeile im Titel +0.45 (bei «A b2b B» nur einer: +0.30; keiner = kein Treffer), Serienname +0.25,
+  der Zeile im Titel +0.45 (bei «A b2b B» nur einer: +0.30; keiner = kein Treffer), Serienname +0.25
+  (schwacher Alias wie «Supremacy» nur mit dem Jahr direkt dahinter, sonst +0.10 `series:weak`),
   Jahr der Ausgabe +0.20 (nur andere Jahre −0.30; kein Jahr, Upload im Jahr/Folgejahr +0.10), Bühne
   +0.05, Set-Art +0.05, andere Variante («Australia» bei Defqon.1) −0.30 bzw. fehlende Variante −0.15,
   negative Begriffe −0.40, Dauer unbekannt −0.05; zu kurz/Livestream/Preview = kein Treffer. Treffer ab
-  0.50; **sicher** (ohne Bestätigung) nur mit Artist + Serie + Jahr im Titel und ≥
-  `festivals.collector_auto_confirm` (Standard 0.85). Gleiche Sicherheit → das schon geladene Video
-  gewinnt (nie doppelt). Ein Video ist pro Ausgabe nur einer Zeile zugeordnet.
+  0.50; **sicher** (ohne Bestätigung) nur mit Artist + Serie + Jahr im Titel, ≥
+  `festivals.collector_auto_confirm` (Standard 0.85) und **ohne Widerspruch** im Titel: weitere Artists
+  neben dem DJ (b2b, vs, &, x, feat., with …), andere Bühne oder Set-Art als die Zeile, ein weiteres
+  Jahr, eine andere Serie, falsche/fehlende Variante, negative Begriffe (`collector.BLOCKS_CERTAIN`).
+  Gleiche Sicherheit → das schon geladene Video gewinnt (nie doppelt). Ein Video ist pro Ausgabe nur
+  einer Zeile zugeordnet; `confirm_checklist_match` lehnt ein Video ab, das eine andere Zeile hält
+  (`errors.video_id`).
 - **Suchauftrag** (`start_checklist_matching`, Thread `hcloader-collector`, einer nach dem anderen): nur
   angehakte, nicht ignorierte Zeilen ohne Treffer, die noch nicht gesucht wurden. Pro Zeile eine flache
   Suche `<Artist> <Serie [Variante]> <Jahr>` über `YtClient.search` (YouTube; Throttle: Backoff,

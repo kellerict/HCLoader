@@ -1293,3 +1293,20 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
   Minuten (`18:00`, `18.00`, `18h00`, `1800-1900`) oder am/pm, damit Zahlen in Artistnamen nie als Zeit
   gelesen werden. Tage/Bühnen werden als Text übernommen, wie der User sie eingibt (keine Übersetzung,
   keine Normalisierung von «Samstag» zu «Saturday»).
+
+### 2026-11-18 – Festival-Sammler: Auto-Bestätigung konservativ, Parser linear (Review/QA v0.5.0)
+
+- **Entscheid:** «sicher» (ohne Bestätigung, wird eingereiht) verlangt zusätzlich, dass der Titel
+  **nichts Widersprechendes** nennt: weitere Artists neben dem DJ der Zeile (b2b, vs, &, x, feat.,
+  with …, `artist:more`), eine andere Bühne (`stage:other`) oder Set-Art (`set_type:other`) als die
+  Zeile, neben dem Ausgabejahr ein weiteres Jahr (`year:more`), eine andere Serie (`series:other`)
+  oder die falsche/fehlende Variante. Ein schwacher Serien-Alias («Supremacy», «Rebirth») zählt nur
+  mit dem Jahr direkt dahinter als Serie, sonst `series:weak` (+0.10). Solche Treffer bleiben
+  Kandidaten zur Bestätigung (`collector.BLOCKS_CERTAIN`). Eine Bestätigung eines Videos, das schon
+  eine andere Zeile hält, wird abgelehnt. **Grund:** eine falsche Auto-Bestätigung wird direkt ein
+  falscher Download mit falschen Tags; eine Bestätigung zu viel kostet nur einen Klick.
+- **Entscheid:** der Timetable-Parser fasst Leerzeichen-Folgen pro Zeile zusammen und kürzt Zeilen
+  (500 Zeichen) und Text (512 KB) **vor** jeder Regex; Gruppen-/Bühnen-Regexes ohne führendes `\s*`.
+  **Grund:** quadratisches Backtracking bei langen Leerräumen (PDF-Paste) blockierte Bridge-Threads.
+- **Entscheid:** `festivals.collector_results_per_search` höchstens 20. **Grund:** mehr Treffer holt
+  yt-dlp über Folgeseiten ohne Throttle-Abstand – eine Suche bleibt so genau eine Anfrage.
