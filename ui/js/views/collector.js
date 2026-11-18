@@ -323,7 +323,28 @@
   }
   function paintStrip() {
     const host = $('#co-strip', el);
-    if (host) host.innerHTML = stripHtml();
+    if (!host) return;
+    const html = stripHtml();
+    const cur = host.firstElementChild;
+    if (cur && html) {
+      // same strip (state, buttons): patch the changing parts in place, so the buttons stay
+      // the same nodes while progress events arrive (a click never hits a detached button)
+      const tpl = document.createElement('template');
+      tpl.innerHTML = html.trim();
+      const next = tpl.content.firstElementChild;
+      const acts = (n) => [...n.querySelectorAll('[data-co]')].map((b) => b.dataset.co).join();
+      if (next && next.className === cur.className && acts(next) === acts(cur) && !!$('.note', next) === !!$('.note', cur)) {
+        for (const sel of ['.lbl', '.n', '.hits', '.note']) {
+          const a = $(sel, cur), b = $(sel, next);
+          if (a && b && a.innerHTML !== b.innerHTML) a.innerHTML = b.innerHTML;
+          if (a && b && a.title !== b.title) a.title = b.title;
+        }
+        const bar = $('.progress .bar', cur), nbar = $('.progress .bar', next);
+        if (bar && nbar) { bar.className = nbar.className; bar.setAttribute('style', nbar.getAttribute('style') || ''); }
+        return;
+      }
+    }
+    host.innerHTML = html;
   }
   function paintBar() {
     const bar = $('#co-bar', el);

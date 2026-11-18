@@ -349,8 +349,10 @@ def test_find_missing_estimate_progress_and_cancel(page):
     page.wait_for_selector(".co-strip")
     assert _calls(page, "start_checklist_matching") == [[eid, {}]]
     assert page.is_disabled('#co-bar [data-co="find"]')
+    page.wait_for_selector(".modal.co-est", state="detached")  # no overlay in the way
     page.wait_for_selector(".co-strip.run")
-    page.click('.co-strip [data-co="job-cancel"]')
+    # the strip is patched in place by progress events: the button node stays the same
+    page.locator('.co-strip [data-co="job-cancel"]').click()
     page.wait_for_selector(".co-strip", state="detached")
     assert _calls(page, "cancel_checklist_matching") == [[eid]]
     left = int(page.inner_text('#co-bar [data-co="find"]').split("(")[1].rstrip(")"))
