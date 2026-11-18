@@ -703,7 +703,9 @@ class Shooter:
         self.shot("stats")
         self.shot_scrolled("stats", "#st-scroll")
         page.click('#st-preset [data-p="12m"]')
-        page.wait_for_function("HC.views.stats.state().loaded && HC.views.stats.state().range.preset === '12m'")
+        page.wait_for_function(
+            "HC.views.stats.state().loaded && HC.views.stats.state().range.preset === '12m'"
+        )
         self.settle()
         self.shot("stats-12m")
         page.click('#st-preset [data-p="custom"]')
