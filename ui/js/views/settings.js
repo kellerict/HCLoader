@@ -229,7 +229,8 @@
   function rangeText(def) {
     if (def.rangeKey) return t(def.rangeKey);
     const s = def.scale || 1, max = maxOf(def);
-    if (def.min != null && max != null) return `${util.showNum(def.min / s)}–${util.showNum(max / s)}`;
+    /* Negative Grenzen (z. B. LUFS): «-30 … -6» statt «-30–-6». */
+    if (def.min != null && max != null) return `${util.showNum(def.min / s)}${def.min < 0 || max < 0 ? ' … ' : '–'}${util.showNum(max / s)}`;
     if (def.min != null) return `≥ ${util.showNum(def.min / s)}`;
     return '';
   }

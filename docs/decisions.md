@@ -1456,3 +1456,55 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
   Zielordner-Zugriffe). Knopf «Neue einlesen», daneben «Alle neu einlesen» (`all`).
 - **Panel liest robust:** `get_tracklist` prüft vorher den Zielordner (wie der Durchlauf) und meldet
   eine beschädigte Datei als übersetzte Meldung statt einer Exception.
+
+## 2026-11-18 – Loudness, waveform, player memory (v0.7.0)
+
+- **Messen mit `ebur128`, nicht `loudnorm`:** `-af ebur128=peak=true:framelog=verbose` liefert integrierte
+  Lautheit, LRA und True Peak in der Zusammenfassung auf stderr; `loudnorm` misst dasselbe, resampelt aber
+  intern auf 192 kHz (langsamer). Der Parser versteht trotzdem auch den JSON-Block von `loudnorm`.
+  `framelog=verbose` hält die Zeile pro 100 ms aus stderr (bei `-v info`). Stille (≤ −70 LUFS) = keine Messung.
+- **Ein Dekodierlauf für beides:** `ebur128` reicht das Audio unverändert weiter; dahinter
+  `aresample=2000,aformat=s16:mono` und PCM nach stdout → Blockmaxima (0,1 s) → 1600 Punkte (0..255,
+  bezogen auf Vollaussteuerung). **Grund:** ein 2-h-Set wird nur einmal dekodiert; 2 kHz reichen für eine
+  Hüllkurve. stderr wird in einem eigenen Thread geleert (volle Pipe würde ffmpeg blockieren).
+- **Nie neu kodieren:** ffmpeg schreibt nur in eine Pipe bzw. `-f null`; die Datei ändert ausschliesslich
+  mutagen (Tag-Block). Tests prüfen, dass Audio-Bytes (MP3-Frames, MP4-`mdat`) gleich bleiben.
+- **Tags:** ReplayGain 2.0 bezogen auf −18 LUFS (`gain = −18 − I`, `peak = 10^(TP/20)`). MP3 `TXXX` (vorhandene
+  Varianten in anderer Schreibweise werden ersetzt, nicht verdoppelt; Neu-Taggen behält sie, weil sie nicht
+  zu den eigenen Frames gehören), M4A Freeform-Atome in Kleinschrift (foobar2000/iTunes-Konvention, Lesen
+  ohne Gross/Klein), Opus `R128_TRACK_GAIN` (RFC 7845: Opus-Player ignorieren `REPLAYGAIN_*`; kein Peak-Tag).
+  Andere Container: nur DB. Lesen auch fremder Tags (Opus R128 → +5 dB auf −18 LUFS).
+- **Ziel-Lautheit nur im Player:** Tags bleiben standardkonform; der Player rechnet
+  `target − I` und begrenzt mit `1/peak` (ohne bekannten Peak nur absenken). **Grund:** andere Player lesen
+  die Tags mit ihrer eigenen Referenz.
+- **Web Audio nur mit laufendem AudioContext:** `createMediaElementSource` ist unumkehrbar und ein
+  hängender (suspended) Context würde das Element stumm schalten. Der Graph wird erst gebaut, wenn
+  `ctx.resume()` innerhalb von 400 ms `running` liefert (Nutzergeste beim Abspielen); sonst bleibt es bei
+  `audio.volume` (nur absenken – bei Hardstyle/Hardcore mit −6…−9 LUFS der Normalfall). pywebview startet
+  WebView2 mit `--allow-file-access-from-files` (Standard `ALLOW_FILE_URLS`), daher ist die `file:`-Quelle
+  für Web Audio nicht «cross-origin». Offener Punkt: echter Test unter Windows/WebView2.
+- **Eigener Analyse-Thread (`AnalysisQueue`) statt Wartungs-Worker:** ein Durchlauf über eine grosse
+  Bibliothek dauert Stunden und darf weder «Neu taggen» noch andere Wartung blockieren; umgekehrt muss die
+  Wellenform des gerade gespielten Sets vorgehen. Reihenfolge: dringende Wellenform → Dateien nach Download →
+  Durchlauf; zwischen zwei Dateien des Durchlaufs werden die beiden ersten bedient. Gegen gleichzeitiges
+  Neu-Taggen/Verschieben schützt `library.FS_LOCK` beim Tag-Schreiben (Pfad im Lock neu gelesen).
+- **Schonend:** eine Datei nach der anderen, ffmpeg mit `-threads 1`, Windows `BELOW_NORMAL_PRIORITY_CLASS`,
+  sonst `nice 10`; harte Grenze 45 Min. pro Datei; Abbruch beendet ffmpeg sofort (eigener Watch-Thread, auch
+  wenn stdout nichts liefert).
+- **Fehler:** unlesbare Datei = `analysed` gesetzt + `error` → kein neuer Versuch bis zu einem neuen Download
+  (oder «Alle neu analysieren»). ffmpeg fehlt / Datei nicht erreichbar = kein Vermerk, nächster Durchlauf
+  versucht es wieder. Gesperrte Datei beim Tag-Schreiben = nur Tag-Schreiben wird wiederholt (ohne neue Messung).
+- **Headless-Läufe analysieren nicht** (sie sollen schnell fertig sein); die GUI reiht beim Start Downloads
+  seit dem ersten Start mit v0.7.0 ein, die nie analysiert wurden (`analysis.since` im State). **Grund:**
+  keine Überraschung mit einem Durchlauf über die ganze alte Bibliothek ohne Klick.
+- **Wellenform-Cache als Datei** (`<app_home>/cache/peaks/<sidecar-name>.json`, ca. 6 KB) statt DB-Spalte:
+  wie der Cover-Cache, DB bleibt klein; veraltet, wenn `downloaded_at` nicht mehr passt (neuer Download).
+- **Player-Gedächtnis:** Tabelle `playback` (Position, Dauer, Zeitpunkt). Erste/letzte 30 s werden nicht
+  gemerkt (Zeile entfernt = fertig). Gespeichert wird alle 15 s während der Wiedergabe sowie bei Pause,
+  Schliessen, Wechsel des Sets, Ende und wenn das Fenster verborgen wird. «Fragen» lädt das Set pausiert und
+  zeigt eine Leiste über dem Player; ▶/Leertaste statt Antwort = von vorn. Sprünge aus der Tracklist,
+  «Weiterhören» und das Neuladen nach dem Taggen fragen nie. «Weiterhören» = die letzten 5 unfertigen Sets
+  (nur ohne Filter/Suche, nicht in der Festival-Kachelansicht, nicht bei `resume: off`/Standardplayer).
+- **Schlaf-Timer ohne Einstellung:** Minuten laufen nach Uhr (auch in der Pause), «Ende des Sets» nach
+  Medienzeit; die letzten 10 s werden über den Lautstärke-Gain ausgeblendet, danach Pause und Lautstärke
+  wieder voll.

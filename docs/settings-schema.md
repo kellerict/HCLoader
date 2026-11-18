@@ -73,7 +73,14 @@ Leitfaden `docs/TRANSLATING.md`); Validierungsmeldungen aus `app/locales/<code>.
 | `appearance` (Darstellung) | `reduce_effects` | bool | false | |
 | | `scanlines` | bool | true | |
 | | `pulse_bpm` | int | 200 | 60–300 |
-| `player` (Tab «Allgemein», Phase 8) | `mode` | str | `internal` | internal (eingebauter Player), external (Standardplayer des Systems) |
+| `player` (Tab «Wiedergabe», bis v0.6.0 «Allgemein»; Phase 8) | `mode` | str | `internal` | internal (eingebauter Player), external (Standardplayer des Systems) |
+| | `normalize` | bool | true | v0.7.0: Lautheit im eingebauten Player angleichen (ReplayGain aus Analyse/Tags, begrenzt durch den True Peak) |
+| | `target_lufs` | float (LUFS) | -18 | -30 – -6 (v0.7.0; -18 = ReplayGain-2.0-Referenz) |
+| | `resume` | str | `ask` | ask (fragen), auto (still fortsetzen), off (nichts merken, keine «Weiterhören»-Leiste) – v0.7.0; erste/letzte 30 s werden nie gemerkt |
+| | `waveform` | bool | true | v0.7.0: Wellenform als Zeitleiste (sonst einfacher Balken) |
+| `loudness` (Tab «Wiedergabe», Abschnitt «Analyse», v0.7.0) | `analyse_after_download` | bool | true | Lautheit + Wellenform direkt nach jedem Download offline berechnen (ffmpeg, niedrige Priorität, eine Datei nach der anderen) |
+| | `write_tags` | bool | true | ReplayGain-Tags in die Datei schreiben (MP3 TXXX, M4A Freeform-Atome, Opus R128_TRACK_GAIN); nie neu kodieren |
+| | `waveforms` | bool | true | Wellenformen in Analyse/Durchlauf vorberechnen; aus = erst beim ersten Abspielen |
 | `festivals` (Festivals & Serien, v0.3.0) | `detect` | bool | true | Festival/Serie, Jahr, Bühne, Set-Art automatisch erkennen (offline, nur gespeicherte Titel/Kanal/Beschreibung) |
 | | `min_confidence` | float | 0.65 | 0.3–1.0; ab diesem Wert zuordnen, darunter nur Vorschlag |
 | | `year_from_upload_date` | bool | true | ohne Jahreszahl im Titel das Upload-Jahr nehmen |
@@ -143,3 +150,18 @@ Bridge (`ui/js/bridge.js`): `get_settings()` → `{values, defaults}`; `save_set
   «Alles einlesen»), die Mindestdauer eines Treffers aus `filters.min_duration` – keine eigenen Werte.
 - Die Checklisten selbst stehen in der DB (`checklists`, `checklist_rows`), nicht in `config.yaml`
   (Bridge: docs/bridge-api.md «Festival collector»).
+
+## v0.7.0 – Lautheit, Wellenform, Player-Gedächtnis (Entscheid)
+- Neuer Tab «Wiedergabe» (`tabs.playback`) nach «Allgemein»: `player.mode` zieht aus «Allgemein» hierher
+  (Schlüssel unverändert, keine Migration), dazu `player.normalize`, `player.target_lufs` (Einheit
+  `unit.lufs`; Bereich mit negativen Grenzen wird als «-30 … -6» angezeigt), `player.resume` (Segment),
+  `player.waveform` und der Abschnitt «Analyse» mit Statusbox (`get_analysis_status`, Knöpfe «Neue
+  analysieren» = `analyse_library({scope:"new"})` / «Alle neu analysieren» = `scope:"all"`, Fortschritt
+  `audio_analysis`) und den drei `loudness.*`-Schaltern. Bei `player.mode == "external"` sind die
+  Player-Felder ausgegraut (sie betreffen nur den eingebauten Player).
+- Eigener Abschnitt `loudness` statt weiterer `player.*`-Schlüssel: die Analyse läuft unabhängig vom
+  Player (Tags nützen auch anderen Playern).
+- Die Ziel-Lautheit wirkt **nur im eingebauten Player**; die Tags in den Dateien beziehen sich immer auf
+  die ReplayGain-2.0-Referenz −18 LUFS (Opus: R128 auf −23 LUFS), damit andere Player sie richtig lesen.
+- Der Schlaf-Timer ist bewusst **keine** Einstellung: er gilt nur für die laufende Sitzung und wird im
+  Player gewählt (15/30/45/60 Min. oder Ende des Sets; die letzten 10 s blenden aus).

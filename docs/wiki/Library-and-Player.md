@@ -58,15 +58,77 @@ now») are in Settings, tab *Festivals & series*; see [Settings reference](Setti
 
 ## Player
 
-The setting *Abspielen mit* (`player.mode`, Settings, Allgemein) chooses what play does:
+The setting *Play with* (`player.mode`, Settings › **Playback**) chooses what play does:
 
-- **Built-in mini player** (default, **in development**): a bar above the status bar that keeps
-  playing when you switch views. Cover, title, play/pause, seek, volume and time. Chapters from the
-  sidecar, ID3 or CUE appear as markers on the timeline and as an expandable track list. It only
-  plays local files, no network.
+- **Built-in mini player** (default): a bar above the status bar that keeps playing when you switch
+  views. Cover, title, play/pause, seek, volume and time. Chapters from the sidecar, ID3 or CUE appear
+  as markers on the timeline and as an expandable track list. It only plays local files, no network.
 - **Windows default player**: opens the file with your system's default audio app.
 
 The other variant is always available per entry in the menu.
+
+![Built-in player with waveform seek bar, chapter tooltip and loudness badge](images/screenshot-player.jpg)
+
+### Waveform seek bar (v0.7.0)
+
+The timeline shows the whole set as a **waveform**: the played part in red, the rest in grey, the
+tracklist as fine vertical lines. Hover to see the time and the track name, click or drag to jump
+(near a track mark the pointer snaps to it). The waveform is computed **once per file** with ffmpeg –
+right after the download, during the analysis pass, or the first time you play the set (then it
+appears a few seconds after the start). Without ffmpeg, or with *Waveform seek bar* switched off, the
+plain bar is used. *Reduce effects* turns off the fade-in.
+
+### Loudness normalisation (v0.7.0)
+
+Sets are mastered at very different levels. With *Normalise loudness* on, the player plays every set
+at the same perceived loudness: target (default **−18 LUFS**, the ReplayGain 2.0 reference) minus the
+measured loudness of the set. The gain is limited by the measured **true peak**, so a quiet set is
+only raised as far as it can go without clipping. The small badge next to the track (e.g. `−10.1 dB`)
+shows the gain in use; hover it for the details.
+
+The measurement comes from the offline analysis (see below) or, for files tagged by another program,
+from their ReplayGain tags. Changing the target only affects the built-in player; the tags in your
+files always use the standard reference so that foobar2000, Plex, Jellyfin & co. read them correctly.
+
+### Remember position and continue listening (v0.7.0)
+
+The player remembers where you stopped in every set (not in the first or last 30 seconds – those
+count as "not started" and "finished"). *Remember position*:
+
+- **Ask** (default): when you play a set you left half-way, a small bar asks *Continue where you left
+  off?* – **Resume** or **Start over**. Pressing play or space also starts over.
+- **Automatic**: continues silently and shows *Resumed at …* with a **Start over** link for a few seconds.
+- **Off**: remembers nothing.
+
+The library shows the **last five unfinished sets** under *Continue listening* above the list (with
+their progress); click one to continue right where you stopped, or **✕** to remove it from the row.
+The row hides while you search or filter. Jumps from the tracklist never ask.
+
+### Sleep timer (v0.7.0)
+
+The moon button next to the volume sets a **sleep timer**: 15, 30, 45 or 60 minutes, or *End of this
+set*. The button shows the minutes left. The last 10 seconds fade out, then playback pauses and the
+volume is back to normal for the next time. Choose *Turn off* in the same menu to cancel it.
+
+### Analysis (offline, ffmpeg) (v0.7.0)
+
+![Playback settings with the analysis pass running](images/screenshot-playback-settings.jpg)
+
+Loudness (EBU R128 integrated loudness and true peak) and the waveform are computed **offline with
+ffmpeg**, one file at a time at low priority – no network, and the audio is **never re-encoded**.
+
+- *Analyse after each download* (default on) analyses every new file right after it is saved.
+  Downloads of the scheduled background run are analysed the next time you open the app.
+- **Analyse N new** in Settings › Playback runs over the existing library (progress, cancel at any
+  time). **Analyse all again** measures every file once more, e.g. after you replaced files outside
+  the app.
+- *Write ReplayGain tags* (default on) stores the result in the file: `REPLAYGAIN_TRACK_GAIN` and
+  `REPLAYGAIN_TRACK_PEAK` for MP3 (ID3 TXXX) and M4A (iTunes freeform atoms), `R128_TRACK_GAIN` for Opus
+  (the Opus standard; Opus players ignore ReplayGain tags). Other containers keep the result in the
+  database only. If a file is locked (for example while another program plays it), the tags are written
+  by the next analysis without measuring again.
+- *Precompute waveforms* (default on) computes waveforms during the analysis too; off = only when a set
+  is played for the first time.
 
 ## Tracks and tracklists (v0.6.0)
 

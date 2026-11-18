@@ -10,6 +10,42 @@ appears after «Show all changes» (`docs/RELEASING.md`).
 
 ## [Unreleased]
 
+### Highlights
+- **Loudness normalisation**: every set plays at the same perceived loudness in the built-in player – never clipping
+- Offline **loudness analysis** with ffmpeg writes **ReplayGain tags** into your files (MP3, M4A, Opus) – the audio is never re-encoded
+- **Waveform seek bar** with tracklist marks: hover for the track name, click or drag to jump
+- The player **remembers where you stopped** in every set and offers to resume
+- **Continue listening**: your last five unfinished sets at the top of the library
+- **Sleep timer**: 15/30/45/60 minutes or end of the set, with a gentle fade-out
+
+### Added
+- Offline audio analysis (`app/core/analysis.py`): EBU R128 integrated loudness, loudness range and
+  true peak via ffmpeg's `ebur128` filter, plus a compact waveform (1600 points) – both from a single
+  decode, one file at a time, `-threads 1` and lowered process priority, cancellable at any moment.
+  Runs after every download (setting), the first time a set without waveform is played, and as a
+  one-off or incremental pass over the library (Settings › Playback › *Analyse N new* / *Analyse all
+  again*, with progress and cancel). Never touches the network.
+- ReplayGain 2.0 tags (`REPLAYGAIN_TRACK_GAIN`/`_PEAK`, −18 LUFS reference): ID3 TXXX for MP3, iTunes
+  freeform atoms for M4A, `R128_TRACK_GAIN` for Opus (RFC 7845). Only the tag block is written; files
+  locked by another program are re-tagged by the next pass without measuring again. ReplayGain tags of
+  other programs are read as well.
+- Built-in player: loudness normalisation through Web Audio with a configurable target (default
+  −18 LUFS) and a true-peak limit; a small badge shows the gain in use.
+- Built-in player: waveform seek bar with chapter lines, tooltips, click and drag; falls back to the
+  plain bar without ffmpeg or with the setting off; respects *Reduce effects*.
+- Player memory: the position of every set is remembered (not in the first/last 30 s); *Ask*,
+  *Automatic* or *Off*. *Continue listening* row in the library with progress, resume and remove.
+- Sleep timer in the player: 15/30/45/60 minutes or end of the set; the last 10 seconds fade out.
+- New settings tab **Playback** (`player.mode` moved here from General) with `player.normalize`,
+  `player.target_lufs`, `player.resume`, `player.waveform` and the new section `loudness`
+  (`analyse_after_download`, `write_tags`, `waveforms`).
+- Database migration 12 (automatic backup first): tables `audio_analysis` and `playback`.
+- Bridge methods `get_waveform`, `save_position`, `forget_position`, `get_continue_listening`,
+  `get_analysis_status`, `analyse_library`, `cancel_analyse_library`; `get_media` now also returns
+  `loudness`, `resume` and `peaks`; events `audio_analysis`, `media_analysed`, `waveform`
+  (`docs/bridge-api.md`).
+- Texts in all languages; wiki pages *Library and player* and *Settings reference* updated.
+
 ## [0.6.0] - 2026-11-18
 
 ### Highlights

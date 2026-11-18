@@ -66,6 +66,7 @@ BROWSER_LOCALE = {
 VIEWS = ["discover", "inbox", "watchlist", "downloads", "library", "log", "settings"]
 SETTINGS_TABS = [
     "general",
+    "playback",
     "filters",
     "genres",
     "festivals",
@@ -260,6 +261,71 @@ class Shooter:
         self.settle()
         self.shot("library-genre-moved")
         page.evaluate("HC.player.close()")
+        self.go("discover")
+
+    def playback_scenes(self) -> None:
+        """v0.7.0: Wellenform mit Kapiteln, Fortsetzen (fragen/automatisch), Schlaf-Timer,
+        «Weiterhören» in der Bibliothek, Analyse-Durchlauf im Tab «Wiedergabe»."""
+        page = self.page
+        self.go("library")
+        page.evaluate("document.getElementById('lib-scroll').scrollTop = 0")
+        self.settle()
+        self.shot("library-continue")
+        # gemerkte Position: der Player fragt, bevor er startet
+        page.click('#lib-body tr[data-id="kRawNation4"] [data-act="play"]')
+        page.wait_for_selector("#pl-resume:not([hidden]) [data-r=resume]")
+        self.settle()
+        self.shot("player-resume-ask")
+        page.click("#pl-resume [data-r=resume]")
+        page.wait_for_function("HC.player.state().playing")
+        page.evaluate("HC.player.audio.playbackRate = 0")
+        page.evaluate("HC.player.seek(5.2)")
+        self.settle()
+        box = page.locator("#pl-seek").bounding_box()
+        page.mouse.move(box["x"] + box["width"] * 0.66, box["y"] + box["height"] / 2)
+        page.wait_for_selector("#pl-tip:not([hidden])")
+        self.settle(100)
+        if not self.only or "player-waveform-hover" in self.only:
+            path = self.out / "player-waveform-hover.png"
+            page.screenshot(path=str(path), animations="disabled")
+            self.written.append(path)
+            print(f"  {path.relative_to(ROOT) if path.is_relative_to(ROOT) else path}")
+        page.click("#player [data-p=sleep]")
+        page.wait_for_selector(".menu")
+        self.settle()
+        self.shot("player-sleep-menu")
+        page.click('.menu [data-k="sleep-30"]')
+        self.settle()
+        self.shot("player-sleep-on")
+        page.evaluate("HC.player.sleep(null); HC.player.close()")
+        # automatisch fortsetzen: kurzer Hinweis mit «Von vorn»
+        page.evaluate(
+            "Object.assign(HC.settings.values.player, {resume: 'auto'});"
+            "HC.bridge.emit('settings_changed', {})"
+        )
+        page.click('#lib-body tr[data-id="zZrhPod0006"] [data-act="play"]')
+        page.wait_for_selector("#pl-resume:not([hidden])")
+        page.evaluate("HC.player.audio.playbackRate = 0")
+        self.settle()
+        self.shot("player-resume-auto")
+        page.evaluate(
+            "HC.player.close(); Object.assign(HC.settings.values.player, {resume: 'ask'});"
+            "HC.bridge.emit('settings_changed', {})"
+        )
+        # Analyse-Durchlauf im Tab «Wiedergabe»
+        self.go("settings")
+        self.tab("playback")
+        page.evaluate(
+            "document.querySelector('[data-custom=analysis]').scrollIntoView({block: 'center'})"
+        )
+        page.click('[data-custom=analysis] [data-an="new"]')
+        page.wait_for_selector("[data-custom=analysis] .fest-prog")
+        self.settle(300)
+        self.shot("settings-playback-analysing")
+        page.wait_for_selector("#toasts .toast.ok", timeout=15000)
+        self.settle()
+        self.clear_toasts()
+        page.evaluate("HC.views.settings.reset()")
         self.go("discover")
 
     def backfill_scenes(self) -> None:
@@ -881,6 +947,7 @@ class Shooter:
         self.maintenance_scenes()
         self.soundcloud_scenes()
         self.player_scenes()
+        self.playback_scenes()
         self.backfill_scenes()
         self.collector_scenes()
         self.tracks_scenes()

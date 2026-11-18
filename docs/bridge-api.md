@@ -368,7 +368,7 @@ docs/decisions.md «Alles einlesen»). Treffer gehen immer in den Eingang, nie i
 | `get_library(filters?)` | `{search?, genre?, channel?, year?, missing?, platform?}` + v0.3.0 `{series_id?, edition_id?, event_year?, stage?, set_type?, festival?}` | `[LibraryItem]` (Status `done`, neueste Downloads zuerst, aus DB) | 5 |
 | `get_library_status()` | | `{target_ok, target}` – Zielordner-Prüfung (Thread mit 3-s-Timeout) des letzten `get_library` | 5 |
 | `open_folder(id)` | | `{ok}` \| `{ok:false, error}` – Windows: Explorer mit markierter Datei, sonst Ordner | 5 |
-| `get_media(id)` | | `{ok:true, id, src, title, artist, genre, platform, duration, cover, chapters:[{start, title, performer}]}` \| `{ok:false, error}` – Phase 8, lokal, kein Netz | 8 |
+| `get_media(id)` | | `{ok:true, id, src, title, artist, genre, platform, duration, cover, chapters:[{start, title, performer}], loudness, resume, peaks}` \| `{ok:false, error}` – Phase 8, lokal, kein Netz; `loudness`/`resume`/`peaks` ab v0.7.0 (siehe «Loudness, waveform, player memory», je `null` wenn unbekannt) | 8 |
 | `play_external(id)` | | `{ok}` \| `{ok:false, error}` – Standardplayer des Systems | 8 |
 | `retag(id)` | | `{ok:true, path, moved, genre, cue, sidecar}` \| `{ok:false, error}` | 5 |
 | `delete_library_item(id, delete_file=true)` | | `{ok:true, deleted:[Dateinamen]}` \| `{ok:false, error}` | 5 |
@@ -609,6 +609,57 @@ Beispiel `search_tracks("dragonborn")`:
      "version": "Extended Mix", "label": "", "is_id": false}]}]}
 ```
 
+### Loudness, waveform, player memory (v0.7.0)
+
+Entscheide: `docs/decisions.md` «Loudness, waveform, player memory (v0.7.0)». Alles **lokal**: ffmpeg
+dekodiert die Datei (nie neu kodieren), kein Netz, kein Throttle. Backend: `app/core/analysis.py`
+(Messung, Peaks, Durchlauf), `app/core/playback.py` (Positionen), `tagging.write_replaygain/read_replaygain`,
+Worker `AnalysisQueue` (`app/worker.py`, ein eigener Thread, eine Datei nach der anderen, ffmpeg mit
+`-threads 1` und niedriger Prozesspriorität). Tabellen `audio_analysis` und `playback` (Migration 12).
+
+| Methode | Parameter | Rückgabe |
+|---|---|---|
+| `get_waveform(id)` | Video-ID (Bibliothekseintrag) | `{ok:true, status:"ready", peaks:[0..255], duration}` \| `{ok:true, status:"pending"}` (Berechnung eingereiht, **vor** Downloads und Durchlauf; Event `waveform` folgt) \| `{ok:false, status:"unavailable", error}` (ffmpeg fehlt) \| `{ok:false, error}` (nicht in der Bibliothek, Datei fehlt) |
+| `save_position(id, position, duration?)` | Sekunden (Zahl); `duration` optional (sonst aus der DB) | `{ok:true, stored}` – `stored:false` = in den ersten/letzten 30 s (Eintrag entfernt = «fertig gehört») oder `player.resume == "off"`; `{ok:false, stored:false}` = unbekannte ID / keine Zahl. Schneller DB-Schreibvorgang |
+| `forget_position(id)` | | `{ok:true}` – aus «Weiterhören» entfernen |
+| `get_continue_listening(limit=5)` | 1–20 | `{ok:true, items:[{id, position, duration, updated, title, artist, genre, platform}]}` – zuletzt geänderte, unfertige Sets, die noch in der Bibliothek sind; leer bei `player.resume == "off"` |
+| `get_analysis_status()` | | `{total, analysed, tagged, waveforms, failed, pending, last_pass, ffmpeg, running}` – `pending` = Einträge, die der Durchlauf «new» anfassen würde |
+| `analyse_library(opts?)` | `{scope: "new" (Standard) \| "all"}` | `{ok:true, started:true, scope}` \| `{ok:true, started:false, running:true}` \| `{ok:false, error}` (ffmpeg fehlt) |
+| `cancel_analyse_library()` | | `{ok:true, running}` – beendet auch das laufende ffmpeg (nichts wird geschrieben) |
+
+**Zusatzfelder von `get_media`**
+
+- `loudness` = `{lufs, true_peak, gain, peak, source}` \| `null`: `lufs` = integrierte Lautheit (EBU R128),
+  `true_peak` = dBTP, `gain` = ReplayGain-2.0-Verstärkung in dB bezogen auf −18 LUFS (`−18 − lufs`), `peak` =
+  linearer True Peak (1.0 = Vollaussteuerung, `null` = unbekannt, z.B. Opus-Tags), `source` = `"analysis"` (DB)
+  oder `"tags"` (ReplayGain-Tags eines anderen Programms, nur gelesen).
+- `resume` = `{position, duration, updated}` \| `null` (nichts gemerkt, in den Rändern, oder `player.resume == "off"`).
+- `peaks` = Wellenform `[0..255]` (1600 Werte, 255 = Vollaussteuerung) \| `null` = noch nicht berechnet
+  (die UI ruft dann `get_waveform`).
+
+**Was die UI damit macht:** Verstärkung = `10^((player.target_lufs − lufs)/20)`, höchstens `1/peak`
+(kein Übersteuern); ohne `peak` nur absenken. Web Audio (MediaElementSource → Gain → Lautstärke-Gain), nur
+wenn der AudioContext läuft; sonst nur absenken über `audio.volume`. `scope`:
+`"new"` = nie gemessen, seither neu geladen, Tags noch nicht geschrieben (nur Tag-Schreiben, ohne neue
+Messung) oder Wellenform fehlt (bei `loudness.waveforms`); unlesbare Dateien erst nach einem neuen Download
+wieder; `"all"` = alles neu messen.
+
+**Tags (nie neu kodieren):** MP3 `TXXX:REPLAYGAIN_TRACK_GAIN` (`"-10.10 dB"`) + `TXXX:REPLAYGAIN_TRACK_PEAK`
+(`"1.135011"`); M4A Freeform-Atome `----:com.apple.iTunes:replaygain_track_gain/_peak`; Opus
+`R128_TRACK_GAIN` (Q7.8, bezogen auf −23 LUFS, RFC 7845 – Opus-Player ignorieren `REPLAYGAIN_*`). Andere
+Container (z.B. `.webm`): nur Messung in der DB. Geschrieben unter `library.FS_LOCK` (nie gleichzeitig mit
+Neu-Taggen/Verschieben/Löschen), der Pfad wird im Lock neu gelesen. Schlägt das Schreiben fehl (Datei
+gesperrt), bleibt `tagged = 0` und der nächste Durchlauf schreibt nur die Tags.
+
+**Wann wird analysiert:** nach jedem Download (`loudness.analyse_after_download`, im Analyse-Thread); beim
+ersten Abspielen ohne Wellenform (`get_waveform`, misst die Lautheit im selben Dekodierlauf mit); per
+Knopf im Tab «Wiedergabe» (`analyse_library`). Downloads des Headless-Laufs (Aufgabenplanung, analysiert
+nicht) reiht die GUI beim nächsten Start ein (nur Downloads seit dem ersten Start mit v0.7.0).
+
+Beispiel `get_waveform("dQw4w9WgXcQ")` → `{"ok": true, "status": "pending"}`, danach Event
+`waveform` `{"id": "dQw4w9WgXcQ", "ok": true, "peaks": [0, 12, 180, 255, …], "duration": 3712,
+"loudness": {"lufs": -7.9, "true_peak": 1.1, "gain": -10.1, "peak": 1.135011, "source": "analysis"}}`.
+
 ### Festival collector (v0.5.0)
 
 Konzept: `docs/concepts/festivals.md` «v0.5.0 – Collect a whole edition», Entscheide: `docs/decisions.md`
@@ -846,6 +897,9 @@ Status). Ergänzungen der Python-Seite:
 | `watchlist_done` | `{checked, found}` | Watchlist-Lauf beendet; `checked` = bearbeitete Quellen (auch fehlerhafte), `found` = neu gespeicherte Videos | 4 |
 | `festival_assign` | `{phase, scope, done?, total?, assigned?, suggested?, none?, manual?, unchanged?, cancelled?, ok?, error?}` | «Festivals zuordnen»: `phase` `start` (einmal), `progress` (alle 25 Einträge und am Ende), `done` (Ergebnis wie `assign_pass`: `{ok, cancelled, total, done, assigned, suggested, none, manual, unchanged}`) oder `error` (`{ok:false, error}`). Danach lädt die UI Bibliothek/Gruppen neu | 0.3.0 |
 | `tracklist_index` | `{phase, scope, done?, total?, sets?, tracks?, cancelled?, ok?, error?}` | «Tracklisten einlesen»: `phase` `start`, `progress` (alle 10 Einträge und am Ende), `done` (`{ok, cancelled, total, done, sets, tracks}`) oder `error` (`{ok:false, error}`). Danach lädt die UI Status, «Meistgespielt» und die Suche neu | 0.6.0 |
+| `audio_analysis` | `{phase, scope, done?, total?, analysed?, failed?, cancelled?, ok?, error?}` | «Lautheit & Wellenform analysieren»: `phase` `start`, `progress` (nach jeder Datei), `done` (`{ok, cancelled, total, done, analysed, failed}`) oder `error` (`{ok:false, error}`, z.B. ffmpeg fehlt) | 0.7.0 |
+| `media_analysed` | `{id, ok, loudness?, peaks, tagged, error?}` | eine Datei analysiert (nach Download oder im Durchlauf); der Player übernimmt `loudness` des laufenden Sets sofort | 0.7.0 |
+| `waveform` | `{id, ok, peaks?, duration?, loudness?, error?}` | angeforderte Wellenform (`get_waveform` → `pending`) ist fertig oder fehlgeschlagen | 0.7.0 |
 | `collector_rows` | `{edition_id, rows:[ChecklistRow], deleted:[id], reload, stats:ChecklistStats}` | Festival-Sammler: Zeilen geändert (Import, Bearbeiten, Haken, Bestätigen, Treffer des Suchauftrags, Status-Wechsel durch die Queue: `queued` → `downloaded`). `reload:true` (leere `rows`, keine `deleted`) = mehrere Zeilen geändert → `get_checklist` neu holen | 0.5.0 |
 | `collector_job` | `CollectorJob` + `{stats}` \| `{edition_id, state:"none", stats}` | Suchauftrag: Start (`pending`), Beginn (`running`), nach jeder Zeile, beim Warten (`note` = nächste Suche), Abbruch, Unterbrechung, Ende | 0.5.0 |
 | `collector_import` | `{phase, kind:"playlist", edition_id, entries, added, merged, unchecked, requests, cancelled, error}` | Playlist-Import: `phase` `start`, `progress` (nach jeder Seite), `done` oder `error` (`error` = übersetzter Text) | 0.5.0 |

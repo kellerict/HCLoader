@@ -28,11 +28,23 @@ YAML keys (`section.key`); the tab names in the app are German, shown in parenth
 | `log_level` | `INFO` | DEBUG, INFO, WARNING, ERROR | Verbosity of the log file and live log. Use DEBUG only for troubleshooting. |
 | `confirm_delete` | `true` | | Ask before deleting a mix (entry and file) from the library. |
 
-## player (tab Allgemein)
+## player (tab Playback; tab General before v0.7.0)
 
 | Key | Default | Range / values | Description |
 |---|---|---|---|
-| `mode` | `internal` | internal, external | What play does in the library: built-in mini player (in development) or the system's default audio player. The other one stays available per entry. |
+| `mode` | `internal` | internal, external | What play does in the library: built-in mini player or the system's default audio player. The other one stays available per entry. |
+| `normalize` | `true` | | v0.7.0: play every set at the same perceived loudness (ReplayGain from the analysis or existing tags), limited by the measured true peak – never clips. |
+| `target_lufs` | `-18` | -30 to -6 | v0.7.0: target loudness of the built-in player in LUFS; −18 is the ReplayGain 2.0 reference. Higher = louder, but more sets hit their peak limit. Does not change the tags in your files. |
+| `resume` | `ask` | ask, auto, off | v0.7.0: remember the position per set (not in the first/last 30 s). ask = offer to resume, auto = resume silently, off = remember nothing (no *Continue listening* row). |
+| `waveform` | `true` | | v0.7.0: show the set as a waveform seek bar with track marks; off = plain bar. |
+
+## loudness (tab Playback, section Analysis, v0.7.0)
+
+| Key | Default | Range / values | Description |
+|---|---|---|---|
+| `analyse_after_download` | `true` | | Measure loudness and compute the waveform right after every download – offline with ffmpeg, low priority, one file at a time. |
+| `write_tags` | `true` | | Write ReplayGain tags into the files (MP3: ID3 TXXX, M4A: iTunes atoms, Opus: R128_TRACK_GAIN). The audio is never re-encoded. |
+| `waveforms` | `true` | | Precompute waveforms during the analysis; off = only when a set is played for the first time. |
 
 ## search (tab Filter & Keywords)
 

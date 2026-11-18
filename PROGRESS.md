@@ -145,6 +145,33 @@ docs/bridge-api.md «Tracklist search».
 - [ ] 4 QA + Review (u.a. echte Sets mit Kapiteln/Beschreibung unter Windows, grosse Bibliothek)
 - [ ] 5 Release v0.6.0
 
+## v0.7.0 – Lautheit, Wellenform, Player-Gedächtnis, Schlaf-Timer (docs/ROADMAP.md)
+Offline-Analyse mit ffmpeg (EBU R128 + True Peak, Wellenform aus demselben Dekodierlauf), ReplayGain-Tags
+ohne Neukodieren, Lautheitsangleichung im Player, Wellenform-Zeitleiste, Positionen pro Set mit
+«Weiterhören», Schlaf-Timer. Entscheide: docs/decisions.md «Loudness, waveform, player memory (v0.7.0)»,
+Vertrag docs/bridge-api.md «Loudness, waveform, player memory».
+- [x] 1 Backend + Integration (`integrator`): Migration 12 (`audio_analysis`, `playback`),
+  `app/core/analysis.py` (ebur128-/loudnorm-Parser, Peaks aus PCM, ffmpeg mit niedriger Priorität und
+  Abbruch, Tags unter `FS_LOCK`, Durchlauf «new»/«all», Rückstand aus Headless-Läufen beim GUI-Start),
+  `app/core/playback.py` (30-s-Ränder, «Weiterhören»), `tagging.write_replaygain/read_replaygain`
+  (MP3 TXXX, M4A-Atome, Opus R128), `AnalysisQueue` (eigener Thread: Wellenform des laufenden Sets vor
+  Downloads vor Durchlauf), 7 Bridge-Methoden + `get_media`-Felder + Events `audio_analysis`,
+  `media_analysed`, `waveform`; Settings `player.normalize/target_lufs/resume/waveform`, `loudness.*`
+- [x] 2 UI: Player mit Web-Audio-Gain (nur mit laufendem AudioContext, sonst nur absenken), Wellenform
+  (2 Canvas, Kapitel-Linien, Tooltip, Klick/Ziehen, Fallback Balken, reduzierte Effekte), Fortsetzen
+  (Fragen/Automatisch/Aus), Positionen speichern, Schlaf-Timer (15/30/45/60/Set-Ende, 10 s Ausblenden),
+  Leiste «Weiterhören» in der Bibliothek, neuer Tab «Wiedergabe» mit Analyse-Statusbox; Texte in allen
+  Sprachen; Mock; Screenshots (en im Repo, de lokal geprüft)
+- [x] 3 Tests: `tests/test_analysis.py` (Tags pro Format mit in Python gebauten MP3/M4A/Opus – ohne
+  ffmpeg, Audio-Bytes unverändert; Parser mit ffmpeg-Ausgabe als Text; Peaks; Durchlauf; Worker),
+  `tests/test_playback.py` (Ränder, «Weiterhören», API), `tests/test_player_ui.py` (Playwright:
+  Wellenform, Gain, Schlaf-Timer mit Fake-Uhr, Fortsetzen, Leiste, Tab); ffmpeg-Tests nur mit ffmpeg
+- [x] 4 Doku: CHANGELOG [Unreleased] mit Highlights, Wiki (Library and player, Settings reference),
+  bridge-api, settings-schema, decisions
+- [ ] 5 QA + Review (u.a. echter Test unter Windows/WebView2: Web Audio mit `file:`-Quelle, gesperrte
+  Datei beim Tag-Schreiben während der Wiedergabe, Dauer eines Durchlaufs über eine grosse Bibliothek)
+- [ ] 6 Release v0.7.0
+
 ## Geplant für spätere Versionen
 - Phase 7b: Mixcloud + hearthis.at (Watchlist); 7c: archive.org (optional)
 
@@ -194,3 +221,4 @@ docs/bridge-api.md «Tracklist search».
 - 2026-11-18 – SignPath-Antrag abgelehnt (zu wenig Reputation). Neuer Antrag, sobald Downloads/Stars/Erwähnungen vorhanden (ca. 3–6 Monate). Alternativen notiert: Certum Open-Source-Zertifikat, Azure Artifact Signing (Verfügbarkeit CH prüfen).
 - 2026-11-18 – v0.6.0 Tracklist-Suche gebaut (Backend, UI, 19 Sprachen, Tests, Screenshots, Doku); offen: QA, Review, Release (ca. 1–2 Std.)
 - 2026-11-18 – v0.6.0 Tracklist-Suche: Review FREIGEGEBEN, QA BESTANDEN; Minors behoben (Panel-Fehler abgefangen, FTS5-Prüfung beim Start, FTS/LIKE gleiche Treffer, gelöschte Sets räumen auf, «Neue einlesen» inkrementell, Migration 11 für «Meistgespielt», «Track 01 –»-Präfix, Screenshots 5,8 → ca. 1 MB); Version 0.6.0 + CHANGELOG → bereit für Release (ca. 15 Min. bis Merge/Tag durch Orchestrator).
+- 2026-11-18 – v0.7.0 Lautheit, Wellenform, Player-Gedächtnis, Schlaf-Timer gebaut (Backend, UI, 19 Sprachen, Tests, Screenshots, Doku); offen: QA, Review, Test unter Windows, Release (ca. 1–2 Std.)
