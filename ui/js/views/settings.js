@@ -74,7 +74,7 @@
       { custom: 'festTest' },
       { h: 'set.h.collector' },
       { k: 'festivals.collector_searches_per_hour', type: 'int', min: 1, max: 200, unit: 'unit.req_h' },
-      { k: 'festivals.collector_results_per_search', type: 'int', min: 1, max: 50, unit: 'unit.results' },
+      { k: 'festivals.collector_results_per_search', type: 'int', min: 1, max: 20, unit: 'unit.results' },
       { k: 'festivals.collector_auto_confirm', type: 'float', min: 0.5, max: 1 },
       { h: 'set.h.tags' },
       { k: 'storage.album_from_edition', type: 'bool' },

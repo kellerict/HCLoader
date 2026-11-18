@@ -268,7 +268,7 @@ festivals:
   extra_set_types: []
   # Festival-Sammler: höchstens so viele Suchen pro Stunde für fehlende Sets (1-200, gleichmässig verteilt; zusätzlich gilt throttle.max_searches_per_hour)
   collector_searches_per_hour: 10
-  # Festival-Sammler: Treffer pro Suche (1-50, eine Anfrage pro Suche)
+  # Festival-Sammler: Treffer pro Suche (1-20: eine Anfrage pro Suche, YouTube liefert etwa 20 pro Seite)
   collector_results_per_search: 10
   # Festival-Sammler: ab dieser Sicherheit gilt ein Treffer ohne Bestätigung (0.5-1.0; nur mit DJ, Festival und Jahr im Titel)
   collector_auto_confirm: 0.85

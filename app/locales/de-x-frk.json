@@ -114,6 +114,7 @@
     "job_started": "Festival-Sammler: {edition} – die fehlendn Sets werdn anzeln gsuchd",
     "job_stopped": "Festival-Sammler: {edition} ogheldn – {note}",
     "not_a_candidate": "Des Video basst net zu dem Set",
+    "video_taken": "Des Video is scho dr Treffer vo am andern Set ({artist})",
     "note_backoff": "Backoff bis {until} – gehd schbäder weider",
     "note_error": "Fehler: {error}",
     "note_interrupted": "Underbrochn – gehd vo allaa weider",

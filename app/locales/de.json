@@ -112,6 +112,7 @@
     "job_started": "Festival-Sammler: {edition} – fehlende Sets werden einzeln gesucht",
     "job_stopped": "Festival-Sammler: {edition} angehalten – {note}",
     "not_a_candidate": "Dieses Video ist kein Treffer für dieses Set",
+    "video_taken": "Dieses Video ist schon der Treffer eines anderen Sets ({artist})",
     "note_backoff": "Backoff bis {until} – geht später weiter",
     "note_error": "Fehler: {error}",
     "note_interrupted": "Unterbrochen – geht automatisch weiter",

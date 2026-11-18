@@ -111,6 +111,7 @@
     "job_started": "Pengumpul festival: {edition} – set yang belum ada dicari satu per satu",
     "job_stopped": "Pengumpul festival: {edition} dihentikan – {note}",
     "not_a_candidate": "Video ini bukan hasil untuk set ini",
+    "video_taken": "Video ini sudah menjadi hasil untuk set lain ({artist})",
     "note_backoff": "Backoff hingga {until} – dilanjutkan nanti",
     "note_error": "Kesalahan: {error}",
     "note_interrupted": "Terputus – dilanjutkan otomatis",

@@ -111,6 +111,7 @@
     "job_started": "音乐节收集器：{edition} – 正在逐个搜索缺少的 Set",
     "job_stopped": "音乐节收集器：{edition} 已停止 – {note}",
     "not_a_candidate": "此视频与该 Set 不匹配",
+    "video_taken": "此视频已是另一个 Set 的匹配结果（{artist}）",
     "note_backoff": "Backoff 至 {until} – 稍后继续",
     "note_error": "错误：{error}",
     "note_interrupted": "已中断 – 将自动继续",

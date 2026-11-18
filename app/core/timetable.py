@@ -617,7 +617,7 @@ def load_file(path: Path, root: Path | None = None) -> dict[str, Any]:
     """Read and validate one timetable file. Raises TimetableFileError (English, technical:
     the caller shows a translated message)."""
     try:
-        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        data = json.loads(Path(path).read_text(encoding="utf-8-sig"))  # BOM from Windows editors
     except (OSError, ValueError) as exc:
         raise TimetableFileError(f"unreadable: {exc}") from exc
     if not isinstance(data, dict) or data.get("format") != FILE_FORMAT:

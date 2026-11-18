@@ -114,6 +114,7 @@
     "job_started": "Festivalių rinkėjas: {edition} – trūkstami setai ieškomi po vieną",
     "job_stopped": "Festivalių rinkėjas: {edition} sustabdytas – {note}",
     "not_a_candidate": "Šis vaizdo įrašas nėra šio seto atitikmuo",
+    "video_taken": "Šis vaizdo įrašas jau yra kito seto atitikmuo ({artist})",
     "note_backoff": "Backoff iki {until} – tęsiama vėliau",
     "note_error": "Klaida: {error}",
     "note_interrupted": "Nutraukta – tęsiama automatiškai",

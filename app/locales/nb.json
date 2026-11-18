@@ -112,6 +112,7 @@
     "job_started": "Festivalsamler: {edition} – manglende sett søkes ett om gangen",
     "job_stopped": "Festivalsamler: {edition} stoppet – {note}",
     "not_a_candidate": "Denne videoen er ikke et treff for dette settet",
+    "video_taken": "Denne videoen er allerede treffet for et annet sett ({artist})",
     "note_backoff": "Backoff til {until} – fortsetter senere",
     "note_error": "Feil: {error}",
     "note_interrupted": "Avbrutt – fortsetter automatisk",

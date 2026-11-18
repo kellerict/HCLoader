@@ -111,6 +111,7 @@
     "job_started": "Collecteur de festival : {edition} – recherche des sets manquants un par un",
     "job_stopped": "Collecteur de festival : {edition} arrêté – {note}",
     "not_a_candidate": "Cette vidéo ne correspond pas à ce set",
+    "video_taken": "Cette vidéo correspond déjà à un autre set ({artist})",
     "note_backoff": "Backoff jusqu’à {until} – reprend plus tard",
     "note_error": "Erreur : {error}",
     "note_interrupted": "Interrompu – reprend automatiquement",

@@ -507,7 +507,7 @@ class FestivalSettings(_Section):
     extra_set_types: list[SetTypeKeyword] = Field(default_factory=list)
     # v0.5.0 «Festival collector»: pacing and certainty of the per-row search of a checklist
     collector_searches_per_hour: int = Field(10, ge=1, le=200)
-    collector_results_per_search: int = Field(10, ge=1, le=50)
+    collector_results_per_search: int = Field(10, ge=1, le=20)  # >20 = several requests
     collector_auto_confirm: float = Field(0.85, ge=0.5, le=1.0)
 
     _clean = field_validator("extra_stages", mode="before")(_clean_list)
@@ -797,7 +797,7 @@ COMMENTS = {
     "festivals.extra_stages": "Zusätzliche Bühnennamen (zu RED, BLUE, BLACK, UV, Mainstage …)",
     "festivals.extra_set_types": "Zusätzliche Begriffe für Set-Arten: keyword + set_type (live_set, closing_ceremony, opening, endshow, full_show, warm_up, anthem, episode)",
     "festivals.collector_searches_per_hour": "Festival-Sammler: höchstens so viele Suchen pro Stunde für fehlende Sets (1-200, gleichmässig verteilt; zusätzlich gilt throttle.max_searches_per_hour)",
-    "festivals.collector_results_per_search": "Festival-Sammler: Treffer pro Suche (1-50, eine Anfrage pro Suche)",
+    "festivals.collector_results_per_search": "Festival-Sammler: Treffer pro Suche (1-20: eine Anfrage pro Suche, YouTube liefert etwa 20 pro Seite)",
     "festivals.collector_auto_confirm": "Festival-Sammler: ab dieser Sicherheit gilt ein Treffer ohne Bestätigung (0.5-1.0; nur mit DJ, Festival und Jahr im Titel)",
 }
 

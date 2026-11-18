@@ -112,6 +112,7 @@
     "job_started": "Festivalsamlare: {edition} – saknade set söks ett i taget",
     "job_stopped": "Festivalsamlare: {edition} stoppad – {note}",
     "not_a_candidate": "Den här videon är ingen träff för det här setet",
+    "video_taken": "Den här videon är redan träffen för ett annat set ({artist})",
     "note_backoff": "Backoff till {until} – fortsätter senare",
     "note_error": "Fel: {error}",
     "note_interrupted": "Avbruten – fortsätter automatiskt",

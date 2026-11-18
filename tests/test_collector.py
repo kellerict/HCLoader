@@ -698,6 +698,22 @@ def test_solo_row_does_not_take_the_b2b_set_as_confirmed(db, settings, edition):
     assert q["video_ids"] == [] and q["skipped"]["unconfirmed"] == 1
 
 
+def test_confirm_refuses_a_video_another_row_holds(db, settings, edition):
+    a = collector.add_row(db, edition, {"artist": "Angerfist"})
+    b = collector.add_row(db, edition, {"artist": "Angerfist b2b Miss K8"})
+    store(db, video("b2bvideo001", "Angerfist b2b Miss K8 @ Defqon.1 2024"))
+    db.execute("UPDATE checklist_rows SET video_id='b2bvideo001', confidence=0.9 WHERE id=?", (a,))
+    db.execute(
+        "UPDATE checklist_rows SET candidates=? WHERE id=?",
+        (json.dumps([{"id": "b2bvideo001", "confidence": 0.9}]), b),
+    )
+    with pytest.raises(collector.CollectorError) as err:
+        collector.confirm_match(db, b, "b2bvideo001")
+    assert "Angerfist" in str(err.value)
+    collector.confirm_match(db, a, None, reject=True)  # the solo row lets go
+    assert collector.confirm_match(db, b, "b2bvideo001")["confirmed"]
+
+
 def test_variant_edition_wants_the_variant(db, settings):
     eid = collector.open_edition(
         db, {"series_id": series_id(db), "year": 2024, "variant": "Australia"}
@@ -846,12 +862,13 @@ def test_job_is_resumable_after_cancel_and_app_exit(db, settings, throttle, cloc
     client = FakeSearch(on_search=lambda n: cancel.set() if n == 2 else None)
     res = run(db, settings, throttle, clock, edition, client, cancel=cancel)
     assert res.cancelled and res.state == "pending"  # app exit: continues automatically
-    assert collector.get_job(db, edition)["done"] == 1  # the 2nd hit was dropped, not stored
+    # the 2nd search reached YouTube: its result is kept, never searched twice (review m4)
+    assert collector.get_job(db, edition)["done"] == 2
     assert collector.open_jobs(db) == [edition]
     client2 = FakeSearch()
     res = run(db, settings, throttle, clock, edition, client2)
     assert res.state == "done"
-    assert client2.queries == [f"{a} Defqon.1 2024" for a in ("B2", "C3", "D4")]
+    assert client2.queries == [f"{a} Defqon.1 2024" for a in ("C3", "D4")]
     assert collector.get_job(db, edition)["done"] == 4
     # done -> a new start searches every missing row again; a user cancel keeps the cursor
     collector.import_timetable(db, settings, edition, "E5")
@@ -859,13 +876,13 @@ def test_job_is_resumable_after_cancel_and_app_exit(db, settings, throttle, cloc
     assert job["total"] == 5 and job["done"] == 0
     client3 = FakeSearch(on_search=lambda n: collector.cancel_job(db, edition) if n == 2 else None)
     res = run(db, settings, throttle, clock, edition, client3)
-    assert res.state == "cancelled" and collector.get_job(db, edition)["done"] == 1
+    assert res.state == "cancelled" and collector.get_job(db, edition)["done"] == 2
     assert run(db, settings, throttle, clock, edition, FakeSearch()).skipped
     job = collector.request_job(db, edition)
-    assert job["state"] == "pending" and job["total"] == 5 and job["done"] == 1
+    assert job["state"] == "pending" and job["total"] == 5 and job["done"] == 2
     client4 = FakeSearch()
     assert run(db, settings, throttle, clock, edition, client4).state == "done"
-    assert client4.queries == [f"{a} Defqon.1 2024" for a in ("B2", "C3", "D4", "E5")]
+    assert client4.queries == [f"{a} Defqon.1 2024" for a in ("C3", "D4", "E5")]
 
 
 def test_user_cancel_during_run_wins(db, settings, throttle, clock, edition):
@@ -1112,6 +1129,14 @@ def test_timetable_files_list_and_import(db, settings, tmp_path):
         collector.import_file(db, settings, "nope/2024.json", root)
     for bad in ("../x.json", "defqon1/../../etc.json", "/etc/passwd", "defqon1/missing.json"):
         assert tt.resolve_file(bad, root) is None
+
+
+def test_timetable_file_with_bom(db, tmp_path):
+    folder = tmp_path / "defqon1"
+    folder.mkdir()
+    data = {"format": 1, "series": "defqon1", "year": 2024, "sets": [{"artist": "Sefa"}]}
+    (folder / "2024.json").write_text(json.dumps(data), encoding="utf-8-sig")
+    assert tt.load_file(folder / "2024.json", tmp_path)["rows"][0]["artist"] == "Sefa"
 
 
 def test_shipped_timetable_files_are_valid():

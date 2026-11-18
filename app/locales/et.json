@@ -112,6 +112,7 @@
     "job_started": "Festivalikoguja: {edition} – puuduvaid sette otsitakse ükshaaval",
     "job_stopped": "Festivalikoguja: {edition} peatatud – {note}",
     "not_a_candidate": "See video ei ole selle seti tabamus",
+    "video_taken": "See video on juba teise seti tabamus ({artist})",
     "note_backoff": "Backoff kuni {until} – jätkub hiljem",
     "note_error": "Viga: {error}",
     "note_interrupted": "Katkestatud – jätkub automaatselt",

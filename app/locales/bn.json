@@ -112,6 +112,7 @@
     "job_started": "ফেস্টিভ্যাল সংগ্রাহক: {edition} – অনুপস্থিত সেটগুলো একে একে খোঁজা হচ্ছে",
     "job_stopped": "ফেস্টিভ্যাল সংগ্রাহক: {edition} থেমেছে – {note}",
     "not_a_candidate": "এই ভিডিওটি এই সেটের সাথে মেলে না",
+    "video_taken": "এই ভিডিওটি ইতিমধ্যে অন্য একটি সেটের মিল ({artist})",
     "note_backoff": "{until} পর্যন্ত Backoff – পরে চলবে",
     "note_error": "ত্রুটি: {error}",
     "note_interrupted": "বাধাপ্রাপ্ত – স্বয়ংক্রিয়ভাবে চলবে",

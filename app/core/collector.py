@@ -679,6 +679,12 @@ def confirm_match(
             raise CollectorError({"video_id": tr("collector.not_a_candidate")})
         if db.get_video(vid) is None:
             raise CollectorError({"video_id": tr("api.video_unknown")})
+        holder = db.query_one(
+            "SELECT artist FROM checklist_rows WHERE edition_id=? AND id!=? AND video_id=?",
+            (row["edition_id"], row["id"], vid),
+        )
+        if holder is not None:  # one video, one row (review v0.5.0 m3)
+            raise CollectorError({"video_id": tr("collector.video_taken", artist=holder["artist"])})
         conf = row["confidence"] if vid == row.get("video_id") else known[vid].get("confidence")
         rest = [c for c in candidates if c["id"] != vid]
         if row.get("video_id") and row["video_id"] != vid:
@@ -1762,7 +1768,8 @@ def run_job(
             failures = 0
             counters["searches"] += 1
             res.searches += 1
-            stop_check()
+            # no stop check here: a search that reached YouTube is always stored and the row
+            # marked searched, a cancel takes effect at the top of the loop (review m4)
             scored = []
             for e in hits or []:
                 if not e.get("id"):
@@ -1813,6 +1820,15 @@ def run_job(
     if final == "done":
         fields["job_finished"] = now_iso()
     update_job(db, eid, only_states=("running",), **fields)
+    # a user cancel set the state already: keep the counters of what was searched until then
+    update_job(
+        db,
+        eid,
+        only_states=("cancelled",),
+        job_done=counters["done"],
+        job_searches=counters["searches"],
+        job_hits=counters["hits"],
+    )
     after = get_job(db, eid)
     res.state = after["state"] if after else final  # a cancel of the user wins
     if res.state == "done":

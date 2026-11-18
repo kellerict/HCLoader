@@ -113,6 +113,7 @@
     "job_started": "Festivālu vācējs: {edition} – trūkstošie seti tiek meklēti pa vienam",
     "job_stopped": "Festivālu vācējs: {edition} apturēts – {note}",
     "not_a_candidate": "Šis video neatbilst šim setam",
+    "video_taken": "Šis video jau atbilst citam setam ({artist})",
     "note_backoff": "Backoff līdz {until} – turpināsies vēlāk",
     "note_error": "Kļūda: {error}",
     "note_interrupted": "Pārtraukts – turpināsies automātiski",

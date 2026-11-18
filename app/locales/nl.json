@@ -112,6 +112,7 @@
     "job_started": "Festivalverzamelaar: {edition} – ontbrekende sets worden één voor één gezocht",
     "job_stopped": "Festivalverzamelaar: {edition} gestopt – {note}",
     "not_a_candidate": "Deze video is geen treffer voor deze set",
+    "video_taken": "Deze video is al de treffer van een andere set ({artist})",
     "note_backoff": "Backoff tot {until} – gaat later verder",
     "note_error": "Fout: {error}",
     "note_interrupted": "Onderbroken – gaat automatisch verder",

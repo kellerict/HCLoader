@@ -130,7 +130,7 @@
     'festivals.match_description': { bool: 1 },
     'festivals.extra_stages': { list: 1 },
     'festivals.collector_searches_per_hour': { int: 1, min: 1, max: 200 },
-    'festivals.collector_results_per_search': { int: 1, min: 1, max: 50 },
+    'festivals.collector_results_per_search': { int: 1, min: 1, max: 20 },
     'festivals.collector_auto_confirm': { min: 0.5, max: 1 },
     'storage.title_cleanup_patterns': { list: 1, regex: 1 },
     'throttle.sleep_requests': { min: 0, max: 60 },

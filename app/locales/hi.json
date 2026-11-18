@@ -112,6 +112,7 @@
     "job_started": "फ़ेस्टिवल कलेक्टर: {edition} – छूटे हुए सेट एक-एक करके खोजे जा रहे हैं",
     "job_stopped": "फ़ेस्टिवल कलेक्टर: {edition} रुका – {note}",
     "not_a_candidate": "यह वीडियो इस सेट से मेल नहीं खाता",
+    "video_taken": "यह वीडियो पहले से किसी दूसरे सेट से मेल खाता है ({artist})",
     "note_backoff": "{until} तक Backoff – बाद में जारी रहेगा",
     "note_error": "त्रुटि: {error}",
     "note_interrupted": "बाधित – अपने-आप जारी रहेगा",

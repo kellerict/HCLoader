@@ -112,6 +112,7 @@
     "job_started": "Festivaalikeräin: {edition} – puuttuvia settejä haetaan yksi kerrallaan",
     "job_stopped": "Festivaalikeräin: {edition} pysäytetty – {note}",
     "not_a_candidate": "Tämä video ei ole osuma tähän settiin",
+    "video_taken": "Tämä video on jo toisen setin osuma ({artist})",
     "note_backoff": "Backoff {until} asti – jatkuu myöhemmin",
     "note_error": "Virhe: {error}",
     "note_interrupted": "Keskeytetty – jatkuu automaattisesti",
