@@ -29,6 +29,8 @@ MAX_ARTIST = 120
 MAX_STAGE = 40
 MAX_DAY = 40
 MAX_LINES = 2000  # a pasted timetable larger than this is cut (never a real festival)
+MAX_TEXT = 512 * 1024  # characters; a larger paste is cut before anything is parsed
+MAX_LINE = 500  # characters per line (a real timetable line is far shorter)
 FILE_FORMAT = 1
 DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "timetables"
 
@@ -217,8 +219,8 @@ def _set_type(text: str, set_types: Sequence[fx.SetTypeDef]) -> str | None:
     return None
 
 
-_GROUP_RE = re.compile(r"\s*[(\[]([^()\[\]]*)[)\]]\s*")
-_LIVE_TAIL = re.compile(r"\s+(?:\(live\)|-\s*live|LIVE)$")
+_GROUP_RE = re.compile(r"[(\[]([^()\[\]]*)[)\]]")
+_LIVE_TAIL = re.compile(r" (?:\(live\)|-\s*live|LIVE)$")
 
 
 def _split_artist(
@@ -244,13 +246,15 @@ def _split_artist(
         if code and set_type is None:
             set_type = code
             return " "
-        if fx.norm(inner) == "live":
+        if fx.norm(inner) in ("live", "live set", "liveset"):
             set_type = set_type or "live_set"
             return " "
         return m.group(0)
 
-    out = _GROUP_RE.sub(group, out)
-    m = re.search(r"\s*(?:@|\bat\b|[-–—|/])\s*([^@\-–—|/]+)$", out)
+    # the callers collapse whitespace runs to one space (`_line`), so the regexes below never
+    # backtrack over long runs (review v0.5.0 m1)
+    out = re.sub(r"\s+", " ", _GROUP_RE.sub(group, out))
+    m = re.search(r"(?:@|\bat\b|[-–—|/]) ?([^@\-–—|/]+)$", out)
     if m and stage is None:
         known = _known_stage(m.group(1), names)
         if known:
@@ -266,7 +270,8 @@ def _split_artist(
             # «Headhunterz Endshow» -> artist «Headhunterz»; «Closing Ceremony» stays the name
             loose = r"[\W_]*".join(re.escape(w) for w in fx.norm(phrase).split())
             rest = re.sub(rf"(?i)[\s\-–—:]*\b{loose}\b[\s\-–—:]*", " ", out)
-            if re.search(r"[^\W\d_]{2,}", rest):
+            # «Endshow Closing Ceremony»: only set-type words, the whole text is the name
+            if re.search(r"[^\W\d_]{2,}", rest) and not _set_type_phrase(rest, set_types)[0]:
                 out = rest
     return _clean_artist(out), stage, set_type
 
@@ -421,11 +426,15 @@ def _parse_cells(
     """(artist, stage, day, start, end, set type) of «Headhunterz | 18:00–19:00 | RED»."""
     artist = ""
     stage = day = start = end = set_type = None
+    texts: list[str] = []  # cells that are neither time, known stage, day nor set type
     for cell in cells:
-        if start is None:
+        if start is None or end is None:
             s, e, rest = _find_times(cell)
             if s and not rest.strip(" -–—"):
-                start, end = s, e
+                if start is None:
+                    start, end = s, e
+                else:  # «10:00 <tab> 11:00»: start and end in their own columns
+                    end = s
                 continue
         if stage is None:
             known = _known_stage(cell, names)
@@ -443,10 +452,63 @@ def _parse_cells(
             continue
         if not artist:
             artist = cell
+            texts.append(cell)
         elif stage is None and any(w in _STAGE_WORDS for w in fx.norm(cell).split()):
             stage = _clean_stage(cell)
+        else:
+            texts.append(cell)
+    if stage is None and len(texts) >= 2:
+        # «Freitag | UV | 18:00-19:00 | Max Enforcer» with an unknown stage: the short
+        # all-caps cell is the stage, the other one the artist
+        caps = [c for c in texts if _caps_label(c)]
+        if caps and len(caps) < len(texts):
+            stage = _clean_stage(caps[0])
+            artist = next(c for c in texts if c != caps[0])
     a, st2, type2 = _split_artist(artist, names, set_types)
     return a, stage or st2, day, start, end, set_type or type2
+
+
+def _caps_label(text: str) -> bool:
+    """A short label written in capitals («RED», «UV», «THE GATHERING»): a stage name."""
+    letters = [c for c in text if c.isalpha()]
+    words = text.split()
+    return bool(letters) and all(c.isupper() for c in letters) and 0 < len(words) <= 3
+
+
+_SPACES = re.compile(r"[^\S\t\n]+")
+_MULTI_SPLIT = re.compile(r" ?[|,;/] ?")
+
+
+def _split_sets(line: str) -> list[str]:
+    """«18:00 Headhunterz, 19:00 Wildstylez» / «18:00 A | 19:00 B» -> one line per set: only
+    when every piece has its own time and a name (a «Name | 18:00 | RED» row stays whole)."""
+    pieces = [p.strip() for p in _MULTI_SPLIT.split(line)]
+    if len(pieces) < 2:
+        return [line]
+    for piece in pieces:
+        start, _end, rest = _find_times(piece)
+        if start is None or not re.search(r"[^\W\d_]", rest):
+            return [line]
+    return pieces
+
+
+def _line(raw: str) -> str:
+    """One input line, made safe for the regexes: runs of spaces (not tabs: they are column
+    separators) collapsed to one, cut to MAX_LINE characters (review v0.5.0 m1)."""
+    return _SPACES.sub(" ", raw)[:MAX_LINE]
+
+
+def _heading_before_times(raw: str, body: str, following: list[str]) -> bool:
+    """A short time-less line (no list bullet) directly above a line with a time is a stage
+    heading of an unknown stage («RED», «Black», «THE GATHERING»), not a set without time."""
+    if not following or _BULLET.match(raw) or len(body) > MAX_STAGE:
+        return False
+    if not 0 < len(body.split()) <= 3:
+        return False
+    nxt = following[0].strip()
+    if _day_heading(nxt) or _cells(nxt) is not None and not _RANGE_RE.search(nxt):
+        return False
+    return _find_times(_BULLET.sub("", nxt) if not _RANGE_RE.match(nxt) else nxt)[0] is not None
 
 
 def parse(
@@ -458,8 +520,9 @@ def parse(
     days:[label], stages:[name], csv: bool}. Duplicate rows (same artist, stage, day, start)
     are dropped. Never raises on odd input."""
     names = _stage_names(stages)
-    raw_lines = str(text or "").replace("\r\n", "\n").replace("\r", "\n").split("\n")
-    lines = [ln for ln in raw_lines if ln.strip()][:MAX_LINES]
+    text = str(text or "")[:MAX_TEXT]
+    raw_lines = text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    lines = [_line(ln) for ln in raw_lines if ln.strip()][:MAX_LINES]
     rows: list[dict[str, Any]] = []
     skipped: list[str] = []
     used_csv = False
@@ -471,7 +534,8 @@ def parse(
     if not used_csv:
         day: str | None = None
         stage: str | None = None
-        for raw in lines:
+        expanded = [piece for ln in lines for piece in _split_sets(ln)]
+        for i, raw in enumerate(expanded):
             line = raw.strip()
             if line.startswith("//"):
                 continue
@@ -504,6 +568,9 @@ def parse(
                 heading = _stage_heading(raw, body, names)
                 if heading:
                     stage = heading
+                    continue
+                if _heading_before_times(raw, body, expanded[i + 1 : i + 2]):
+                    stage = _clean_stage(body)  # «RED» / «Black» above timed sets
                     continue
             artist, st, t = _split_artist(rest, names, set_types)
             if not artist or not re.search(r"[^\W_]", artist):

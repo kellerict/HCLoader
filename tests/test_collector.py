@@ -215,6 +215,106 @@ def test_parser_never_raises_on_odd_input():
         assert isinstance(parse(text)["rows"], list)
 
 
+# QA v0.5.0 snippets: real-world pastes that came out wrong. Each is checked with the
+# app's stage / set-type catalog and with a bare `tt.parse(text)` (no catalog).
+QA_CASES = [
+    # 3 day heading + uppercase stage headings on their own line
+    (
+        "Samstag\nRED\n18:00 - 19:00 Headhunterz\nBLUE\n19:00 - 20:00 Wildstylez",
+        [
+            ("Headhunterz", "RED", "Samstag", "18:00", "19:00", N),
+            ("Wildstylez", "BLUE", "Samstag", "19:00", "20:00", N),
+        ],
+    ),
+    # 17 dated day heading + mixed-case stage heading
+    (
+        "Friday 28 June\nBlack\n21:00 - 22:00 Angerfist",
+        [("Angerfist", "BLACK", "Friday 28 June", "21:00", "22:00", N)],
+    ),
+    # «BLUE STAGE» heading
+    ("BLUE STAGE\n18:00 Sefa", [("Sefa", "BLUE", N, "18:00", N, N)]),
+    # unknown uppercase stage heading
+    (
+        "Day 1\nTHE GATHERING\n12:00 Warface",
+        [("Warface", "THE GATHERING", "Day 1", "12:00", N, N)],
+    ),
+    # 14 pipe layout: day | stage | time | artist
+    (
+        "Freitag | UV | 18:00-19:00 | Max Enforcer",
+        [("Max Enforcer", "UV", "Freitag", "18:00", "19:00", N)],
+    ),
+    # 20 tab layout with start and end in their own columns
+    (
+        "Mittwoch\tPURPLE\t10:00\t11:00\tLogic",
+        [("Logic", "PURPLE", "Mittwoch", "10:00", "11:00", N)],
+    ),
+    # 22 several sets on one line: comma, pipe, slash
+    (
+        "18:00 Headhunterz, 19:00 Wildstylez",
+        [("Headhunterz", N, N, "18:00", N, N), ("Wildstylez", N, N, "19:00", N, N)],
+    ),
+    (
+        "18:00 A-Team | 19:00 B-Front",
+        [("A-Team", N, N, "18:00", N, N), ("B-Front", N, N, "19:00", N, N)],
+    ),
+    (
+        "18:00 - 19:00 Rooler / 19:00 - 20:00 Sefa",
+        [("Rooler", N, N, "18:00", "19:00", N), ("Sefa", N, N, "19:00", "20:00", N)],
+    ),
+    # 21 «(Live Set)» suffix
+    ("20:00 Sub Zero Project (Live Set)", [("Sub Zero Project", N, N, "20:00", N, "live_set")]),
+    # a timed line after a plain list entry with a bullet stays a row
+    (
+        "- Atmozfears\n18:00 Sefa",
+        [("Atmozfears", N, N, N, N, N), ("Sefa", N, N, "18:00", N, N)],
+    ),
+]
+
+
+@pytest.mark.parametrize(("text", "expected"), QA_CASES)
+def test_parser_qa_snippets(text, expected):
+    assert rows_of(text) == expected
+
+
+@pytest.mark.parametrize(("text", "expected"), QA_CASES)
+def test_parser_qa_snippets_without_catalog(text, expected):
+    def key(rows):
+        # without the catalog a stage keeps the spelling of the paste («Black», «BLUE STAGE»)
+        return [(a, fx.norm(st).removesuffix(" stage"), d, s, e, t) for a, st, d, s, e, t in rows]
+
+    got = [
+        (r["artist"], r["stage"], r["day"], r["start"], r["end"], r["set_type"])
+        for r in tt.parse(text)["rows"]
+    ]
+    assert key(got) == key(expected)
+
+
+def test_endshow_closing_ceremony_keeps_its_name():
+    assert rows_of("23:00 Endshow Closing Ceremony") == [
+        ("Endshow Closing Ceremony", N, N, "23:00", N, "closing_ceremony")
+    ]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "A" + " " * 40_000 + "B",
+        "A" + " \t" * 40_000 + "B",
+        "18:00" + " " * 40_000 + "x",
+        "Headhunterz" + " " * 40_000 + "(",
+        "x" * 600_000,
+        ("A" + " " * 5_000 + "B\n") * 200,
+    ],
+)
+def test_parser_is_linear_on_long_whitespace(text):
+    import time
+
+    t0 = time.perf_counter()
+    res = parse(text)
+    assert time.perf_counter() - t0 < 1.0
+    assert all(len(r["artist"]) <= tt.MAX_ARTIST for r in res["rows"])
+
+
 # =========================================================================== fixtures
 
 
@@ -500,6 +600,102 @@ def test_certain_needs_artist_series_year(target):
     ):
         c, r = collector.score({"artist": "Headhunterz"}, video("abcdefghij1", title), target)
         assert collector.certain(c, r, target) is expected, title
+
+
+# Review v0.5.0 M1: auto-confirm is conservative. Every case here scores like a good hit
+# (artist + series + year) but must stay «uncertain» for the user to confirm.
+UNCERTAIN_CASES = [
+    # solo row vs b2b / & / vs / x / feat. / with titles
+    ({"artist": "Angerfist"}, "Angerfist b2b Miss K8 @ Defqon.1 2024 | RED", "artist:more"),
+    ({"artist": "Angerfist"}, "Angerfist & Radical Redemption - Defqon.1 2024", "artist:more"),
+    ({"artist": "Angerfist"}, "Angerfist vs Miss K8 | Defqon.1 2024", "artist:more"),
+    ({"artist": "Angerfist"}, "Angerfist x Mad Dog @ Defqon.1 2024", "artist:more"),
+    ({"artist": "Angerfist"}, "Angerfist feat. MC Tha Watcher @ Defqon.1 2024", "artist:more"),
+    ({"artist": "Angerfist"}, "Angerfist (ft. MC Tha Watcher) @ Defqon.1 2024", "artist:more"),
+    ({"artist": "Angerfist"}, "Angerfist with Miss K8 | Defqon.1 2024", "artist:more"),
+    ({"artist": "Angerfist"}, "Miss K8 b2b Angerfist | Defqon.1 2024", "artist:more"),
+    # wrong stage
+    (
+        {"artist": "Headhunterz", "stage": "RED"},
+        "Headhunterz | Defqon.1 2024 | BLUE",
+        "stage:other",
+    ),
+    (
+        {"artist": "Headhunterz", "stage": "RED"},
+        "Headhunterz @ BLUE stage Defqon.1 2024",
+        "stage:other",
+    ),
+    # closing ceremony vs live set (and the other way round)
+    (
+        {"artist": "Headhunterz", "set_type": "live_set"},
+        "Headhunterz | Defqon.1 2024 Closing Ceremony",
+        "set_type:other",
+    ),
+    (
+        {"artist": "Headhunterz", "set_type": "closing_ceremony"},
+        "Headhunterz Live Set @ Defqon.1 2024",
+        "set_type:other",
+    ),
+    # different / additional year
+    ({"artist": "Headhunterz"}, "Headhunterz @ Defqon.1 2023", "year:other"),
+    ({"artist": "Headhunterz"}, "Headhunterz @ Defqon.1 2023 & 2024 recap", "year:more"),
+    # another series or variant in the title
+    ({"artist": "Headhunterz"}, "Headhunterz @ Defqon.1 Australia 2024", "variant:other"),
+    ({"artist": "Headhunterz"}, "Headhunterz @ Qlimax x Defqon.1 2024", "series:other"),
+]
+
+
+@pytest.mark.parametrize(("row", "title", "reason"), UNCERTAIN_CASES)
+def test_conflicting_titles_are_never_certain(target, row, title, reason):
+    c, r = collector.score(row, video("abcdefghij1", title), target)
+    assert reason in r, (c, r)
+    assert not collector.certain(c, r, target), (c, r)
+    assert not collector.certain(1.0, r, target)  # whatever the score
+
+
+@pytest.mark.parametrize(
+    ("row", "title"),
+    [
+        ({"artist": "Angerfist"}, "Angerfist @ Defqon.1 2024 | RED"),
+        ({"artist": "Angerfist b2b Miss K8"}, "Miss K8 & Angerfist | Defqon.1 2024"),
+        ({"artist": "D-Block & S-te-Fan"}, "D-Block & S-te-Fan @ Defqon.1 2024"),
+        ({"artist": "Headhunterz", "stage": "RED"}, "Headhunterz | Defqon.1 2024 | RED"),
+        (
+            {"artist": "Headhunterz", "set_type": "closing_ceremony"},
+            "Headhunterz | Defqon.1 2024 Closing Ceremony",
+        ),
+        ({"artist": "Headhunterz"}, "Headhunterz | Defqon.1 Weekend Festival 2024 [Full Set]"),
+    ],
+)
+def test_exact_titles_stay_certain(target, row, title):
+    c, r = collector.score(row, video("abcdefghij1", title), target)
+    assert collector.certain(c, r, target), (c, r)
+
+
+@pytest.mark.parametrize(
+    ("title", "certain", "reason"),
+    [
+        ("Headhunterz - Supremacy warm up mix 2024", False, "series:weak"),  # weak alone
+        ("Headhunterz @ Supremacy 2024", True, "series"),  # weak alias + year right after
+        ("Headhunterz @ Supremacy Festival 2024", True, "series"),  # strong alias
+    ],
+)
+def test_weak_series_alias_needs_the_year(db, settings, title, certain, reason):
+    eid = collector.open_edition(db, {"series_id": series_id(db, "supremacy"), "year": 2024})
+    t = collector.target_for(db, settings, eid)
+    c, r = collector.score({"artist": "Headhunterz"}, video("abcdefghij1", title), t)
+    assert reason in r, (c, r)
+    assert collector.certain(c, r, t) is certain, (c, r)
+
+
+def test_solo_row_does_not_take_the_b2b_set_as_confirmed(db, settings, edition):
+    solo = collector.add_row(db, edition, {"artist": "Angerfist"})
+    store(db, video("b2bvideo001", "Angerfist b2b Miss K8 @ Defqon.1 2024 | RED"))
+    collector.match_offline(db, settings, edition)
+    row = collector.row_by_id(db, solo)
+    assert row["video_id"] == "b2bvideo001" and not row["confirmed"]
+    q = collector.queue_rows(db, edition)
+    assert q["video_ids"] == [] and q["skipped"]["unconfirmed"] == 1
 
 
 def test_variant_edition_wants_the_variant(db, settings):

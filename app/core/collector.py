@@ -66,7 +66,8 @@ K_LAST_SEARCH = "collector_last_search"
 # Scoring (docs/decisions.md «Festival collector: matching»)
 W_ARTIST = 0.45  # every name of the row in the title («Angerfist b2b Miss K8»: both)
 W_ARTIST_PART = 0.3  # only some of the names
-W_SERIES = 0.25  # an alias of the series
+W_SERIES = 0.25  # an alias of the series (a weak alias only with the year right after it)
+W_SERIES_WEAK = 0.1  # a weak alias («Supremacy», «Rebirth») without the year right after it
 W_YEAR = 0.2  # the edition year as own word
 W_UPLOAD_YEAR = 0.1  # no year in the title, uploaded in the edition year or the year after
 W_STAGE = 0.05
@@ -703,6 +704,8 @@ class Target:
     year: int | None
     variant: str
     aliases: list[str] = field(default_factory=list)
+    weak_aliases: list[str] = field(default_factory=list)
+    other_series: list[str] = field(default_factory=list)
     variant_forms: list[str] = field(default_factory=list)
     other_variants: list[str] = field(default_factory=list)
     stages: list[fx.StageDef] = field(default_factory=list)
@@ -733,12 +736,27 @@ def target_for(db: Database, settings: Settings, edition_id: int) -> Target:
             others += names
     if variant and not forms:
         forms = [variant]
+    weak = {fx.norm(a) for a in sdef.weak_aliases} - {""}
+    mine = {fx.norm(a) for a in (sdef.name, *sdef.aliases)} - {""}
+    # strong aliases of the other series that are not just a piece of one of ours
+    # («Defqon.1 Australia» stays a variant, not another series)
+    others_series = sorted(
+        {
+            a
+            for s, alias_forms in cat.compiled()
+            if s.key != sdef.key
+            for a, strong in alias_forms
+            if strong and not any(fx.contains(m, a) for m in mine | weak)
+        }
+    )
     return Target(
         edition_id=int(ed["id"]),
         series=sdef,
         year=int(ed["year"]) or None,
         variant=variant,
         aliases=[a for a in (sdef.name, *sdef.aliases, *sdef.weak_aliases) if fx.norm(a)],
+        weak_aliases=[a for a in sdef.weak_aliases if fx.norm(a)],
+        other_series=others_series,
         variant_forms=forms,
         other_variants=others,
         stages=list(cat.stages),
@@ -758,6 +776,50 @@ _SPLIT_ARTISTS = re.compile(
 def artist_parts(artist: str) -> list[str]:
     parts = [p.strip() for p in _SPLIT_ARTISTS.split(artist or "") if fx.norm(p)]
     return parts or [artist]
+
+
+_BRACKETS = re.compile(r"[()\[\]{}]")
+
+
+def extra_artists(title: str, parts: Sequence[str]) -> list[str]:
+    """Names a title lists next to the row's artist («Angerfist b2b Miss K8», «Angerfist &
+    Radical Redemption», «Angerfist feat. MC Tha Watcher») that the row does not list.
+    Only the title segments (split at « | », « @ », « - » …) that name one of the row's
+    names are looked at, so «Angerfist @ Defqon.1 2024 | RED» has no extra names."""
+    mine = [fx.norm(p) for p in parts if fx.norm(p)]
+    out: list[str] = []
+    for seg in _TITLE_SPLIT.split(title or ""):
+        seg = _BRACKETS.sub(" ", seg or "")
+        text = fx.title_text(seg)
+        if not text or not any(fx.contains(text, m) for m in mine):
+            continue
+        for piece in _SPLIT_ARTISTS.split(seg):
+            n = fx.title_text(piece)
+            if not n or any(fx.contains(n, m) or fx.contains(m, n) for m in mine):
+                continue
+            out.append(piece.strip())
+    return out
+
+
+def _weak_alias_hit(text: str, target: Target) -> bool | None:
+    """None: no alias of the series in the title; True: only a weak alias without the
+    edition year right after it; False: a strong alias (or weak alias + year)."""
+    weak = {fx.norm(a) for a in target.weak_aliases}
+    hit: bool | None = None
+    tokens = text.split()
+    for a in target.aliases:
+        n = fx.norm(a)
+        pos = fx._find(text, n)
+        if pos < 0:
+            continue
+        if n not in weak:
+            return False
+        span = len(n.split()) if f" {n} " in f" {text} " else 1
+        end = pos + span
+        if target.year and end < len(tokens) and tokens[end] == str(target.year):
+            return False
+        hit = True
+    return hit
 
 
 def score(
@@ -781,18 +843,30 @@ def score(
     if fx.contains(text, artist) or len(found) == len(parts):
         s = W_ARTIST
         reasons.append("artist")
+        if extra_artists(title, parts):
+            # b2b / vs / & / feat. with a name the row does not list: maybe another set
+            reasons[-1] = "artist:more"
     elif found:
         s = W_ARTIST_PART
         reasons.append("artist:partial")
     else:
         return 0.0, ["no_artist"]
-    if any(fx.contains(text, a) for a in target.aliases):
+    weak_hit = _weak_alias_hit(text, target)
+    if weak_hit is False:
         s += W_SERIES
         reasons.append("series")
+    elif weak_hit:
+        s += W_SERIES_WEAK
+        reasons.append("series:weak")
+    low_artist = fx.norm(artist)
+    if any(fx.contains(text, o) and not fx.contains(low_artist, o) for o in target.other_series):
+        reasons.append("series:other")
     years = fx.title_years(text)
     if target.year and target.year in years:
         s += W_YEAR
         reasons.append("year")
+        if any(y != target.year for y in years):
+            reasons.append("year:more")
     elif years:
         s += P_OTHER_YEAR
         reasons.append("year:other")
@@ -815,9 +889,17 @@ def score(
         if fx.find_stage(title, [fx.StageDef(str(row["stage"]), tuple(aliases))]):
             s += W_STAGE
             reasons.append("stage")
-    if row.get("set_type") and fx.find_set_type(text, target.set_types) == row["set_type"]:
-        s += W_SET_TYPE
-        reasons.append("set_type")
+        else:
+            others = [st for st in target.stages if fx.norm(st.name) != fx.norm(row["stage"])]
+            if fx.find_stage(title, others):
+                reasons.append("stage:other")
+    if row.get("set_type"):
+        codes = {st.code for st in target.set_types if fx.find_set_type(text, [st])}
+        if row["set_type"] in codes:
+            s += W_SET_TYPE
+            reasons.append("set_type")
+        elif codes:
+            reasons.append("set_type:other")
     if any(fx.contains(text, w) for w in target.negative) and not any(
         fx.contains(fx.norm(artist), w) for w in target.negative
     ):
@@ -829,13 +911,33 @@ def score(
     return round(min(1.0, max(0.0, s)), 2), reasons
 
 
+# Reasons that always leave a hit «uncertain» (the user confirms it), whatever the score:
+# further artists (b2b, vs, &, feat. …), another stage / set type than the row's, more than
+# the edition year, another series or the wrong / missing variant.
+BLOCKS_CERTAIN = frozenset(
+    {
+        "artist:more",
+        "stage:other",
+        "set_type:other",
+        "year:more",
+        "series:other",
+        "variant:other",
+        "variant:missing",
+        "negative",
+    }
+)
+
+
 def certain(confidence: float, reasons: Sequence[str], target: Target) -> bool:
-    """A hit that needs no confirmation: DJ name, series and year in the title, confident."""
+    """A hit that needs no confirmation: exactly the row's DJ name(s), a strong alias of the
+    series and the edition year in the title, nothing conflicting (`BLOCKS_CERTAIN`),
+    confident. Conservative on purpose: a wrong auto-confirm becomes a wrong download."""
     return (
         confidence >= target.auto_confirm
         and "artist" in reasons
         and "series" in reasons
         and "year" in reasons
+        and not BLOCKS_CERTAIN.intersection(reasons)
     )
 
 
