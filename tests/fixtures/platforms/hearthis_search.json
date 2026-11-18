@@ -1,0 +1,64 @@
+[
+ {
+  "id": "4001",
+  "created_at": "2026-03-01 21:15:00",
+  "release_date": "2026-03-01",
+  "release_timestamp": 1772399701,
+  "user_id": "77",
+  "duration": "3001",
+  "permalink": "frenchcore-podcast-1",
+  "description": "Tracklist: ...",
+  "genre": "Hardcore",
+  "title": "Frenchcore Podcast 1",
+  "uri": "https://api-v2.hearthis.at/frenchcore-fabrik/frenchcore-podcast-1/",
+  "permalink_url": "https://hearthis.at/frenchcore-fabrik/frenchcore-podcast-1/",
+  "thumb": "https://img.hearthis.at/1/2/3/_/uploads/77/image_track/1/w200_h200_q70_m.jpg",
+  "artwork_url": "https://img.hearthis.at/1/2/3/_/uploads/77/image_track/1/w500_q70_m.jpg",
+  "playback_count": "101",
+  "download_count": "3",
+  "favoritings_count": "5",
+  "user": {
+   "id": "77",
+   "permalink": "frenchcore-fabrik",
+   "username": "Frenchcore Fabrik",
+   "uri": "https://api-v2.hearthis.at/frenchcore-fabrik/",
+   "permalink_url": "https://hearthis.at/frenchcore-fabrik/",
+   "avatar_url": "https://img.hearthis.at/a.jpg"
+  },
+  "stream_url": "https://hearthis.at/frenchcore-fabrik/frenchcore-podcast-1/listen/",
+  "preview_url": ""
+ },
+ {
+  "id": "9",
+  "title": "no permalink"
+ },
+ {
+  "id": "4002",
+  "created_at": "2026-03-01 21:15:00",
+  "release_date": "2026-03-01",
+  "release_timestamp": 1772399702,
+  "user_id": "77",
+  "duration": "3002",
+  "permalink": "frenchcore-podcast-2",
+  "description": "Tracklist: ...",
+  "genre": "Hardcore",
+  "title": "Frenchcore Podcast 2",
+  "uri": "https://api-v2.hearthis.at/uptempo-ug/frenchcore-podcast-2/",
+  "permalink_url": "https://hearthis.at/uptempo-ug/frenchcore-podcast-2/",
+  "thumb": "https://img.hearthis.at/1/2/3/_/uploads/77/image_track/2/w200_h200_q70_m.jpg",
+  "artwork_url": "https://img.hearthis.at/1/2/3/_/uploads/77/image_track/2/w500_q70_m.jpg",
+  "playback_count": "102",
+  "download_count": "3",
+  "favoritings_count": "5",
+  "user": {
+   "id": "77",
+   "permalink": "uptempo-ug",
+   "username": "Uptempo UG",
+   "uri": "https://api-v2.hearthis.at/uptempo-ug/",
+   "permalink_url": "https://hearthis.at/uptempo-ug/",
+   "avatar_url": "https://img.hearthis.at/a.jpg"
+  },
+  "stream_url": "https://hearthis.at/uptempo-ug/frenchcore-podcast-2/listen/",
+  "preview_url": ""
+ }
+]

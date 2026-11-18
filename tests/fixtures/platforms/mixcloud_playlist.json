@@ -1,0 +1,56 @@
+{
+ "data": {
+  "playlistLookup": {
+   "name": "Uptempo Classics",
+   "description": "",
+   "items": {
+    "edges": [
+     {
+      "node": {
+       "cloudcast": {
+        "slug": "hardcore-session-6",
+        "url": "https://www.mixcloud.com/DJ_Thera/hardcore-session-6/",
+        "name": "Hardcore Session #6 (Uptempo Special)",
+        "audioLength": 3642,
+        "publishDate": "2026-06-15T20:00:00Z",
+        "isExclusive": false,
+        "picture": {
+         "url": "https://thumbnailer.mixcloud.com/unsafe/640x640/extaudio/a/b/c/6.jpg"
+        },
+        "owner": {
+         "username": "DJ_Thera",
+         "displayName": "DJ Thera",
+         "url": "https://www.mixcloud.com/DJ_Thera/"
+        }
+       }
+      }
+     },
+     {
+      "node": {
+       "cloudcast": {
+        "slug": "hardcore-session-7",
+        "url": "https://www.mixcloud.com/DJ_Thera/hardcore-session-7/",
+        "name": "Hardcore Session #7 (Uptempo Special)",
+        "audioLength": 3649,
+        "publishDate": "2026-07-15T20:00:00Z",
+        "isExclusive": false,
+        "picture": {
+         "url": "https://thumbnailer.mixcloud.com/unsafe/640x640/extaudio/a/b/c/7.jpg"
+        },
+        "owner": {
+         "username": "DJ_Thera",
+         "displayName": "DJ Thera",
+         "url": "https://www.mixcloud.com/DJ_Thera/"
+        }
+       }
+      }
+     }
+    ],
+    "pageInfo": {
+     "endCursor": "x",
+     "hasNextPage": false
+    }
+   }
+  }
+ }
+}

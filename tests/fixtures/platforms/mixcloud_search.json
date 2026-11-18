@@ -1,0 +1,49 @@
+{
+ "data": [
+  {
+   "key": "/DJ_Thera/hardcore-session-1/",
+   "url": "https://www.mixcloud.com/DJ_Thera/hardcore-session-1/",
+   "name": "Hardcore Session #1 (Uptempo Special)",
+   "slug": "hardcore-session-1",
+   "audio_length": 3607,
+   "created_time": "2026-01-15T20:00:00Z",
+   "play_count": 812,
+   "user": {
+    "key": "/DJ_Thera/",
+    "url": "https://www.mixcloud.com/DJ_Thera/",
+    "name": "DJ Thera",
+    "username": "DJ_Thera"
+   },
+   "pictures": {
+    "medium": "https://thumbnailer.mixcloud.com/unsafe/100x100/x.jpg",
+    "large": "https://thumbnailer.mixcloud.com/unsafe/300x300/x.jpg",
+    "extra_large": "https://thumbnailer.mixcloud.com/unsafe/600x600/x.jpg"
+   }
+  },
+  {
+   "key": "/rawstyle_radio/episode-200/",
+   "url": "https://www.mixcloud.com/rawstyle_radio/episode-200/",
+   "name": "Rawstyle Radio Episode 200",
+   "slug": "episode-200",
+   "audio_length": 7200,
+   "created_time": "2025-11-02T18:30:00Z",
+   "play_count": 120,
+   "user": {
+    "key": "/rawstyle_radio/",
+    "url": "https://www.mixcloud.com/rawstyle_radio/",
+    "name": "Rawstyle Radio",
+    "username": "rawstyle_radio"
+   },
+   "pictures": {
+    "large": "https://thumbnailer.mixcloud.com/unsafe/300x300/y.jpg"
+   }
+  },
+  {
+   "key": "/promo/",
+   "name": "broken entry without url"
+  }
+ ],
+ "paging": {
+  "next": "https://api.mixcloud.com/search/?q=hardcore&type=cloudcast&limit=2&offset=2"
+ }
+}

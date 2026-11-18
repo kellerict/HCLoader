@@ -1,0 +1,70 @@
+{
+ "data": {
+  "userLookup": {
+   "displayName": "DJ Thera",
+   "biog": "Hardcore DJ",
+   "uploads": {
+    "edges": [
+     {
+      "node": {
+       "slug": "hardcore-session-1",
+       "url": "https://www.mixcloud.com/DJ_Thera/hardcore-session-1/",
+       "name": "Hardcore Session #1 (Uptempo Special)",
+       "audioLength": 3607,
+       "publishDate": "2026-01-15T20:00:00Z",
+       "isExclusive": false,
+       "picture": {
+        "url": "https://thumbnailer.mixcloud.com/unsafe/640x640/extaudio/a/b/c/1.jpg"
+       },
+       "owner": {
+        "username": "DJ_Thera",
+        "displayName": "DJ Thera",
+        "url": "https://www.mixcloud.com/DJ_Thera/"
+       }
+      }
+     },
+     {
+      "node": {
+       "slug": "hardcore-session-2",
+       "url": "https://www.mixcloud.com/DJ_Thera/hardcore-session-2/",
+       "name": "Hardcore Session #2 (Uptempo Special)",
+       "audioLength": 3614,
+       "publishDate": "2026-02-15T20:00:00Z",
+       "isExclusive": false,
+       "picture": {
+        "url": "https://thumbnailer.mixcloud.com/unsafe/640x640/extaudio/a/b/c/2.jpg"
+       },
+       "owner": {
+        "username": "DJ_Thera",
+        "displayName": "DJ Thera",
+        "url": "https://www.mixcloud.com/DJ_Thera/"
+       }
+      }
+     },
+     {
+      "node": {
+       "slug": "hardcore-session-3",
+       "url": "https://www.mixcloud.com/DJ_Thera/hardcore-session-3/",
+       "name": "Hardcore Session #3 (Uptempo Special)",
+       "audioLength": 3621,
+       "publishDate": "2026-03-15T20:00:00Z",
+       "isExclusive": true,
+       "picture": {
+        "url": "https://thumbnailer.mixcloud.com/unsafe/640x640/extaudio/a/b/c/3.jpg"
+       },
+       "owner": {
+        "username": "DJ_Thera",
+        "displayName": "DJ Thera",
+        "url": "https://www.mixcloud.com/DJ_Thera/"
+       }
+      }
+     }
+    ],
+    "pageInfo": {
+     "endCursor": "YXJyYXljb25uZWN0aW9uOjI=",
+     "hasNextPage": true
+    }
+   }
+  }
+ }
+}
