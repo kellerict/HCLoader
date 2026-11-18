@@ -493,6 +493,8 @@ def _retag(db: Database, settings: Settings, video_id: str) -> dict[str, Any]:
             log.error(tr("library.move_failed_log", id=video_id, error=exc))
             return {"ok": False, "error": tr("library.move_failed", error=exc)}
         db.set_file_path(video_id, str(new_path))
+    else:
+        db.set_file_path(video_id, str(path))  # new tags change the size (statistics)
     db.set_genre(video_id, genre, manual=bool(manual))
 
     new_cue = new_path.with_suffix(".cue")

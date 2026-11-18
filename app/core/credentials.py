@@ -15,6 +15,7 @@ import ctypes
 import logging
 import sys
 import threading
+from ctypes import wintypes
 from typing import Any, Protocol
 
 log = logging.getLogger(__name__)
@@ -75,36 +76,42 @@ class MemoryStore:
             self._data.pop(name, None)
 
 
-if sys.platform == "win32":  # pragma: no cover - exercised on Windows only
-    from ctypes import wintypes
-
-    class _FILETIME(ctypes.Structure):
-        _fields_ = [("dwLowDateTime", wintypes.DWORD), ("dwHighDateTime", wintypes.DWORD)]
-
-    class _CREDENTIALW(ctypes.Structure):
-        _fields_ = [
-            ("Flags", wintypes.DWORD),
-            ("Type", wintypes.DWORD),
-            ("TargetName", wintypes.LPWSTR),
-            ("Comment", wintypes.LPWSTR),
-            ("LastWritten", _FILETIME),
-            ("CredentialBlobSize", wintypes.DWORD),
-            ("CredentialBlob", ctypes.POINTER(ctypes.c_ubyte)),
-            ("Persist", wintypes.DWORD),
-            ("AttributeCount", wintypes.DWORD),
-            ("Attributes", ctypes.c_void_p),
-            ("TargetAlias", wintypes.LPWSTR),
-            ("UserName", wintypes.LPWSTR),
-        ]
+# wincred.h layout; defined on every platform so the store can be tested with fake functions
+class _FILETIME(ctypes.Structure):
+    _fields_ = [("dwLowDateTime", wintypes.DWORD), ("dwHighDateTime", wintypes.DWORD)]
 
 
-class WindowsCredentialStore:  # pragma: no cover - exercised on Windows only
-    """Generic credentials of the current Windows user (Credential Manager)."""
+class _CREDENTIALW(ctypes.Structure):
+    _fields_ = [
+        ("Flags", wintypes.DWORD),
+        ("Type", wintypes.DWORD),
+        ("TargetName", wintypes.LPWSTR),
+        ("Comment", wintypes.LPWSTR),
+        ("LastWritten", _FILETIME),
+        ("CredentialBlobSize", wintypes.DWORD),
+        ("CredentialBlob", ctypes.POINTER(ctypes.c_ubyte)),
+        ("Persist", wintypes.DWORD),
+        ("AttributeCount", wintypes.DWORD),
+        ("Attributes", ctypes.c_void_p),
+        ("TargetAlias", wintypes.LPWSTR),
+        ("UserName", wintypes.LPWSTR),
+    ]
+
+
+def _get_last_error() -> int:
+    return ctypes.get_last_error()  # type: ignore[attr-defined]
+
+
+class WindowsCredentialStore:
+    """Generic credentials of the current Windows user (Credential Manager). `adv` and
+    `last_error` replace advapi32 / `ctypes.get_last_error` in tests."""
 
     persistent = True
 
-    def __init__(self) -> None:
-        adv = ctypes.WinDLL("advapi32", use_last_error=True)  # type: ignore[attr-defined]
+    def __init__(self, adv: Any = None, last_error: Any = None) -> None:
+        if adv is None:  # pragma: no cover - Windows only
+            adv = ctypes.WinDLL("advapi32", use_last_error=True)  # type: ignore[attr-defined]
+        self._last_error = last_error or _get_last_error
         self._write = adv.CredWriteW
         self._write.argtypes = [ctypes.POINTER(_CREDENTIALW), wintypes.DWORD]
         self._write.restype = wintypes.BOOL
@@ -126,14 +133,17 @@ class WindowsCredentialStore:  # pragma: no cover - exercised on Windows only
     def get(self, name: str) -> str | None:
         ptr = ctypes.POINTER(_CREDENTIALW)()
         if not self._read(target(name), CRED_TYPE_GENERIC, 0, ctypes.byref(ptr)):
-            err = ctypes.get_last_error()  # type: ignore[attr-defined]
+            err = self._last_error()
             if err == ERROR_NOT_FOUND:
                 return None
             raise CredentialError(f"CredReadW failed ({err})")
         try:
             cred = ptr.contents
             raw = ctypes.string_at(cred.CredentialBlob, cred.CredentialBlobSize)
-            return raw.decode("utf-16-le")
+            try:  # another tool may have written this target (odd length, review v0.9.0 m3)
+                return raw.decode("utf-16-le", "strict")
+            except UnicodeDecodeError as exc:
+                raise CredentialError("stored credential is not valid UTF-16") from exc
         finally:
             self._free(ptr)
 
@@ -149,11 +159,11 @@ class WindowsCredentialStore:  # pragma: no cover - exercised on Windows only
         cred.Persist = CRED_PERSIST_LOCAL_MACHINE
         cred.UserName = "HCLoader"
         if not self._write(ctypes.byref(cred), 0):
-            raise CredentialError(f"CredWriteW failed ({ctypes.get_last_error()})")  # type: ignore[attr-defined]
+            raise CredentialError(f"CredWriteW failed ({self._last_error()})")
 
     def delete(self, name: str) -> None:
         if not self._delete(target(name), CRED_TYPE_GENERIC, 0):
-            err = ctypes.get_last_error()  # type: ignore[attr-defined]
+            err = self._last_error()
             if err != ERROR_NOT_FOUND:
                 raise CredentialError(f"CredDeleteW failed ({err})")
 

@@ -367,6 +367,24 @@ def test_api_scan_now_and_save_settings_keep_secret_out(api):
     assert api.get_media_server_status()["last_scan"]["ok"] is True
 
 
+def test_stored_token_only_goes_to_the_saved_address(api):
+    """Review v0.9.0 m2: «Test» with a changed address does not send the stored token there."""
+    api.store.set("plex", TOKEN)
+    r = api.test_media_server({"type": "plex", "url": "http://other.example:32400"})
+    assert r["code"] == "no_secret" and api.http.requests == []
+    assert api.save_settings(
+        {
+            **api.get_settings()["values"],
+            "media_server": {"type": "plex", "url": "http://nas:32400", "library": "3"},
+        }
+    )["ok"]
+    assert api.test_media_server({"type": "plex", "url": "http://nas:32400/"})["ok"] is True
+    assert api.http.requests and api.http.requests[-1].url.startswith("http://nas:32400")
+    r = api.test_media_server({"type": "plex", "url": "http://evil.example:32400"})
+    assert r["code"] == "no_secret"
+    assert all("evil" not in q.url for q in api.http.requests)
+
+
 def test_scan_queue_batches_downloads_and_reports_failures(db, tmp_path):
     timers = []
 

@@ -16,10 +16,11 @@ import re
 import threading
 from collections.abc import Callable, Mapping
 from datetime import UTC, date, datetime, time, timedelta
+from pathlib import Path
 from typing import Any
 
 from . import artists, series
-from .config import Settings
+from .config import UNSORTED, Settings
 from .db import Database, file_size_of
 
 log = logging.getLogger(__name__)
@@ -92,13 +93,13 @@ def _months(rows: list[dict[str, Any]], lo: str | None, hi: str | None) -> list[
     keys = sorted(by)
     if not keys and not lo:
         return []
-    first = lo[:7] if lo else keys[0]
+    first = _local_month(lo) if lo else keys[0]
     if hi:
         last = _month_before(hi)
     elif keys:
-        last = max(keys[-1], datetime.now(UTC).strftime("%Y-%m")) if lo else keys[-1]
+        last = max(keys[-1], datetime.now().astimezone().strftime("%Y-%m")) if lo else keys[-1]
     else:
-        last = datetime.now(UTC).strftime("%Y-%m")
+        last = datetime.now().astimezone().strftime("%Y-%m")
     if keys:
         first, last = min(first, keys[0]), max(last, keys[-1])
     out: list[dict[str, Any]] = []
@@ -110,10 +111,14 @@ def _months(rows: list[dict[str, Any]], lo: str | None, hi: str | None) -> list[
     return out
 
 
+def _local_month(bound: str) -> str:
+    """Local calendar month of a UTC bound (review v0.9.0 m5: the range is in local days)."""
+    return datetime.fromisoformat(bound).astimezone().strftime("%Y-%m")
+
+
 def _month_before(hi: str) -> str:
-    """Month of the last instant before the exclusive bound `hi`."""
-    d = datetime.fromisoformat(hi) - timedelta(seconds=1)
-    return d.astimezone(UTC).strftime("%Y-%m")
+    """Local month of the last instant before the exclusive bound `hi`."""
+    return _local_month((datetime.fromisoformat(hi) - timedelta(seconds=1)).isoformat())
 
 
 def _zero_fill(items: list[dict[str, Any]], keys: tuple[str, ...]) -> list[dict[str, Any]]:
@@ -159,7 +164,7 @@ def by_genre(db: Database, settings: Settings, lo: str | None, hi: str | None) -
         "SELECT COALESCE(NULLIF(v.genre, ''), ?) AS name, COUNT(*) AS sets, "
         "COALESCE(SUM(v.duration), 0) AS seconds, COALESCE(SUM(v.file_size), 0) AS bytes "
         f"FROM videos v WHERE {where} GROUP BY name ORDER BY sets DESC, name",
-        ["Unsortiert", *params],
+        [UNSORTED, *params],
     )
     colors = {g.name: g.color for g in settings.genres.items}
     for r in rows:
@@ -216,7 +221,8 @@ def by_platform(db: Database, lo: str | None, hi: str | None) -> list[dict[str, 
 def by_month(db: Database, lo: str | None, hi: str | None) -> list[dict[str, Any]]:
     where, params = _where(lo, hi)
     rows = db.query(
-        "SELECT substr(v.downloaded_at, 1, 7) AS month, COUNT(*) AS sets, "
+        # local month (SQLite 'localtime' = the OS time zone, like the range bounds)
+        "SELECT strftime('%Y-%m', v.downloaded_at, 'localtime') AS month, COUNT(*) AS sets, "
         "COALESCE(SUM(v.duration), 0) AS seconds, COALESCE(SUM(v.file_size), 0) AS bytes "
         f"FROM videos v WHERE {where} AND v.downloaded_at IS NOT NULL "
         "GROUP BY month ORDER BY month",
@@ -381,20 +387,39 @@ def missing_sizes(db: Database) -> int:
     return int((row or {}).get("n") or 0)
 
 
+def _root_of(path: str) -> str:
+    """Drive letter / UNC share (Windows) or the first path part: one reachability check each."""
+    p = Path(path)
+    return p.anchor or (p.parts[0] if p.parts else "")
+
+
+def _root_reachable(root: str) -> bool:
+    """The drive / share of a library file is there (a relative root cannot be checked)."""
+    try:
+        return not Path(root).is_absolute() or Path(root).exists()
+    except (OSError, ValueError):
+        return False
+
+
 def measure_sizes(
     db: Database,
     *,
     cancel: threading.Event | None = None,
     progress: Callable[[int, int], None] | None = None,
     stat: Callable[[str], int | None] = file_size_of,
+    reachable: Callable[[str], bool] | None = None,
 ) -> dict[str, int]:
     """Fill `file_size` for library rows without one (local `stat`, batches of SIZE_BATCH).
-    A file that is gone gets size 0 (counted as `missing`), so it is not measured again."""
+    A file that is gone gets size 0 (counted as `missing`), so it is not measured again - but
+    only if its drive/share is reachable: an offline NAS or USB drive leaves the row unmeasured
+    for a later run (counted as `offline`, review v0.9.0 m1)."""
     ids = db.query(
         "SELECT id, file_path FROM videos WHERE status = 'done' AND file_path IS NOT NULL "
         "AND file_size IS NULL"
     )
-    total, done, gone = len(ids), 0, 0
+    total, done, gone, offline = len(ids), 0, 0, 0
+    roots: dict[str, bool] = {}
+    reachable = reachable or _root_reachable
     for i in range(0, total, SIZE_BATCH):
         if cancel is not None and cancel.is_set():
             break
@@ -403,6 +428,12 @@ def measure_sizes(
         for r in batch:
             size = stat(r["file_path"])
             if size is None:
+                root = _root_of(r["file_path"])
+                if root not in roots:
+                    roots[root] = reachable(root)
+                if not roots[root]:
+                    offline += 1
+                    continue
                 gone += 1
             values.append((int(size or 0), r["id"]))
         with db.transaction():
@@ -414,4 +445,4 @@ def measure_sizes(
         done += len(batch)
         if progress is not None:
             progress(done, total)
-    return {"done": done, "total": total, "missing": gone}
+    return {"done": done, "total": total, "missing": gone, "offline": offline}

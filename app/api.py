@@ -2516,6 +2516,12 @@ class Api:
             log.warning(tr("media.secret_unreadable"))
             return None
 
+    def _stored_secret_allowed(self, url: str) -> bool:
+        """The stored token only goes to the saved server (review v0.9.0 m2): a changed or
+        mistyped address in the form needs the token typed again."""
+        saved = self._settings.media_server.url
+        return bool(saved) and saved.rstrip("/") == url.rstrip("/")
+
     def get_media_server_status(self) -> dict[str, Any]:
         """{ok, type, has_secret: {plex, jellyfin}, persistent, last_scan, pending}."""
         last = None
@@ -2557,7 +2563,8 @@ class Api:
                 secret = credentials.clean_secret(typed)
             except credentials.CredentialError:
                 return {"ok": False, "code": "auth", "error": tr("media.err_auth")}
-        secret = secret or self._media_secret(kind)
+        if not secret and self._stored_secret_allowed(url):
+            secret = self._media_secret(kind)
         if not secret:
             return {"ok": False, "code": "no_secret", "error": tr("media.err_no_secret")}
         verify = bool(d.get("verify_tls", True))

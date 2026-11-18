@@ -252,10 +252,43 @@ def test_file_size_written_with_path_and_measured_later(db, tmp_path):
     assert stats.missing_sizes(db) == 2
     seen = []
     res = stats.measure_sizes(db, progress=lambda d, t: seen.append((d, t)))
-    assert res == {"done": 2, "total": 2, "missing": 1} and seen[-1] == (2, 2)
+    assert res == {"done": 2, "total": 2, "missing": 1, "offline": 0} and seen[-1] == (2, 2)
     assert db.get_video("bbbbbbbbbb1")["file_size"] == 1234
     assert db.get_video("bbbbbbbbbb2")["file_size"] == 0
     assert stats.missing_sizes(db) == 0
+
+
+def test_measure_sizes_leaves_offline_drive_unmeasured(db):
+    """Review v0.9.0 m1: a NAS/USB drive that is not mounted is not «file gone» (0 forever)."""
+    now = _iso(datetime.now(UTC))
+    add_set(db, "cccccccccc1", title="NAS", downloaded=now, path="Z:/music/a.mp3")
+    add_set(db, "cccccccccc2", title="Local", downloaded=now, path="C:/music/b.mp3")
+    res = stats.measure_sizes(
+        db, stat=lambda p: None, reachable=lambda root: not root.upper().startswith("Z")
+    )
+    assert res["offline"] == 1 and res["missing"] == 1
+    assert db.get_video("cccccccccc1")["file_size"] is None  # measured again later
+    assert db.get_video("cccccccccc2")["file_size"] == 0
+    add_set(db, "cccccccccc3", title="NAS 2", downloaded=now, path="Z:/music/c.mp3")
+    seen = []
+    res = stats.measure_sizes(db, stat=lambda p: None, reachable=lambda r: seen.append(r) or False)
+    assert res["offline"] == 2 and len(seen) == 1  # one check per drive, not per file
+
+
+def test_months_use_local_time(db, monkeypatch):
+    """Review v0.9.0 m5: in UTC+1 a download at 00:30 local on 1 Jan belongs to January."""
+    if not hasattr(time, "tzset"):
+        pytest.skip("needs time.tzset")
+    monkeypatch.setenv("TZ", "CET-1")
+    time.tzset()
+    try:
+        add_set(db, "dddddddddd1", title="NY", downloaded="2025-12-31T23:30:00+00:00")
+        lo, hi, _ = stats.date_range({"from": "2026-01-01", "to": "2026-01-31"})
+        months = stats.by_month(db, lo, hi)
+        assert [m["month"] for m in months] == ["2026-01"] and months[0]["sets"] == 1
+    finally:
+        monkeypatch.delenv("TZ")
+        time.tzset()
 
 
 def test_migration_15_from_v14_keeps_rows(tmp_path):
