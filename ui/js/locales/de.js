@@ -1673,6 +1673,7 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "tt_skipped": "Nicht verstandene Zeilen: {n}",
     "tt_more": "… und {n} weitere",
     "tt_ok": "Importieren ({n})",
+    "tt_edit_hint": "Sets hier vor dem Import korrigieren oder entfernen. Eine Änderung am Text links liest ihn neu ein.",
     "toast_tt": "Timetable importiert –",
     "files_text": "Timetables, die im HCLoader-Repository gepflegt und mit Updates ausgeliefert werden. Ein Import legt die Checkliste der jeweiligen Ausgabe an.",
     "files_empty_title": "Noch keine Timetables mitgeliefert",

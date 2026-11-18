@@ -1639,6 +1639,7 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "tt_skipped": "无法理解的行：{n}",
     "tt_more": "… 还有 {n} 个",
     "tt_ok": "导入（{n}）",
+    "tt_edit_hint": "导入前可在此修改或删除条目。修改左侧文本会重新读取。",
     "toast_tt": "时间表已导入 –",
     "files_text": "在 HCLoader 仓库中维护并随更新发布的时间表。导入其中一个会创建对应那一届的清单。",
     "files_empty_title": "尚未随附任何时间表",

@@ -1673,6 +1673,7 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "tt_skipped": "Rader som inte förstods: {n}",
     "tt_more": "… och {n} till",
     "tt_ok": "Importera ({n})",
+    "tt_edit_hint": "Rätta eller ta bort set här före import. Ändrar du texten till vänster läses den in igen.",
     "toast_tt": "Spelschemat importerat –",
     "files_text": "Spelscheman som underhålls i HCLoaders repository och följer med uppdateringar. En import skapar checklistan för den upplagan.",
     "files_empty_title": "Inga spelscheman följer med ännu",

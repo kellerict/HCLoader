@@ -28,6 +28,9 @@ appears after «Show all changes» (`docs/RELEASING.md`).
   state explains the format and how to contribute), estimate before the search (searches, duration,
   free searches this hour) with progress, stop and resume.
 - Entry «Collect this edition» / «Checklist n / total» at the selected year of the festival view.
+- Timetable paste: the preview rows can be corrected or removed before importing; headerless
+  CSV, combined `Saturday – RED` headings, emoji/markdown decoration and `Sat 18.00–19.00 Name @ STAGE`
+  are understood, and lines that cannot be read are listed instead of becoming a stage.
 - Settings tab «Festivals & series»: section «Festival collector» (searches per hour, results per
   search, automatic confirmation threshold). UI texts in all languages.
 - Wiki page «Festival collector».

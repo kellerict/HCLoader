@@ -1440,7 +1440,16 @@ tr.co-edit:hover td{background:var(--panel)}
 .co-tt-prev{height:330px;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);color:var(--text)}
 .co-tt-prev table{table-layout:fixed}
 .co-tt-prev td{padding:5px 10px;font-size:12.5px}
-.co-tt-prev td:nth-child(2){width:24%}.co-tt-prev td:nth-child(3){width:22%}.co-tt-prev td:nth-child(4){width:104px}
+.co-tt-prev td:nth-child(2){width:22%}.co-tt-prev td:nth-child(3){width:20%}.co-tt-prev td:nth-child(4){width:108px}.co-tt-prev td.co-tt-rm{width:40px;padding-left:2px;padding-right:8px}
+.co-tt-prev td{padding:3px 4px}
+.co-tt-prev td:first-child{padding-left:6px}
+.co-tt-prev .input{width:100%;min-width:0;padding:3px 6px;font-size:12.5px;line-height:18px;border-color:transparent;background:transparent;color:var(--text)}
+.co-tt-prev .input:hover{border-color:var(--line)}
+.co-tt-prev .input:focus{border-color:var(--accent);background:var(--panel-2)}
+.co-tt-prev .input.mono{font:12px var(--f-mono)}
+.co-tt-prev td small{display:block;margin:0 0 2px 7px}
+.co-tt-prev .iconbtn{width:24px;height:24px}
+.co-tt-hint{padding:8px 10px;font-size:11.5px;line-height:1.45;color:var(--muted);border-bottom:1px solid var(--line)}
 .co-tt-prev td b{font-weight:500}
 .co-tt-prev td small{margin-left:8px;color:var(--muted);font:11px var(--f-mono)}
 .co-tt-prev .sdot{margin-right:7px}

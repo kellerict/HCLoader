@@ -1310,3 +1310,19 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
   **Grund:** quadratisches Backtracking bei langen Leerräumen (PDF-Paste) blockierte Bridge-Threads.
 - **Entscheid:** `festivals.collector_results_per_search` höchstens 20. **Grund:** mehr Treffer holt
   yt-dlp über Folgeseiten ohne Throttle-Abstand – eine Suche bleibt so genau eine Anfrage.
+
+### 2026-11-18 – Timetable-Parser: Müll melden statt raten, Vorschau bearbeitbar (QA-Nachprüfung v0.5.0)
+- **Entscheid:** eine Zeile ohne Buchstaben/Ziffer wird nie Bühne oder Set: reine Trennzeilen
+  (`=====`, `|---|`, nur Emoji) werden still übergangen, alles andere (`????? ##`) landet in
+  `skipped`. Jede Zeile, die weder Set noch Überschrift, Titel, Kommentar oder Trennzeile ist, steht in
+  `skipped` und wird im Einfüge-Dialog angezeigt. **Grund:** eine erfundene Bühne ist stiller
+  Datenfehler, eine gemeldete Zeile kostet den User einen Blick.
+- **Entscheid:** CSV ohne Kopfzeile wird erkannt, wenn die meisten Zeilen dieselbe Zellenzahl (≥ 3)
+  mit einer reinen Zeitspalte haben; Spalten werden nach Inhalt zugeordnet (Zeit, Wochentag,
+  Set-Art, Bühne = bekannt/Grossbuchstaben/Bühnenwort/wenige Werte, Rest = Artist). Emoji/Symbole
+  und `**fett**` werden vor dem Parsen entfernt; beidseitige Deko macht eine Zeile zur Überschrift,
+  nur führende ist ein Aufzählungszeichen. **Grund:** reale Pastes aus Apps/Social Media.
+- **Entscheid:** die Vorschau im Einfüge-Dialog ist bearbeitbar (Artist, Bühne, Tag, Zeit, Zeile
+  entfernen); nach einer Bearbeitung importiert `import_timetable` die Zeilen statt des Texts, eine
+  Textänderung liest neu ein und verwirft die Bearbeitungen. **Grund:** der Parser rät nie perfekt;
+  Korrigieren vor dem Speichern ist billiger als danach in der Checkliste.

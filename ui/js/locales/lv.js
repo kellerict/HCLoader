@@ -1707,6 +1707,7 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "tt_skipped": "Nesaprastas rindas: {n}",
     "tt_more": "… un vēl {n}",
     "tt_ok": "Importēt ({n})",
+    "tt_edit_hint": "Pirms importa izlabo vai noņem setus šeit. Mainot tekstu kreisajā pusē, tas tiek nolasīts no jauna.",
     "toast_tt": "Grafiks importēts –",
     "files_text": "Grafiki, kas tiek uzturēti HCLoader repozitorijā un piegādāti kopā ar atjauninājumiem. Imports izveido attiecīgā gada kontrolsarakstu.",
     "files_empty_title": "Grafiki vēl netiek piegādāti",

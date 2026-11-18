@@ -1673,6 +1673,7 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "tt_skipped": "Linjer som ikke ble forstått: {n}",
     "tt_more": "… og {n} til",
     "tt_ok": "Importer ({n})",
+    "tt_edit_hint": "Rett eller fjern sett her før import. Endrer du teksten til venstre, leses den på nytt.",
     "toast_tt": "Spilleplanen er importert –",
     "files_text": "Spilleplaner som vedlikeholdes i HCLoader-repositoriet og følger med oppdateringer. En import oppretter sjekklisten for den utgaven.",
     "files_empty_title": "Ingen spilleplaner følger med ennå",

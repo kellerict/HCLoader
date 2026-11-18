@@ -1741,6 +1741,7 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "tt_skipped": "Nesuprastų eilučių: {n}",
     "tt_more": "… ir dar {n}",
     "tt_ok": "Importuoti ({n})",
+    "tt_edit_hint": "Prieš importuodami pataisykite arba pašalinkite setus čia. Pakeitus tekstą kairėje, jis nuskaitomas iš naujo.",
     "toast_tt": "Tvarkaraštis importuotas –",
     "files_text": "Tvarkaraščiai, prižiūrimi „HCLoader“ saugykloje ir pateikiami su atnaujinimais. Importas sukuria atitinkamų metų kontrolinį sąrašą.",
     "files_empty_title": "Tvarkaraščių dar nepridėta",

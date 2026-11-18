@@ -574,7 +574,10 @@
   }
 
   async function pasteDialog() {
-    let parsed = null, n = 0, result = null;
+    // `edited`: the user changed or removed rows in the preview -> those rows are imported
+    // instead of the text (QA v0.5.0: correct the parse before it is stored)
+    let parsed = null, n = 0, result = null, edited = false;
+    const live = () => ((parsed && parsed.rows) || []).filter((r) => String(r.artist || '').trim());
     const yes = await ui.modal({
       title: t('collector.tt_title', { name: ed.edition }), kind: 'co-tt', okLabel: t('collector.tt_ok', { n: 0 }),
       body: `<p>${esc(t('collector.tt_text'))}</p>
@@ -585,22 +588,49 @@
         <div class="field-error" data-err hidden></div>`,
       onOpen: (back) => {
         const ta = $('[data-f=text]', back), prev = $('[data-prev]', back), sum = $('[data-sum]', back), ok = $('[data-act=ok]', back);
+        const count = () => {
+          const k = live().length;
+          ok.disabled = !k;
+          ok.textContent = t('collector.tt_ok', { n: k });
+        };
         const paint = () => {
           const list = (parsed && parsed.rows) || [], skipped = (parsed && parsed.skipped) || [];
-          ok.disabled = !list.length;
-          ok.textContent = t('collector.tt_ok', { n: list.length });
+          count();
           sum.textContent = list.length ? [t('collector.tt_sum', { n: list.length }), parsed.days.length ? t('collector.tt_days', { n: parsed.days.length }) : '', parsed.stages.length ? t('collector.tt_stages', { n: parsed.stages.length }) : '', parsed.csv ? 'CSV' : ''].filter(Boolean).join(' · ') : '';
           if (!list.length && !skipped.length) { prev.innerHTML = `<div class="co-tt-empty">${I.copy}<span>${esc(t(ta.value.trim() ? 'collector.tt_nothing' : 'collector.tt_empty'))}</span></div>`; return; }
-          const cell = (x) => (x ? esc(x) : '<span class="co-none">–</span>');
-          prev.innerHTML = `${list.length ? `<table><tbody>${list.slice(0, 300).map((r) => `<tr><td class="clip"><b title="${esc(r.artist)}">${esc(r.artist)}</b>${r.set_type ? `<small>${esc(HC.fest.setType(r.set_type))}</small>` : ''}</td>
-              <td class="clip">${r.stage ? `${HC.fest.stageDot(r.stage)}${esc(r.stage)}` : cell('')}</td><td class="clip">${cell(r.day)}</td><td class="mono">${cell(timeOf(r))}</td></tr>`).join('')}</tbody></table>` : ''}
+          const inp = (k, v, max, label, ph) => `<input class="input sm${k === 'time' ? ' mono' : ''}" data-k="${k}" value="${esc(v || '')}" maxlength="${max}" aria-label="${esc(t(label))}" title="${esc(t(label))}"${ph ? ` placeholder="${esc(ph)}"` : ''} spellcheck="false">`;
+          const tr = (r, i) => `<tr data-i="${i}"><td class="clip">${inp('artist', r.artist, 120, 'collector.f_artist')}${r.set_type ? `<small>${esc(HC.fest.setType(r.set_type))}</small>` : ''}</td>
+              <td>${inp('stage', r.stage, 40, 'fest.p_stage')}</td><td>${inp('day', r.day, 40, 'collector.f_day')}</td><td>${inp('time', timeOf(r), 13, 'collector.col_when', '18:00–19:00')}</td>
+              <td class="co-tt-rm"><button type="button" class="iconbtn danger" data-rm title="${esc(t('collector.delete_row'))}" aria-label="${esc(t('collector.delete_row'))}">${I.x}</button></td></tr>`;
+          prev.innerHTML = `${list.length ? `<div class="co-tt-hint">${esc(t('collector.tt_edit_hint'))}</div><table><tbody>${list.slice(0, 300).map(tr).join('')}</tbody></table>` : ''}
             ${list.length > 300 ? `<div class="co-tt-more">${esc(t('collector.tt_more', { n: list.length - 300 }))}</div>` : ''}
-            ${skipped.length ? `<div class="co-tt-skip"><b>${I.warn}${esc(t('collector.tt_skipped', { n: skipped.length }))}</b>${skipped.slice(0, 20).map((s) => `<code>${esc(s)}</code>`).join('')}</div>` : ''}`;
+            ${skipped.length ? `<div class="co-tt-skip"><b>${I.warn}${esc(t('collector.tt_skipped', { n: skipped.length }))}</b>${skipped.slice(0, 20).map((x) => `<code title="${esc(x)}">${esc(x)}</code>`).join('')}${skipped.length > 20 ? `<code>${esc(t('collector.tt_more', { n: skipped.length - 20 }))}</code>` : ''}</div>` : ''}`;
         };
+        prev.addEventListener('input', (e) => {
+          const el = e.target.closest('[data-k]'), row = el && parsed && parsed.rows[+el.closest('tr').dataset.i];
+          if (!row) return;
+          edited = true;
+          if (el.dataset.k === 'time') {
+            const [s, e2] = el.value.trim().split(/\s*[-–—]\s*/);
+            row.start = s || null;
+            row.end = e2 || null;
+          } else {
+            row[el.dataset.k] = el.dataset.k === 'artist' ? el.value : el.value.trim() || null;
+          }
+          count();
+        });
+        prev.addEventListener('click', (e) => {
+          const b = e.target.closest('[data-rm]');
+          if (!b || !parsed) return;
+          parsed.rows.splice(+b.closest('tr').dataset.i, 1);
+          edited = true;
+          paint();
+        });
         const parse = async () => {
           const my = ++n, r = await HC.bridge.safe('parse_timetable', ta.value);
           if (my !== n || !back.isConnected) return;
           parsed = r && r.ok ? r : null;
+          edited = false; // the text was read again: its rows replace the edited ones
           paint();
         };
         ta.addEventListener('input', util.debounce(parse, 220));
@@ -611,8 +641,9 @@
       onOk: async (back) => {
         const ta = $('[data-f=text]', back), err = $('[data-err]', back), ok = $('[data-act=ok]', back);
         if (ok.disabled || !ta.value.trim()) return false;
+        const data = edited ? live().map((r) => ({ ...r, artist: r.artist.trim() })) : ta.value;
         ui.busy(ok, true);
-        const r = await HC.bridge.safe('import_timetable', ed.edition_id, ta.value);
+        const r = await HC.bridge.safe('import_timetable', ed.edition_id, data);
         ui.busy(ok, false);
         if (!r) return false;
         if (!r.ok) { err.hidden = false; err.textContent = (r.errors && Object.values(r.errors)[0]) || r.error || t('err.generic'); return false; }

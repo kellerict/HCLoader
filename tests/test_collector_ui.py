@@ -312,6 +312,43 @@ def test_paste_timetable_preview_and_import(page):
     assert page.locator("#lib-collector script").count() == 0
 
 
+def test_paste_timetable_preview_rows_can_be_edited_and_removed(page):
+    eid = _open(page)
+    page.click('.co-tools [data-co="paste"]')
+    page.wait_for_selector(".modal.co-tt")
+    page.fill(
+        ".co-tt textarea",
+        "Saturday – RED\n17:00 - 18:00 Solstic Zer\n????? ##\n18:00 - 19:00 Phuture Noize\n"
+        "19:00 - 20:00 Typo Act",
+    )
+    page.wait_for_function("document.querySelectorAll('.co-tt-prev tbody tr').length === 3")
+    # garbage is reported, never turned into a stage
+    assert "????? ##" in page.inner_text(".co-tt-skip")
+    first = page.locator(".co-tt-prev tbody tr").nth(0)
+    assert first.locator("[data-k=stage]").input_value() == "RED"
+    assert first.locator("[data-k=day]").input_value() == "Saturday"
+    first.locator("[data-k=artist]").fill("Solstice Zero")
+    first.locator("[data-k=time]").fill("17:05–18:00")
+    page.locator(".co-tt-prev tbody tr").nth(2).locator("[data-rm]").click()
+    page.wait_for_function("document.querySelectorAll('.co-tt-prev tbody tr').length === 2")
+    assert page.text_content(".co-tt [data-act=ok]") == "Import (2)"
+    page.click(".co-tt [data-act=ok]")
+    page.wait_for_selector(".modal.co-tt", state="detached")
+    call = _calls(page, "import_timetable")[-1]
+    assert call[0] == eid and isinstance(call[1], list)
+    got = [(r["artist"], r["stage"], r["day"], r["start"], r["end"]) for r in call[1]]
+    assert got == [
+        ("Solstice Zero", "RED", "Saturday", "17:05", "18:00"),
+        ("Phuture Noize", "RED", "Saturday", "18:00", "19:00"),
+    ]
+    page.wait_for_function(
+        "[...document.querySelectorAll('#co-rows .co-dj b')]"
+        ".some((b) => b.textContent === 'Solstice Zero')"
+    )
+    assert _row(page, "Solstice Zero").count() == 1
+    assert _row(page, "Typo Act").count() == 0
+
+
 def test_playlist_import_with_progress(page):
     eid = _open(page, "decibel", 2025)
     assert page.locator(ROWS).count() == 12

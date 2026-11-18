@@ -1673,6 +1673,7 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "tt_skipped": "Linhas não entendidas: {n}",
     "tt_more": "… e mais {n}",
     "tt_ok": "Importar ({n})",
+    "tt_edit_hint": "Corrija ou remova sets aqui antes de importar. Alterar o texto à esquerda faz uma nova leitura.",
     "toast_tt": "Programação importada –",
     "files_text": "Programações mantidas no repositório do HCLoader e distribuídas com as atualizações. Importar uma cria a lista da respectiva edição.",
     "files_empty_title": "Nenhuma programação incluída ainda",

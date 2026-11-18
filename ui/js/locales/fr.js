@@ -1673,6 +1673,7 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
     "tt_skipped": "Lignes non comprises : {n}",
     "tt_more": "… et {n} de plus",
     "tt_ok": "Importer ({n})",
+    "tt_edit_hint": "Corrigez ou retirez des sets ici avant l’import. Modifier le texte à gauche le relit.",
     "toast_tt": "Horaire importé –",
     "files_text": "Horaires tenus à jour dans le dépôt HCLoader et livrés avec les mises à jour. En importer un crée la liste de son édition.",
     "files_empty_title": "Aucun horaire fourni pour l’instant",

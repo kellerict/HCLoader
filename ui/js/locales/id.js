@@ -1639,6 +1639,7 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
   "tt_skipped": "Baris yang tidak dipahami: {n}",
   "tt_more": "… dan {n} lagi",
   "tt_ok": "Impor ({n})",
+  "tt_edit_hint": "Perbaiki atau hapus set di sini sebelum impor. Mengubah teks di kiri akan membacanya ulang.",
   "toast_tt": "Jadwal diimpor –",
   "files_text": "Jadwal yang dikelola di repositori HCLoader dan dikirim bersama pembaruan. Mengimpor satu jadwal membuat daftar periksa edisinya.",
   "files_empty_title": "Belum ada jadwal bawaan",
