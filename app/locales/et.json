@@ -79,7 +79,8 @@
     "video_unknown": "Video teadmata",
     "watchlist_backoff": "Paus on aktiivne kuni {until} – kontroll blokeeritud",
     "ytdlp_up_to_date": "yt-dlp ja plugin on ajakohased",
-    "ytdlp_updated_restart": "yt-dlp uuendatud – käivita HCLoader uuesti"
+    "ytdlp_updated_restart": "yt-dlp uuendatud – käivita HCLoader uuesti",
+    "platform_user_unknown": "{platform} üleslaadija on tundmatu (profiili URL puudub)"
   },
   "backfill": {
     "done": "Loe kõik sisse: {name} valmis – loetud {n} kirjet, {added} uut postkastis",
@@ -411,11 +412,15 @@
     "sc_url_expected": "Oodatakse SoundCloudi URL-i (https://soundcloud.com/…).",
     "sc_url_unsupported": "Toetamata SoundCloudi URL. Lubatud: soundcloud.com/<user>, …/<user>/tracks või …/<user>/sets/<set> (üksikud lood ei ole allikas).",
     "type_invalid": "Tüüp peab olema kanal, esitusloend või otsing.",
-    "unsupported_url": "Toetamata URL – oodatakse YouTube'i URL-i (kanal, esitusloend) või SoundCloudi URL-i (soundcloud.com/<user>, …/<user>/tracks, …/<user>/sets/<set>).",
+    "unsupported_url": "Toetamata URL – oodati YouTube kanali või esitusloendi, SoundCloudi kasutaja või komplekti või Mixcloudi või hearthis.at kasutaja või esitusloendi URL-i.",
     "url_missing": "URL puudub.",
     "url_or_query_missing": "URL või otsingufraas puudub.",
     "url_too_long": "URL on liiga pikk.",
-    "youtube_url_expected": "Oodatakse YouTube'i URL-i (https://www.youtube.com/…)."
+    "youtube_url_expected": "Oodatakse YouTube'i URL-i (https://www.youtube.com/…).",
+    "platform_url_expected": "Oodati {platform} URL-i (https://…).",
+    "platform_url_unsupported": "Toetamata {platform} URL. Lubatud: kasutaja profiil või mõni tema esitusloend (üksikud lood ei ole allikas).",
+    "platform_set_type": "{platform}: esitusloendi jaoks vali tüüp „Esitusloend“.",
+    "platform_playlist_expected": "Oodati {platform} esitusloendi URL-i."
   },
   "tag": {
     "cover_failed": "Kaanepilti ei õnnestunud luua: {error}",
@@ -532,7 +537,8 @@
       "one": "Jälgitavate allikate kontroll alustatud · allikaid: {n}",
       "other": "Jälgitavate allikate kontroll alustatud · allikaid: {n}"
     },
-    "until": " kuni {until}"
+    "until": " kuni {until}",
+    "skipped_platform_off": "Allikas „{name}“ jäeti vahele: {platform} on välja lülitatud"
   },
   "yt": {
     "archive_not_writable": "Allalaadimisarhiivi ei saa kirjutada ({path}): {error}",
@@ -558,7 +564,9 @@
     "sc_ext_ok": "yt-dlp {version}: SoundCloudi laiend kontrollitud versiooniga {checked} (liidesed ühtivad)",
     "skipped_archive": "Vahele jäetud (on allalaadimisarhiivis): {id}",
     "skipped_done": "Vahele jäetud (juba alla laaditud): {id}",
-    "unexpected": "Ootamatu viga {id} allalaadimisel"
+    "unexpected": "Ootamatu viga {id} allalaadimisel",
+    "mc_ext_inactive": "Mixcloudi laiendus ei ole aktiivne (yt-dlp {version} muutus: {error}) – vaikekäitumine, loendites võib pealkiri/kestus puududa",
+    "no_track_page": "Loo leht on tundmatu – leia sett uuesti otsingu või jälgimisloendi kaudu"
   },
   "analysis": {
     "no_ffmpeg": "ffmpeg puudub – valjust ja lainekuju ei saa analüüsida (Seaded › Hooldus)",
@@ -656,5 +664,23 @@
     "test_failed": "Testteavitust ei õnnestunud näidata – vaata logi",
     "log_unavailable": "Teavitus (ei näidatud, Windowsi teavitused pole saadaval): {title}",
     "log_failed": "Windowsi teavitust ei õnnestunud näidata: {error}"
+  },
+  "platform": {
+    "off": "{platform} on välja lülitatud",
+    "off_in_settings": "{platform} on seadetes välja lülitatud",
+    "off_settings": "{platform} on välja lülitatud (Seaded › {platform})",
+    "off_settings_dot": "{platform} on välja lülitatud (Seaded › {platform})."
+  },
+  "reupload": {
+    "off": "Uuesti üleslaadimiste tuvastus on välja lülitatud (Seaded › Uuesti üleslaadimised)",
+    "not_marked": "Seda setti pole märgitud uuesti üleslaadimiseks",
+    "bad_action": "Tundmatu toiming (lubatud: keep, link, delete_new, open)",
+    "no_audio": "Sõrmejälje jaoks pole kasutatavat heli (vaikus või liiga lühike)",
+    "found": "Tõenäoliselt uuesti üles laaditud: „{title}“ vastab setile „{of}“ ({score} %)",
+    "item_failed": "{id} sõrmejälg ebaõnnestus: {error}",
+    "pass_started": "Kogu sõrmejälgi luuakse (võrguühenduseta, üks fail korraga) …",
+    "pass_done": "Kogu läbi vaadatud: {n} faili, {found} tõenäolist uuesti üleslaadimist, {failed} ebaõnnestus",
+    "pass_cancelled": "Katkestatud: {n} faili, {found} tõenäolist uuesti üleslaadimist, {failed} ebaõnnestus",
+    "pass_failed": "Kogu sõrmejäljed ebaõnnestusid: {error}"
   }
 }

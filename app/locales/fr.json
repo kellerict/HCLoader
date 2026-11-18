@@ -78,7 +78,8 @@
     "video_unknown": "Vidéo inconnue",
     "watchlist_backoff": "Blocage temporaire actif jusqu’à {until} – vérification bloquée",
     "ytdlp_up_to_date": "yt-dlp et le plugin sont à jour",
-    "ytdlp_updated_restart": "yt-dlp mis à jour – veuillez redémarrer HCLoader"
+    "ytdlp_updated_restart": "yt-dlp mis à jour – veuillez redémarrer HCLoader",
+    "platform_user_unknown": "Utilisateur {platform} inconnu (pas d’URL de profil)"
   },
   "backfill": {
     "done": "Tout lire : {name} terminé – {n} entrées lues, {added} nouvelles dans la boîte",
@@ -410,11 +411,15 @@
     "sc_url_expected": "URL SoundCloud attendue (https://soundcloud.com/…).",
     "sc_url_unsupported": "URL SoundCloud non prise en charge. Autorisées : soundcloud.com/<user>, …/<user>/tracks ou …/<user>/sets/<set> (les titres isolés ne sont pas une source).",
     "type_invalid": "Le type doit être chaîne, playlist ou recherche.",
-    "unsupported_url": "URL non prise en charge – URL YouTube (chaîne, playlist) ou URL SoundCloud (soundcloud.com/<user>, …/<user>/tracks, …/<user>/sets/<set>) attendue.",
+    "unsupported_url": "URL non prise en charge – attendu : une URL de chaîne ou de playlist YouTube, d’utilisateur ou de set SoundCloud, ou d’utilisateur ou de playlist Mixcloud ou hearthis.at.",
     "url_missing": "URL manquante.",
     "url_or_query_missing": "URL ou terme de recherche manquant.",
     "url_too_long": "L’URL est trop longue.",
-    "youtube_url_expected": "URL YouTube attendue (https://www.youtube.com/…)."
+    "youtube_url_expected": "URL YouTube attendue (https://www.youtube.com/…).",
+    "platform_url_expected": "URL {platform} attendue (https://…).",
+    "platform_url_unsupported": "URL {platform} non prise en charge. Autorisé : le profil d’un utilisateur ou l’une de ses playlists (un morceau seul n’est pas une source).",
+    "platform_set_type": "{platform} : choisissez le type « Playlist » pour une playlist.",
+    "platform_playlist_expected": "URL de playlist {platform} attendue."
   },
   "tag": {
     "cover_failed": "La pochette n’a pas pu être créée : {error}",
@@ -531,7 +536,8 @@
       "one": "Vérification de la liste de suivi démarrée · {n} source",
       "other": "Vérification de la liste de suivi démarrée · {n} sources"
     },
-    "until": " jusqu’à {until}"
+    "until": " jusqu’à {until}",
+    "skipped_platform_off": "Source « {name} » ignorée : {platform} est désactivé"
   },
   "yt": {
     "archive_not_writable": "L’archive des téléchargements n’est pas accessible en écriture ({path}) : {error}",
@@ -557,7 +563,9 @@
     "sc_ext_ok": "yt-dlp {version} : extension SoundCloud vérifiée avec {checked} (les interfaces correspondent)",
     "skipped_archive": "Ignoré (dans l’archive des téléchargements) : {id}",
     "skipped_done": "Ignoré (déjà téléchargé) : {id}",
-    "unexpected": "Erreur inattendue lors du téléchargement de {id}"
+    "unexpected": "Erreur inattendue lors du téléchargement de {id}",
+    "mc_ext_inactive": "Extension Mixcloud inactive (yt-dlp {version} a changé : {error}) – comportement par défaut, titre/durée peuvent manquer dans les listes",
+    "no_track_page": "Page du morceau inconnue – retrouvez le set via la recherche ou la watchlist"
   },
   "analysis": {
     "no_ffmpeg": "ffmpeg est absent – impossible d’analyser le volume et la forme d’onde (Paramètres › Maintenance)",
@@ -655,5 +663,23 @@
     "test_failed": "La notification de test n’a pas pu être affichée – voir le journal",
     "log_unavailable": "Notification (non affichée, notifications Windows indisponibles) : {title}",
     "log_failed": "Impossible d’afficher la notification Windows : {error}"
+  },
+  "platform": {
+    "off": "{platform} est désactivé",
+    "off_in_settings": "{platform} est désactivé dans les paramètres",
+    "off_settings": "{platform} est désactivé (Paramètres › {platform})",
+    "off_settings_dot": "{platform} est désactivé (Paramètres › {platform})."
+  },
+  "reupload": {
+    "off": "La détection des re-uploads est désactivée (Paramètres › Re-uploads)",
+    "not_marked": "Ce set n’est pas marqué comme re-upload",
+    "bad_action": "Action inconnue (autorisées : keep, link, delete_new, open)",
+    "no_audio": "Pas d’audio exploitable pour une empreinte (silence ou trop court)",
+    "found": "Re-upload probable : « {title} » correspond à « {of} » ({score} %)",
+    "item_failed": "Échec de l’empreinte de {id} : {error}",
+    "pass_started": "Empreintes de la bibliothèque en cours (hors ligne, un fichier à la fois) …",
+    "pass_done": "Empreintes terminées : {n} fichiers, {found} re-uploads probables, {failed} en échec",
+    "pass_cancelled": "Empreintes annulées : {n} fichiers, {found} re-uploads probables, {failed} en échec",
+    "pass_failed": "Échec des empreintes de la bibliothèque : {error}"
   }
 }

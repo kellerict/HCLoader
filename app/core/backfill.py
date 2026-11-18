@@ -63,9 +63,20 @@ PAGE_SIZE = {
     (platforms.YOUTUBE, "playlist"): 100,
     (platforms.SOUNDCLOUD, "channel"): 200,
     (platforms.SOUNDCLOUD, "playlist"): 50,
+    # v0.10.0: Mixcloud GraphQL pages of 100, hearthis.at API pages of 20
+    (platforms.MIXCLOUD, "channel"): 100,
+    (platforms.MIXCLOUD, "playlist"): 100,
+    (platforms.HEARTHIS, "channel"): 20,
+    (platforms.HEARTHIS, "playlist"): 20,
 }
-# requests before the first entries arrive (YouTube: webpage; SoundCloud: client id + resolve)
-OVERHEAD = {platforms.YOUTUBE: 1, platforms.SOUNDCLOUD: 3}
+# requests before the first entries arrive (YouTube: webpage; SoundCloud: client id + resolve;
+# Mixcloud / hearthis.at: none, the first page is the first request)
+OVERHEAD = {
+    platforms.YOUTUBE: 1,
+    platforms.SOUNDCLOUD: 3,
+    platforms.MIXCLOUD: 0,
+    platforms.HEARTHIS: 0,
+}
 
 Progress = Callable[[dict[str, Any]], None]
 
@@ -98,6 +109,8 @@ def refusal(source: Mapping[str, Any] | None, settings: Settings) -> str | None:
     platform = source.get("platform") or platforms.YOUTUBE
     if platform == platforms.SOUNDCLOUD and not settings.soundcloud.enabled:
         return tr("sc.off")
+    if not settings.platform_enabled(platform):
+        return tr("platform.off", platform=platforms.label(platform))
     return None
 
 

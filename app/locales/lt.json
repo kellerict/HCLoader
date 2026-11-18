@@ -81,7 +81,8 @@
     "video_unknown": "Vaizdo įrašas nežinomas",
     "watchlist_backoff": "Pauzė aktyvi iki {until} – tikrinimas užblokuotas",
     "ytdlp_up_to_date": "yt-dlp ir įskiepis yra naujausi",
-    "ytdlp_updated_restart": "yt-dlp atnaujintas – paleiskite HCLoader iš naujo"
+    "ytdlp_updated_restart": "yt-dlp atnaujintas – paleiskite HCLoader iš naujo",
+    "platform_user_unknown": "{platform} įkėlėjas nežinomas (nėra profilio URL)"
   },
   "backfill": {
     "done": "Nuskaityti viską: {name} baigta – nuskaityta įrašų: {n}, naujų gautuosiuose: {added}",
@@ -419,11 +420,15 @@
     "sc_url_expected": "Tikimasi „SoundCloud“ URL (https://soundcloud.com/…).",
     "sc_url_unsupported": "Nepalaikomas „SoundCloud“ URL. Leidžiama: soundcloud.com/<user>, …/<user>/tracks arba …/<user>/sets/<set> (pavieniai takeliai nėra šaltinis).",
     "type_invalid": "Tipas turi būti kanalas, grojaraštis arba paieška.",
-    "unsupported_url": "Nepalaikomas URL – tikimasi „YouTube“ URL (kanalas, grojaraštis) arba „SoundCloud“ URL (soundcloud.com/<user>, …/<user>/tracks, …/<user>/sets/<set>).",
+    "unsupported_url": "Nepalaikomas URL – tikimasi YouTube kanalo ar grojaraščio, SoundCloud naudotojo ar rinkinio arba Mixcloud ar hearthis.at naudotojo ar grojaraščio URL.",
     "url_missing": "Trūksta URL.",
     "url_or_query_missing": "Trūksta URL arba paieškos frazės.",
     "url_too_long": "URL per ilgas.",
-    "youtube_url_expected": "Tikimasi „YouTube“ URL (https://www.youtube.com/…)."
+    "youtube_url_expected": "Tikimasi „YouTube“ URL (https://www.youtube.com/…).",
+    "platform_url_expected": "Tikėtasi {platform} URL (https://…).",
+    "platform_url_unsupported": "Nepalaikomas {platform} URL. Leidžiama: naudotojo profilis arba vienas jo grojaraščių (pavieniai takeliai nėra šaltinis).",
+    "platform_set_type": "{platform}: grojaraščiui pasirinkite tipą „Grojaraštis“.",
+    "platform_playlist_expected": "Tikėtasi {platform} grojaraščio URL."
   },
   "tag": {
     "cover_failed": "Viršelio sukurti nepavyko: {error}",
@@ -544,7 +549,8 @@
       "one": "Stebimų šaltinių patikra pradėta · šaltinių: {n}",
       "other": "Stebimų šaltinių patikra pradėta · šaltinių: {n}"
     },
-    "until": " iki {until}"
+    "until": " iki {until}",
+    "skipped_platform_off": "Šaltinis „{name}“ praleistas: {platform} išjungta"
   },
   "yt": {
     "archive_not_writable": "Atsisiuntimų archyvas neįrašomas ({path}): {error}",
@@ -570,7 +576,9 @@
     "sc_ext_ok": "yt-dlp {version}: „SoundCloud“ plėtinys patikrintas su {checked} (sąsajos sutampa)",
     "skipped_archive": "Praleista (yra atsisiuntimų archyve): {id}",
     "skipped_done": "Praleista (jau atsisiųsta): {id}",
-    "unexpected": "Netikėta klaida atsisiunčiant {id}"
+    "unexpected": "Netikėta klaida atsisiunčiant {id}",
+    "mc_ext_inactive": "Mixcloud plėtinys neaktyvus (yt-dlp {version} pasikeitė: {error}) – numatytasis veikimas, sąrašuose gali trūkti pavadinimo/trukmės",
+    "no_track_page": "Takelio puslapis nežinomas – vėl raskite setą per paiešką arba stebimų sąrašą"
   },
   "analysis": {
     "no_ffmpeg": "Trūksta ffmpeg – garsumo ir bangos formos analizuoti negalima (Nustatymai › Priežiūra)",
@@ -678,5 +686,23 @@
     "test_failed": "Bandomojo pranešimo parodyti nepavyko – žr. žurnalą",
     "log_unavailable": "Pranešimas (neparodytas, Windows pranešimai nepasiekiami): {title}",
     "log_failed": "Windows pranešimo parodyti nepavyko: {error}"
+  },
+  "platform": {
+    "off": "{platform} išjungta",
+    "off_in_settings": "{platform} išjungta nustatymuose",
+    "off_settings": "{platform} išjungta (Nustatymai › {platform})",
+    "off_settings_dot": "{platform} išjungta (Nustatymai › {platform})."
+  },
+  "reupload": {
+    "off": "Pakartotinių įkėlimų atpažinimas išjungtas (Nustatymai › Pakartotiniai įkėlimai)",
+    "not_marked": "Šis setas nepažymėtas kaip pakartotinis įkėlimas",
+    "bad_action": "Nežinomas veiksmas (leidžiama: keep, link, delete_new, open)",
+    "no_audio": "Nėra tinkamo garso piršto atspaudui (tyla arba per trumpa)",
+    "found": "Tikėtinas pakartotinis įkėlimas: „{title}“ atitinka „{of}“ ({score} %)",
+    "item_failed": "{id} piršto atspaudas nepavyko: {error}",
+    "pass_started": "Kuriami bibliotekos piršto atspaudai (neprisijungus, po vieną failą) …",
+    "pass_done": "Biblioteka patikrinta: failų {n}, tikėtinų pakartotinių įkėlimų {found}, nepavyko {failed}",
+    "pass_cancelled": "Atšaukta: failų {n}, tikėtinų pakartotinių įkėlimų {found}, nepavyko {failed}",
+    "pass_failed": "Bibliotekos piršto atspaudai nepavyko: {error}"
   }
 }

@@ -95,6 +95,13 @@ _SC_NAME_RE = r"[A-Za-z0-9_-]+"
 _SC_USER_PATH_RE = re.compile(rf"^/({_SC_NAME_RE})(?:/(tracks))?/?$")
 _SC_SET_PATH_RE = re.compile(rf"^/({_SC_NAME_RE})/sets/([A-Za-z0-9_:-]+)/?$")
 UNSUPPORTED_URL = "source.unsupported_url"  # message key (app/locales)
+# v0.10.0 Mixcloud: user root, /uploads or /playlists/<slug>; hearthis.at: user root or
+# /set/<slug>. Single tracks and site pages are refused.
+_MC_NAME_RE = r"[A-Za-z0-9_.-]+"
+_MC_USER_PATH_RE = re.compile(rf"^/({_MC_NAME_RE})(?:/(uploads))?/?$")
+_MC_LIST_PATH_RE = re.compile(rf"^/({_MC_NAME_RE})/playlists/([A-Za-z0-9_.%-]+)/?$")
+_HT_USER_PATH_RE = re.compile(r"^/([\w.-]+)/?$")
+_HT_SET_PATH_RE = re.compile(r"^/([\w.-]+)/set/([\w.-]+)/?$")
 
 SourceEvent = Callable[[dict[str, Any]], None]
 Enqueue = Callable[[list[str]], list[str]]
@@ -112,6 +119,44 @@ def soundcloud_parts(parsed: Any) -> tuple[str, str | None] | None:
     m = _SC_USER_PATH_RE.match(path)
     if m and m.group(1).lower() not in _SC_RESERVED:
         return "user", None
+    return None
+
+
+def other_parts(platform: str, parsed: Any) -> tuple[str, str, str | None] | None:
+    """(kind, user, playlist/set slug) of a parsed Mixcloud / hearthis.at URL: ('user', u, None)
+    or ('set', u, slug); None = no user/playlist page (single track, site page)."""
+    path = parsed.path or "/"
+    if platform == platforms.MIXCLOUD:
+        reserved, user_re, list_re = platforms.MC_USER_RESERVED, _MC_USER_PATH_RE, _MC_LIST_PATH_RE
+    elif platform == platforms.HEARTHIS:
+        reserved, user_re, list_re = platforms.HT_USER_RESERVED, _HT_USER_PATH_RE, _HT_SET_PATH_RE
+    else:
+        return None
+    m = list_re.match(path)
+    if m and m.group(1).lower() not in reserved:
+        return "set", m.group(1), m.group(2)
+    m = user_re.match(path)
+    if m and m.group(1).lower() not in reserved:
+        return "user", m.group(1), None
+    return None
+
+
+def _other_error(platform: str, target: str, stype: str) -> str | None:
+    """Mixcloud / hearthis.at: user = channel, playlist/set = playlist."""
+    try:
+        parsed = urlparse(target)
+    except ValueError:
+        return tr("source.invalid_url")
+    label = platforms.label(platform)
+    if parsed.scheme not in ("http", "https"):
+        return tr("source.platform_url_expected", platform=label)
+    kind = other_parts(platform, parsed)
+    if kind is None:
+        return tr("source.platform_url_unsupported", platform=label)
+    if stype == "channel" and kind[0] != "user":
+        return tr("source.platform_set_type", platform=label)
+    if stype == "playlist" and kind[0] != "set":
+        return tr("source.platform_playlist_expected", platform=label)
     return None
 
 
@@ -149,7 +194,7 @@ def validate_source(
     if stype == "search":
         target = re.sub(r"\s+", " ", target)
         platform = str(data.get("platform") or platforms.YOUTUBE)
-        if not platforms.valid(platform):
+        if not platforms.valid(platform) or not platforms.info(platform).search:
             errors["platform"] = tr("source.platform_invalid")
         if not target:
             errors["url_or_query"] = tr("source.query_missing")
@@ -163,6 +208,11 @@ def validate_source(
         elif platforms.url_platform(target) == platforms.SOUNDCLOUD:
             platform = platforms.SOUNDCLOUD
             err = _soundcloud_error(target, stype)
+            if err:
+                errors["url_or_query"] = err
+        elif platforms.url_platform(target) in (platforms.MIXCLOUD, platforms.HEARTHIS):
+            platform = platforms.url_platform(target) or platforms.YOUTUBE
+            err = _other_error(platform, target, stype)
             if err:
                 errors["url_or_query"] = err
         elif platforms.url_platform(target) is None and target.lower().startswith(
@@ -196,6 +246,10 @@ def validate_source(
 
     if platform == platforms.SOUNDCLOUD and not settings.soundcloud.enabled:
         errors.setdefault("url_or_query", tr("sc.off_settings_dot"))
+    elif platforms.valid(platform) and not settings.platform_enabled(platform):
+        errors.setdefault(
+            "url_or_query", tr("platform.off_settings_dot", platform=platforms.label(platform))
+        )
 
     genre = data.get("default_genre") or None
     if genre == UNSORTED:
@@ -254,6 +308,9 @@ def _same_target(a: str, b: str, platform: str) -> bool:
         if platform == platforms.SOUNDCLOUD:
             text = re.sub(r"^https?://(?:www\.|m\.)?", "", text)
             text = re.sub(r"/tracks$", "", text)
+        elif platform in (platforms.MIXCLOUD, platforms.HEARTHIS):
+            text = re.sub(r"^https?://(?:www\.|m\.|beta\.)?", "", text)
+            text = re.sub(r"/uploads$", "", text)
         return text
 
     return key(a) == key(b)
@@ -283,7 +340,12 @@ def suggest_source(url_or_query: str, type_hint: str | None = None) -> dict[str,
     text = re.sub(r"\s+", " ", str(url_or_query or "")).strip()
     out = {"type": "", "platform": platforms.YOUTUBE, "name": "", "url_normalized": ""}
     looks_url = bool(
-        re.match(r"^(https?://|www\.|m\.|youtube\.com|soundcloud\.com|youtu\.be)", text, re.I)
+        re.match(
+            r"^(https?://|www\.|m\.|youtube\.com|soundcloud\.com|youtu\.be|mixcloud\.com|"
+            r"hearthis\.at)",
+            text,
+            re.I,
+        )
     )
     if not text:
         out["type"] = type_hint or ""
@@ -315,6 +377,28 @@ def suggest_source(url_or_query: str, type_hint: str | None = None) -> dict[str,
                 name=_humanize(user)[:MAX_NAME_LENGTH],
                 url_normalized=f"https://soundcloud.com/{user}",
             )
+        return out
+    if platform in (platforms.MIXCLOUD, platforms.HEARTHIS):
+        out["platform"] = platform
+        kind = other_parts(platform, parsed)
+        if kind is None:
+            return out
+        _k, user, slug = kind
+        if platform == platforms.MIXCLOUD:
+            base = f"https://www.mixcloud.com/{user}/"
+            full = f"{base}playlists/{slug}/" if slug else base
+        else:
+            base = f"https://hearthis.at/{user}/"
+            full = f"{base}set/{slug}/" if slug else base
+        if slug:
+            name = f"{_humanize(user)} – {_humanize(slug)}"
+        else:
+            name = _humanize(user)
+        out.update(
+            type="playlist" if slug else "channel",
+            name=name[:MAX_NAME_LENGTH],
+            url_normalized=full,
+        )
         return out
     if platform != platforms.YOUTUBE:
         return out
@@ -493,7 +577,8 @@ class Ingest:
         existing = db.get_video(vid)
         ok, _reason = filters.passes(entry, settings.filters, status=None, blacklist=self.blacklist)
         # 7a: probably the same mix from the other platform -> never automatically loaded
-        dup = duplicates.find_duplicate(db, entry) if ok else None
+        same = bool(self.settings.reupload.enabled and self.settings.reupload.precheck)
+        dup = duplicates.find_duplicate(db, entry, same_platform=same) if ok else None
         if dup and self.hide_dups:
             ok = False
         if existing is None:
@@ -636,11 +721,11 @@ def _maybe_rename(source: Mapping[str, Any], entries: Any, db: Database, res: So
 
 
 def active_platforms(db: Database, settings: Settings | None = None) -> set[str]:
-    """Platforms with an enabled source; SoundCloud only while `soundcloud.enabled` (its
-    sources are skipped otherwise, Review m5). Without sources: {YouTube}."""
+    """Platforms with an enabled source; SoundCloud/Mixcloud/hearthis.at only while switched
+    on (their sources are skipped otherwise, Review m5). Without sources: {YouTube}."""
     names = set(db.source_platforms())
-    if settings is not None and not settings.soundcloud.enabled:
-        names.discard(platforms.SOUNDCLOUD)
+    if settings is not None:
+        names = {p for p in names if settings.platform_enabled(p)}
     return names or {platforms.YOUTUBE}
 
 
@@ -726,6 +811,11 @@ def check_all(
             if platform == platforms.SOUNDCLOUD and not settings.soundcloud.enabled:
                 log.info(tr("watchlist.skipped_sc_off", name=source["name"]))
                 emit({"id": sid, "checking": False, "error": tr("sc.off")})
+                continue
+            if not settings.platform_enabled(platform):
+                label = platforms.label(platform)
+                log.info(tr("watchlist.skipped_platform_off", name=source["name"], platform=label))
+                emit({"id": sid, "checking": False, "error": tr("platform.off", platform=label)})
                 continue
             pth = _platform_throttle(throttle, platform)
             if platform in blocked:  # the first source of this platform hit the backoff

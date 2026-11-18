@@ -126,12 +126,16 @@ download:
   write_id3_chapters: true
   # SoundCloud: Original behalten (meist 128-160 kbps; MP3 320 bringt nichts)
   keep_original_soundcloud: true
+  # Mixcloud: Original behalten (AAC, meist 64-128 kbps; MP3 320 bringt nichts)
+  keep_original_mixcloud: true
+  # hearthis.at: Original behalten (MP3-Stream; MP3 320 bringt nichts)
+  keep_original_hearthis: true
 
 # --- Ablage & Tags ---
 storage:
   # Zielordner; %USERPROFILE% wird ersetzt; relativ (z.B. .\Music) = zum App-Ordner, nur Portable-Version
   target_dir: '%USERPROFILE%\Music\HCLoader'
-  # Ordner-/Dateimuster; Platzhalter: genre, artist, channel, year, date, title, id, platform (id bei SoundCloud: sc-<id>), festival, event_year, stage (leer = entfällt)
+  # Ordner-/Dateimuster; Platzhalter: genre, artist, channel, year, date, title, id, platform (id bei SoundCloud: sc-<id>, Mixcloud: mc-<id>, hearthis.at: ht-<id>), festival, event_year, stage (leer = entfällt)
   path_template: '{genre}/{artist}/{year}/{date} - {title} [{id}]'
   # Maximale Titellänge im Dateinamen (20-200)
   max_title_length: 120
@@ -205,6 +209,52 @@ soundcloud:
   # SoundCloud: Obergrenze der Sperrzeit (Verdopplung bis hierhin)
   backoff_max_hours: 48.0
   # SoundCloud als zweite Plattform nutzen (Suche, Watchlist, Downloads)
+  enabled: true
+
+# --- Mixcloud ---
+mixcloud:
+  # Mixcloud: Pause zwischen Metadaten-Requests in Sekunden (0-60)
+  sleep_requests: 3.0
+  # Mixcloud: minimale Pause zwischen Downloads in Sekunden
+  sleep_interval: 30
+  # Mixcloud: maximale Pause zwischen Downloads (>= minimal)
+  max_sleep_interval: 120
+  # Mixcloud: Download-Tempo in MB/s, 0 = unbegrenzt
+  limit_rate_mb: 3.0
+  # Mixcloud: maximale Downloads pro Lauf (1-100)
+  max_downloads_per_run: 10
+  # Mixcloud: maximale Downloads pro Tag (1-500)
+  max_downloads_per_day: 25
+  # Mixcloud: maximale Suchen pro Stunde (1-200)
+  max_searches_per_hour: 20
+  # Mixcloud: Sperrzeit nach HTTP 429 in Stunden (0.5-168)
+  backoff_initial_hours: 6.0
+  # Mixcloud: Obergrenze der Sperrzeit (Verdopplung bis hierhin)
+  backoff_max_hours: 48.0
+  # Mixcloud als Plattform nutzen (Suche, Watchlist, Downloads)
+  enabled: true
+
+# --- hearthis.at ---
+hearthis:
+  # hearthis.at: Pause zwischen Metadaten-Requests in Sekunden (0-60)
+  sleep_requests: 3.0
+  # hearthis.at: minimale Pause zwischen Downloads in Sekunden
+  sleep_interval: 30
+  # hearthis.at: maximale Pause zwischen Downloads (>= minimal)
+  max_sleep_interval: 120
+  # hearthis.at: Download-Tempo in MB/s, 0 = unbegrenzt
+  limit_rate_mb: 3.0
+  # hearthis.at: maximale Downloads pro Lauf (1-100)
+  max_downloads_per_run: 10
+  # hearthis.at: maximale Downloads pro Tag (1-500)
+  max_downloads_per_day: 25
+  # hearthis.at: maximale Suchen pro Stunde (1-200)
+  max_searches_per_hour: 20
+  # hearthis.at: Sperrzeit nach HTTP 429 in Stunden (0.5-168)
+  backoff_initial_hours: 6.0
+  # hearthis.at: Obergrenze der Sperrzeit (Verdopplung bis hierhin)
+  backoff_max_hours: 48.0
+  # hearthis.at als Plattform nutzen (Suche, Watchlist, Downloads)
   enabled: true
 
 # --- Zeitplan ---
@@ -332,3 +382,18 @@ media_server:
   delay_seconds: 120
   # HTTPS-Zertifikat prüfen (aus nur für selbst signierte Zertifikate im Heimnetz)
   verify_tls: true
+
+# --- Re-Uploads (Audio-Fingerabdruck) ---
+reupload:
+  # Re-Uploads erkennen: Audio-Fingerabdruck pro Set offline mit ffmpeg (kein Netz), Vergleich mit der Bibliothek
+  enabled: true
+  # Fingerabdruck nach jedem Download berechnen (niedrige Priorität)
+  fingerprint_after_download: true
+  # Minuten ab Anfang, die in den Fingerabdruck eingehen (1-10)
+  head_minutes: 3
+  # Zusätzliche 30-s-Fenster über den Rest des Sets verteilt (0-8)
+  windows: 3
+  # Ab diesem Anteil übereinstimmender Hashes (in %) gilt ein Set als Re-Upload (5-90)
+  min_score: 20
+  # Vor dem Download Dauer (+-5 s) und Titel auch auf derselben Plattform vergleichen (kein zusätzlicher Request); Treffer kommen in den Eingang
+  precheck: false

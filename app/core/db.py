@@ -632,6 +632,52 @@ def _m15_stats(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX idx_videos_downloaded ON videos(status, downloaded_at)")
 
 
+def _m16_fingerprints(conn: sqlite3.Connection) -> None:
+    """v0.10.0 re-upload detection (core/fingerprint.py, docs/decisions.md «Re-upload
+    detection»).
+
+    - `fingerprints`: one row per fingerprinted library item. `hashes` = packed landmark hashes
+      (uint32 hash + uint32 frame, little endian), `segments` = JSON [[start, end], …] of the
+      fingerprinted frame ranges, `version` = algorithm version (a new version recomputes),
+      `error` = last local error (ffmpeg missing, unreadable file; NULL hashes then).
+    - `fingerprint_index`: the inverted index (a deterministic sample of the hashes, about one
+      in four) for the fast candidate search; verified against the full `hashes` afterwards.
+    - `reuploads`: «probable re-upload of X». `video_id` = the newer download, `of_id` = the
+      library item it matches, `state` open | kept (keep both, dismissed) | linked (same
+      mix, kept as a link).
+    """
+    conn.execute(
+        """CREATE TABLE fingerprints(
+          video_id TEXT PRIMARY KEY REFERENCES videos(id) ON DELETE CASCADE,
+          version INTEGER NOT NULL,
+          created TEXT NOT NULL,
+          duration REAL,
+          hashes BLOB,
+          segments TEXT,
+          error TEXT
+        )"""
+    )
+    conn.execute(
+        """CREATE TABLE fingerprint_index(
+          hash INTEGER NOT NULL,
+          video_id TEXT NOT NULL REFERENCES videos(id) ON DELETE CASCADE
+        )"""
+    )
+    conn.execute("CREATE INDEX idx_fp_index_hash ON fingerprint_index(hash)")
+    conn.execute("CREATE INDEX idx_fp_index_video ON fingerprint_index(video_id)")
+    conn.execute(
+        """CREATE TABLE reuploads(
+          video_id TEXT PRIMARY KEY REFERENCES videos(id) ON DELETE CASCADE,
+          of_id TEXT NOT NULL,
+          score REAL NOT NULL,
+          offset_s REAL,
+          detected TEXT NOT NULL,
+          state TEXT NOT NULL DEFAULT 'open' CHECK(state IN ('open','kept','linked'))
+        )"""
+    )
+    conn.execute("CREATE INDEX idx_reuploads_of ON reuploads(of_id)")
+
+
 # Append new steps at the end; never edit existing ones. Step i upgrades version i -> i+1.
 MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [
     _m1_initial,
@@ -649,6 +695,7 @@ MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [
     _m13_artists_and_playlists,
     _m14_artist_index_revision,
     _m15_stats,
+    _m16_fingerprints,
 ]
 # statuses a user may put into the download queue (enqueue / retry)
 ENQUEUEABLE = ("new", "inbox", "failed")
@@ -990,14 +1037,23 @@ class Database:
         return [r["platform"] for r in rows]
 
     def duplicate_candidates(
-        self, platform: str, duration: int, *, tolerance: int = 5, statuses: Sequence[str] = ()
+        self,
+        platform: str,
+        duration: int,
+        *,
+        tolerance: int = 5,
+        statuses: Sequence[str] = (),
+        same_platform: bool = False,
     ) -> list[dict[str, Any]]:
-        """Rows of *other* platforms with a duration within +-tolerance (Phase 7a duplicates)."""
-        sql = (
-            "SELECT id, title, platform, status, duration FROM videos WHERE platform != ? "
-            "AND duration BETWEEN ? AND ?"
-        )
-        params: list[Any] = [platform, duration - tolerance, duration + tolerance]
+        """Rows of *other* platforms with a duration within +-tolerance (Phase 7a duplicates);
+        `same_platform` (v0.10.0 re-upload pre-check): of every platform."""
+        sql = "SELECT id, title, platform, status, duration FROM videos WHERE "
+        params: list[Any] = []
+        if not same_platform:
+            sql += "platform != ? AND "
+            params.append(platform)
+        sql += "duration BETWEEN ? AND ?"
+        params += [duration - tolerance, duration + tolerance]
         if statuses:
             sql += f" AND status IN ({','.join('?' for _ in statuses)})"
             params += list(statuses)

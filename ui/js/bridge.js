@@ -272,6 +272,19 @@
      scan_media_server()                -> {ok, server, files, requests, partial, at} | {ok:false, code, error}
                                            ganze Bibliothek jetzt einlesen (gespeicherte Einstellungen); auch Event "media_scan"
 
+   Re-Uploads per Audio-Fingerabdruck (v0.10.0; Vertrag: docs/bridge-api.md «Re-upload detection»)
+     get_reupload_status()              -> {ok?, total, fingerprinted, failed, pending, open, kept, linked, last_pass,
+                                            ffmpeg, running, enabled}
+     fingerprint_library(opts?)         -> {ok, started, scope} | {ok, started:false, running:true} | {ok:false, error}
+                                           opts {scope:"new"|"all"}; offline, eine Datei nach der anderen, niedrige
+                                           Priorität; Fortschritt: Event "fingerprint", Treffer: Event "reupload"
+     cancel_fingerprint_library()       -> {ok, running}
+     get_reuploads(opts?)               -> {ok, items:[{id, title, platform, channel, file_path, downloaded_at,
+                                            reupload: Reupload}]}   opts {state:"open" (Standard) | "all"}
+     resolve_reupload(id, action)       -> {ok, id, state, reupload} | {ok:false, error}
+                                           action "keep" (beide behalten) | "link" (gleicher Mix, verknüpft) |
+                                           "delete_new" (diese neuere Datei löschen, Eintrag -> ignored) | "open" (rückgängig)
+
    Festival-Sammler (v0.5.0; Vertrag, Datenformen, Events: docs/bridge-api.md «Festival collector»)
      get_collector_editions()           -> [CollectorEdition]   Ausgaben mit Checkliste (offline)
      open_collector_edition(data)       -> {ok, edition: CollectorEdition} | {ok:false, errors, error}
@@ -358,6 +371,9 @@
                   danach retag(id) (verschiebt die Datei in den Ordner des Genres); bei missing/unknown nur set_genre.
                   ▶: player.mode "internal" -> get_media(id) + Mini-Player (js/player.js), "external" -> play_external(id).
                   v0.3.0: festival (Festival|null), festival_suggestion (Festival ohne manual|null).
+                  v0.10.0: reupload (Reupload|null) – «Vermutlich Re-Upload von X»; Filter get_library({reupload:true})
+                  = nur offene Markierungen.
+     Reupload    {of: {id, title, platform, channel, in_library}, score (0..1), offset_s, state: "open"|"kept"|"linked"}
                   Festival-Badge (js/festivals.js): Klick -> Formular -> set_festival(id, data), danach retag(id)
                   (bei missing/unknown nur set_festival). Vorschlag: gestrichelt, «Übernehmen» = set_festival
                   mit {edition_id, stage, set_type, episode}. Die Bibliothek gruppiert selbst aus `festival`
@@ -388,7 +404,7 @@
                   backoff: {active, until (ISO|null), level, remaining_s},
                   next_check (ISO|null), queue_length, queue_paused, inbox_count,
                   counters: {downloads_run, downloads_day, searches_hour},
-                  platforms: {youtube: P, soundcloud: P}}   (7a; backoff/counters oben = YouTube)
+                  platforms: {youtube: P, soundcloud: P, mixcloud: P, hearthis: P}}   (7a, v0.10.0; backoff/counters oben = YouTube)
                   P = {enabled, backoff: {active, until, level, remaining_s, reason},
                        counters: {downloads_run, downloads_day, searches_hour},
                        limits: {downloads_run, downloads_day, searches_hour}}
@@ -444,6 +460,9 @@
                      phase: "start"|"progress"|"done"|"error" (v0.7.0, «Lautheit & Wellenform analysieren»)
      media_analysed  {id, ok, loudness?, peaks, tagged, error?}   v0.7.0 eine Datei analysiert (nach Download/Durchlauf)
      waveform        {id, ok, peaks?, duration?, loudness?, error?}   v0.7.0 angeforderte Wellenform ist fertig
+     fingerprint     {phase, scope, done?, total?, found?, failed?, cancelled?, error?}
+                     phase: "start"|"progress"|"done"|"error" (v0.10.0, «Bibliothek abgleichen»)
+     reupload        {id, reupload: Reupload|null, deleted?}   v0.10.0 Markierung neu/geändert/aufgelöst
      playlists_synced {synced, failed}                 v0.8.0 gespeicherte Playlists nach Downloads neu geschrieben
      stats_sizes     {phase: "progress"|"done", done, total, missing?}   v0.9.0 Dateigrössen werden gemessen
      media_scan      {ok, server, files, requests?, partial?, at, error?, code?}   v0.9.0 Plex/Jellyfin-Scan ausgelöst

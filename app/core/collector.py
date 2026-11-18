@@ -1071,6 +1071,9 @@ def check_playlist_url(url: Any, settings: Settings) -> str:
         raise CollectorError({"url": tr("collector.playlist_url_invalid")})
     if info.get("platform") == platforms.SOUNDCLOUD and not settings.soundcloud.enabled:
         raise CollectorError({"url": tr("sc.off")})
+    if not settings.platform_enabled(info.get("platform")):
+        label = platforms.label(info.get("platform"))
+        raise CollectorError({"url": tr("platform.off", platform=label)})
     return str(info["url_normalized"])
 
 

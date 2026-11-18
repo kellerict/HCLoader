@@ -34,7 +34,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from .core import analysis, binaries, locks, preflight, watchlist
+from .core import analysis, binaries, fingerprint, locks, preflight, watchlist
 from .core.discover import format_until
 from .core.i18n import tr
 from .core.logging_setup import live_handler
@@ -1746,6 +1746,212 @@ class AnalysisQueue:
         key = "analysis.pass_cancelled" if res["cancelled"] else "analysis.pass_done"
         log_ok(log, tr(key, n=res["done"], analysed=res["analysed"], failed=res["failed"]))
         self._bus.emit("audio_analysis", {"phase": "done", "scope": scope, **res})
+
+
+class FingerprintQueue:
+    """v0.10.0 re-upload detection (core/fingerprint.py): one daemon thread, one file at a
+    time, ffmpeg at lowered priority, never the network.
+
+    1. items after a download (`request`) -> event `reupload` {id, reupload} on a match
+    2. one backfill pass over the library (`start_pass`, cancellable) -> events
+       `fingerprint` {phase: start|progress|done|error, scope, done, total, found, failed}
+       and `reupload` per match; new downloads are served between files of the pass.
+
+    `busy()` (the loudness analysis is working) makes it wait between files, so at most one
+    decoding ffmpeg runs at a time."""
+
+    def __init__(
+        self,
+        db: Any,
+        settings_provider: Callable[[], Any],
+        bus: EventBus,
+        *,
+        decoder: Callable[..., Any] | None = None,
+        busy: Callable[[], bool] | None = None,
+        name: str = "hcloader-fingerprint",
+        idle_wait: float = 1.0,
+    ) -> None:
+        self._db = db
+        self._settings = settings_provider
+        self._bus = bus
+        self._decoder = decoder or fingerprint.decode
+        self._busy = busy or (lambda: False)
+        self._name = name
+        self._idle_wait = idle_wait
+        self._cond = threading.Condition()
+        self._items: deque[str] = deque()
+        self._pass_scope: str | None = None
+        self._pass_running = False
+        self._pass_cancel = threading.Event()
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+        self.current: str | None = None
+
+    def start(self) -> None:
+        with self._cond:
+            if self._thread is None or not self._thread.is_alive():
+                self._stop.clear()
+                self._thread = threading.Thread(target=self._loop, name=self._name, daemon=True)
+                self._thread.start()
+
+    def stop(self, timeout: float = 5.0) -> None:
+        self._stop.set()
+        self._pass_cancel.set()
+        with self._cond:
+            self._cond.notify_all()
+        thread = self._thread
+        if thread is not None and thread.is_alive() and thread is not threading.current_thread():
+            thread.join(timeout)
+
+    def request(self, video_id: str) -> None:
+        with self._cond:
+            if video_id not in self._items:
+                self._items.append(video_id)
+            self._cond.notify_all()
+        self.start()
+
+    def start_pass(self, scope: str = "new") -> bool:
+        with self._cond:
+            if self._pass_running or self._pass_scope is not None:
+                return False
+            self._pass_cancel.clear()
+            self._pass_scope = "all" if scope == "all" else "new"
+            self._cond.notify_all()
+        self.start()
+        return True
+
+    def cancel_pass(self) -> None:
+        with self._cond:
+            if self._pass_scope is not None and not self._pass_running:
+                scope, self._pass_scope = self._pass_scope, None
+                self._bus.emit(
+                    "fingerprint",
+                    {
+                        "phase": "done",
+                        "scope": scope,
+                        "ok": True,
+                        "cancelled": True,
+                        "total": 0,
+                        "done": 0,
+                        "found": 0,
+                        "failed": 0,
+                    },
+                )
+            self._pass_cancel.set()
+
+    def pass_running(self) -> bool:
+        with self._cond:
+            return self._pass_running or self._pass_scope is not None
+
+    def idle(self) -> bool:
+        with self._cond:
+            return not (self._items or self._pass_running or self._pass_scope or self.current)
+
+    def _loop(self) -> None:
+        while not self._stop.is_set():
+            with self._cond:
+                while not (self._stop.is_set() or self._items or self._pass_scope):
+                    self._cond.wait()
+                if self._stop.is_set():
+                    return
+                scope = None
+                if not self._items:
+                    scope, self._pass_scope = self._pass_scope, None
+                    self._pass_running = scope is not None
+            try:
+                if scope is not None:
+                    self._run_pass(scope)
+                else:
+                    self._serve()
+            except Exception:
+                log.exception("Fingerprint failed")
+            finally:
+                with self._cond:
+                    if scope is not None:
+                        self._pass_running = False
+                    self.current = None
+
+    def _yield(self) -> None:
+        """Wait while the loudness analysis decodes (one ffmpeg at a time)."""
+        while self._busy() and not self._stop.wait(self._idle_wait):
+            pass
+
+    def _serve(self) -> None:
+        while not self._stop.is_set():
+            with self._cond:
+                if not self._items:
+                    return
+                vid = self._items.popleft()
+                self.current = vid
+            try:
+                self._yield()
+                self._item(vid)
+            finally:
+                with self._cond:
+                    self.current = None
+
+    def _emit_match(self, res: dict[str, Any]) -> None:
+        mark = res.get("reupload")
+        if mark:
+            self._bus.emit("reupload", {"id": mark.get("id"), "reupload": mark})
+
+    def _item(self, vid: str) -> None:
+        if not self._settings().reupload.enabled:
+            return
+        try:
+            res = fingerprint.process(
+                self._db, self._settings(), vid, cancel=self._stop, decoder=self._decoder
+            )
+        except Exception as exc:
+            log.warning("Fingerprint failed: %s", vid, exc_info=True)
+            res = {"ok": False, "id": vid, "error": str(exc)}
+        if res.get("cancelled"):
+            return
+        if not res.get("ok"):
+            log.warning(tr("reupload.item_failed", id=vid, error=res.get("error") or "?"))
+        self._emit_match(res)
+
+    def _run_pass(self, scope: str) -> None:
+        self._bus.emit("fingerprint", {"phase": "start", "scope": scope})
+        log.info(tr("reupload.pass_started"))
+
+        def progress(data: dict[str, Any]) -> None:
+            self._bus.emit("fingerprint", {"phase": "progress", "scope": scope, **data})
+
+        def between() -> None:
+            self._serve()
+            self._yield()
+
+        try:
+            res = fingerprint.run_pass(
+                self._db,
+                self._settings,
+                scope=scope,
+                progress=progress,
+                cancel=_AnyEvent(self._pass_cancel, self._stop),
+                between=between,
+                item_done=self._emit_match,
+                decoder=self._decoder,
+            )
+        except Exception as exc:
+            log.error(tr("reupload.pass_failed", error=exc))
+            self._bus.emit(
+                "fingerprint",
+                {
+                    "phase": "error",
+                    "scope": scope,
+                    "ok": False,
+                    "error": tr("reupload.pass_failed", error=exc),
+                },
+            )
+            return
+        if not res.get("ok"):
+            log.error(res.get("error") or "")
+            self._bus.emit("fingerprint", {"phase": "error", "scope": scope, **res})
+            return
+        key = "reupload.pass_cancelled" if res["cancelled"] else "reupload.pass_done"
+        log_ok(log, tr(key, n=res["done"], found=res["found"], failed=res["failed"]))
+        self._bus.emit("fingerprint", {"phase": "done", "scope": scope, **res})
 
 
 class _AnyEvent:

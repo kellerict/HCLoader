@@ -79,7 +79,8 @@
     "video_unknown": "Videon är okänd",
     "watchlist_backoff": "Backoff aktiv till {until} – kontroll blockerad",
     "ytdlp_up_to_date": "yt-dlp och plugin är aktuella",
-    "ytdlp_updated_restart": "yt-dlp uppdaterat – starta om HCLoader"
+    "ytdlp_updated_restart": "yt-dlp uppdaterat – starta om HCLoader",
+    "platform_user_unknown": "{platform}-uppladdare okänd (ingen profil-URL)"
   },
   "backfill": {
     "done": "Läs in allt: {name} klar – {n} poster lästa, {added} nya i inkorgen",
@@ -411,11 +412,15 @@
     "sc_url_expected": "SoundCloud-URL förväntas (https://soundcloud.com/…).",
     "sc_url_unsupported": "SoundCloud-URL stöds inte. Tillåtet: soundcloud.com/<user>, …/<user>/tracks eller …/<user>/sets/<set> (enskilda spår är ingen källa).",
     "type_invalid": "Typen måste vara kanal, spellista eller sökning.",
-    "unsupported_url": "URL stöds inte – förväntar en YouTube-URL (kanal, spellista) eller en SoundCloud-URL (soundcloud.com/<user>, …/<user>/tracks, …/<user>/sets/<set>).",
+    "unsupported_url": "URL:en stöds inte – förväntat är en kanal- eller spellist-URL från YouTube, en användar- eller set-URL från SoundCloud eller en användar- eller spellist-URL från Mixcloud eller hearthis.at.",
     "url_missing": "URL saknas.",
     "url_or_query_missing": "URL eller sökterm saknas.",
     "url_too_long": "URL:en är för lång.",
-    "youtube_url_expected": "YouTube-URL förväntas (https://www.youtube.com/…)."
+    "youtube_url_expected": "YouTube-URL förväntas (https://www.youtube.com/…).",
+    "platform_url_expected": "{platform}-URL förväntas (https://…).",
+    "platform_url_unsupported": "{platform}-URL stöds inte. Tillåtet: en användares profil eller en av dess spellistor (enstaka spår är ingen källa).",
+    "platform_set_type": "{platform}: välj typen ”Spellista” för en spellista.",
+    "platform_playlist_expected": "{platform}-spellistans URL förväntas."
   },
   "tag": {
     "cover_failed": "Omslaget kunde inte skapas: {error}",
@@ -532,7 +537,8 @@
       "one": "Kontroll av bevakningen startad · {n} källa",
       "other": "Kontroll av bevakningen startad · {n} källor"
     },
-    "until": " till {until}"
+    "until": " till {until}",
+    "skipped_platform_off": "Källan ”{name}” hoppades över: {platform} är avstängt"
   },
   "yt": {
     "archive_not_writable": "Nedladdningsarkivet är inte skrivbart ({path}): {error}",
@@ -558,7 +564,9 @@
     "sc_ext_ok": "yt-dlp {version}: SoundCloud-tillägget verifierat med {checked} (gränssnitten stämmer)",
     "skipped_archive": "Hoppade över (finns i nedladdningsarkivet): {id}",
     "skipped_done": "Hoppade över (redan nedladdad): {id}",
-    "unexpected": "Oväntat fel vid nedladdning av {id}"
+    "unexpected": "Oväntat fel vid nedladdning av {id}",
+    "mc_ext_inactive": "Mixcloud-tillägget är inte aktivt (yt-dlp {version} ändrades: {error}) – standardbeteende, titel/längd kan saknas i listor",
+    "no_track_page": "Spårsidan är okänd – hitta setet igen via sökningen eller bevakningslistan"
   },
   "analysis": {
     "no_ffmpeg": "ffmpeg saknas – ljudstyrka och vågform kan inte analyseras (Inställningar › Underhåll)",
@@ -656,5 +664,23 @@
     "test_failed": "Testaviseringen kunde inte visas – se loggen",
     "log_unavailable": "Avisering (visades inte, inga Windows-aviseringar tillgängliga): {title}",
     "log_failed": "Windows-aviseringen kunde inte visas: {error}"
+  },
+  "platform": {
+    "off": "{platform} är avstängt",
+    "off_in_settings": "{platform} är avstängt i inställningarna",
+    "off_settings": "{platform} är avstängt (Inställningar › {platform})",
+    "off_settings_dot": "{platform} är avstängt (Inställningar › {platform})."
+  },
+  "reupload": {
+    "off": "Igenkänning av omuppladdningar är avstängd (Inställningar › Omuppladdningar)",
+    "not_marked": "Det här setet är inte markerat som omuppladdning",
+    "bad_action": "Okänd åtgärd (tillåtet: keep, link, delete_new, open)",
+    "no_audio": "Inget användbart ljud för ett fingeravtryck (tystnad eller för kort)",
+    "found": "Trolig omuppladdning: ”{title}” matchar ”{of}” ({score} %)",
+    "item_failed": "Fingeravtryck för {id} misslyckades: {error}",
+    "pass_started": "Biblioteket fingeravtrycks (offline, en fil i taget) …",
+    "pass_done": "Biblioteket klart: {n} filer, {found} troliga omuppladdningar, {failed} misslyckades",
+    "pass_cancelled": "Avbrutet: {n} filer, {found} troliga omuppladdningar, {failed} misslyckades",
+    "pass_failed": "Fingeravtryck av biblioteket misslyckades: {error}"
   }
 }

@@ -40,6 +40,7 @@ from mutagen.id3 import (
     ID3NoHeaderError,
 )
 
+from . import platforms
 from .binaries import _NO_WINDOW, ffmpeg_path
 from .i18n import tr
 from .paths import normalize_date
@@ -297,9 +298,10 @@ def _tag_text(meta: Mapping[str, Any], key: str) -> str:
 
 
 def _id_tag(meta: Mapping[str, Any]) -> str:
-    """TXXX description of the platform id: YOUTUBE_ID (default) / SOUNDCLOUD_ID (Phase 7a).
+    """TXXX description of the platform id: YOUTUBE_ID (default) / SOUNDCLOUD_ID (Phase 7a) /
+    MIXCLOUD_ID / HEARTHIS_ID (v0.10.0).
     `meta['id']` is the native id of the platform (SoundCloud without `sc:`)."""
-    return "SOUNDCLOUD_ID" if _tag_text(meta, "platform") == "soundcloud" else "YOUTUBE_ID"
+    return platforms.tag_name(_tag_text(meta, "platform") or "youtube")
 
 
 def write_tags(
@@ -358,6 +360,8 @@ _OWN_FRAMES = (
     "COMM::eng",
     "TXXX:YOUTUBE_ID",
     "TXXX:SOUNDCLOUD_ID",
+    "TXXX:MIXCLOUD_ID",
+    "TXXX:HEARTHIS_ID",
     "TXXX:SOURCE",
     # v0.3.0 festivals & series: removed on re-tag when the assignment is gone
     "TXXX:FESTIVAL",

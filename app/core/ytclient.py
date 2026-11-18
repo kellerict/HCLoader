@@ -804,8 +804,9 @@ class YtClient:
                 try:
                     with yt_dlp.YoutubeDL(opts) as ydl:
                         _install_platform_extractors(ydl, platform, window)
+                        extra = {"ie_key": ie_key} if ie_key else {}
                         info = ydl.extract_info(
-                            url, download=False, process=handler is None, ie_key=ie_key
+                            url, download=False, process=handler is None, **extra
                         )
                         if info is None:
                             raise YtClientError(tr("yt.no_data"))
@@ -1002,11 +1003,12 @@ class YtClient:
             with yt_dlp.YoutubeDL(opts) as ydl:
                 gate.install(ydl)
                 _install_platform_extractors(ydl, platform, ("head", limit))
+                forced = _listing_ie_key(platform)
                 ie = ydl.extract_info(
                     normalize_source_url(url),
                     download=False,
                     process=False,
-                    ie_key=_listing_ie_key(platform),
+                    **({"ie_key": forced} if forced else {}),
                 )
                 if ie is None:
                     raise YtClientError(tr("yt.no_data"))

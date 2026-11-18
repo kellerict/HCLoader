@@ -79,7 +79,8 @@
     "video_unknown": "Videoen er ukjent",
     "watchlist_backoff": "Backoff aktiv til {until} – sjekking blokkert",
     "ytdlp_up_to_date": "yt-dlp og plugin er oppdatert",
-    "ytdlp_updated_restart": "yt-dlp oppdatert – start HCLoader på nytt"
+    "ytdlp_updated_restart": "yt-dlp oppdatert – start HCLoader på nytt",
+    "platform_user_unknown": "{platform}-opplaster ukjent (ingen profil-URL)"
   },
   "backfill": {
     "done": "Les inn alt: {name} ferdig – {n} oppføringer lest, {added} nye i innboksen",
@@ -411,11 +412,15 @@
     "sc_url_expected": "SoundCloud-URL forventes (https://soundcloud.com/…).",
     "sc_url_unsupported": "SoundCloud-URL støttes ikke. Tillatt: soundcloud.com/<user>, …/<user>/tracks eller …/<user>/sets/<set> (enkeltspor er ikke en kilde).",
     "type_invalid": "Typen må være kanal, spilleliste eller søk.",
-    "unsupported_url": "URL støttes ikke – forventer en YouTube-URL (kanal, spilleliste) eller en SoundCloud-URL (soundcloud.com/<user>, …/<user>/tracks, …/<user>/sets/<set>).",
+    "unsupported_url": "URL-en støttes ikke – forventet er en kanal- eller spilleliste-URL fra YouTube, en bruker- eller sett-URL fra SoundCloud eller en bruker- eller spilleliste-URL fra Mixcloud eller hearthis.at.",
     "url_missing": "URL mangler.",
     "url_or_query_missing": "URL eller søkeord mangler.",
     "url_too_long": "URL-en er for lang.",
-    "youtube_url_expected": "YouTube-URL forventes (https://www.youtube.com/…)."
+    "youtube_url_expected": "YouTube-URL forventes (https://www.youtube.com/…).",
+    "platform_url_expected": "{platform}-URL forventet (https://…).",
+    "platform_url_unsupported": "{platform}-URL støttes ikke. Tillatt: profilen til en bruker eller en av spillelistene hans (enkeltspor er ingen kilde).",
+    "platform_set_type": "{platform}: velg typen «Spilleliste» for en spilleliste.",
+    "platform_playlist_expected": "URL til {platform}-spilleliste forventet."
   },
   "tag": {
     "cover_failed": "Omslaget kunne ikke lages: {error}",
@@ -532,7 +537,8 @@
       "one": "Sjekk av overvåkingen startet · {n} kilde",
       "other": "Sjekk av overvåkingen startet · {n} kilder"
     },
-    "until": " til {until}"
+    "until": " til {until}",
+    "skipped_platform_off": "Kilden «{name}» hoppet over: {platform} er slått av"
   },
   "yt": {
     "archive_not_writable": "Nedlastingsarkivet er ikke skrivbart ({path}): {error}",
@@ -558,7 +564,9 @@
     "sc_ext_ok": "yt-dlp {version}: SoundCloud-utvidelsen verifisert med {checked} (grensesnittene stemmer)",
     "skipped_archive": "Hoppet over (finnes i nedlastingsarkivet): {id}",
     "skipped_done": "Hoppet over (allerede lastet ned): {id}",
-    "unexpected": "Uventet feil ved nedlasting av {id}"
+    "unexpected": "Uventet feil ved nedlasting av {id}",
+    "mc_ext_inactive": "Mixcloud-utvidelsen er ikke aktiv (yt-dlp {version} endret: {error}) – standardoppførsel, tittel/varighet kan mangle i lister",
+    "no_track_page": "Sporsiden er ukjent – finn settet igjen via søket eller overvåkingslisten"
   },
   "analysis": {
     "no_ffmpeg": "ffmpeg mangler – lydstyrke og bølgeform kan ikke analyseres (Innstillinger › Vedlikehold)",
@@ -656,5 +664,23 @@
     "test_failed": "Testvarselet kunne ikke vises – se loggen",
     "log_unavailable": "Varsel (ikke vist, ingen Windows-varsler tilgjengelig): {title}",
     "log_failed": "Windows-varselet kunne ikke vises: {error}"
+  },
+  "platform": {
+    "off": "{platform} er slått av",
+    "off_in_settings": "{platform} er slått av i innstillingene",
+    "off_settings": "{platform} er slått av (Innstillinger › {platform})",
+    "off_settings_dot": "{platform} er slått av (Innstillinger › {platform})."
+  },
+  "reupload": {
+    "off": "Gjenkjenning av omopplastinger er slått av (Innstillinger › Omopplastinger)",
+    "not_marked": "Dette settet er ikke merket som omopplasting",
+    "bad_action": "Ukjent handling (tillatt: keep, link, delete_new, open)",
+    "no_audio": "Ingen brukbar lyd for et fingeravtrykk (stillhet eller for kort)",
+    "found": "Trolig omopplasting: «{title}» samsvarer med «{of}» ({score} %)",
+    "item_failed": "Fingeravtrykk for {id} mislyktes: {error}",
+    "pass_started": "Biblioteket får fingeravtrykk (frakoblet, én fil om gangen) …",
+    "pass_done": "Biblioteket ferdig: {n} filer, {found} trolige omopplastinger, {failed} mislyktes",
+    "pass_cancelled": "Avbrutt: {n} filer, {found} trolige omopplastinger, {failed} mislyktes",
+    "pass_failed": "Fingeravtrykk av biblioteket mislyktes: {error}"
   }
 }

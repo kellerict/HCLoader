@@ -79,7 +79,8 @@
     "video_unknown": "वीडियो अज्ञात",
     "watchlist_backoff": "बैकऑफ़ {until} तक सक्रिय – जाँच रुकी है",
     "ytdlp_up_to_date": "yt-dlp और प्लग-इन अद्यतन हैं",
-    "ytdlp_updated_restart": "yt-dlp अपडेट हुआ – कृपया HCLoader रीस्टार्ट करें"
+    "ytdlp_updated_restart": "yt-dlp अपडेट हुआ – कृपया HCLoader रीस्टार्ट करें",
+    "platform_user_unknown": "{platform} अपलोडर अज्ञात (कोई प्रोफ़ाइल URL नहीं)"
   },
   "backfill": {
     "done": "सब पढ़ें: {name} पूरा – {n} प्रविष्टियाँ पढ़ी गईं, इनबॉक्स में {added} नई",
@@ -411,11 +412,15 @@
     "sc_url_expected": "SoundCloud URL अपेक्षित (https://soundcloud.com/…)।",
     "sc_url_unsupported": "असमर्थित SoundCloud URL। मान्य: soundcloud.com/<user>, …/<user>/tracks या …/<user>/sets/<set> (अकेले ट्रैक स्रोत नहीं होते)।",
     "type_invalid": "प्रकार चैनल, प्लेलिस्ट या खोज होना चाहिए।",
-    "unsupported_url": "असमर्थित URL – YouTube URL (चैनल, प्लेलिस्ट) या SoundCloud URL (soundcloud.com/<user>, …/<user>/tracks, …/<user>/sets/<set>) अपेक्षित।",
+    "unsupported_url": "असमर्थित URL – YouTube का चैनल या प्लेलिस्ट URL, SoundCloud का उपयोगकर्ता या सेट URL, या Mixcloud / hearthis.at का उपयोगकर्ता या प्लेलिस्ट URL अपेक्षित है।",
     "url_missing": "URL अनुपलब्ध।",
     "url_or_query_missing": "URL या खोज शब्द अनुपलब्ध।",
     "url_too_long": "URL बहुत लंबा है।",
-    "youtube_url_expected": "YouTube URL अपेक्षित (https://www.youtube.com/…)।"
+    "youtube_url_expected": "YouTube URL अपेक्षित (https://www.youtube.com/…)।",
+    "platform_url_expected": "{platform} URL अपेक्षित है (https://…)।",
+    "platform_url_unsupported": "असमर्थित {platform} URL। अनुमत: किसी उपयोगकर्ता की प्रोफ़ाइल या उसकी कोई प्लेलिस्ट (एकल ट्रैक स्रोत नहीं हैं)।",
+    "platform_set_type": "{platform}: प्लेलिस्ट के लिए प्रकार “प्लेलिस्ट” चुनें।",
+    "platform_playlist_expected": "{platform} प्लेलिस्ट URL अपेक्षित है।"
   },
   "tag": {
     "cover_failed": "कवर बन नहीं सका: {error}",
@@ -532,7 +537,8 @@
       "one": "वॉचलिस्ट जाँच शुरू · {n} स्रोत",
       "other": "वॉचलिस्ट जाँच शुरू · {n} स्रोत"
     },
-    "until": " {until} तक"
+    "until": " {until} तक",
+    "skipped_platform_off": "स्रोत “{name}” छोड़ा गया: {platform} बंद है"
   },
   "yt": {
     "archive_not_writable": "डाउनलोड आर्काइव लिखने योग्य नहीं ({path}): {error}",
@@ -558,7 +564,9 @@
     "sc_ext_ok": "yt-dlp {version}: SoundCloud एक्सटेंशन {checked} से सत्यापित (इंटरफ़ेस मेल खाते हैं)",
     "skipped_archive": "छोड़ा गया (डाउनलोड आर्काइव में): {id}",
     "skipped_done": "छोड़ा गया (पहले ही डाउनलोड): {id}",
-    "unexpected": "{id} डाउनलोड करते समय अप्रत्याशित त्रुटि"
+    "unexpected": "{id} डाउनलोड करते समय अप्रत्याशित त्रुटि",
+    "mc_ext_inactive": "Mixcloud एक्सटेंशन सक्रिय नहीं (yt-dlp {version} बदला: {error}) – डिफ़ॉल्ट व्यवहार, सूचियों में शीर्षक/अवधि गायब हो सकते हैं",
+    "no_track_page": "ट्रैक पेज अज्ञात – सेट को खोज या वॉचलिस्ट से फिर से ढूँढें"
   },
   "analysis": {
     "no_ffmpeg": "ffmpeg मौजूद नहीं है – लाउडनेस और वेवफ़ॉर्म का विश्लेषण नहीं हो सकता (सेटिंग्स › रखरखाव)",
@@ -656,5 +664,23 @@
     "test_failed": "परीक्षण नोटिफ़िकेशन नहीं दिखाया जा सका – लॉग देखें",
     "log_unavailable": "नोटिफ़िकेशन (नहीं दिखाया गया, Windows नोटिफ़िकेशन उपलब्ध नहीं): {title}",
     "log_failed": "Windows नोटिफ़िकेशन नहीं दिखाया जा सका: {error}"
+  },
+  "platform": {
+    "off": "{platform} बंद है",
+    "off_in_settings": "{platform} सेटिंग्स में बंद है",
+    "off_settings": "{platform} बंद है (सेटिंग्स › {platform})",
+    "off_settings_dot": "{platform} बंद है (सेटिंग्स › {platform})।"
+  },
+  "reupload": {
+    "off": "री-अपलोड पहचान बंद है (सेटिंग्स › री-अपलोड)",
+    "not_marked": "यह सेट री-अपलोड के रूप में चिह्नित नहीं है",
+    "bad_action": "अज्ञात क्रिया (अनुमत: keep, link, delete_new, open)",
+    "no_audio": "फ़िंगरप्रिंट के लिए उपयोगी ऑडियो नहीं (मौन या बहुत छोटा)",
+    "found": "संभावित री-अपलोड: “{title}” “{of}” से मेल खाता है ({score} %)",
+    "item_failed": "{id} का फ़िंगरप्रिंट विफल: {error}",
+    "pass_started": "लाइब्रेरी के फ़िंगरप्रिंट बन रहे हैं (ऑफ़लाइन, एक बार में एक फ़ाइल) …",
+    "pass_done": "लाइब्रेरी फ़िंगरप्रिंट पूर्ण: {n} फ़ाइलें, {found} संभावित री-अपलोड, {failed} विफल",
+    "pass_cancelled": "फ़िंगरप्रिंट रद्द: {n} फ़ाइलें, {found} संभावित री-अपलोड, {failed} विफल",
+    "pass_failed": "लाइब्रेरी फ़िंगरप्रिंट विफल: {error}"
   }
 }

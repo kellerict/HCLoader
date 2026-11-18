@@ -79,7 +79,8 @@
     "video_unknown": "Video onbekend",
     "watchlist_backoff": "Backoff actief tot {until} – controleren geblokkeerd",
     "ytdlp_up_to_date": "yt-dlp en plug-in zijn up-to-date",
-    "ytdlp_updated_restart": "yt-dlp bijgewerkt – start HCLoader opnieuw"
+    "ytdlp_updated_restart": "yt-dlp bijgewerkt – start HCLoader opnieuw",
+    "platform_user_unknown": "{platform}-uploader onbekend (geen profiel-URL)"
   },
   "backfill": {
     "done": "Alles inlezen: {name} klaar – {n} items gelezen, {added} nieuw in de inbox",
@@ -411,11 +412,15 @@
     "sc_url_expected": "SoundCloud-URL verwacht (https://soundcloud.com/…).",
     "sc_url_unsupported": "Niet-ondersteunde SoundCloud-URL. Toegestaan: soundcloud.com/<user>, …/<user>/tracks of …/<user>/sets/<set> (losse tracks zijn geen bron).",
     "type_invalid": "Type moet kanaal, afspeellijst of zoekopdracht zijn.",
-    "unsupported_url": "Niet-ondersteunde URL – verwacht een YouTube-URL (kanaal, afspeellijst) of een SoundCloud-URL (soundcloud.com/<user>, …/<user>/tracks, …/<user>/sets/<set>).",
+    "unsupported_url": "Niet-ondersteunde URL – verwacht wordt een kanaal- of playlist-URL van YouTube, een gebruikers- of set-URL van SoundCloud, of een gebruikers- of playlist-URL van Mixcloud of hearthis.at.",
     "url_missing": "URL ontbreekt.",
     "url_or_query_missing": "URL of zoekterm ontbreekt.",
     "url_too_long": "URL is te lang.",
-    "youtube_url_expected": "YouTube-URL verwacht (https://www.youtube.com/…)."
+    "youtube_url_expected": "YouTube-URL verwacht (https://www.youtube.com/…).",
+    "platform_url_expected": "{platform}-URL verwacht (https://…).",
+    "platform_url_unsupported": "Niet-ondersteunde {platform}-URL. Toegestaan: het profiel van een gebruiker of een van zijn playlists (losse tracks zijn geen bron).",
+    "platform_set_type": "{platform}: kies het type ‘Playlist’ voor een playlist.",
+    "platform_playlist_expected": "{platform}-playlist-URL verwacht."
   },
   "tag": {
     "cover_failed": "Cover kon niet worden gemaakt: {error}",
@@ -532,7 +537,8 @@
       "one": "Volglijstcontrole gestart · {n} bron",
       "other": "Volglijstcontrole gestart · {n} bronnen"
     },
-    "until": " tot {until}"
+    "until": " tot {until}",
+    "skipped_platform_off": "Bron ‘{name}’ overgeslagen: {platform} staat uit"
   },
   "yt": {
     "archive_not_writable": "Downloadarchief niet beschrijfbaar ({path}): {error}",
@@ -558,7 +564,9 @@
     "sc_ext_ok": "yt-dlp {version}: SoundCloud-extensie geverifieerd met {checked} (interfaces komen overeen)",
     "skipped_archive": "Overgeslagen (staat in het downloadarchief): {id}",
     "skipped_done": "Overgeslagen (al gedownload): {id}",
-    "unexpected": "Onverwachte fout bij het downloaden van {id}"
+    "unexpected": "Onverwachte fout bij het downloaden van {id}",
+    "mc_ext_inactive": "Mixcloud-uitbreiding niet actief (yt-dlp {version} gewijzigd: {error}) – standaardgedrag, titel/duur in lijsten kan ontbreken",
+    "no_track_page": "Trackpagina onbekend – vind de set opnieuw via zoeken of de watchlist"
   },
   "analysis": {
     "no_ffmpeg": "ffmpeg ontbreekt – luidheid en golfvorm kunnen niet worden geanalyseerd (Instellingen › Onderhoud)",
@@ -656,5 +664,23 @@
     "test_failed": "De testmelding kon niet worden getoond – zie het logboek",
     "log_unavailable": "Melding (niet getoond, geen Windows-meldingen beschikbaar): {title}",
     "log_failed": "Windows-melding kon niet worden getoond: {error}"
+  },
+  "platform": {
+    "off": "{platform} staat uit",
+    "off_in_settings": "{platform} staat uit in de instellingen",
+    "off_settings": "{platform} staat uit (Instellingen › {platform})",
+    "off_settings_dot": "{platform} staat uit (Instellingen › {platform})."
+  },
+  "reupload": {
+    "off": "Herupload-detectie staat uit (Instellingen › Heruploads)",
+    "not_marked": "Deze set is niet als herupload gemarkeerd",
+    "bad_action": "Onbekende actie (toegestaan: keep, link, delete_new, open)",
+    "no_audio": "Geen bruikbare audio voor een vingerafdruk (stilte of te kort)",
+    "found": "Waarschijnlijk herupload: ‘{title}’ komt overeen met ‘{of}’ ({score} %)",
+    "item_failed": "Vingerafdruk van {id} mislukt: {error}",
+    "pass_started": "Bibliotheek wordt vergeleken (vingerafdrukken offline, één bestand tegelijk) …",
+    "pass_done": "Bibliotheek vergeleken: {n} bestanden, {found} waarschijnlijke heruploads, {failed} mislukt",
+    "pass_cancelled": "Vergelijken geannuleerd: {n} bestanden, {found} waarschijnlijke heruploads, {failed} mislukt",
+    "pass_failed": "Vergelijken van de bibliotheek mislukt: {error}"
   }
 }

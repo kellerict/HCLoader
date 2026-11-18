@@ -79,7 +79,8 @@
     "video_unknown": "Video unknown",
     "watchlist_backoff": "Backoff active until {until} – checking blocked",
     "ytdlp_up_to_date": "yt-dlp and plugin are up to date",
-    "ytdlp_updated_restart": "yt-dlp updated – please restart HCLoader"
+    "ytdlp_updated_restart": "yt-dlp updated – please restart HCLoader",
+    "platform_user_unknown": "{platform} uploader unknown (no profile URL)"
   },
   "backfill": {
     "done": "Read everything: {name} finished – {n} entries read, {added} new in the inbox",
@@ -411,11 +412,15 @@
     "sc_url_expected": "SoundCloud URL expected (https://soundcloud.com/…).",
     "sc_url_unsupported": "Unsupported SoundCloud URL. Allowed: soundcloud.com/<user>, …/<user>/tracks or …/<user>/sets/<set> (single tracks are not a source).",
     "type_invalid": "Type must be channel, playlist or search.",
-    "unsupported_url": "Unsupported URL – expected a YouTube URL (channel, playlist) or a SoundCloud URL (soundcloud.com/<user>, …/<user>/tracks, …/<user>/sets/<set>).",
+    "unsupported_url": "Unsupported URL – expected a channel or playlist URL of YouTube, a user or set URL of SoundCloud, or a user or playlist URL of Mixcloud or hearthis.at.",
     "url_missing": "URL missing.",
     "url_or_query_missing": "URL or search term missing.",
     "url_too_long": "URL is too long.",
-    "youtube_url_expected": "YouTube URL expected (https://www.youtube.com/…)."
+    "youtube_url_expected": "YouTube URL expected (https://www.youtube.com/…).",
+    "platform_url_expected": "{platform} URL expected (https://…).",
+    "platform_url_unsupported": "Unsupported {platform} URL. Allowed: the profile of a user or one of their playlists (single tracks are not a source).",
+    "platform_set_type": "{platform}: choose the type “Playlist” for a playlist.",
+    "platform_playlist_expected": "{platform} playlist URL expected."
   },
   "tag": {
     "cover_failed": "Cover could not be created: {error}",
@@ -532,7 +537,8 @@
       "one": "Watchlist check started · {n} source",
       "other": "Watchlist check started · {n} sources"
     },
-    "until": " until {until}"
+    "until": " until {until}",
+    "skipped_platform_off": "Source “{name}” skipped: {platform} is turned off"
   },
   "yt": {
     "archive_not_writable": "Download archive not writable ({path}): {error}",
@@ -558,7 +564,9 @@
     "sc_ext_ok": "yt-dlp {version}: SoundCloud extension verified with {checked} (interfaces match)",
     "skipped_archive": "Skipped (in the download archive): {id}",
     "skipped_done": "Skipped (already downloaded): {id}",
-    "unexpected": "Unexpected error while downloading {id}"
+    "unexpected": "Unexpected error while downloading {id}",
+    "mc_ext_inactive": "Mixcloud extension not active (yt-dlp {version} changed: {error}) – default behaviour, title/duration in lists may be missing",
+    "no_track_page": "Track page unknown – find the set again via search or the watchlist"
   },
   "analysis": {
     "no_ffmpeg": "ffmpeg is missing – loudness and waveform cannot be analysed (Settings › Maintenance)",
@@ -656,5 +664,23 @@
     "test_failed": "The test notification could not be shown – see the log",
     "log_unavailable": "Notification (not shown, no Windows notifications available): {title}",
     "log_failed": "Windows notification could not be shown: {error}"
+  },
+  "platform": {
+    "off": "{platform} is turned off",
+    "off_in_settings": "{platform} is turned off in the settings",
+    "off_settings": "{platform} is turned off (Settings › {platform})",
+    "off_settings_dot": "{platform} is turned off (Settings › {platform})."
+  },
+  "reupload": {
+    "off": "Re-upload detection is turned off (Settings › Re-uploads)",
+    "not_marked": "This set is not marked as a re-upload",
+    "bad_action": "Unknown action (allowed: keep, link, delete_new, open)",
+    "no_audio": "No usable audio for a fingerprint (silence or too short)",
+    "found": "Probable re-upload: “{title}” matches “{of}” ({score} %)",
+    "item_failed": "Fingerprint of {id} failed: {error}",
+    "pass_started": "Fingerprinting the library (offline, one file at a time) …",
+    "pass_done": "Library fingerprinted: {n} files, {found} probable re-uploads, {failed} failed",
+    "pass_cancelled": "Fingerprinting cancelled: {n} files, {found} probable re-uploads, {failed} failed",
+    "pass_failed": "Fingerprinting the library failed: {error}"
   }
 }

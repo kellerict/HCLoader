@@ -39,7 +39,7 @@ from typing import Any
 from ruamel.yaml import YAML
 
 from . import festivals as fx
-from . import series
+from . import platforms, series
 from .config import Settings
 from .db import Database, now_iso
 from .i18n import tr
@@ -1002,8 +1002,8 @@ def watch_proposal(db: Database, settings: Settings, key: str) -> dict[str, Any]
             cid = str(r.get("channel_id") or "")
             if not cid or key_of(r.get("channel_name")) not in names:
                 continue
-            if cid.startswith("sc:"):
-                url = discover.soundcloud_channel_page(db, cid)
+            if platforms.platform_of(cid) != platforms.YOUTUBE:
+                url = discover.channel_page(db, cid)
             elif re.fullmatch(r"UC[0-9A-Za-z_-]{22}", cid):
                 url = f"https://www.youtube.com/channel/{cid}"
             if url:

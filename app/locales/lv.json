@@ -80,7 +80,8 @@
     "video_unknown": "Video nav zināms",
     "watchlist_backoff": "Pauze ir aktīva līdz {until} – pārbaude bloķēta",
     "ytdlp_up_to_date": "yt-dlp un spraudnis ir jaunākie",
-    "ytdlp_updated_restart": "yt-dlp atjaunināts – lūdzu, restartējiet HCLoader"
+    "ytdlp_updated_restart": "yt-dlp atjaunināts – lūdzu, restartējiet HCLoader",
+    "platform_user_unknown": "{platform} augšupielādētājs nav zināms (nav profila URL)"
   },
   "backfill": {
     "done": "Ielasīt visu: {name} pabeigts – ielasīti ieraksti: {n}, jauni iesūtnē: {added}",
@@ -415,11 +416,15 @@
     "sc_url_expected": "Gaidīts SoundCloud URL (https://soundcloud.com/…).",
     "sc_url_unsupported": "Neatbalstīts SoundCloud URL. Atļauts: soundcloud.com/<user>, …/<user>/tracks vai …/<user>/sets/<set> (atsevišķi ieraksti nav avots).",
     "type_invalid": "Veidam jābūt kanālam, atskaņošanas sarakstam vai meklējumam.",
-    "unsupported_url": "Neatbalstīts URL – gaidīts YouTube URL (kanāls, atskaņošanas saraksts) vai SoundCloud URL (soundcloud.com/<user>, …/<user>/tracks, …/<user>/sets/<set>).",
+    "unsupported_url": "Neatbalstīts URL – gaidīts YouTube kanāla vai atskaņošanas saraksta, SoundCloud lietotāja vai komplekta, vai Mixcloud vai hearthis.at lietotāja vai atskaņošanas saraksta URL.",
     "url_missing": "Trūkst URL.",
     "url_or_query_missing": "Trūkst URL vai meklēšanas frāzes.",
     "url_too_long": "URL ir pārāk garš.",
-    "youtube_url_expected": "Gaidīts YouTube URL (https://www.youtube.com/…)."
+    "youtube_url_expected": "Gaidīts YouTube URL (https://www.youtube.com/…).",
+    "platform_url_expected": "Gaidīts {platform} URL (https://…).",
+    "platform_url_unsupported": "Neatbalstīts {platform} URL. Atļauts: lietotāja profils vai kāds viņa atskaņošanas saraksts (atsevišķi ieraksti nav avots).",
+    "platform_set_type": "{platform}: atskaņošanas sarakstam izvēlieties veidu “Atskaņošanas saraksts”.",
+    "platform_playlist_expected": "Gaidīts {platform} atskaņošanas saraksta URL."
   },
   "tag": {
     "cover_failed": "Vāciņu nevarēja izveidot: {error}",
@@ -538,7 +543,8 @@
       "other": "Vērojamo avotu pārbaude sākta · avotu: {n}",
       "zero": "Vērojamo avotu pārbaude sākta · avotu: {n}"
     },
-    "until": " līdz {until}"
+    "until": " līdz {until}",
+    "skipped_platform_off": "Avots “{name}” izlaists: {platform} ir izslēgta"
   },
   "yt": {
     "archive_not_writable": "Lejupielāžu arhīvā nevar rakstīt ({path}): {error}",
@@ -564,7 +570,9 @@
     "sc_ext_ok": "yt-dlp {version}: SoundCloud paplašinājums pārbaudīts ar {checked} (saskarnes sakrīt)",
     "skipped_archive": "Izlaists (ir lejupielāžu arhīvā): {id}",
     "skipped_done": "Izlaists (jau lejupielādēts): {id}",
-    "unexpected": "Neparedzēta kļūda, lejupielādējot {id}"
+    "unexpected": "Neparedzēta kļūda, lejupielādējot {id}",
+    "mc_ext_inactive": "Mixcloud paplašinājums nav aktīvs (yt-dlp {version} mainījies: {error}) – noklusējuma darbība, sarakstos var trūkt nosaukuma/ilguma",
+    "no_track_page": "Ieraksta lapa nav zināma – atrodiet setu vēlreiz ar meklēšanu vai novērošanas sarakstu"
   },
   "analysis": {
     "no_ffmpeg": "Trūkst ffmpeg – skaļumu un viļņformu nevar analizēt (Iestatījumi › Apkope)",
@@ -667,5 +675,23 @@
     "test_failed": "Testa paziņojumu neizdevās parādīt – skatiet žurnālu",
     "log_unavailable": "Paziņojums (nav parādīts, Windows paziņojumi nav pieejami): {title}",
     "log_failed": "Windows paziņojumu neizdevās parādīt: {error}"
+  },
+  "platform": {
+    "off": "{platform} ir izslēgta",
+    "off_in_settings": "{platform} ir izslēgta iestatījumos",
+    "off_settings": "{platform} ir izslēgta (Iestatījumi › {platform})",
+    "off_settings_dot": "{platform} ir izslēgta (Iestatījumi › {platform})."
+  },
+  "reupload": {
+    "off": "Atkārtotu augšupielāžu atpazīšana ir izslēgta (Iestatījumi › Atkārtotas augšupielādes)",
+    "not_marked": "Šis sets nav atzīmēts kā atkārtota augšupielāde",
+    "bad_action": "Nezināma darbība (atļauts: keep, link, delete_new, open)",
+    "no_audio": "Nav izmantojama audio pirkstu nospiedumam (klusums vai pārāk īss)",
+    "found": "Iespējama atkārtota augšupielāde: “{title}” atbilst “{of}” ({score} %)",
+    "item_failed": "{id} pirkstu nospiedums neizdevās: {error}",
+    "pass_started": "Tiek veidoti bibliotēkas pirkstu nospiedumi (bezsaistē, pa vienam failam) …",
+    "pass_done": "Bibliotēka pārbaudīta: {n} faili, {found} iespējamas atkārtotas augšupielādes, {failed} neizdevās",
+    "pass_cancelled": "Atcelts: {n} faili, {found} iespējamas atkārtotas augšupielādes, {failed} neizdevās",
+    "pass_failed": "Bibliotēkas pirkstu nospiedumi neizdevās: {error}"
   }
 }

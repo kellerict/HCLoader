@@ -78,7 +78,8 @@
     "video_unknown": "Vídeo desconhecido",
     "watchlist_backoff": "Bloqueio temporário ativo até {until} – verificação bloqueada",
     "ytdlp_up_to_date": "yt-dlp e plugin estão atualizados",
-    "ytdlp_updated_restart": "yt-dlp atualizado – reinicie o HCLoader"
+    "ytdlp_updated_restart": "yt-dlp atualizado – reinicie o HCLoader",
+    "platform_user_unknown": "Usuário do {platform} desconhecido (sem URL de perfil)"
   },
   "backfill": {
     "done": "Ler tudo: {name} concluído – {n} itens lidos, {added} novos na caixa de entrada",
@@ -410,11 +411,15 @@
     "sc_url_expected": "URL do SoundCloud esperada (https://soundcloud.com/…).",
     "sc_url_unsupported": "URL do SoundCloud não suportada. Permitidas: soundcloud.com/<user>, …/<user>/tracks ou …/<user>/sets/<set> (faixas avulsas não são uma fonte).",
     "type_invalid": "O tipo deve ser canal, playlist ou busca.",
-    "unsupported_url": "URL não suportada – esperada uma URL do YouTube (canal, playlist) ou do SoundCloud (soundcloud.com/<user>, …/<user>/tracks, …/<user>/sets/<set>).",
+    "unsupported_url": "URL não suportada – esperada uma URL de canal ou playlist do YouTube, de usuário ou set do SoundCloud, ou de usuário ou playlist do Mixcloud ou hearthis.at.",
     "url_missing": "URL ausente.",
     "url_or_query_missing": "URL ou termo de busca ausente.",
     "url_too_long": "A URL é longa demais.",
-    "youtube_url_expected": "URL do YouTube esperada (https://www.youtube.com/…)."
+    "youtube_url_expected": "URL do YouTube esperada (https://www.youtube.com/…).",
+    "platform_url_expected": "URL do {platform} esperada (https://…).",
+    "platform_url_unsupported": "URL do {platform} não suportada. Permitido: o perfil de um usuário ou uma de suas playlists (faixas avulsas não são uma fonte).",
+    "platform_set_type": "{platform}: escolha o tipo “Playlist” para uma playlist.",
+    "platform_playlist_expected": "URL de playlist do {platform} esperada."
   },
   "tag": {
     "cover_failed": "Não foi possível criar a capa: {error}",
@@ -531,7 +536,8 @@
       "one": "Verificação da lista de monitoramento iniciada · {n} fonte",
       "other": "Verificação da lista de monitoramento iniciada · {n} fontes"
     },
-    "until": " até {until}"
+    "until": " até {until}",
+    "skipped_platform_off": "Fonte “{name}” ignorada: {platform} está desativado"
   },
   "yt": {
     "archive_not_writable": "O arquivo de downloads não pode ser gravado ({path}): {error}",
@@ -557,7 +563,9 @@
     "sc_ext_ok": "yt-dlp {version}: extensão do SoundCloud verificada com {checked} (as interfaces correspondem)",
     "skipped_archive": "Ignorado (no arquivo de downloads): {id}",
     "skipped_done": "Ignorado (já baixado): {id}",
-    "unexpected": "Erro inesperado ao baixar {id}"
+    "unexpected": "Erro inesperado ao baixar {id}",
+    "mc_ext_inactive": "Extensão do Mixcloud inativa (yt-dlp {version} mudou: {error}) – comportamento padrão, título/duração podem faltar nas listas",
+    "no_track_page": "Página da faixa desconhecida – encontre o set de novo pela busca ou pela watchlist"
   },
   "analysis": {
     "no_ffmpeg": "O ffmpeg não está instalado – não é possível analisar volume e forma de onda (Configurações › Manutenção)",
@@ -655,5 +663,23 @@
     "test_failed": "Não foi possível mostrar a notificação de teste – veja o registro",
     "log_unavailable": "Notificação (não mostrada, sem notificações do Windows): {title}",
     "log_failed": "Não foi possível mostrar a notificação do Windows: {error}"
+  },
+  "platform": {
+    "off": "{platform} está desativado",
+    "off_in_settings": "{platform} está desativado nas configurações",
+    "off_settings": "{platform} está desativado (Configurações › {platform})",
+    "off_settings_dot": "{platform} está desativado (Configurações › {platform})."
+  },
+  "reupload": {
+    "off": "A detecção de reenvios está desativada (Configurações › Reenvios)",
+    "not_marked": "Este set não está marcado como reenvio",
+    "bad_action": "Ação desconhecida (permitidas: keep, link, delete_new, open)",
+    "no_audio": "Nenhum áudio utilizável para uma impressão digital (silêncio ou curto demais)",
+    "found": "Provável reenvio: “{title}” corresponde a “{of}” ({score} %)",
+    "item_failed": "Falha na impressão digital de {id}: {error}",
+    "pass_started": "Gerando impressões digitais da biblioteca (offline, um arquivo por vez) …",
+    "pass_done": "Impressões digitais concluídas: {n} arquivos, {found} prováveis reenvios, {failed} com falha",
+    "pass_cancelled": "Impressões digitais canceladas: {n} arquivos, {found} prováveis reenvios, {failed} com falha",
+    "pass_failed": "Falha nas impressões digitais da biblioteca: {error}"
   }
 }

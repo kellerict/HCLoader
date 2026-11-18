@@ -456,7 +456,7 @@ class ReuploadSettings(_Section):
     fingerprint_after_download: bool = True
     head_minutes: int = Field(3, ge=1, le=10)
     windows: int = Field(3, ge=0, le=8)
-    min_score: int = Field(20, ge=5, le=90)
+    min_score: int = Field(15, ge=5, le=90)
     precheck: bool = False
 
 

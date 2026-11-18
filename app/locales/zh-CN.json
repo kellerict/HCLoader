@@ -78,7 +78,8 @@
     "video_unknown": "视频未知",
     "watchlist_backoff": "退避中，至 {until} – 检查被阻止",
     "ytdlp_up_to_date": "yt-dlp 和插件已是最新",
-    "ytdlp_updated_restart": "yt-dlp 已更新 – 请重启 HCLoader"
+    "ytdlp_updated_restart": "yt-dlp 已更新 – 请重启 HCLoader",
+    "platform_user_unknown": "{platform} 上传者未知（没有个人主页 URL）"
   },
   "backfill": {
     "done": "全部读取：{name} 完成 – 已读 {n} 个条目，收件箱新增 {added} 个",
@@ -407,11 +408,15 @@
     "sc_url_expected": "需要 SoundCloud URL（https://soundcloud.com/…）。",
     "sc_url_unsupported": "不支持的 SoundCloud URL。允许：soundcloud.com/<user>、…/<user>/tracks 或 …/<user>/sets/<set>（单个曲目不能作为来源）。",
     "type_invalid": "类型必须是频道、播放列表或搜索。",
-    "unsupported_url": "不支持的 URL – 需要 YouTube URL（频道、播放列表）或 SoundCloud URL（soundcloud.com/<user>、…/<user>/tracks、…/<user>/sets/<set>）。",
+    "unsupported_url": "不支持的 URL – 需要 YouTube 的频道或播放列表 URL、SoundCloud 的用户或合集 URL，或 Mixcloud / hearthis.at 的用户或播放列表 URL。",
     "url_missing": "缺少 URL。",
     "url_or_query_missing": "缺少 URL 或搜索词。",
     "url_too_long": "URL 过长。",
-    "youtube_url_expected": "需要 YouTube URL（https://www.youtube.com/…）。"
+    "youtube_url_expected": "需要 YouTube URL（https://www.youtube.com/…）。",
+    "platform_url_expected": "需要 {platform} URL（https://…）。",
+    "platform_url_unsupported": "不支持的 {platform} URL。允许：用户主页或其播放列表（单曲不能作为来源）。",
+    "platform_set_type": "{platform}：播放列表请选择类型“播放列表”。",
+    "platform_playlist_expected": "需要 {platform} 播放列表 URL。"
   },
   "tag": {
     "cover_failed": "无法生成封面：{error}",
@@ -526,7 +531,8 @@
     "started": {
       "other": "关注列表检查已开始 · {n} 个来源"
     },
-    "until": " 至 {until}"
+    "until": " 至 {until}",
+    "skipped_platform_off": "已跳过来源“{name}”：{platform} 已关闭"
   },
   "yt": {
     "archive_not_writable": "下载存档不可写（{path}）：{error}",
@@ -552,7 +558,9 @@
     "sc_ext_ok": "yt-dlp {version}：SoundCloud 扩展已通过 {checked} 验证（接口一致）",
     "skipped_archive": "已跳过（在下载存档中）：{id}",
     "skipped_done": "已跳过（已下载）：{id}",
-    "unexpected": "下载 {id} 时出现意外错误"
+    "unexpected": "下载 {id} 时出现意外错误",
+    "mc_ext_inactive": "Mixcloud 扩展未启用（yt-dlp {version} 已变更：{error}）– 使用默认行为，列表中可能缺少标题/时长",
+    "no_track_page": "曲目页面未知 – 请通过搜索或关注列表重新找到该 Set"
   },
   "analysis": {
     "no_ffmpeg": "缺少 ffmpeg —— 无法分析响度和波形（设置 › 维护）",
@@ -645,5 +653,23 @@
     "test_failed": "无法显示测试通知 – 请查看日志",
     "log_unavailable": "通知（未显示，Windows 通知不可用）：{title}",
     "log_failed": "无法显示 Windows 通知：{error}"
+  },
+  "platform": {
+    "off": "{platform} 已关闭",
+    "off_in_settings": "{platform} 已在设置中关闭",
+    "off_settings": "{platform} 已关闭（设置 › {platform}）",
+    "off_settings_dot": "{platform} 已关闭（设置 › {platform}）。"
+  },
+  "reupload": {
+    "off": "重复上传检测已关闭（设置 › 重复上传）",
+    "not_marked": "此 Set 未被标记为重复上传",
+    "bad_action": "未知操作（允许：keep、link、delete_new、open）",
+    "no_audio": "没有可用于指纹的音频（静音或过短）",
+    "found": "可能是重复上传：“{title}”与“{of}”匹配（{score}%）",
+    "item_failed": "{id} 的指纹失败：{error}",
+    "pass_started": "正在为媒体库生成指纹（离线，逐个文件）…",
+    "pass_done": "媒体库指纹完成：{n} 个文件，{found} 个可能的重复上传，{failed} 个失败",
+    "pass_cancelled": "指纹已取消：{n} 个文件，{found} 个可能的重复上传，{failed} 个失败",
+    "pass_failed": "媒体库指纹失败：{error}"
   }
 }

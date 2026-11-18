@@ -79,7 +79,8 @@
     "video_unknown": "ভিডিও অজানা",
     "watchlist_backoff": "ব্যাকঅফ {until} পর্যন্ত সক্রিয় – যাচাই আটকানো",
     "ytdlp_up_to_date": "yt-dlp ও প্লাগইন হালনাগাদ",
-    "ytdlp_updated_restart": "yt-dlp আপডেট হয়েছে – অনুগ্রহ করে HCLoader রিস্টার্ট করুন"
+    "ytdlp_updated_restart": "yt-dlp আপডেট হয়েছে – অনুগ্রহ করে HCLoader রিস্টার্ট করুন",
+    "platform_user_unknown": "{platform} আপলোডার অজানা (কোনো প্রোফাইল URL নেই)"
   },
   "backfill": {
     "done": "সব পড়ুন: {name} শেষ – {n}টি এন্ট্রি পড়া হয়েছে, ইনবক্সে {added}টি নতুন",
@@ -411,11 +412,15 @@
     "sc_url_expected": "SoundCloud URL প্রত্যাশিত (https://soundcloud.com/…)।",
     "sc_url_unsupported": "অসমর্থিত SoundCloud URL। অনুমোদিত: soundcloud.com/<user>, …/<user>/tracks বা …/<user>/sets/<set> (একক ট্র্যাক উৎস নয়)।",
     "type_invalid": "ধরন চ্যানেল, প্লেলিস্ট বা অনুসন্ধান হতে হবে।",
-    "unsupported_url": "অসমর্থিত URL – YouTube URL (চ্যানেল, প্লেলিস্ট) বা SoundCloud URL (soundcloud.com/<user>, …/<user>/tracks, …/<user>/sets/<set>) প্রত্যাশিত।",
+    "unsupported_url": "অসমর্থিত URL – YouTube-এর চ্যানেল বা প্লেলিস্ট URL, SoundCloud-এর ব্যবহারকারী বা সেট URL, অথবা Mixcloud / hearthis.at-এর ব্যবহারকারী বা প্লেলিস্ট URL প্রত্যাশিত।",
     "url_missing": "URL নেই।",
     "url_or_query_missing": "URL বা অনুসন্ধানের শব্দ নেই।",
     "url_too_long": "URL বেশি লম্বা।",
-    "youtube_url_expected": "YouTube URL প্রত্যাশিত (https://www.youtube.com/…)।"
+    "youtube_url_expected": "YouTube URL প্রত্যাশিত (https://www.youtube.com/…)।",
+    "platform_url_expected": "{platform} URL প্রত্যাশিত (https://…)।",
+    "platform_url_unsupported": "অসমর্থিত {platform} URL। অনুমোদিত: কোনো ব্যবহারকারীর প্রোফাইল বা তার একটি প্লেলিস্ট (একক ট্র্যাক উৎস নয়)।",
+    "platform_set_type": "{platform}: প্লেলিস্টের জন্য ধরন “প্লেলিস্ট” বেছে নিন।",
+    "platform_playlist_expected": "{platform} প্লেলিস্ট URL প্রত্যাশিত।"
   },
   "tag": {
     "cover_failed": "কভার তৈরি করা যায়নি: {error}",
@@ -532,7 +537,8 @@
       "one": "ওয়াচলিস্ট যাচাই শুরু · {n}টি উৎস",
       "other": "ওয়াচলিস্ট যাচাই শুরু · {n}টি উৎস"
     },
-    "until": " {until} পর্যন্ত"
+    "until": " {until} পর্যন্ত",
+    "skipped_platform_off": "উৎস “{name}” বাদ দেওয়া হয়েছে: {platform} বন্ধ আছে"
   },
   "yt": {
     "archive_not_writable": "ডাউনলোড আর্কাইভে লেখা যাচ্ছে না ({path}): {error}",
@@ -558,7 +564,9 @@
     "sc_ext_ok": "yt-dlp {version}: SoundCloud এক্সটেনশন {checked} দিয়ে যাচাই হয়েছে (ইন্টারফেস মেলে)",
     "skipped_archive": "বাদ (ডাউনলোড আর্কাইভে আছে): {id}",
     "skipped_done": "বাদ (আগেই ডাউনলোড হয়েছে): {id}",
-    "unexpected": "{id} ডাউনলোডের সময় অপ্রত্যাশিত ত্রুটি"
+    "unexpected": "{id} ডাউনলোডের সময় অপ্রত্যাশিত ত্রুটি",
+    "mc_ext_inactive": "Mixcloud এক্সটেনশন সক্রিয় নয় (yt-dlp {version} বদলেছে: {error}) – ডিফল্ট আচরণ, তালিকায় শিরোনাম/দৈর্ঘ্য নাও থাকতে পারে",
+    "no_track_page": "ট্র্যাক পেজ অজানা – সার্চ বা ওয়াচলিস্ট দিয়ে সেটটি আবার খুঁজুন"
   },
   "analysis": {
     "no_ffmpeg": "ffmpeg নেই – লাউডনেস ও ওয়েভফর্ম বিশ্লেষণ করা যাবে না (সেটিংস › রক্ষণাবেক্ষণ)",
@@ -656,5 +664,23 @@
     "test_failed": "পরীক্ষামূলক নোটিফিকেশন দেখানো যায়নি – লগ দেখুন",
     "log_unavailable": "নোটিফিকেশন (দেখানো হয়নি, Windows নোটিফিকেশন উপলব্ধ নয়): {title}",
     "log_failed": "Windows নোটিফিকেশন দেখানো যায়নি: {error}"
+  },
+  "platform": {
+    "off": "{platform} বন্ধ আছে",
+    "off_in_settings": "{platform} সেটিংসে বন্ধ আছে",
+    "off_settings": "{platform} বন্ধ আছে (সেটিংস › {platform})",
+    "off_settings_dot": "{platform} বন্ধ আছে (সেটিংস › {platform})।"
+  },
+  "reupload": {
+    "off": "রি-আপলোড শনাক্তকরণ বন্ধ আছে (সেটিংস › রি-আপলোড)",
+    "not_marked": "এই সেটটি রি-আপলোড হিসেবে চিহ্নিত নয়",
+    "bad_action": "অজানা কাজ (অনুমোদিত: keep, link, delete_new, open)",
+    "no_audio": "ফিঙ্গারপ্রিন্টের জন্য ব্যবহারযোগ্য অডিও নেই (নীরবতা বা খুব ছোট)",
+    "found": "সম্ভাব্য রি-আপলোড: “{title}” “{of}”-এর সাথে মেলে ({score} %)",
+    "item_failed": "{id}-এর ফিঙ্গারপ্রিন্ট ব্যর্থ: {error}",
+    "pass_started": "লাইব্রেরির ফিঙ্গারপ্রিন্ট তৈরি হচ্ছে (অফলাইন, একবারে একটি ফাইল) …",
+    "pass_done": "লাইব্রেরির ফিঙ্গারপ্রিন্ট শেষ: {n}টি ফাইল, {found}টি সম্ভাব্য রি-আপলোড, {failed}টি ব্যর্থ",
+    "pass_cancelled": "ফিঙ্গারপ্রিন্ট বাতিল: {n}টি ফাইল, {found}টি সম্ভাব্য রি-আপলোড, {failed}টি ব্যর্থ",
+    "pass_failed": "লাইব্রেরির ফিঙ্গারপ্রিন্ট ব্যর্থ: {error}"
   }
 }

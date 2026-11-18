@@ -78,7 +78,8 @@
     "video_unknown": "Video tidak dikenal",
     "watchlist_backoff": "Backoff aktif hingga {until} – pemeriksaan diblokir",
     "ytdlp_up_to_date": "yt-dlp dan plugin sudah terbaru",
-    "ytdlp_updated_restart": "yt-dlp diperbarui – mulai ulang HCLoader"
+    "ytdlp_updated_restart": "yt-dlp diperbarui – mulai ulang HCLoader",
+    "platform_user_unknown": "Pengunggah {platform} tidak dikenal (tidak ada URL profil)"
   },
   "backfill": {
     "done": "Baca semua: {name} selesai – {n} entri dibaca, {added} baru di kotak masuk",
@@ -407,11 +408,15 @@
     "sc_url_expected": "Diharapkan URL SoundCloud (https://soundcloud.com/…).",
     "sc_url_unsupported": "URL SoundCloud tidak didukung. Diizinkan: soundcloud.com/<user>, …/<user>/tracks atau …/<user>/sets/<set> (trek tunggal bukan sumber).",
     "type_invalid": "Jenis harus kanal, playlist, atau pencarian.",
-    "unsupported_url": "URL tidak didukung – diharapkan URL YouTube (kanal, playlist) atau URL SoundCloud (soundcloud.com/<user>, …/<user>/tracks, …/<user>/sets/<set>).",
+    "unsupported_url": "URL tidak didukung – diharapkan URL kanal atau playlist YouTube, URL pengguna atau set SoundCloud, atau URL pengguna atau playlist Mixcloud atau hearthis.at.",
     "url_missing": "URL tidak ada.",
     "url_or_query_missing": "URL atau kata kunci tidak ada.",
     "url_too_long": "URL terlalu panjang.",
-    "youtube_url_expected": "Diharapkan URL YouTube (https://www.youtube.com/…)."
+    "youtube_url_expected": "Diharapkan URL YouTube (https://www.youtube.com/…).",
+    "platform_url_expected": "Diharapkan URL {platform} (https://…).",
+    "platform_url_unsupported": "URL {platform} tidak didukung. Diizinkan: profil pengguna atau salah satu playlist-nya (trek tunggal bukan sumber).",
+    "platform_set_type": "{platform}: pilih tipe “Playlist” untuk playlist.",
+    "platform_playlist_expected": "Diharapkan URL playlist {platform}."
   },
   "tag": {
     "cover_failed": "Sampul tidak dapat dibuat: {error}",
@@ -526,7 +531,8 @@
     "started": {
       "other": "Pemeriksaan daftar pantau dimulai · {n} sumber"
     },
-    "until": " hingga {until}"
+    "until": " hingga {until}",
+    "skipped_platform_off": "Sumber “{name}” dilewati: {platform} dinonaktifkan"
   },
   "yt": {
     "archive_not_writable": "Arsip unduhan tidak dapat ditulis ({path}): {error}",
@@ -552,7 +558,9 @@
     "sc_ext_ok": "yt-dlp {version}: ekstensi SoundCloud terverifikasi dengan {checked} (antarmuka cocok)",
     "skipped_archive": "Dilewati (ada di arsip unduhan): {id}",
     "skipped_done": "Dilewati (sudah diunduh): {id}",
-    "unexpected": "Galat tak terduga saat mengunduh {id}"
+    "unexpected": "Galat tak terduga saat mengunduh {id}",
+    "mc_ext_inactive": "Ekstensi Mixcloud tidak aktif (yt-dlp {version} berubah: {error}) – perilaku bawaan, judul/durasi di daftar mungkin tidak ada",
+    "no_track_page": "Halaman trek tidak dikenal – temukan set lagi lewat pencarian atau watchlist"
   },
   "analysis": {
     "no_ffmpeg": "ffmpeg tidak ada – kenyaringan dan bentuk gelombang tidak dapat dianalisis (Pengaturan › Pemeliharaan)",
@@ -645,5 +653,23 @@
     "test_failed": "Notifikasi uji tidak dapat ditampilkan – lihat log",
     "log_unavailable": "Notifikasi (tidak ditampilkan, notifikasi Windows tidak tersedia): {title}",
     "log_failed": "Notifikasi Windows tidak dapat ditampilkan: {error}"
+  },
+  "platform": {
+    "off": "{platform} dinonaktifkan",
+    "off_in_settings": "{platform} dinonaktifkan di pengaturan",
+    "off_settings": "{platform} dinonaktifkan (Pengaturan › {platform})",
+    "off_settings_dot": "{platform} dinonaktifkan (Pengaturan › {platform})."
+  },
+  "reupload": {
+    "off": "Deteksi unggahan ulang dinonaktifkan (Pengaturan › Unggahan ulang)",
+    "not_marked": "Set ini tidak ditandai sebagai unggahan ulang",
+    "bad_action": "Tindakan tidak dikenal (diizinkan: keep, link, delete_new, open)",
+    "no_audio": "Tidak ada audio yang bisa dipakai untuk sidik jari (sunyi atau terlalu pendek)",
+    "found": "Kemungkinan unggahan ulang: “{title}” cocok dengan “{of}” ({score} %)",
+    "item_failed": "Sidik jari {id} gagal: {error}",
+    "pass_started": "Membuat sidik jari pustaka (offline, satu file setiap kali) …",
+    "pass_done": "Sidik jari pustaka selesai: {n} file, {found} kemungkinan unggahan ulang, {failed} gagal",
+    "pass_cancelled": "Sidik jari dibatalkan: {n} file, {found} kemungkinan unggahan ulang, {failed} gagal",
+    "pass_failed": "Sidik jari pustaka gagal: {error}"
   }
 }

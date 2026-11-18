@@ -78,7 +78,8 @@
     "video_unknown": "Vídeo desconocido",
     "watchlist_backoff": "Bloqueo temporal activo hasta las {until}: revisión bloqueada",
     "ytdlp_up_to_date": "yt-dlp y el plugin están al día",
-    "ytdlp_updated_restart": "yt-dlp actualizado: reinicia HCLoader"
+    "ytdlp_updated_restart": "yt-dlp actualizado: reinicia HCLoader",
+    "platform_user_unknown": "Usuario de {platform} desconocido (sin URL de perfil)"
   },
   "backfill": {
     "done": "Leer todo: {name} terminado – {n} entradas leídas, {added} nuevas en la bandeja",
@@ -410,11 +411,15 @@
     "sc_url_expected": "Se esperaba una URL de SoundCloud (https://soundcloud.com/…).",
     "sc_url_unsupported": "URL de SoundCloud no admitida. Permitidas: soundcloud.com/<user>, …/<user>/tracks o …/<user>/sets/<set> (las pistas sueltas no son una fuente).",
     "type_invalid": "El tipo debe ser canal, lista de reproducción o búsqueda.",
-    "unsupported_url": "URL no admitida: se esperaba una URL de YouTube (canal, lista) o una URL de SoundCloud (soundcloud.com/<user>, …/<user>/tracks, …/<user>/sets/<set>).",
+    "unsupported_url": "URL no admitida: se espera una URL de canal o lista de YouTube, de usuario o set de SoundCloud, o de usuario o lista de Mixcloud o hearthis.at.",
     "url_missing": "Falta la URL.",
     "url_or_query_missing": "Falta la URL o el término de búsqueda.",
     "url_too_long": "La URL es demasiado larga.",
-    "youtube_url_expected": "Se esperaba una URL de YouTube (https://www.youtube.com/…)."
+    "youtube_url_expected": "Se esperaba una URL de YouTube (https://www.youtube.com/…).",
+    "platform_url_expected": "Se espera una URL de {platform} (https://…).",
+    "platform_url_unsupported": "URL de {platform} no admitida. Se permite: el perfil de un usuario o una de sus listas (las pistas sueltas no son una fuente).",
+    "platform_set_type": "{platform}: elige el tipo «Lista» para una lista de reproducción.",
+    "platform_playlist_expected": "Se espera una URL de lista de {platform}."
   },
   "tag": {
     "cover_failed": "No se pudo crear la carátula: {error}",
@@ -531,7 +536,8 @@
       "one": "Revisión de la lista de seguimiento iniciada · {n} fuente",
       "other": "Revisión de la lista de seguimiento iniciada · {n} fuentes"
     },
-    "until": " hasta las {until}"
+    "until": " hasta las {until}",
+    "skipped_platform_off": "Fuente «{name}» omitida: {platform} está desactivado"
   },
   "yt": {
     "archive_not_writable": "El archivo de descargas no se puede escribir ({path}): {error}",
@@ -557,7 +563,9 @@
     "sc_ext_ok": "yt-dlp {version}: extensión de SoundCloud verificada con {checked} (las interfaces coinciden)",
     "skipped_archive": "Omitido (en el archivo de descargas): {id}",
     "skipped_done": "Omitido (ya descargado): {id}",
-    "unexpected": "Error inesperado al descargar {id}"
+    "unexpected": "Error inesperado al descargar {id}",
+    "mc_ext_inactive": "Extensión de Mixcloud inactiva (yt-dlp {version} cambió: {error}): comportamiento estándar, puede faltar título/duración en las listas",
+    "no_track_page": "Página de la pista desconocida: vuelve a encontrar el set mediante la búsqueda o la watchlist"
   },
   "analysis": {
     "no_ffmpeg": "Falta ffmpeg: no se pueden analizar el volumen ni la forma de onda (Ajustes › Mantenimiento)",
@@ -655,5 +663,23 @@
     "test_failed": "No se pudo mostrar la notificación de prueba – revisa el registro",
     "log_unavailable": "Notificación (no mostrada, sin notificaciones de Windows): {title}",
     "log_failed": "No se pudo mostrar la notificación de Windows: {error}"
+  },
+  "platform": {
+    "off": "{platform} está desactivado",
+    "off_in_settings": "{platform} está desactivado en los ajustes",
+    "off_settings": "{platform} está desactivado (Ajustes › {platform})",
+    "off_settings_dot": "{platform} está desactivado (Ajustes › {platform})."
+  },
+  "reupload": {
+    "off": "La detección de resubidas está desactivada (Ajustes › Resubidas)",
+    "not_marked": "Este set no está marcado como resubida",
+    "bad_action": "Acción desconocida (permitidas: keep, link, delete_new, open)",
+    "no_audio": "No hay audio útil para una huella (silencio o demasiado corto)",
+    "found": "Probable resubida: «{title}» coincide con «{of}» ({score} %)",
+    "item_failed": "Falló la huella de {id}: {error}",
+    "pass_started": "Creando huellas de la biblioteca (sin conexión, un archivo a la vez) …",
+    "pass_done": "Huellas de la biblioteca listas: {n} archivos, {found} probables resubidas, {failed} con error",
+    "pass_cancelled": "Huellas canceladas: {n} archivos, {found} probables resubidas, {failed} con error",
+    "pass_failed": "Fallaron las huellas de la biblioteca: {error}"
   }
 }

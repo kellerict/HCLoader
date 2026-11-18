@@ -883,8 +883,10 @@ def test_library_from_db(env, tmp_path):
         "thumbnail",
         "festival",
         "festival_suggestion",
+        "reupload",  # v0.10.0
     }
     assert lib[0]["missing"] is False and lib[0]["has_cue"] is False
+    assert lib[0]["reupload"] is None
     from app.core import library
 
     # platform-neutral: on Windows the real revealer would start explorer.exe /select
@@ -997,6 +999,7 @@ def test_every_method_json_serializable(env):
         "queue_checklist": (999,),
         # v0.7.0 loudness, waveform, player memory
         "get_waveform": ("abcdefghijk",),
+        "resolve_reupload": ("abcdefghijk", "keep"),
         "save_position": ("abcdefghijk", 120.0, 3600.0),
         "forget_position": ("abcdefghijk",),
         "set_now_playing": ("abcdefghijk",),

@@ -56,33 +56,49 @@ def clean_options(
 
 
 def clean_platform(opts: Mapping[str, Any] | None) -> str | None:
-    """`opts.platform` of a search: 'youtube' (default) | 'soundcloud'; None = invalid."""
+    """`opts.platform` of a search: 'youtube' (default) | 'soundcloud' | 'mixcloud' |
+    'hearthis'; None = invalid (or a platform without search)."""
     value = (opts or {}).get("platform") or platforms.YOUTUBE
-    return value if platforms.valid(value) else None
+    return value if platforms.valid(value) and platforms.info(value).search else None
 
 
-def soundcloud_page(db: Database, video_id: str) -> str | None:
-    """Web page of a stored SoundCloud track (`open_video`), only https://soundcloud.com."""
-    if not platforms.is_valid_db_id(video_id) or platforms.platform_of(video_id) != "soundcloud":
+def track_page(db: Database, video_id: str) -> str | None:
+    """Web page of a stored track of SoundCloud / Mixcloud / hearthis.at (`open_video`), only
+    an https URL on a host of that platform."""
+    if not platforms.is_valid_db_id(video_id):
+        return None
+    platform = platforms.platform_of(video_id)
+    if platform == platforms.YOUTUBE:
         return None
     row = db.get_video(video_id) or {}
     url = str(row.get("url") or "")
-    return url if _sc_web_url(url) else None
+    return url if _web_url(url, platform) else None
 
 
-def soundcloud_channel_page(db: Database, channel_id: str) -> str | None:
-    """Profile URL of a SoundCloud uploader known from stored tracks (`add_channel_source`)."""
+def channel_page(db: Database, channel_id: str) -> str | None:
+    """Profile URL of an uploader of SoundCloud / Mixcloud / hearthis.at known from stored
+    tracks (`add_channel_source`)."""
+    platform = platforms.platform_of(channel_id)
+    if platform == platforms.YOUTUBE:
+        return None
     row = db.query_one(
         "SELECT channel_url FROM videos WHERE channel_id=? AND channel_url IS NOT NULL "
         "AND channel_url != '' ORDER BY first_seen DESC LIMIT 1",
         (channel_id,),
     )
     url = str((row or {}).get("channel_url") or "").rstrip("/")
-    return url if _sc_web_url(url) else None
+    if platform in (platforms.MIXCLOUD, platforms.HEARTHIS) and url:
+        url += "/"
+    return url if _web_url(url, platform) else None
 
 
-def _sc_web_url(url: str) -> bool:
-    return url.startswith("https://") and platforms.url_platform(url) == platforms.SOUNDCLOUD
+# Phase 7a names (SoundCloud only at the time)
+soundcloud_page = track_page
+soundcloud_channel_page = channel_page
+
+
+def _web_url(url: str, platform: str) -> bool:
+    return url.startswith("https://") and platforms.url_platform(url) == platform
 
 
 def filter_reason(
@@ -141,6 +157,11 @@ def _result(
     return out
 
 
+def precheck(settings: Settings) -> bool:
+    """v0.10.0: re-upload pre-check on the same platform (duration + title, no request)."""
+    return bool(settings.reupload.enabled and settings.reupload.precheck)
+
+
 def annotate_duplicate(
     out: dict[str, Any], db: Database | None, settings: Settings, *, set_reason: bool = False
 ) -> dict[str, Any]:
@@ -149,7 +170,7 @@ def annotate_duplicate(
     an otherwise passing hit gets the filter reason «Vermutlich bereits geladen (…)»."""
     dup = None
     if db is not None and out.get("status") not in ("done", "ignored"):
-        dup = duplicates.find_duplicate(db, out)
+        dup = duplicates.find_duplicate(db, out, same_platform=precheck(settings))
     out["duplicate_of"] = dup
     if (
         dup

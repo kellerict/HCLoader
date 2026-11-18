@@ -32,6 +32,7 @@ from .core import (
     config,
     credentials,
     discover,
+    fingerprint,
     i18n,
     library,
     locks,
@@ -65,6 +66,7 @@ from .worker import (
     AnalysisQueue,
     DownloadQueue,
     EventBus,
+    FingerprintQueue,
     GateBusy,
     LogForwarder,
     MediaScanQueue,
@@ -211,6 +213,13 @@ class Api:
         )
         # v0.7.0 loudness/waveform analysis: own low-priority thread, one file at a time
         self._analysis = AnalysisQueue(self._db, lambda: self._settings, self._bus)
+        # v0.10.0 re-upload detection: own low-priority thread, waits while the analysis decodes
+        self._fp = FingerprintQueue(
+            self._db,
+            lambda: self._settings,
+            self._bus,
+            busy=lambda: not self._analysis.idle(),
+        )
         # Watchlist checks: own thread (never blocks maintenance jobs), one check at a time
         self._wl_worker = Worker("hcloader-watchlist")
         self._wl_cancel = threading.Event()
@@ -313,6 +322,7 @@ class Api:
         self._ticker.start()
         self._update_worker.start()
         self._analysis.start()
+        self._fp.start()
         try:
             self._update_result = self._updater.take_result()  # outcome of apply_update.ps1
             self._updater.restore()  # an update staged in an earlier session is ready again
@@ -352,6 +362,7 @@ class Api:
         self._col_import_worker.stop(WATCHLIST_STOP_TIMEOUT_S)
         collector.release_running(self._db, tr("collector.note_interrupted"))
         self._analysis.stop()  # v0.7.0: a running ffmpeg analysis is killed (nothing written)
+        self._fp.stop()  # v0.10.0: a running fingerprint decode is killed (nothing stored)
         self._pl_worker.stop()  # v0.8.0: a running playlist export finishes its file first
         self._sizes_cancel.set()  # v0.9.0: size measuring stops after the current batch
         self._stats_worker.stop()
@@ -386,6 +397,7 @@ class Api:
             self._startup_backfills()
             self._startup_collector()
             self._startup_analysis()
+            self._startup_fingerprints()
 
     def _on_run_finished(self, row: dict[str, Any]) -> None:
         """A run (watchlist, headless, manual queue) ended: event `run` for the log view."""
@@ -894,8 +906,9 @@ class Api:
         return res
 
     def clear_backoff(self, platform: str | None = None) -> dict[str, Any]:
-        """Lift the backoff of `platform` ('youtube' | 'soundcloud'); none = every platform."""
-        if platform not in (None, "", "youtube", "soundcloud"):
+        """Lift the backoff of `platform` ('youtube' | 'soundcloud' | 'mixcloud' | 'hearthis');
+        none = every platform."""
+        if platform not in (None, "", *platforms.PLATFORMS):
             return {"ok": False, "error": tr("api.unknown_platform")}
         targets = [self._throttle.platform(platform)] if platform else self._throttle.platforms()
         for th in targets:
@@ -1012,6 +1025,9 @@ class Api:
                 "ok": False,
                 "error": tr("sc.off_settings"),
             }
+        if not self._cfg.platform_enabled(platform):
+            label = platforms.label(platform)
+            return {"ok": False, "error": tr("platform.off_settings", platform=label)}
         try:
             return self._search_worker.run(
                 f"search:{platform}|{query}|{genre}|{year}",
@@ -1111,7 +1127,7 @@ class Api:
         if _VIDEO_ID_RE.match(vid):
             self._browser(f"https://www.youtube.com/watch?v={vid}")
             return {"ok": True}
-        url = discover.soundcloud_page(self._db, vid)
+        url = discover.track_page(self._db, vid)
         if url is None:
             return {"ok": False, "error": tr("api.invalid_video_id")}
         self._browser(url)
@@ -1124,11 +1140,16 @@ class Api:
 
     def add_channel_source(self, channel_id: str, channel_name: str = "") -> dict[str, Any]:
         cid = str(channel_id or "").strip()
-        platform = "soundcloud" if cid.startswith("sc:") else "youtube"
-        if platform == "soundcloud":
-            url = discover.soundcloud_channel_page(self._db, cid)
+        platform = platforms.platform_of(cid)
+        if platform != "youtube":
+            url = discover.channel_page(self._db, cid)
             if url is None:
-                return {"ok": False, "error": tr("api.sc_user_unknown")}
+                if platform == "soundcloud":
+                    return {"ok": False, "error": tr("api.sc_user_unknown")}
+                return {
+                    "ok": False,
+                    "error": tr("api.platform_user_unknown", platform=platforms.label(platform)),
+                }
         elif re.fullmatch(r"[0-9A-Za-z_-]{3,64}", cid):
             url = f"https://www.youtube.com/channel/{cid}"
         else:
@@ -1862,9 +1883,14 @@ class Api:
         root = self._cfg.target_dir_path()
         ok = library.target_reachable(root)
         self._lib_status = {"target_ok": ok, "target": str(root)}
-        return library.list_library(
-            self._db, filters if isinstance(filters, dict) else None, root=root, root_ok=ok
-        )
+        f = filters if isinstance(filters, dict) else None
+        items = library.list_library(self._db, f, root=root, root_ok=ok)
+        marks = fingerprint.reupload_map(self._db)  # v0.10.0: «probable re-upload of X»
+        for it in items:
+            it["reupload"] = marks.get(it["id"])
+        if f and f.get("reupload"):
+            items = [it for it in items if it["reupload"] and it["reupload"]["state"] == "open"]
+        return items
 
     def get_library_status(self) -> dict[str, Any]:
         """{target_ok, target}: result of the last `get_library` check (fresh check if none yet)."""
@@ -1915,6 +1941,7 @@ class Api:
         if res.get("ok"):
             analysis.forget(self._db, str(video_id))  # v0.7.0: measurement + waveform cache
             playback.forget(self._db, str(video_id))
+            fingerprint.forget(self._db, str(video_id))  # v0.10.0: fingerprint + marks
             self._bus.emit("video", {"id": str(video_id), "status": "ignored", "genre": None})
             self._push()
         return res
@@ -2170,6 +2197,9 @@ class Api:
         if self._settings.playlists.sync_after_download:
             self._request_playlist_sync()
         self._media.add(vid)  # v0.9.0: batched Plex/Jellyfin scan (no-op when off)
+        rp = self._settings.reupload
+        if rp.enabled and rp.fingerprint_after_download:  # v0.10.0 re-upload detection
+            self._fp.request(vid)
 
     def _on_queue_session_end(self, session: dict[str, Any]) -> None:
         """v0.9.0: one aggregated notification per queue run (done / failed)."""
@@ -2252,6 +2282,87 @@ class Api:
     def cancel_analyse_library(self) -> dict[str, Any]:
         self._analysis.cancel_pass()
         return {"ok": True, "running": self._analysis.pass_running()}
+
+    # ======================================================== re-upload detection (v0.10.0)
+
+    def _startup_fingerprints(self) -> None:
+        """Downloads since the first v0.10.0 start without a fingerprint (e.g. from the
+        scheduled headless run, which does not decode) are queued once after the start."""
+        try:
+            ids = fingerprint.since_pending(self._db)
+        except Exception:
+            log.debug("Fingerprint backlog not readable", exc_info=True)
+            return
+        rp = self._settings.reupload
+        if rp.enabled and rp.fingerprint_after_download:
+            for vid in ids:
+                self._fp.request(vid)
+
+    def get_reupload_status(self) -> dict[str, Any]:
+        """Fingerprint counts, open/kept/linked marks, last pass, whether a pass runs."""
+        st = fingerprint.status(self._db)
+        st["running"] = self._fp.pass_running()
+        st["enabled"] = bool(self._settings.reupload.enabled)
+        return st
+
+    def fingerprint_library(self, opts: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Backfill pass over the library (one file at a time, low priority, offline);
+        progress via `fingerprint`, matches via `reupload`. opts {scope: "new" | "all"}."""
+        o = opts if isinstance(opts, dict) else {}
+        scope = "all" if o.get("scope") == "all" else "new"
+        if not self._settings.reupload.enabled:
+            return {"ok": False, "error": tr("reupload.off")}
+        if not binaries.ffmpeg_path().exists():
+            return {"ok": False, "error": tr("analysis.no_ffmpeg")}
+        if not self._fp.start_pass(scope):
+            return {"ok": True, "started": False, "running": True}
+        return {"ok": True, "started": True, "scope": scope}
+
+    def cancel_fingerprint_library(self) -> dict[str, Any]:
+        self._fp.cancel_pass()
+        return {"ok": True, "running": self._fp.pass_running()}
+
+    def get_reuploads(self, opts: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Marked items: [{id, title, platform, channel, file_path, downloaded_at, reupload}].
+        opts {state: "open" (default) | "all"}."""
+        o = opts if isinstance(opts, dict) else {}
+        marks = fingerprint.reupload_map(self._db)
+        items = []
+        for vid, mark in marks.items():
+            if o.get("state", "open") != "all" and mark["state"] != "open":
+                continue
+            row = self._db.get_video(vid) or {}
+            if row.get("status") != "done":
+                continue
+            items.append(
+                {
+                    "id": vid,
+                    "title": row.get("title") or "",
+                    "platform": row.get("platform") or platforms.platform_of(vid),
+                    "channel": row.get("channel_name") or "",
+                    "file_path": row.get("file_path"),
+                    "downloaded_at": row.get("downloaded_at"),
+                    "reupload": mark,
+                }
+            )
+        items.sort(key=lambda x: str(x.get("downloaded_at") or ""), reverse=True)
+        return {"ok": True, "items": items}
+
+    def resolve_reupload(self, video_id: str, action: str) -> dict[str, Any]:
+        """Decision on «probable re-upload»: keep (keep both) | link (same mix, linked) |
+        delete_new (delete this newer file, entry -> ignored) | open (undo keep/link)."""
+        vid = str(video_id or "")
+        if action == "delete_new":
+            if not fingerprint.info_of(self._db, vid):
+                return {"ok": False, "error": tr("reupload.not_marked")}
+            res = self.delete_library_item(vid, True)
+            if res.get("ok"):
+                self._bus.emit("reupload", {"id": vid, "reupload": None, "deleted": True})
+            return res
+        res = fingerprint.resolve(self._db, vid, str(action or ""))
+        if res.get("ok"):
+            self._bus.emit("reupload", {"id": vid, "reupload": res.get("reupload")})
+        return res
 
     # ======================================================== DJ pages + playlists (v0.8.0)
 

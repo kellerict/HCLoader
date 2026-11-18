@@ -79,7 +79,8 @@
     "video_unknown": "Video tuntematon",
     "watchlist_backoff": "Backoff aktiivinen asti {until} – tarkistus estetty",
     "ytdlp_up_to_date": "yt-dlp ja lisäosa ovat ajan tasalla",
-    "ytdlp_updated_restart": "yt-dlp päivitetty – käynnistä HCLoader uudelleen"
+    "ytdlp_updated_restart": "yt-dlp päivitetty – käynnistä HCLoader uudelleen",
+    "platform_user_unknown": "{platform}-lataaja tuntematon (ei profiilin URL-osoitetta)"
   },
   "backfill": {
     "done": "Lue kaikki: {name} valmis – {n} kohdetta luettu, {added} uutta saapuneissa",
@@ -411,11 +412,15 @@
     "sc_url_expected": "Odotetaan SoundCloud-URL-osoitetta (https://soundcloud.com/…).",
     "sc_url_unsupported": "SoundCloud-URL-osoitetta ei tueta. Sallittu: soundcloud.com/<user>, …/<user>/tracks tai …/<user>/sets/<set> (yksittäiset kappaleet eivät ole lähde).",
     "type_invalid": "Tyypin on oltava kanava, soittolista tai haku.",
-    "unsupported_url": "URL-osoitetta ei tueta – odotetaan YouTube-URL-osoitetta (kanava, soittolista) tai SoundCloud-URL-osoitetta (soundcloud.com/<user>, …/<user>/tracks, …/<user>/sets/<set>).",
+    "unsupported_url": "URL-osoitetta ei tueta – odotetaan YouTuben kanavan tai soittolistan, SoundCloudin käyttäjän tai setin tai Mixcloudin tai hearthis.atin käyttäjän tai soittolistan URL-osoitetta.",
     "url_missing": "URL puuttuu.",
     "url_or_query_missing": "URL tai hakusana puuttuu.",
     "url_too_long": "URL on liian pitkä.",
-    "youtube_url_expected": "Odotetaan YouTube-URL-osoitetta (https://www.youtube.com/…)."
+    "youtube_url_expected": "Odotetaan YouTube-URL-osoitetta (https://www.youtube.com/…).",
+    "platform_url_expected": "Odotettiin {platform}-URL-osoitetta (https://…).",
+    "platform_url_unsupported": "{platform}-URL-osoitetta ei tueta. Sallittu: käyttäjän profiili tai jokin hänen soittolistoistaan (yksittäinen kappale ei ole lähde).",
+    "platform_set_type": "{platform}: valitse soittolistalle tyyppi ”Soittolista”.",
+    "platform_playlist_expected": "Odotettiin {platform}-soittolistan URL-osoitetta."
   },
   "tag": {
     "cover_failed": "Kansikuvaa ei voitu luoda: {error}",
@@ -532,7 +537,8 @@
       "one": "Seurannan tarkistus aloitettu · {n} lähde",
       "other": "Seurannan tarkistus aloitettu · {n} lähdettä"
     },
-    "until": " asti {until}"
+    "until": " asti {until}",
+    "skipped_platform_off": "Lähde ”{name}” ohitettiin: {platform} on pois päältä"
   },
   "yt": {
     "archive_not_writable": "Latausarkistoon ei voi kirjoittaa ({path}): {error}",
@@ -558,7 +564,9 @@
     "sc_ext_ok": "yt-dlp {version}: SoundCloud-laajennus varmennettu kohteella {checked} (rajapinnat täsmäävät)",
     "skipped_archive": "Ohitettu (latausarkistossa): {id}",
     "skipped_done": "Ohitettu (jo ladattu): {id}",
-    "unexpected": "Odottamaton virhe ladattaessa {id}"
+    "unexpected": "Odottamaton virhe ladattaessa {id}",
+    "mc_ext_inactive": "Mixcloud-laajennus ei ole käytössä (yt-dlp {version} muuttui: {error}) – oletustoiminta, luetteloista voi puuttua nimi/kesto",
+    "no_track_page": "Kappaleen sivu tuntematon – etsi setti uudelleen haulla tai seurantalistalla"
   },
   "analysis": {
     "no_ffmpeg": "ffmpeg puuttuu – äänenvoimakkuutta ja aaltomuotoa ei voi analysoida (Asetukset › Ylläpito)",
@@ -656,5 +664,23 @@
     "test_failed": "Testi-ilmoitusta ei voitu näyttää – katso loki",
     "log_unavailable": "Ilmoitus (ei näytetty, Windows-ilmoituksia ei ole käytettävissä): {title}",
     "log_failed": "Windows-ilmoitusta ei voitu näyttää: {error}"
+  },
+  "platform": {
+    "off": "{platform} on pois päältä",
+    "off_in_settings": "{platform} on pois päältä asetuksissa",
+    "off_settings": "{platform} on pois päältä (Asetukset › {platform})",
+    "off_settings_dot": "{platform} on pois päältä (Asetukset › {platform})."
+  },
+  "reupload": {
+    "off": "Uudelleenlatausten tunnistus on pois päältä (Asetukset › Uudelleenlataukset)",
+    "not_marked": "Tätä settiä ei ole merkitty uudelleenlataukseksi",
+    "bad_action": "Tuntematon toiminto (sallitut: keep, link, delete_new, open)",
+    "no_audio": "Ei käyttökelpoista ääntä sormenjälkeen (hiljaisuus tai liian lyhyt)",
+    "found": "Todennäköinen uudelleenlataus: ”{title}” vastaa settiä ”{of}” ({score} %)",
+    "item_failed": "Kohteen {id} sormenjälki epäonnistui: {error}",
+    "pass_started": "Kirjaston sormenjälkiä lasketaan (offline, yksi tiedosto kerrallaan) …",
+    "pass_done": "Kirjasto käyty läpi: {n} tiedostoa, {found} todennäköistä uudelleenlatausta, {failed} epäonnistui",
+    "pass_cancelled": "Keskeytetty: {n} tiedostoa, {found} todennäköistä uudelleenlatausta, {failed} epäonnistui",
+    "pass_failed": "Kirjaston sormenjäljet epäonnistuivat: {error}"
   }
 }

@@ -329,7 +329,7 @@ def run_smoke(url: str) -> int:
         st["deno_version"] or "MISSING",
         st["ffmpeg_version"] or "MISSING",
     )
-    from .core.ytclient import DownloadResult, YtClient, YtClientError, soundcloud_track_url
+    from .core.ytclient import DownloadResult, YtClient, YtClientError, needs_resolve
 
     run_lock = locks.acquire_run_lock()
     if run_lock is None:
@@ -357,14 +357,16 @@ def run_smoke(url: str) -> int:
 
     try:
         target = url
-        if soundcloud_track_url(url):
-            # a permalink carries no track id: resolve it first (through the throttle), then
-            # download by id like every other track
+        if needs_resolve(url):
+            # a SoundCloud permalink / hearthis.at track page carries no track id: resolve it
+            # first (through the throttle), then download by id like every other track
             meta = client.resolve(url)
             target = meta.get("id") or ""
             if not target:
                 print(tr("smoke.no_track_id"), file=sys.stderr)
                 return EXIT_FAILED
+            if meta.get("url"):  # hearthis.at: the download needs the stored track page
+                db.upsert_video({"id": target, "url": meta["url"], "title": meta.get("title")})
             print(tr("smoke.resolved", id=target, title=meta.get("title") or ""), flush=True)
         result: DownloadResult = client.download(target, on_progress=on_progress)
         throttle.finish_run(result.status == "done")

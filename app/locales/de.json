@@ -79,7 +79,8 @@
     "video_unknown": "Video unbekannt",
     "watchlist_backoff": "Backoff aktiv bis {until} – Prüfung gesperrt",
     "ytdlp_up_to_date": "yt-dlp und Plugin sind aktuell",
-    "ytdlp_updated_restart": "yt-dlp aktualisiert – bitte HCLoader neu starten"
+    "ytdlp_updated_restart": "yt-dlp aktualisiert – bitte HCLoader neu starten",
+    "platform_user_unknown": "{platform}-Uploader unbekannt (keine Profil-URL)"
   },
   "backfill": {
     "done": "Alles einlesen: {name} fertig – {n} Einträge gelesen, {added} neu im Eingang",
@@ -411,11 +412,15 @@
     "sc_url_expected": "SoundCloud-URL erwartet (https://soundcloud.com/…).",
     "sc_url_unsupported": "Nicht unterstützte SoundCloud-URL. Erlaubt: soundcloud.com/<nutzer>, …/<nutzer>/tracks oder …/<nutzer>/sets/<set> (einzelne Tracks sind keine Quelle).",
     "type_invalid": "Typ muss Kanal, Playlist oder Suche sein.",
-    "unsupported_url": "Nicht unterstützte URL – erwartet wird eine YouTube-URL (Kanal, Playlist) oder eine SoundCloud-URL (soundcloud.com/<nutzer>, …/<nutzer>/tracks, …/<nutzer>/sets/<set>).",
+    "unsupported_url": "Nicht unterstützte URL – erwartet wird eine Kanal- oder Playlist-URL von YouTube, eine Nutzer- oder Set-URL von SoundCloud oder eine Nutzer- oder Playlist-URL von Mixcloud oder hearthis.at.",
     "url_missing": "URL fehlt.",
     "url_or_query_missing": "URL oder Suchbegriff fehlt.",
     "url_too_long": "URL ist zu lang.",
-    "youtube_url_expected": "YouTube-URL erwartet (https://www.youtube.com/…)."
+    "youtube_url_expected": "YouTube-URL erwartet (https://www.youtube.com/…).",
+    "platform_url_expected": "{platform}-URL erwartet (https://…).",
+    "platform_url_unsupported": "Nicht unterstützte {platform}-URL. Erlaubt: das Profil eines Nutzers oder eine seiner Playlists (einzelne Tracks sind keine Quelle).",
+    "platform_set_type": "{platform}: Für eine Playlist den Typ «Playlist» wählen.",
+    "platform_playlist_expected": "{platform}-Playlist-URL erwartet."
   },
   "tag": {
     "cover_failed": "Cover konnte nicht erzeugt werden: {error}",
@@ -532,7 +537,8 @@
       "one": "Watchlist-Prüfung gestartet · {n} Quelle",
       "other": "Watchlist-Prüfung gestartet · {n} Quellen"
     },
-    "until": " bis {until}"
+    "until": " bis {until}",
+    "skipped_platform_off": "Quelle «{name}» übersprungen: {platform} ist ausgeschaltet"
   },
   "yt": {
     "archive_not_writable": "Download-Archiv nicht beschreibbar ({path}): {error}",
@@ -558,7 +564,9 @@
     "sc_ext_ok": "yt-dlp {version}: SoundCloud-Erweiterung geprüft mit {checked} (Schnittstellen passen)",
     "skipped_archive": "Übersprungen (im Download-Archiv): {id}",
     "skipped_done": "Übersprungen (bereits geladen): {id}",
-    "unexpected": "Unerwarteter Fehler beim Download von {id}"
+    "unexpected": "Unerwarteter Fehler beim Download von {id}",
+    "mc_ext_inactive": "Mixcloud-Erweiterung nicht aktiv (yt-dlp {version} geändert: {error}) – Standardverhalten, Titel/Dauer in Listen fehlen evtl.",
+    "no_track_page": "Track-Seite unbekannt – Set über die Suche oder die Watchlist erneut finden"
   },
   "analysis": {
     "no_ffmpeg": "ffmpeg fehlt – Lautheit und Wellenform können nicht analysiert werden (Einstellungen › Wartung)",
@@ -656,5 +664,23 @@
     "test_failed": "Die Test-Benachrichtigung konnte nicht angezeigt werden – siehe Protokoll",
     "log_unavailable": "Benachrichtigung (nicht angezeigt, keine Windows-Benachrichtigungen verfügbar): {title}",
     "log_failed": "Windows-Benachrichtigung konnte nicht angezeigt werden: {error}"
+  },
+  "platform": {
+    "off": "{platform} ist ausgeschaltet",
+    "off_in_settings": "{platform} ist in den Einstellungen ausgeschaltet",
+    "off_settings": "{platform} ist ausgeschaltet (Einstellungen › {platform})",
+    "off_settings_dot": "{platform} ist ausgeschaltet (Einstellungen › {platform})."
+  },
+  "reupload": {
+    "off": "Re-Upload-Erkennung ist ausgeschaltet (Einstellungen › Re-Uploads)",
+    "not_marked": "Dieses Set ist nicht als Re-Upload markiert",
+    "bad_action": "Unbekannte Aktion (erlaubt: keep, link, delete_new, open)",
+    "no_audio": "Kein verwertbares Audio für einen Fingerabdruck (Stille oder zu kurz)",
+    "found": "Vermutlich Re-Upload: «{title}» entspricht «{of}» ({score} %)",
+    "item_failed": "Fingerabdruck von {id} fehlgeschlagen: {error}",
+    "pass_started": "Bibliothek wird abgeglichen (Fingerabdrücke offline, eine Datei nach der anderen) …",
+    "pass_done": "Bibliothek abgeglichen: {n} Dateien, {found} vermutliche Re-Uploads, {failed} fehlgeschlagen",
+    "pass_cancelled": "Abgleich abgebrochen: {n} Dateien, {found} vermutliche Re-Uploads, {failed} fehlgeschlagen",
+    "pass_failed": "Abgleich der Bibliothek fehlgeschlagen: {error}"
   }
 }

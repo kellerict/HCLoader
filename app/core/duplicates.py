@@ -1,4 +1,7 @@
 """Probable duplicates across platforms (Phase 7a): the same mix on YouTube and SoundCloud.
+v0.10.0 (`reupload.precheck`): also on the same platform (a re-upload under another id),
+before any download and without a request; the audio fingerprint (core/fingerprint.py)
+confirms re-uploads only after the download.
 
 A hit counts as «vermutlich bereits geladen (<Plattform>)» if a video of the *other* platform
 with status done/queued/downloading has the same duration (+-5 s) and a similar normalised title
@@ -87,8 +90,11 @@ def best_match(video: Mapping[str, Any], candidates: Iterable[Mapping[str, Any]]
     return {"id": cand.get("id"), "platform": platform, "title": cand.get("title") or ""}
 
 
-def find_duplicate(db: Any, video: Mapping[str, Any]) -> dict | None:
-    """`duplicate_of` for a video dict ({id, platform, title}) or None."""
+def find_duplicate(
+    db: Any, video: Mapping[str, Any], *, same_platform: bool = False
+) -> dict | None:
+    """`duplicate_of` for a video dict ({id, platform, title}) or None. `same_platform`:
+    candidates of the video's own platform count as well (re-upload pre-check)."""
     duration = video.get("duration")
     if not isinstance(duration, (int, float)) or duration <= 0:
         return None
@@ -98,6 +104,7 @@ def find_duplicate(db: Any, video: Mapping[str, Any]) -> dict | None:
         int(duration),
         tolerance=DURATION_TOLERANCE_S,
         statuses=DUPLICATE_STATUSES,
+        **({"same_platform": True} if same_platform else {}),
     )
     return best_match(video, [c for c in cands if c.get("id") != video.get("id")])
 

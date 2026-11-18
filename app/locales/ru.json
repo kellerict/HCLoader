@@ -81,7 +81,8 @@
     "video_unknown": "Видео неизвестно",
     "watchlist_backoff": "Backoff действует до {until} – проверка заблокирована",
     "ytdlp_up_to_date": "yt-dlp и плагин актуальны",
-    "ytdlp_updated_restart": "yt-dlp обновлён – перезапустите HCLoader"
+    "ytdlp_updated_restart": "yt-dlp обновлён – перезапустите HCLoader",
+    "platform_user_unknown": "Автор на {platform} неизвестен (нет URL профиля)"
   },
   "backfill": {
     "done": "Прочитать всё: {name} готово – прочитано записей: {n}, новых во входящих: {added}",
@@ -419,11 +420,15 @@
     "sc_url_expected": "Ожидается URL SoundCloud (https://soundcloud.com/…).",
     "sc_url_unsupported": "URL SoundCloud не поддерживается. Допустимы: soundcloud.com/<user>, …/<user>/tracks или …/<user>/sets/<set> (отдельные треки не являются источником).",
     "type_invalid": "Тип должен быть «канал», «плейлист» или «поиск».",
-    "unsupported_url": "URL не поддерживается – ожидается URL YouTube (канал, плейлист) или SoundCloud (soundcloud.com/<user>, …/<user>/tracks, …/<user>/sets/<set>).",
+    "unsupported_url": "Неподдерживаемый URL – ожидается URL канала или плейлиста YouTube, пользователя или сета SoundCloud либо пользователя или плейлиста Mixcloud или hearthis.at.",
     "url_missing": "Не указан URL.",
     "url_or_query_missing": "Не указан URL или запрос.",
     "url_too_long": "URL слишком длинный.",
-    "youtube_url_expected": "Ожидается URL YouTube (https://www.youtube.com/…)."
+    "youtube_url_expected": "Ожидается URL YouTube (https://www.youtube.com/…).",
+    "platform_url_expected": "Ожидается URL {platform} (https://…).",
+    "platform_url_unsupported": "Неподдерживаемый URL {platform}. Допустимо: профиль пользователя или один из его плейлистов (отдельные треки не являются источником).",
+    "platform_set_type": "{platform}: для плейлиста выберите тип «Плейлист».",
+    "platform_playlist_expected": "Ожидается URL плейлиста {platform}."
   },
   "tag": {
     "cover_failed": "Не удалось создать обложку: {error}",
@@ -544,7 +549,8 @@
       "one": "Проверка списка наблюдения начата · {n} источник",
       "other": "Проверка списка наблюдения начата · {n} источника"
     },
-    "until": " до {until}"
+    "until": " до {until}",
+    "skipped_platform_off": "Источник «{name}» пропущен: {platform} выключен"
   },
   "yt": {
     "archive_not_writable": "Архив загрузок недоступен для записи ({path}): {error}",
@@ -570,7 +576,9 @@
     "sc_ext_ok": "yt-dlp {version}: расширение SoundCloud проверено на {checked} (интерфейсы совпадают)",
     "skipped_archive": "Пропущено (есть в архиве загрузок): {id}",
     "skipped_done": "Пропущено (уже загружено): {id}",
-    "unexpected": "Непредвиденная ошибка при загрузке {id}"
+    "unexpected": "Непредвиденная ошибка при загрузке {id}",
+    "mc_ext_inactive": "Расширение Mixcloud не активно (yt-dlp {version} изменился: {error}) – стандартное поведение, в списках может не быть названия/длительности",
+    "no_track_page": "Страница трека неизвестна – найдите сет снова через поиск или список наблюдения"
   },
   "analysis": {
     "no_ffmpeg": "ffmpeg отсутствует — громкость и волновую форму нельзя проанализировать (Настройки › Обслуживание)",
@@ -678,5 +686,23 @@
     "test_failed": "Не удалось показать тестовое уведомление – см. журнал",
     "log_unavailable": "Уведомление (не показано, уведомления Windows недоступны): {title}",
     "log_failed": "Не удалось показать уведомление Windows: {error}"
+  },
+  "platform": {
+    "off": "{platform} выключен",
+    "off_in_settings": "{platform} выключен в настройках",
+    "off_settings": "{platform} выключен (Настройки › {platform})",
+    "off_settings_dot": "{platform} выключен (Настройки › {platform})."
+  },
+  "reupload": {
+    "off": "Распознавание перезаливов выключено (Настройки › Перезаливы)",
+    "not_marked": "Этот сет не отмечен как перезалив",
+    "bad_action": "Неизвестное действие (допустимо: keep, link, delete_new, open)",
+    "no_audio": "Нет пригодного звука для отпечатка (тишина или слишком коротко)",
+    "found": "Вероятно, перезалив: «{title}» совпадает с «{of}» ({score} %)",
+    "item_failed": "Отпечаток {id} не удался: {error}",
+    "pass_started": "Создание отпечатков библиотеки (офлайн, по одному файлу) …",
+    "pass_done": "Отпечатки библиотеки готовы: файлов {n}, вероятных перезаливов {found}, ошибок {failed}",
+    "pass_cancelled": "Создание отпечатков отменено: файлов {n}, вероятных перезаливов {found}, ошибок {failed}",
+    "pass_failed": "Не удалось создать отпечатки библиотеки: {error}"
   }
 }
