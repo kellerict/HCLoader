@@ -129,6 +129,7 @@ Entscheide: docs/decisions.md «Festival-Sammler (v0.5.0)», Vertrag docs/bridge
 
 ## Offen für den User (Nacht 17./18.11.)
 - **v0.5.0 Festival-Sammler NICHT veröffentlicht.** Backend, UI, Review (M1 b2b-Fehlbestätigung behoben) und Windows-Build sind ok. Die QA scheitert aber zum 4. Mal knapp am Timetable-Parser (Text einfügen): 18/22 frische Beispiele, Schwelle 20. Kein stiller Datenverlust mehr (unlesbare Zeilen werden angezeigt), die Vorschau erlaubt Bearbeiten/Entfernen vor dem Import. Restfehler: Werbe-/UI-Zeilen wie «Swipe for more» als Artist, «Bühne: Zeit Artist, …» inline, Bühnenname als Zeilenpräfix, «UNDERGROUND» als Artist in Line-ups ohne Zeiten.
+- Windows-Build (Portable + Installer-Smoke) auf c069c1c grün, CI grün. Version noch 0.4.0 – Release-Vorbereitung nach Entscheid (~10 Min) + Release (~25 Min).
 - Entscheid nötig: (A) v0.5.0 so veröffentlichen, Text-Import als «Beta» kennzeichnen (Vorschau korrigierbar), Parser in v0.5.x verbessern – Empfehlung; (B) weitere Parser-Runde vor dem Release; (C) Text-Import vorerst ausblenden, nur Playlist/Datei/manuell.
 
 ## Blockiert
