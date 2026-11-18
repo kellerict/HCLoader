@@ -1590,3 +1590,50 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
   «Aktuell halten» aus (Liste zeigt «nicht mehr vorhanden»); «Jetzt schreiben» für diese Playlist schreibt sie
   ausdrücklich wieder.
 
+
+## 2026-11-18 – Statistics, notifications, media server (v0.9.0)
+
+- **Statistik nur aus der DB.** Gruppierte Abfragen über `videos` (Status `done` = Bibliothek) plus der
+  gecachte DJ-Index (`artists.index`, Top-DJs mit Zeitraum in Python über `idx.rows`). Zeitraum = lokale Tage,
+  in UTC-Grenzen umgerechnet und gegen `downloaded_at` (ISO UTC, Stringvergleich) geprüft; Monate = UTC-Monat
+  (Randabweichung um Mitternacht in Kauf genommen). Neuer Index `idx_videos_downloaded(status, downloaded_at)`.
+  Grund: 10k Sets < 1 s ohne Zusatztabellen; keine Netzwerkanfrage.
+- **Dateigrösse in der DB** (`videos.file_size`, Migration 15), geschrieben zusammen mit `file_path`
+  (`set_status`/`set_file_path`), gelöscht mit `mark_removed`. Alte Bibliotheken: einmaliges Messen im
+  Hintergrund (Thread `hcloader-stats`, Stapel à 200, fehlende Datei = 0, damit nie erneut gemessen). Grund:
+  `stat` von 10k Dateien bei jedem Öffnen wäre auf NAS-Laufwerken langsam; die Statistik muss DB-only bleiben.
+- **Diagramme ohne Bibliothek**: Balken als HTML/CSS (scharf in jeder Grösse, Text nativ, fokussierbar), nur der
+  Quellen-Ring als SVG (`stroke-dasharray`). Je Grafik `aria-label` bzw. eine `sr-only`-Tabelle; Animation nur
+  ohne `body.reduced` und mit `prefers-reduced-motion: no-preference`.
+- **Toasts über Windows PowerShell 5.1** statt einer Pflicht-Abhängigkeit. Geprüft: `windows-toasts`/pywinrt
+  (`winrt-Windows.UI.Notifications`, MIT, Wheels für cp312 win_amd64) funktionieren, bringen aber vier Pakete
+  in das eingebettete Python und müssen bei jedem Python-Update mitziehen; `win10toast`/BurntToast sind veraltet
+  bzw. ein PowerShell-Modul. PowerShell 5.1 ist auf jedem Windows 10/11 vorhanden, lädt die WinRT-Typen selbst
+  (`[… , ContentType = WindowsRuntime]`) und läuft versteckt (`CREATE_NO_WINDOW`, `-EncodedCommand`, XML über
+  eine Umgebungsvariable – nichts zu quoten). Ist pywinrt installiert, wird es bevorzugt (kein Prozessstart).
+  Fehlt beides oder blockiert eine Richtlinie PowerShell: nur Log. Grund: robust im Embedded-Python, keine neue
+  Laufzeitabhängigkeit, Benachrichtigungen sind selten (Sekundenbruchteile Startzeit egal).
+- **AppUserModelID per Registry statt COM-Aktivator.** `HKCU\Software\Classes\AppUserModelId\HCLoader.App`
+  (Name, Icon) reicht für Toasts unverpackter Apps; der Klick nutzt `activationType="protocol"` mit
+  `hcloader://<view>` (`HKCU\Software\Classes\hcloader`, Befehl `pythonw -X utf8 -c "…sys.path.insert(0,
+  r'<App-Ordner>')…" --open "%1"`, funktioniert für venv, Installer und Portable). Läuft die App, leitet der
+  zweite Start `show <token> <view>` an die Aktivierung weiter → Event `navigate`. Grund: kein COM-Server im
+  Python-Prozess, kein Hintergrundprozess, der auf Klicks wartet; gleicher Weg für GUI und geplante Aufgabe.
+  Registriert wird nur bei eingeschalteten Benachrichtigungen (vor dem ersten Toast), der Uninstaller räumt auf.
+- **Keine Benachrichtigungs-Flut**: ein Stapel in `state.notify_pending` (GUI und Headless teilen ihn),
+  Downloads einmal pro Queue-Lauf (`DownloadQueue.on_session_end`), 15 s Sammelzeit in der GUI, mindestens 120 s
+  zwischen zwei Toasts, Ruhezeit hält den Stapel zurück (Zusammenfassung danach). Fehler beim Anzeigen werden
+  verworfen, nie in einer Schleife wiederholt.
+- **Plex/Jellyfin ausserhalb des Throttle, aber begrenzt**: das ist der eigene Server des Users, keine Plattform
+  (CLAUDE.md-Prinzip 1 gilt für YouTube/SoundCloud). Grenzen: ein Stapel pro Wartezeit
+  (`media_server.delay_seconds`, Standard 120 s, Timer bei jedem Download neu), höchstens 5 Anfragen pro Stapel
+  (Plex: ein `refresh?path=` je Ordner, sonst ganze Bibliothek; Jellyfin: ein `POST /Library/Media/Updated`),
+  10 s Timeout, keine Wiederholung, Antwort ≤ 2 MB. Ohne Proxy (das Token soll nicht über einen Internet-Proxy
+  laufen) und ohne Weiterleitungen (die Header gingen sonst an das Ziel der Weiterleitung). Nur die vom User
+  eingetragene Adresse; keine Erkennung/Suche im Netz.
+- **Pfad-Abbildung** `media_server.server_root`: Zielordner aus Sicht des Servers (NAS/Docker). Nicht
+  abbildbare Pfade → Scan der ganzen Bibliothek statt eines falschen Pfads.
+- **Token in der Windows-Anmeldeinformationsverwaltung** (`CredWriteW`/`CredReadW`/`CredDeleteW` über ctypes,
+  `CRED_TYPE_GENERIC`, `CRED_PERSIST_LOCAL_MACHINE`, Ziel `HCLoader/media_server/<type>`) statt DPAPI-Datei:
+  der User sieht und löscht es in der Systemsteuerung, es landet nicht in Backups des Datenordners. Gespeichert
+  erst nach erfolgreichem «Verbindung testen». Ausserhalb von Windows nur im Speicher (Tests).

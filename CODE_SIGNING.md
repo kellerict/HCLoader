@@ -45,6 +45,7 @@ by the user:
 | Search, watchlist checks, downloads | YouTube, SoundCloud | when the user searches, downloads, or runs a watchlist check (manually, by the in-app interval or a scheduled task the user created) | Watchlist / schedule settings, `soundcloud.enabled` |
 | App update check | GitHub (`api.github.com`, release downloads) | once per start | installer privacy page; `maintenance.check_app_updates_on_start` |
 | yt-dlp / plugin update check | PyPI (`pypi.org`) | at most once per day at start | installer privacy page; `maintenance.check_updates_on_start` |
+| Library scan after downloads (off by default) | the user's own Plex or Jellyfin server at the address the user entered (usually in the home network) | after downloads (batched), «Test connection», «Scan now» – never through the proxy | `media_server.type` (Settings › Media server) |
 | Proxy | the proxy configured by the user | for the above requests | `network.proxy` |
 
 The two update checks are the only connections HCLoader makes on its own. They are **shown during
@@ -62,7 +63,11 @@ policies: [YouTube/Google](https://policies.google.com/privacy),
 [SoundCloud](https://soundcloud.com/pages/privacy), [GitHub](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement),
 [PyPI](https://policies.python.org/pypi.org/Privacy-Notice/). Settings, the database and logs stay on the local
 computer (`%APPDATA%\HCLoader` or the portable folder). Browser cookies are only read if the user
-explicitly enables `network.cookies_from_browser`, and are never stored in logs.
+explicitly enables `network.cookies_from_browser`, and are never stored in logs. The Plex token / Jellyfin API
+key for the optional library scan is stored in the Windows Credential Manager of the current user
+(never in the configuration, the database or logs) and is only sent to the server the user entered.
+Windows notifications are shown locally; HCLoader registers its notification name and a
+`hcloader:` link for the current user (removed by the uninstaller).
 
 ## Reporting
 Security issues: see [SECURITY.md](SECURITY.md). Questions about signing: open an

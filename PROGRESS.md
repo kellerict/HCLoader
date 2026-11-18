@@ -198,6 +198,41 @@ Entscheide: docs/decisions.md «DJ pages and playlist export (v0.8.0)», Vertrag
   VLC/Handy, Laufwerkswechsel D: → E:, langer Pfad)
 - [ ] 6 Release v0.8.0
 
+## v0.9.0 – Statistik, Windows-Benachrichtigungen, Plex/Jellyfin (docs/ROADMAP.md)
+Statistik-Ansicht offline aus der DB, gebündelte Windows-Benachrichtigungen mit Ruhezeit und Klick zum Eingang,
+Bibliotheks-Scan von Plex/Jellyfin nach Downloads (Token in der Windows-Anmeldeinformationsverwaltung).
+Entscheide: docs/decisions.md «Statistics, notifications, media server (v0.9.0)», Vertrag docs/bridge-api.md
+«Statistics, notifications, media server».
+- [x] 1 Backend + Integration (`integrator`): Migration 15 (`videos.file_size`, Index `idx_videos_downloaded`),
+  `app/core/stats.py` (Summen, Genre, Festival, Jahr, DJ-Top-10 aus dem DJ-Index, Monate lückenlos, Quellen,
+  Meistgespielt, Watchlist-Aktivität, Zeitraum, einmaliges Messen alter Dateigrössen), `app/core/notify.py`
+  (Stapel in der DB für GUI und Headless, Ruhezeit, 120 s Abstand, Toast-XML, Windows PowerShell 5.1 bzw.
+  optional pywinrt, HKCU-Registrierung AppUserModelID + `hcloader:`), `app/core/mediaserver.py` (Plex
+  `refresh?path=`, Jellyfin `/Library/Media/Updated`, Pfad-Abbildung NAS/Docker, ohne Proxy/Weiterleitung,
+  10 s Timeout), `app/core/credentials.py` (CredWrite/CredRead über ctypes), `worker.NotificationService`,
+  `worker.MediaScanQueue` (Timer bündelt), `DownloadQueue(on_session_end)`, Headless: Scan + eine Benachrichtigung
+  nach dem Lauf, `--open <view>` / `hcloader://<view>` → Event `navigate` (auch an die laufende Instanz),
+  7 Bridge-Methoden + Events `stats_sizes`, `media_scan`, `navigate`, Einstellungen `notifications.*`,
+  `media_server.*`, Texte in 17 Sprachen (nl-BE/de-x-frk erben)
+- [x] 2 UI: Ansicht «Statistik» (`#stats`, `ui/js/views/stats.js`: Kennzahlen, Downloads pro Monat, Genre,
+  Quellen-Ring, Top-Festivals/-DJs, Jahre, Meistgespielt, Watchlist-Aktivität, Zeitraum-Presets + eigener
+  Zeitraum, Leer-Zustände, Tastatur/Screenreader, ohne Animation bei «Effekte reduzieren»), Tabs
+  «Benachrichtigungen» (Test) und «Medienserver» (Token-Feld, «Verbindung testen», Bibliothek wählen,
+  «Jetzt einlesen», letzter Scan); Mock-Daten; Screenshots `stats*`, `settings-notifications*`,
+  `settings-mediaserver*` (en/de/ru)
+- [x] 3 Tests: `tests/test_stats.py` (synthetische DB, Zeitraum, 10k Sets < 2 s, Dateigrössen, Migration 15),
+  `tests/test_notify.py` (Ruhezeit, Bündeln, Abstand, XML, PowerShell-Befehl, Registrierung mit Fake-winreg,
+  Queue-/Headless-Haken, `--open`), `tests/test_mediaserver.py` (Validierung, Anfragen, Pfade, Fehler, Transport
+  ohne Proxy, Secret nie in config/Log, Stapel, Headless), `tests/test_stats_ui.py` (Playwright, nur explizite
+  Waits, Parität)
+- [x] 4 Doku: CHANGELOG [Unreleased] mit Highlights, Wiki «Statistics», «Notifications and media servers»,
+  Settings reference, Sidebar/Home, bridge-api, settings-schema, decisions, CODE_SIGNING.md (Datenschutz-
+  Tabelle: eigener Plex/Jellyfin-Server), Installer (Datenschutzseite, Aufräumen der HKCU-Schlüssel)
+- [ ] 5 QA + Review (u.a. unter Windows: Toast über PowerShell in installierter und Portable-Version, Klick
+  öffnet den Eingang bei laufender und geschlossener App, geplante Aufgabe zeigt Benachrichtigung, echter
+  Plex- und Jellyfin-Server inkl. Docker-Pfad, Anmeldeinformationsverwaltung, Statistik mit grosser Bibliothek)
+- [ ] 6 Release v0.9.0
+
 ## Geplant für spätere Versionen
 - Phase 7b: Mixcloud + hearthis.at (Watchlist); 7c: archive.org (optional)
 
@@ -251,3 +286,4 @@ Entscheide: docs/decisions.md «DJ pages and playlist export (v0.8.0)», Vertrag
 - 2026-11-18 – v0.7.0: QA BESTANDEN; Review M1 (keine Tags in die Datei im Player, atomares Tag-Schreiben) und M2 (Web-Audio-Rückfall bei Stille, ALLOW_FILE_URLS explizit) behoben, Minors m1–m5/m7/m9, Migration-12-Test, ru-Kürzungen; Version 0.7.0 + CHANGELOG → bereit für Release (ca. 15 Min. bis Merge/Tag durch Orchestrator; echter WebView2-Test im Smoke offen).
 - 2026-11-18 – v0.8.0 Playlist-Export und DJ-Seiten gebaut (Backend, UI, 19 Sprachen, Tests, Screenshots, Doku); offen: QA, Review, Test unter Windows, Release (ca. 1–2 Std.)
 - 2026-11-18 – v0.8.0: QA BESTANDEN; Review M1 (bekannte Namen vor dem Zerlegen, «Mark With a K») und M2 (DJ-Index-Cache per DB-Trigger/Migration 14, inkrementell) behoben, Minors m1–m10 und QA-Defekt «#»-Pfade; Version 0.8.0 + CHANGELOG → bereit für Release (ca. 15 Min. bis Merge/Tag durch Orchestrator).
+- 2026-11-18 – v0.9.0 Statistik, Windows-Benachrichtigungen und Plex/Jellyfin-Scan gebaut (Backend, UI, 19 Sprachen, Tests, Screenshots, Doku); offen: QA, Review, Test unter Windows, Release (ca. 1–2 Std.)

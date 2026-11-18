@@ -15,9 +15,11 @@
 - [Library and player](Library-and-Player)
 - [Tracklist search](Tracklist-Search)
 - [DJ pages and playlists](DJ-Pages-and-Playlists)
+- [Statistics](Statistics)
 - [Festival collector](Festival-Collector)
 - [File naming and tags](File-Naming-and-Tags)
 - [Scheduled checks](Scheduled-Checks)
+- [Notifications and media servers](Notifications-and-Media-Servers)
 - [Supported sources](Supported-Sources)
 
 **⚙️ Configuration**

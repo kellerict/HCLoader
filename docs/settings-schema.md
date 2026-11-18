@@ -7,7 +7,7 @@ Leitfaden `docs/TRANSLATING.md`); Validierungsmeldungen aus `app/locales/<code>.
 | Abschnitt (Tab) | Schlüssel | Typ | Default | Grenzen / Werte |
 |---|---|---|---|---|
 | `general` (Allgemein) | `language` | str | `en` | auto, en, de, zh-CN, hi, es, fr, bn, pt, ru, id, nl, nl-BE, sv, nb, fi, lt, lv, et, de-x-frk (v0.2.0). `auto` = Windows-Anzeigesprache, nicht unterstützt → `en`; `auto` wählt nie `de-x-frk` (Fränggisch, Spass-Dialekt; fehlende Texte → `de` → `en`). `nl-BE` (Vlaams) enthält nur abweichende Texte (Rest → `nl` → `en`); `auto` wählt es bei belgisch-niederländischer Systemsprache, übrige `nl-*` → `nl`. Fehlt der Schlüssel (Konfiguration vor v0.2.0) → `en` |
-| | `start_view` | str | `discover` | discover, inbox, watchlist, downloads, library, log |
+| | `start_view` | str | `discover` | discover, inbox, watchlist, downloads, library, stats (v0.9.0), log |
 | | `log_level` | str | `INFO` | DEBUG, INFO, WARNING, ERROR |
 | | `confirm_delete` | bool | true | |
 | `search` (Filter & Keywords) | `results_count` | int | 30 | 1–100 |
@@ -93,6 +93,20 @@ Leitfaden `docs/TRANSLATING.md`); Validierungsmeldungen aus `app/locales/<code>.
 | `playlists` (Tab «Ablage & Tags», Abschnitt «Playlists (M3U8)», v0.8.0) | `folder` | str | `""` | Ordner für exportierte Playlists (`%USERPROFILE%` usw. wie beim Zielordner); leer = `<storage.target_dir>\\Playlists`. Der Export-Dialog schlägt ihn vor und erlaubt einen anderen (Ordnerdialog) |
 | | `relative_paths` | bool | true | Standard im Export-Dialog: Einträge relativ zum Ort der Playlist; Datei auf anderem Laufwerk/UNC → immer absolut (Hinweis) |
 | | `sync_after_download` | bool | false | Gespeicherte Playlists mit «Aktuell halten» nach jedem Download (GUI und Headless-Lauf) neu schreiben – nur lokal |
+| `notifications` (Tab «Benachrichtigungen», v0.9.0) | `enabled` | bool | true | Windows-Benachrichtigungen (gebündelt; Klick öffnet die App an der passenden Ansicht) |
+| | `new_sets` | bool | true | Watchlist-Prüfung (App oder geplante Aufgabe) hat neue Sets in den Eingang gelegt |
+| | `downloads_done` | bool | true | Downloads fertig – eine Benachrichtigung pro Queue-Lauf |
+| | `downloads_failed` | bool | true | Downloads fehlgeschlagen – eine Benachrichtigung pro Queue-Lauf |
+| | `quiet_hours` | bool | false | Ruhezeit: nichts anzeigen, danach eine Zusammenfassung |
+| | `quiet_from` | str | `22:00` | HH:MM (Muster wie `schedule.task_time`) |
+| | `quiet_to` | str | `07:00` | HH:MM; kleiner als `quiet_from` = über Mitternacht, gleich = ganzer Tag |
+| `media_server` (Tab «Medienserver», v0.9.0) | `type` | str | `off` | off, plex, jellyfin |
+| | `url` | str | `""` | `http(s)://host[:port][/pfad]`, ohne Benutzer/Query/`#`; Pflicht, wenn `type` ≠ off (Fehler `media_server.url`); `/` am Ende wird entfernt |
+| | `library` | str | `""` | Plex-Bibliotheks-Key / Jellyfin-Bibliotheks-Id (aus «Verbindung testen»); leer = alle |
+| | `library_name` | str | `""` | Anzeigename der gewählten Bibliothek |
+| | `server_root` | str | `""` | Zielordner aus Sicht des Servers (NAS/Docker), leer = gleicher Pfad |
+| | `delay_seconds` | int | 120 | 10–3600: Wartezeit nach dem letzten Download bis zum Scan (bündelt) |
+| | `verify_tls` | bool | true | HTTPS-Zertifikat prüfen |
 | `maintenance` (Wartung) | `check_updates_on_start` | bool | true | max. 1×/Tag |
 | | `check_app_updates_on_start` | bool | true | HCLoader-Update (GitHub-Release) einmal pro Start prüfen |
 | | `apply_update_on_exit` | bool | true | bereitgelegtes App-Update beim Beenden einspielen |
@@ -178,3 +192,12 @@ Bridge (`ui/js/bridge.js`): `get_settings()` → `{values, defaults}`; `save_set
 - DJ-Aliasse, Zusammenführungen und eigene Kanäle stehen ebenfalls in der DB (Tabelle `artists`), nicht in
   `config.yaml` – es sind Daten, keine Einstellungen. Startliste bekannter Aliasse: `app/data/artists.yaml`
   (wird einmal übernommen, danach gelten die Änderungen des Users).
+
+## v0.9.0 – Statistik, Benachrichtigungen, Medienserver (Entscheid)
+- Die Statistik hat keine Einstellungen; der gewählte Zeitraum ist eine Ansichts-Vorliebe (`localStorage`
+  `hc.stats`), keine Einstellung.
+- Das Plex-Token / der Jellyfin-API-Schlüssel ist **keine** Einstellung: es liegt in der Windows-
+  Anmeldeinformationsverwaltung (`HCLoader/media_server/<type>`), wird nur über `test_media_server` (nach
+  Erfolg) gespeichert und über `forget_media_server_secret` entfernt – nie in `config.yaml`, DB oder Log.
+- Der gesammelte Benachrichtigungs-Stapel und das Ergebnis des letzten Scans stehen in der DB (`state.notify_pending`,
+  `state.notify_last_sent`, `state.media_scan_last`), nicht in `config.yaml`.

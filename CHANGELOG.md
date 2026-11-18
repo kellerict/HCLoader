@@ -10,6 +10,56 @@ appears after «Show all changes» (`docs/RELEASING.md`).
 
 ## [Unreleased]
 
+### Highlights
+- **Statistics view**: sets, hours and GB of your library, by genre, festival, year and DJ – charts that work offline
+- **Downloads over time**, YouTube vs. SoundCloud, most played tracks and watchlist activity, with a date range filter
+- **Windows notifications** when the watchlist finds new sets or downloads finish or fail – bundled, with quiet hours
+- A click on a notification **opens the app at the inbox** (also after a scheduled check while the app was closed)
+- **Plex and Jellyfin**: the media server rescans its library after downloads – batched, only the new folders
+- The Plex token / Jellyfin API key lives in the **Windows Credential Manager**, never in config.yaml or the log
+
+### Added
+- Statistics view (navigation › **Statistics**, `#stats`, Ctrl+6): totals (sets, playing time, size on
+  disk, average set length), downloads per month (per year for long histories), genres, YouTube vs.
+  SoundCloud, top 10 festivals and DJs, sets per event year, the most played tracks (offline
+  tracklists) and watchlist activity (checks, scheduled share, found, inbox, the most productive
+  sources). Presets *All time*, *12 months*, *30 days*, *This year* and a custom range. Computed from
+  the database only (no network, fast on 10,000 sets); charts are plain HTML/CSS/SVG with text
+  alternatives, keyboard focus and no animation with *Reduce effects*. A click on a DJ opens their page.
+- File sizes are stored with every download (`videos.file_size`, database migration 15 with an index
+  on the download time); libraries from before v0.9.0 are measured once in the background (local
+  files only) when the statistics view opens.
+- Windows notifications (new settings tab **Notifications**): new sets in the inbox (in-app and
+  scheduled checks), downloads finished, downloads failed – each switchable, plus quiet hours. Events
+  are collected and shown as one notification (one per download run, at least two minutes apart);
+  during the quiet hours nothing is shown and one summary follows afterwards. **Send test** button.
+  Shown through Windows PowerShell 5.1 (part of Windows, no extra package) or, if installed, the
+  optional pywinrt packages; without either the events are only logged.
+- A click on a notification opens HCLoader at the matching view (inbox, downloads or library) –
+  also when the app is already running. New command-line option `--open <view>` (`hcloader://<view>`);
+  the app registers its notification name/icon and the `hcloader:` link per user (HKCU, no admin
+  rights); the uninstaller removes both.
+- Plex/Jellyfin library scan (new settings tab **Media server**): server type, address, library
+  (chosen from the list loaded by **Test connection**), the target folder as the server sees it
+  (NAS/Docker), wait time and certificate check. After downloads the new files are sent in one
+  batch: Plex `…/library/sections/<id>/refresh?path=<folder>`, Jellyfin `/Library/Media/Updated`
+  (falls back to a full library refresh when paths cannot be mapped). **Scan now** button, last scan
+  shown. Only the address you enter is contacted, without the system proxy, no redirects, 10 s
+  timeouts, no retries; failures are logged and shown as a message. The scheduled run scans too.
+- Token / API key in the Windows Credential Manager (`HCLoader/media_server/<type>`), stored after a
+  successful connection test, removable in the settings.
+- New settings sections `notifications` and `media_server`; `general.start_view` accepts `stats`.
+- Bridge methods `get_stats`, `get_notification_status`, `test_notification`,
+  `get_media_server_status`, `test_media_server`, `forget_media_server_secret`, `scan_media_server`;
+  events `stats_sizes`, `media_scan`, `navigate`; `watchlist_done` also carries `inbox`
+  (`docs/bridge-api.md`).
+- Texts in all languages; wiki pages *Statistics* and *Notifications and media servers*, *Settings
+  reference* updated.
+
+### Changed
+- The navigation has a new entry *Statistics* between *Library* and *Log*; Ctrl+6 opens it, the log
+  and the settings moved to Ctrl+7 and Ctrl+8.
+
 ## [0.8.0] - 2026-11-18
 
 ### Highlights

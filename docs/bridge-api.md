@@ -732,6 +732,62 @@ Beispiel `export_playlist({"kind": "artist", "key": "headhunterz"}, {"relative":
 ..\Hardstyle\Q-dance\2023\2023-06-05 - Headhunterz Intents Festival 2023 Mainstage [iInt23Headh].mp3
 ```
 
+### Statistics, notifications, media server (v0.9.0)
+
+Entscheide: `docs/decisions.md` «Statistics, notifications, media server (v0.9.0)». Backend:
+`app/core/stats.py` (Abfragen, Dateigrössen), `app/core/notify.py` (Sammeln, Ruhezeit, Toast-XML,
+Senden, Registrierung), `app/core/mediaserver.py` (Anfragen, Pfade, Transport), `app/core/credentials.py`
+(Windows-Anmeldeinformationsverwaltung); Dienste `worker.NotificationService`, `worker.MediaScanQueue`,
+`worker.run_scan`. Statistik im Thread `hcloader-playlists` (DJ-Index), Dateigrössen im Thread
+`hcloader-stats`, Test/Scan/Test-Benachrichtigung im Thread `hcloader-mediaserver` – nie im
+pywebview-Callback-Thread.
+
+| Methode | Parameter | Rückgabe |
+|---|---|---|
+| `get_stats(opts?)` | `{from?, to?}` lokale Tage `YYYY-MM-DD` (inklusiv, beide optional; vertauscht = getauscht) | `{ok:true, range:{from, to}, totals, genres, festivals, years, djs, months, platforms, tracks, watchlist, series_count, measuring}` \| `{ok:false, error}` (ungültiges Datum). `measuring:true` = fehlende Dateigrössen werden im Hintergrund gemessen → Events `stats_sizes` |
+| `get_notification_status()` | | `{ok:true, available, backend:"winrt"\|"powershell"\|"none", quiet_now, pending}` |
+| `test_notification()` | | `{ok:true, backend}` \| `{ok:false, error, backend?}` – zeigt sofort eine Test-Benachrichtigung (ohne Ruhezeit/Schalter) |
+| `get_media_server_status()` | | `{ok:true, type, has_secret:{plex, jellyfin}, persistent, last_scan: MediaScan\|null, pending}` – `persistent:false` = keine Anmeldeinformationsverwaltung (nur Linux/Tests) |
+| `test_media_server(data)` | `{type:"plex"\|"jellyfin", url, secret?, verify_tls?}` – Formularwerte, **nicht** gespeichert | `{ok:true, name, version, libraries:[{id, name, type, paths, music}], stored, persistent}` \| `{ok:false, code, error, errors?}`. `secret` leer = gespeicherter; ein eingetippter wird erst **nach** erfolgreichem Test gespeichert (`stored:true`) |
+| `forget_media_server_secret(kind?)` | `"plex"` \| `"jellyfin"` (Standard: eingestellter Typ) | `{ok:true}` \| `{ok:false, error}` |
+| `scan_media_server()` | | `MediaScan` – ganze Bibliothek jetzt (gespeicherte Einstellungen + gespeichertes Secret); auch Event `media_scan` |
+
+**Datenformen**
+
+- `totals` = `{sets, seconds, bytes, sizes_missing, avg_seconds, first, last, library_sets}` – im Zeitraum;
+  `library_sets` = ganze Bibliothek; `first`/`last` = ISO-Zeit des ersten/letzten Downloads.
+- `genres` = `[{name, sets, seconds, bytes, color}]` (leeres Genre = `Unsortiert`; `color` aus `genres.items`).
+- `festivals` = `{items:[{key, name, sets, seconds, editions}] (Top 10, nur Serien der Art «festival»), other, festivals}`.
+- `years` = `[{year, sets, seconds}]` aufsteigend – Event-Jahr der Ausgabe, sonst Upload-Jahr; `year:null` = unbekannt (am Ende).
+- `djs` = `[{key, name, initials, sets, seconds}]` Top 10 aus dem DJ-Index (b2b zählt für jeden).
+- `months` = `[{month:"YYYY-MM", sets, seconds, bytes}]` lückenlos vom Beginn (Zeitraum oder erster Download)
+  bis zum Ende (Zeitraum, sonst letzter Download); Monat = UTC-Monat des Downloads.
+- `platforms` = `[{platform, sets, seconds, bytes}]`; `tracks` = `[{key, artist, title, version, sets}]` (Top 10, ≥ 2 Sets).
+- `watchlist` = `{checks, scheduled, found, downloaded, last, months:[{month, checks, found}], sources:[{id,
+  name, type, platform, found, downloaded, inbox}] (Top 10 nach `found`), source_count, enabled_sources, inbox}` –
+  Läufe der Art `watchlist` und `headless` (nach Start), Quellen nach `source_videos.first_seen`.
+- `MediaScan` = `{ok, server, files, at, requests?, partial?, error?, code?}` – `files` = neue Dateien des
+  Stapels (0 = ganze Bibliothek), `partial` = nur Ordner/Pfade statt ganzer Bibliothek, `code` = `auth`,
+  `unreachable`, `timeout`, `tls`, `http`, `bad_response`, `config`, `no_secret`. Zuletzt in `state.media_scan_last`.
+
+**Benachrichtigungen.** `Api` sammelt: Ende eines Queue-Laufs (`DownloadQueue(on_session_end=…)`: geladen,
+fehlgeschlagen, Titel) und `watchlist_done.inbox`. `NotificationService` zeigt 15 s nach dem letzten Ereignis
+**eine** Benachrichtigung (`notify.flush`), frühestens 120 s nach der letzten; während der Ruhezeit bleibt der
+Stapel in `state.notify_pending` und der Status-Ticker (30 s) zeigt ihn danach. Der Headless-Lauf sammelt in
+denselben Stapel und zeigt ihn am Ende (`notify.notify_run`). Klick: Protokoll `hcloader://<view>` →
+`python -m app.main --open hcloader://<view>` → läuft die App, `show <token> <view>` an die laufende Instanz
+(`instance.ActivationServer(on_view=Api.open_view)`) → Event `navigate`; sonst Start mit `#<view>`.
+
+**Medienserver.** `Api._after_download` → `MediaScanQueue.add(id)`; der Timer (`media_server.delay_seconds`)
+wird bei jedem Download neu gestartet, dann **ein** Stapel (`run_scan`). Pfade: `server_path(lokal, Zielordner,
+media_server.server_root)`. Plex: `GET {url}/library/sections/{library}/refresh?path={Ordner}` je neuem Ordner
+(> 5 Ordner oder nicht abbildbar: ohne `path`; ohne Bibliothek `sections/all/refresh`), Header `X-Plex-Token`,
+`Accept: application/json`. Jellyfin: `POST {url}/Library/Media/Updated` `{"Updates":[{"Path", "UpdateType":
+"Created"}]}` (≤ 100 Pfade), sonst `POST /Items/{library}/Refresh?Recursive=true…` bzw. `/Library/Refresh`;
+Header `Authorization: MediaBrowser Client="HCLoader", …, Token="…"`. Test: Plex `GET /` + `GET /library/sections`,
+Jellyfin `GET /System/Info` + `GET /Library/VirtualFolders`. Transport: urllib ohne Proxy, ohne Weiterleitungen,
+Timeout 10 s, Antwort ≤ 2 MB, keine Wiederholung; 401/403 = `auth`. Headless: nach den Downloads ein Stapel.
+
 ### Festival collector (v0.5.0)
 
 Konzept: `docs/concepts/festivals.md` «v0.5.0 – Collect a whole edition», Entscheide: `docs/decisions.md`
@@ -966,7 +1022,7 @@ Status). Ergänzungen der Python-Seite:
 | `update` | `UpdateStatus` | jeder Zustandswechsel des App-Updates (Prüfung Start/Ende, Download, bereit, Fehler, Abbruch, Updater gestartet) | Selbst-Update |
 | `update_progress` | `{phase, pct, bytes, total}` | Download (höchstens ca. 4×/s, 100 % immer), dann einmal `verify`, einmal `prepare` | Selbst-Update |
 | `backfill` | `Backfill` \| `{source_id, state:"none"}` | «Alles einlesen»: bei Start/Fortsetzen (`pending`), Beginn (`running`), nach jeder gespeicherten Seite, Pause, Abbruch, Unterbrechung (`pending` + `note`) und Ende (`done`); `none` = Zeile gibt es nicht (mehr). Die UI aktualisiert nur die Fortschrittszeile der Quelle | 0.4.0 |
-| `watchlist_done` | `{checked, found}` | Watchlist-Lauf beendet; `checked` = bearbeitete Quellen (auch fehlerhafte), `found` = neu gespeicherte Videos | 4 |
+| `watchlist_done` | `{checked, found, inbox?}` | Watchlist-Lauf beendet; `checked` = bearbeitete Quellen (auch fehlerhafte), `found` = neu gespeicherte Videos, `inbox` (v0.9.0) = davon neu im Eingang | 4 |
 | `festival_assign` | `{phase, scope, done?, total?, assigned?, suggested?, none?, manual?, unchanged?, cancelled?, ok?, error?}` | «Festivals zuordnen»: `phase` `start` (einmal), `progress` (alle 25 Einträge und am Ende), `done` (Ergebnis wie `assign_pass`: `{ok, cancelled, total, done, assigned, suggested, none, manual, unchanged}`) oder `error` (`{ok:false, error}`). Danach lädt die UI Bibliothek/Gruppen neu | 0.3.0 |
 | `tracklist_index` | `{phase, scope, done?, total?, sets?, tracks?, cancelled?, ok?, error?}` | «Tracklisten einlesen»: `phase` `start`, `progress` (alle 10 Einträge und am Ende), `done` (`{ok, cancelled, total, done, sets, tracks}`) oder `error` (`{ok:false, error}`). Danach lädt die UI Status, «Meistgespielt» und die Suche neu | 0.6.0 |
 | `audio_analysis` | `{phase, scope, done?, total?, analysed?, failed?, cancelled?, ok?, error?}` | «Lautheit & Wellenform analysieren»: `phase` `start`, `progress` (nach jeder Datei), `done` (`{ok, cancelled, total, done, analysed, failed}`) oder `error` (`{ok:false, error}`, z.B. ffmpeg fehlt) | 0.7.0 |
@@ -975,6 +1031,9 @@ Status). Ergänzungen der Python-Seite:
 | `collector_rows` | `{edition_id, rows:[ChecklistRow], deleted:[id], reload, stats:ChecklistStats}` | Festival-Sammler: Zeilen geändert (Import, Bearbeiten, Haken, Bestätigen, Treffer des Suchauftrags, Status-Wechsel durch die Queue: `queued` → `downloaded`). `reload:true` (leere `rows`, keine `deleted`) = mehrere Zeilen geändert → `get_checklist` neu holen | 0.5.0 |
 | `collector_job` | `CollectorJob` + `{stats}` \| `{edition_id, state:"none", stats}` | Suchauftrag: Start (`pending`), Beginn (`running`), nach jeder Zeile, beim Warten (`note` = nächste Suche), Abbruch, Unterbrechung, Ende | 0.5.0 |
 | `collector_import` | `{phase, kind:"playlist", edition_id, entries, added, merged, unchecked, requests, cancelled, error}` | Playlist-Import: `phase` `start`, `progress` (nach jeder Seite), `done` oder `error` (`error` = übersetzter Text) | 0.5.0 |
+| `stats_sizes` | `{phase:"progress"\|"done", done, total, missing?}` | v0.9.0: fehlende Dateigrössen werden gemessen (nach `get_stats`); `progress` nach je 200 Dateien, danach lädt die UI die Statistik neu | 0.9.0 |
+| `media_scan` | `MediaScan` | v0.9.0: ein Plex-/Jellyfin-Scan wurde angefragt (nach Downloads oder `scan_media_server`); bei Fehler zusätzlich `toast` (warn) | 0.9.0 |
+| `navigate` | `{view}` | v0.9.0: zweiter Start mit `--open <view>` / Klick auf eine Windows-Benachrichtigung → die UI wechselt die Ansicht | 0.9.0 |
 | `playlists_synced` | `{synced, failed}` | gespeicherte Playlists mit «Aktuell halten» wurden neu geschrieben (nach Downloads mit `playlists.sync_after_download` oder per `sync_playlists`); nur gesendet, wenn mindestens eine geschrieben wurde oder fehlschlug. Die UI zeigt einen leisen Toast und lädt die Liste in den Einstellungen neu | 0.8.0 |
 
 ## Download-Queue (Phase 3)

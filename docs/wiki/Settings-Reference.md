@@ -24,7 +24,7 @@ YAML keys (`section.key`); the tab names in the app are German, shown in parenth
 | Key | Default | Range / values | Description |
 |---|---|---|---|
 | `language` | `en` | auto, en, de, zh-CN, hi, es, fr, bn, pt, ru, id, nl, nl-BE, sv, nb, fi, lt, lv, et, de-x-frk | UI and message language (v0.2.0): English (default), German (Swiss spelling), Chinese (Simplified), Hindi, Spanish, French, Bengali, Portuguese (Brazil), Russian, Indonesian, Dutch, Flemish (Belgium), Swedish, Norwegian (Bokmål), Finnish, Lithuanian, Latvian, Estonian and Fränggisch (fun dialect). `auto` follows the Windows display language; unsupported languages fall back to English. `auto` never picks `de-x-frk` (Fränggisch, a fun dialect – choose it explicitly; missing texts fall back to German, then English). `nl-BE` (Vlaams) only overrides the keys where Belgian Dutch differs; the rest comes from `nl`, and `auto` picks it for a Belgian Dutch system language (other `nl-*` → `nl`). Switching applies at once (the window content reloads, no restart). Data (genre names, folders, tags) never changes with the language. |
-| `start_view` | `discover` | discover, inbox, watchlist, downloads, library, log | View opened at start. |
+| `start_view` | `discover` | discover, inbox, watchlist, downloads, library, stats, log | View opened at start (`stats` = [Statistics](Statistics), v0.9.0). |
 | `log_level` | `INFO` | DEBUG, INFO, WARNING, ERROR | Verbosity of the log file and live log. Use DEBUG only for troubleshooting. |
 | `confirm_delete` | `true` | | Ask before deleting a mix (entry and file) from the library. |
 
@@ -170,6 +170,33 @@ The tab also contains:
 The list of exported playlists (with *Keep up to date* per playlist) is stored in the database, not
 in `config.yaml`; it is shown below these settings. DJ aliases and merges are stored in the
 database as well – see [DJ pages and playlists](DJ-Pages-and-Playlists).
+
+## notifications (tab Notifications, v0.9.0)
+
+| Key | Default | Range / values | Description |
+|---|---|---|---|
+| `enabled` | `true` | | Show Windows notifications (bundled; a click opens the app). See [Notifications and media servers](Notifications-and-Media-Servers). |
+| `new_sets` | `true` | | A watchlist check (app or scheduled task) put new sets into the inbox. |
+| `downloads_done` | `true` | | Downloads finished – one notification per run. |
+| `downloads_failed` | `true` | | Downloads failed – one notification per run. |
+| `quiet_hours` | `false` | | No notifications between `quiet_from` and `quiet_to`; one summary afterwards. |
+| `quiet_from` | `22:00` | HH:MM | Start of the quiet hours. |
+| `quiet_to` | `07:00` | HH:MM | End of the quiet hours; earlier than the start = across midnight. Equal to the start = all day. |
+
+## media_server (tab Media server, v0.9.0)
+
+| Key | Default | Range / values | Description |
+|---|---|---|---|
+| `type` | `off` | off, plex, jellyfin | Which server rescans its library after downloads. |
+| `url` | `""` | `http(s)://host[:port][/path]` | Server address; required unless `type` is `off`. No user name, query or `#`. |
+| `library` | `""` | | Plex section key / Jellyfin library id, chosen from the list of *Test connection*. Empty = all libraries. |
+| `library_name` | `""` | | Name of the chosen library (display only). |
+| `server_root` | `""` | path | The target folder as the server sees it (NAS/Docker, e.g. `/data/music/HCLoader`). Empty = the same path. |
+| `delay_seconds` | `120` | 10–3600 | Wait after the last download before the scan is requested (batches downloads). |
+| `verify_tls` | `true` | | Verify the HTTPS certificate (switch off only for a self-signed certificate in your network). |
+
+The Plex token / Jellyfin API key is **not** a setting: it is stored in the Windows Credential
+Manager (`HCLoader/media_server/<type>`) and never written to `config.yaml`.
 
 ## throttle (tab Schonung): YouTube
 

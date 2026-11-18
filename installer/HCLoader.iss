@@ -125,7 +125,7 @@ DirNotEmpty=The folder%n%n%1%n%nis not empty and does not contain an earlier HCL
 AppComment=Find, filter and save hardstyle, hardcore and uptempo mixes
 PrivacyCaption=Privacy and network access
 PrivacyDescription=Which systems HCLoader contacts and how to switch it off.
-PrivacyText=HCLoader sends no telemetry, has no analytics and needs no account.%n%nYouTube and SoundCloud are only contacted when you search, download or run a watchlist check (manually or on a schedule you set up).%n%nAt each start HCLoader can check GitHub for a new HCLoader version and PyPI for yt-dlp updates (at most once a day). These requests contain only the usual connection data (IP address, program version). You can change this later in Settings > Maintenance.
+PrivacyText=HCLoader sends no telemetry, has no analytics and needs no account.%n%nYouTube and SoundCloud are only contacted when you search, download or run a watchlist check (manually or on a schedule you set up).%n%nAt each start HCLoader can check GitHub for a new HCLoader version and PyPI for yt-dlp updates (at most once a day). These requests contain only the usual connection data (IP address, program version). You can change this later in Settings > Maintenance.%n%nOptional and off by default: after downloads HCLoader can ask your own Plex or Jellyfin server (the address you enter) to rescan its library.
 PrivacyUpdateCheck=Check for updates at startup (GitHub, PyPI)
 PrivacyLink=Privacy policy (CODE_SIGNING.md)
 PrivacyExisting=HCLoader is already set up for this user: the existing setting stays as it is. Change it in Settings > Maintenance.
@@ -135,7 +135,7 @@ de.DirNotEmpty=Der Ordner%n%n%1%n%nist nicht leer und enthaelt keine fruehere HC
 de.AppComment=Hardstyle-, Hardcore- und Uptempo-Mixes finden, filtern und speichern
 de.PrivacyCaption=Datenschutz und Netzwerkzugriffe
 de.PrivacyDescription=Welche Dienste HCLoader kontaktiert und wie man es abschaltet.
-de.PrivacyText=HCLoader sendet keine Telemetrie, hat keine Analyse und braucht kein Konto.%n%nYouTube und SoundCloud werden nur kontaktiert, wenn Sie suchen, herunterladen oder eine Watchlist-Pruefung starten (von Hand oder nach einem von Ihnen eingerichteten Zeitplan).%n%nBei jedem Start kann HCLoader auf GitHub nach einer neuen HCLoader-Version und auf PyPI nach yt-dlp-Updates suchen (hoechstens einmal pro Tag). Diese Anfragen enthalten nur die ueblichen Verbindungsdaten (IP-Adresse, Programmversion). Spaeter aenderbar unter Einstellungen > Wartung.
+de.PrivacyText=HCLoader sendet keine Telemetrie, hat keine Analyse und braucht kein Konto.%n%nYouTube und SoundCloud werden nur kontaktiert, wenn Sie suchen, herunterladen oder eine Watchlist-Pruefung starten (von Hand oder nach einem von Ihnen eingerichteten Zeitplan).%n%nBei jedem Start kann HCLoader auf GitHub nach einer neuen HCLoader-Version und auf PyPI nach yt-dlp-Updates suchen (hoechstens einmal pro Tag). Diese Anfragen enthalten nur die ueblichen Verbindungsdaten (IP-Adresse, Programmversion). Spaeter aenderbar unter Einstellungen > Wartung.%n%nOptional und standardmaessig aus: nach Downloads kann HCLoader Ihren eigenen Plex- oder Jellyfin-Server (die von Ihnen eingetragene Adresse) die Bibliothek neu einlesen lassen.
 de.PrivacyUpdateCheck=Beim Start nach Updates suchen (GitHub, PyPI)
 de.PrivacyLink=Datenschutzerklaerung (CODE_SIGNING.md)
 de.PrivacyExisting=HCLoader ist fuer diesen Benutzer bereits eingerichtet: die bestehende Einstellung bleibt unveraendert. Aendern unter Einstellungen > Wartung.
@@ -171,6 +171,13 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\python\pythonw.exe"; Paramete
 
 [Run]
 Filename: "{app}\python\pythonw.exe"; Parameters: "-X utf8 -m app.main"; WorkingDir: "{app}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
+
+[Registry]
+; v0.9.0: the app registers these per user on its own (Windows notifications: name/icon of
+; HCLoader.App, the hcloader: link a click on a notification starts). Nothing is created at install
+; time; the uninstaller removes them.
+Root: HKCU; Subkey: "Software\Classes\AppUserModelId\{#AppUserModelID}"; Flags: dontcreatekey uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\hcloader"; Flags: dontcreatekey uninsdeletekey
 
 [UninstallDelete]
 ; everything in the app folder, also what was created later (_previous* of the self-update,

@@ -57,4 +57,5 @@ source platform as possible. Sources: YouTube and SoundCloud.
 | [Watchlist and Inbox](Watchlist-and-Inbox) | [Throttling and backoff](Throttling-and-Backoff) – how HCLoader stays gentle | [Architecture](Architecture) |
 | [Downloads and queue](Downloads-and-Queue) | [Scheduled checks](Scheduled-Checks) | [Development](Development) |
 | [Library and player](Library-and-Player) | [App updates](App-Updates) | [FAQ](FAQ) |
+| [Statistics](Statistics) | [Notifications and media servers](Notifications-and-Media-Servers) | |
 | [File naming and tags](File-Naming-and-Tags) | [Supported sources](Supported-Sources) | [Repository](https://github.com/kellerict/HCLoader) |
