@@ -16,8 +16,9 @@
    AUFRUFE  UI -> Python        HC.bridge.call('name', ...args) -> Promise
    ---------------------------------------------------------------------
    Einstellungen
-     get_settings()                     -> {values, defaults, language}  (Struktur: docs/settings-schema.md;
-                                           language = general.language aufgelöst, z.B. "de")
+     get_settings()                     -> {values, defaults, language, open_view?}  (Struktur: docs/settings-schema.md;
+                                           language = general.language aufgelöst, z.B. "de"; open_view (v0.9.0) =
+                                           mit --open gewünschte Startansicht, nur beim ersten Aufruf)
      save_settings(values)              -> {ok:true, values, language} | {ok:false, errors:{"section.key": "Meldung"}}
                                            Meldungen kommen fertig übersetzt (aktive Sprache, docs/TRANSLATING.md)
                                            Genres: Schlüssel "genres.items" oder "genres.items.<index>.<feld>"

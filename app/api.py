@@ -287,6 +287,7 @@ class Api:
             transport=self._media_transport,
         )
         self._ms_worker = Worker("hcloader-mediaserver")
+        self._open_view: str | None = None
 
     # ================================================================== lifecycle (internal)
 
@@ -408,6 +409,11 @@ class Api:
         self._notifier.tick()
 
     @_internal
+    def set_open_view(self, view: str | None) -> None:
+        """Start view for the first page load (`--open inbox`), see get_settings."""
+        self._open_view = view if view in NAV_VIEWS else None
+
+    @_internal
     def open_view(self, view: str | None) -> None:
         """A second start (`--open inbox`, toast click `hcloader://inbox`) asks the running
         window to show a view: event `navigate` (v0.9.0)."""
@@ -441,12 +447,18 @@ class Api:
     # ================================================================== settings
 
     def get_settings(self) -> dict[str, Any]:
-        # language: `general.language` resolved ("auto" -> Windows display language)
-        return {
+        # language: `general.language` resolved ("auto" -> Windows display language);
+        # open_view (v0.9.0): view requested with --open for this start, handed out once
+        out = {
             "values": self._cfg.to_dict(),
             "defaults": config.defaults_dict(),
             "language": i18n.current(),
         }
+        with self._lock:
+            view, self._open_view = self._open_view, None
+        if view:
+            out["open_view"] = view
+        return out
 
     def save_settings(self, values: dict[str, Any]) -> dict[str, Any]:
         parsed, errors = config.parse_settings(values)

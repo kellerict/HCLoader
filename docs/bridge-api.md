@@ -776,7 +776,8 @@ fehlgeschlagen, Titel) und `watchlist_done.inbox`. `NotificationService` zeigt 1
 Stapel in `state.notify_pending` und der Status-Ticker (30 s) zeigt ihn danach. Der Headless-Lauf sammelt in
 denselben Stapel und zeigt ihn am Ende (`notify.notify_run`). Klick: Protokoll `hcloader://<view>` →
 `python -m app.main --open hcloader://<view>` → läuft die App, `show <token> <view>` an die laufende Instanz
-(`instance.ActivationServer(on_view=Api.open_view)`) → Event `navigate`; sonst Start mit `#<view>`.
+(`instance.ActivationServer(on_view=Api.open_view)`) → Event `navigate`; sonst normaler Start, und der erste
+`get_settings()` liefert `open_view` (kein `#view` in der URL: .NET `System.Uri` verliert es bei `file:`-URLs).
 
 **Medienserver.** `Api._after_download` → `MediaScanQueue.add(id)`; der Timer (`media_server.delay_seconds`)
 wird bei jedem Download neu gestartet, dann **ein** Stapel (`run_scan`). Pfade: `server_path(lokal, Zielordner,

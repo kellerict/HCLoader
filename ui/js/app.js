@@ -270,7 +270,8 @@
     }
     setStatus(await HC.bridge.safe('get_status'));
     const m = /^#([a-z]+)(?:\/([\w%.-]+))?/.exec(location.hash || ''); // v0.8.0: dj-<key> (encodeURIComponent)
-    go(m && VIEWS.includes(m[1]) ? m[1] : s.values.general.start_view, m ? m[2] : undefined);
+    /* v0.9.0: open_view = --open / Klick auf eine Windows-Benachrichtigung (nur beim ersten Laden) */
+    go(m && VIEWS.includes(m[1]) ? m[1] : s.open_view && VIEWS.includes(s.open_view) ? s.open_view : s.values.general.start_view, m ? m[2] : undefined);
     document.body.classList.add('ready');
   }
   /* ---------- Fehlerzustand: in pywebview gestartet, Backend antwortet nicht (kein Mock!) ---------- */

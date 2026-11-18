@@ -74,10 +74,11 @@ USER_AGENT = (
 )
 
 
-def ui_url(view: str | None = None) -> str:
-    """`ui/index.html` as plain file URL (no query, see USER_AGENT); `#<view>` = start view."""
+def ui_url() -> str:
+    """`ui/index.html` as plain file URL (no query or fragment: pywebview hands it to .NET
+    System.Uri, which keeps neither for file: URLs, see USER_AGENT)."""
     index = Path(__file__).resolve().parents[1] / "ui" / "index.html"
-    return index.as_uri() + (f"#{view}" if view in OPEN_VIEWS else "")
+    return index.as_uri()
 
 
 def icon_path() -> Path:
@@ -226,11 +227,13 @@ def _run_gui(view: str | None = None) -> int:
         ),
     )
     api = Api()  # logs config warnings itself
+    if view:
+        api.set_open_view(view)  # v0.9.0: --open / click on a notification, first get_settings
     _set_app_user_model_id()
     configure_webview(webview)
     window = webview.create_window(
         WINDOW_TITLE,
-        url=ui_url(view),
+        url=ui_url(),
         js_api=api,
         width=WINDOW_SIZE[0],
         height=WINDOW_SIZE[1],

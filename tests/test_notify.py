@@ -432,9 +432,27 @@ def test_open_argument(arg, view):
     assert app_main.view_arg(arg) == view
 
 
-def test_ui_url_with_start_view():
-    assert app_main.ui_url("inbox").endswith("index.html#inbox")
-    assert app_main.ui_url("nope").endswith("index.html")
+def test_open_view_is_handed_out_once(tmp_path):
+    from app.api import Api
+    from app.core.scheduler import TaskScheduler
+    from tests.test_api import FakeLock, FakeSchtasks, FakeWatchdog, NullClient
+
+    a = Api(
+        task_scheduler=TaskScheduler(run=FakeSchtasks(), platform="win32"),
+        watchdog=FakeWatchdog(),
+        run_lock=lambda: FakeLock(),
+        client_factory=NullClient,
+        configure_logging=False,
+    )
+    try:
+        a.set_open_view("inbox")
+        assert a.get_settings()["open_view"] == "inbox"
+        assert "open_view" not in a.get_settings()  # a reload keeps the user's view
+        a.set_open_view("../evil")
+        assert "open_view" not in a.get_settings()
+    finally:
+        a.shutdown()
+    assert "#" not in app_main.ui_url()
 
 
 def test_activation_with_view(tmp_path):
