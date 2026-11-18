@@ -320,6 +320,7 @@
       if (now !== before && HC.i18n.resolve(language || now) !== HC.i18n.lang) {
         /* New language: rebuild the whole UI in place (no app restart; queue and runs live in the backend). */
         HC.i18n.set(language || now);
+        document.body.classList.remove('ready'); // «ready» again only after the reload (tests and screenshots wait on it)
         let url = null;
         try { url = new URL(location.href); } catch (e) { /* egal */ }
         if (url && url.searchParams.has('lang')) { // mock/screenshots: ?lang= must not win again

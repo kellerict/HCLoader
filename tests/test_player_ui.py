@@ -80,7 +80,8 @@ def _play(pg, vid, *, freeze=True):
     pg.click(f'#lib-body tr[data-id="{vid}"] [data-act="play"]')
     pg.wait_for_function(f"HC.player.state().id === '{vid}'")
     if freeze:
-        pg.wait_for_function("HC.player.state().playing")
+        # metadata loaded: a seek lands at once instead of waiting as pendingSeek
+        pg.wait_for_function("HC.player.state().playing && HC.player.audio.readyState >= 1")
         pg.evaluate("HC.player.audio.playbackRate = 0")
 
 
@@ -112,8 +113,7 @@ def test_waveform_seek_click_drag_and_tooltip(page):
     assert 0.2 < painted < 0.9
     box = page.locator("#pl-seek").bounding_box()
     page.mouse.click(box["x"] + box["width"] * 0.6, box["y"] + box["height"] / 2)
-    t = page.evaluate("HC.player.audio.currentTime")
-    assert abs(t - 0.6 * 12) < 0.35
+    page.wait_for_function("Math.abs(HC.player.audio.currentTime - 0.6 * 12) < 0.35")
     # the played part follows (clip-path of the bright canvas)
     clip = page.evaluate("document.getElementById('pl-wave-on').style.clipPath")
     assert clip.startswith("inset(0px 40") or clip.startswith("inset(0 40") or "40." in clip
@@ -133,8 +133,18 @@ def test_waveform_seek_click_drag_and_tooltip(page):
 
 def test_waveform_lazy_pending_event_and_loudness(page):
     _library(page)
+    # hold the «waveform» event until the gain before the analysis has been checked
+    page.evaluate(
+        "(() => { const orig = window.mv.emit; window.__held = [];"
+        " window.mv.emit = (t, d) => (t === 'waveform' ? window.__held.push([t, d]) : orig(t, d));"
+        " window.__release = () => { window.mv.emit = orig; window.__held.forEach(([t, d]) => orig(t, d)); };"
+        " })()"
+    )
     _play(page, "tTerrNight1")  # not analysed in the mock: no peaks, no loudness yet
+    page.wait_for_function("window.__held.length === 1")
     assert page.evaluate("HC.player.output().gain") == 1
+    assert page.is_hidden("#pl-norm")
+    page.evaluate("window.__release()")
     page.wait_for_selector("#pl-seek.has-wave")  # arrives via the «waveform» event
     assert _calls(page, "get_waveform") == [["tTerrNight1"]]
     page.wait_for_function("HC.player.output().gain < 1")  # loudness came with it

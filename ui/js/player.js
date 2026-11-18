@@ -212,7 +212,7 @@
   function dropGraph() {
     stopWatch();
     if (!graph) return;
-    const old = audio, src = old.getAttribute('src'), at = old.currentTime || 0, was = playing();
+    const old = audio, src = old.getAttribute('src'), at = pendingSeek != null ? pendingSeek : old.currentTime || 0, was = playing(); // a seek still waiting for metadata wins
     graphBroken = true;
     try { graph.ctx.close(); } catch (e) { /* egal */ }
     graph = null;

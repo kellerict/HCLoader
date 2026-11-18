@@ -811,9 +811,11 @@ def test_js_intl_formatting(page):
 def test_js_language_switch_rebuilds_ui(page):
     page.evaluate("HC.app.go('settings')")
     page.select_option('[data-k="general.language"] select', "en")
-    page.click("#btn-save")
+    # the new language reloads the page: wait for that navigation, then for the rebuilt UI
+    with page.expect_navigation(wait_until="load"):
+        page.click("#btn-save")
     page.wait_for_function(
-        "HC.i18n && HC.i18n.lang === 'en' && document.body.classList.contains('ready')"
+        "window.HC && HC.i18n && HC.i18n.lang === 'en' && document.body.classList.contains('ready')"
     )
     assert (
         page.evaluate(
@@ -834,6 +836,7 @@ def test_js_language_switch_rebuilds_ui(page):
 
 def test_js_no_missing_keys_while_browsing(page):
     """Visits every view and settings tab in English: no key may be missing at runtime."""
+    page.wait_for_function("window.HC && HC.app && document.body.classList.contains('ready')")
     page.messages.clear()
     for view in ("discover", "inbox", "watchlist", "downloads", "library", "log", "settings"):
         page.evaluate(f"HC.app.go('{view}')")
