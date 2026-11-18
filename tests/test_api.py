@@ -1000,6 +1000,17 @@ def test_every_method_json_serializable(env):
         "save_position": ("abcdefghijk", 120.0, 3600.0),
         "forget_position": ("abcdefghijk",),
         "set_now_playing": ("abcdefghijk",),
+        # v0.8.0 DJ pages + playlist export (unknown artist / playlist -> {ok:false, …})
+        "get_artist": ("nobody",),
+        "save_artist": ({"name": ""},),
+        "merge_artists": (["nobody"], "nobody2"),
+        "split_artist": ("nobody", "x"),
+        "hide_artist": ("nobody", True),
+        "get_artist_watch": ("nobody",),
+        "preview_playlist": ({"kind": "continue"},),
+        "export_playlist": ({"kind": "nope"},),
+        "set_playlist_sync": (999, True),
+        "forget_playlist": (999,),
     }
     for name in sorted(_bridge_comment_methods()):
         res = getattr(a, name)(*args.get(name, ()))

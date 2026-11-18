@@ -337,17 +337,25 @@ def test_label_drops_repeated_artist_segment(settings):
 def test_target_path_sanitises_and_respects_path_length(settings, tmp_path):
     p = playlists.target_path(tmp_path, 'Defqon.1 2024: RED/BLUE? "Best"', settings)
     assert p.name == "Defqon.1 2024- RED-BLUE 'Best'.m3u8"
-    settings.storage.max_path_length = 100
-    long = tmp_path / ("x" * max(1, 80 - len(str(tmp_path))))
-    p = playlists.target_path(long, "A very long playlist name " * 5, settings)
-    assert len(str(p)) < 100 and p.suffix == ".m3u8"
+    # Windows temp folders are long: the limit is set relative to the folder of this test
+    folder = tmp_path / "pl"
+    settings.storage.max_path_length = len(str(folder)) + 30
+    p = playlists.target_path(folder, "A very long playlist name " * 5, settings)
+    assert paths_len(p) < settings.storage.max_path_length and p.suffix == ".m3u8"
+    assert p.name.startswith("A very long")
     with pytest.raises(playlists.PlaylistError):
-        playlists.target_path(tmp_path / ("y" * 120), "Name", settings)
+        playlists.target_path(folder / ("y" * 40), "Name", settings)
     with pytest.raises(playlists.PlaylistError):
         playlists.target_path(tmp_path, " ... ", settings)
 
 
 # =========================================================================== export kinds
+
+
+def paths_len(p):
+    from app.core.paths import windows_length
+
+    return windows_length(p)
 
 
 def _entries(path):

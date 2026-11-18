@@ -15,7 +15,7 @@ Progress per version is tracked in the [milestones](https://github.com/kellerict
 | **v0.5.0** | ✅&nbsp;Released | **Festival collector** – collect all sets of one festival edition from the organiser playlist or a timetable, with a checklist to untick sets you do not want |
 | **v0.6.0** | ✅&nbsp;Released | **Tracklist search** – tracklists from chapters and descriptions: «which sets play track X?» |
 | **v0.7.0** | ✅&nbsp;Released | **Loudness normalisation** (ReplayGain / EBU R128) · player remembers the position, waveform with chapter marks, sleep timer |
-| **v0.8.0** | 🗓️&nbsp;Planned | **Playlist export** (M3U per festival, genre or DJ) · **DJ pages** with aliases |
+| **v0.8.0** | 🚧&nbsp;In progress | **Playlist export** (M3U8 per festival, genre, DJ, search, checklist) · **DJ pages** with aliases, b2b sets and one-click watchlist – see [DJ pages and playlists](DJ-Pages-and-Playlists) |
 | **v0.9.0** | 🗓️&nbsp;Planned | **Statistics** · Windows notifications for new sets · Plex/Jellyfin library scan after downloads |
 | **v0.10.0** | 🗓️&nbsp;Planned | **Re-upload detection** via audio fingerprint · more sources: Mixcloud, hearthis.at, archive.org |
 

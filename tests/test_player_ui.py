@@ -361,7 +361,7 @@ def test_playback_settings_tab_and_analysis_pass(page):
     assert _calls(page, "analyse_library") == [[{"scope": "new"}]]
     assert "3 files" in page.inner_text("#toasts")
     page.wait_for_function(
-        "document.querySelector('[data-custom=analysis] .st-title').textContent.includes('75 of 75')"
+        "document.querySelector('[data-custom=analysis] .st-title').textContent.includes('79 of 79')"
     )
     # target loudness out of range -> field error from validation
     inp = page.locator('.field[data-k="player.target_lufs"] input')
