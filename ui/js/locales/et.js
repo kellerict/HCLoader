@@ -15,7 +15,8 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "downloads": "Allalaadimised",
     "library": "Kogu",
     "log": "Logi",
-    "settings": "Seaded"
+    "settings": "Seaded",
+    "stats": "Statistika"
   },
   "navfoot": {
     "today": "TÄNA",
@@ -628,7 +629,9 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "appearance": "Välimus",
     "maintenance": "Hooldus",
     "festivals": "Festivalid ja sarjad",
-    "playback": "Taasesitus"
+    "playback": "Taasesitus",
+    "notifications": "Teavitused",
+    "mediaserver": "Meediaserver"
   },
   "tabs_hint": {
     "general": "Rakenduse põhikäitumine.",
@@ -643,7 +646,9 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "appearance": "Välimus ja tunnetus. Muudatused on kohe eelvaates ja jäävad püsima alles pärast salvestamist.",
     "maintenance": "Versioonid, uuendused, andmebaas.",
     "festivals": "Tuvastab salvestatud pealkirjadest festivali või sarja, aasta, lava ja seti liigi – võrguühenduseta, ilma ühegi lisapäringuta.",
-    "playback": "Sisseehitatud mängija, valjuse ühtlustamine, meelde jäetud asukohad ja failide võrguta analüüs."
+    "playback": "Sisseehitatud mängija, valjuse ühtlustamine, meelde jäetud asukohad ja failide võrguta analüüs.",
+    "notifications": "Windowsi teavitused uute settide kohta postkastis ning lõpetatud või ebaõnnestunud allalaadimiste kohta – koondatud üheks sõnumiks, mitte kunagi tulvana. Klõps avab rakenduse õiges kohas.",
+    "mediaserver": "Palu pärast allalaadimisi oma Plex- või Jellyfin-serveril teek uuesti skannida – koondatult, ainult koduvõrgus. Luba hoitakse Windowsi mandaadihalduris, mitte kunagi config.yaml-is."
   },
   "set": {
     "default": "Vaikimisi",
@@ -692,7 +697,10 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
       "loudness": "Valjus",
       "memory": "Mälu ja lainekuju",
       "analysis": "Analüüs (võrguta, ffmpeg)",
-      "playlists": "Esitusloendid (M3U8)"
+      "playlists": "Esitusloendid (M3U8)",
+      "notify_events": "Teavita, kui",
+      "quiet": "Vaiksed tunnid",
+      "ms_paths": "Teed ja ajastus"
     },
     "general": {
       "language": {
@@ -1286,6 +1294,114 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
       "sync_title": "Kirjuta see esitusloend pärast allalaadimisi uuesti",
       "forget": "Eemalda loendist (fail jääb alles)",
       "now": "Uuenda kohe"
+    },
+    "notifications": {
+      "enabled": {
+        "label": "Windowsi teavitused",
+        "help": "Näita teavitust Windowsi teavituskeskuses – ka pärast ajastatud kontrolli, kui rakendus on suletud."
+      },
+      "new_sets": {
+        "label": "Uued setid postkastis",
+        "help": "Jälgimisloendi kontroll (rakenduses või ajastatud) leidis uusi sette."
+      },
+      "downloads_done": {
+        "label": "Allalaadimised valmis",
+        "help": "Üks sõnum allalaadimisringi kohta settide arvu ja pealkirjadega."
+      },
+      "downloads_failed": {
+        "label": "Allalaadimised ebaõnnestusid",
+        "help": "Üks sõnum ringi kohta, kui allalaadimine ebaõnnestus. Üksikasjad jäävad jaotisse Allalaadimised."
+      },
+      "quiet_hours": {
+        "label": "Vaiksed tunnid",
+        "help": "Sel ajal teavitusi pole. Toimunu näidatakse hiljem ühe kokkuvõttena."
+      },
+      "quiet_from": {
+        "label": "Alates",
+        "help": "Vaiksete tundide algus (24 h)."
+      },
+      "quiet_to": {
+        "label": "Kuni",
+        "help": "Vaiksete tundide lõpp. Varasem kui algus = üle kesköö (nt 22:00–07:00)."
+      }
+    },
+    "notify": {
+      "on": "Teavitused sees",
+      "off": "Teavitused väljas",
+      "detail": "Näidatakse {backend} kaudu. Mitu järjestikust sündmust liidetakse üheks teavituseks.",
+      "backend_powershell": "Windows PowerShelli (Windowsi osa)",
+      "backend_winrt": "Windowsi teavituste API (pywinrt)",
+      "test": "Saada test",
+      "testing": "Saadan …",
+      "test_sent": "Testteavitus saadetud – vaata ekraani paremat alanurka.",
+      "unavailable": "Windowsi teavitused pole saadaval",
+      "unavailable_detail": "See süsteem ei saa neid näidata (Windows PowerShell puudub või on blokeeritud). Sündmused kirjutatakse ainult logisse."
+    },
+    "media_server": {
+      "type": {
+        "label": "Meediaserver",
+        "help": "Milline server pärast allalaadimisi oma teegi uuesti skannib. Väljas = HCLoader ei võta ühegi meediaserveriga ühendust."
+      },
+      "url": {
+        "label": "Serveri aadress",
+        "help": "Aadress koduvõrgus, nt http://192.168.1.10:32400 (Plex) või http://nas:8096 (Jellyfin). Ühendust võetakse ainult selle aadressiga.",
+        "ph": "http://192.168.1.10:32400"
+      },
+      "server_root": {
+        "label": "Kaust serveris",
+        "help": "Kus server sinu sihtkausta näeb (NAS, Docker), nt /data/music/HCLoader. Tühi = sama tee kui siin. Vajalik, et skannida ainult uusi kaustu.",
+        "ph": "sama tee kui sihtkaustal"
+      },
+      "delay_seconds": {
+        "label": "Oota enne skannimist",
+        "help": "Pärast viimast allalaadimist oota nii kaua – mitmest allalaadimisest saab üks skannimine."
+      },
+      "verify_tls": {
+        "label": "Kontrolli sertifikaati",
+        "help": "https://-aadresside jaoks. Lülita välja ainult iseallkirjastatud sertifikaadi korral koduvõrgus."
+      }
+    },
+    "ms": {
+      "off": "Meediaserverit pole",
+      "off_detail": "Vali allpool Plex või Jellyfin, et selle teek pärast allalaadimisi uuesti skannitaks.",
+      "unsaved": "Salvestamata muudatused – skannimine kasutab salvestatud seadeid.",
+      "on": "{server} uuendatakse pärast allalaadimisi",
+      "last_ok": "Viimane skannimine {t} (uusi faile: {n})",
+      "last_fail": "Viimane skannimine {t} ebaõnnestus",
+      "never": "Skannimist pole veel olnud",
+      "all_libraries": "Kõik teegid",
+      "no_secret": "Luba / API-võtit pole veel salvestatud – sisesta see allpool ja testi ühendust.",
+      "scan_now": "Skanni kohe",
+      "scanning": "Taotlen …",
+      "scan_sent": "Skannimine taotletud – server loeb teeki taustal.",
+      "secret_plex": {
+        "label": "Plexi luba",
+        "help": "Sinu X-Plex-Token (Plex Web › mis tahes üksus › Teave › Kuva XML: „X-Plex-Token=“ aadressis). Salvestatakse pärast edukat testi Windowsi mandaadihaldurisse – mitte kunagi config.yaml-i ega logisse."
+      },
+      "secret_jellyfin": {
+        "label": "Jellyfini API-võti",
+        "help": "Juhtpaneel › API-võtmed › „+“. Salvestatakse pärast edukat testi Windowsi mandaadihaldurisse – mitte kunagi config.yaml-i ega logisse."
+      },
+      "secret_ph": "kleebi siia",
+      "secret_kept": "salvestatud – jäta tühjaks, et alles hoida",
+      "stored_short": "salvestatud",
+      "stored_title": "Salvestatud Windowsi mandaadihaldurisse",
+      "forget": "Eemalda",
+      "forgotten": "Luba eemaldati Windowsi mandaadihaldurist",
+      "connect": {
+        "label": "Ühendus",
+        "help": "Kontrollib aadressi ja luba ning laadib teekide loendi. Kaks lühikest päringut sinu serverisse, muud mitte midagi."
+      },
+      "test": "Testi ühendust",
+      "testing": "Testin …",
+      "test_ok": "Ühendatud: {name} (versioon {v}).",
+      "test_libs": "Leitud teeke: {n}.",
+      "stored": "Luba salvestatud.",
+      "library": {
+        "label": "Teek",
+        "help": "Millist teeki skannida. „Kõik teegid“ skannib kõike (suurtes serverites aeglasem)."
+      },
+      "lib_paths": "Kaustad serveris: {p}"
     }
   },
   "opt": {
@@ -1328,6 +1444,13 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
         "chrome": "Chrome",
         "firefox": "Firefox",
         "brave": "Brave"
+      }
+    },
+    "media_server": {
+      "type": {
+        "off": "Väljas",
+        "plex": "Plex",
+        "jellyfin": "Jellyfin"
       }
     }
   },
@@ -1995,5 +2118,76 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
       "one": "{n} DJ",
       "other": "{n} DJ-d"
     }
+  },
+  "stats": {
+    "title": "Statistika",
+    "sub": "Sinu teek arvudes – võrguühenduseta, andmebaasist",
+    "range": "Periood",
+    "p_all": "Kogu aeg",
+    "p_12m": "12 kuud",
+    "p_30d": "30 päeva",
+    "p_year": "See aasta",
+    "p_custom": "Kohandatud",
+    "from": "Alates",
+    "to": "Kuni",
+    "n_sets": {
+      "one": "{n} sett",
+      "other": "{n} setti"
+    },
+    "sets_word": {
+      "one": "sett",
+      "other": "setti"
+    },
+    "k_sets": "Setid",
+    "k_hours": "Kestus",
+    "k_size": "Kettal",
+    "k_avg": "Keskmine sett",
+    "of_library": "teegi {n}-st",
+    "since": "alates {d}",
+    "days_nonstop": "{n} päeva vahetpidamata",
+    "last_dl": "viimane allalaadimine {d}",
+    "avg_size": "{s} seti kohta",
+    "sizes_missing": {
+      "one": "{n} fail veel mõõtmata",
+      "other": "{n} faili veel mõõtmata"
+    },
+    "measuring": "Mõõdetakse failide suurusi … {done} / {total}",
+    "h_months": "Allalaadimised kuude kaupa",
+    "h_years_dl": "Allalaadimised aastate kaupa",
+    "best_month": "Parim: {m} ({n})",
+    "h_genres": "Žanri järgi",
+    "h_sources": "Allikad",
+    "h_festivals": "Tippfestivalid",
+    "editions": {
+      "one": "{n} väljaanne",
+      "other": "{n} väljaannet"
+    },
+    "festivals_other": "+ {n} setti veel {f} festivalilt",
+    "no_festivals": "Sel perioodil festivalisette pole – need määrab Seaded › Festivalid ja sarjad.",
+    "h_djs": "Tipp-DJ-d",
+    "open_dj": "Ava DJ {name} leht",
+    "no_djs": "Sel perioodil DJ-sid ei tuvastatud.",
+    "h_years": "Seti aasta järgi",
+    "year_unknown": "{n} teadmata aastaga",
+    "h_tracks": "Enim mängitud lood",
+    "no_tracks": "Ükski lugu ei esine veel kahes setis – loonimekirjad tulevad peatükkidest ja kirjeldustest (Teek › Lood).",
+    "h_watchlist": "Jälgimisloendi tegevus",
+    "w_checks": "Kontrollid",
+    "w_scheduled": "neist ajastatud",
+    "w_found": "Leitud",
+    "w_inbox": "Postkastis",
+    "w_library": "Teegis",
+    "w_source": "Allikas",
+    "w_found_n": "leitud: {n}",
+    "w_checks_n": "kontrolle: {n}",
+    "w_last": "viimane kontroll {t}",
+    "w_none_range": "Ükski allikas ei leidnud sel perioodil midagi.",
+    "w_no_sources": "Jälgimisloendis pole veel allikaid.",
+    "none": "Sel perioodil pole midagi.",
+    "range_empty": "Sel perioodil ei laaditud midagi alla – vali pikem.",
+    "error": "Statistika pole saadaval",
+    "empty_title": "Sette veel pole",
+    "empty_text": "Niipea kui teegis on esimesed setid, näed siin, mida kogud – žanrid, festivalid, DJ-d, tunnid.",
+    "empty_go": "Avasta sette"
   }
 });

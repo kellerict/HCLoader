@@ -15,7 +15,8 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "downloads": "Nedlastinger",
     "library": "Bibliotek",
     "log": "Logg",
-    "settings": "Innstillinger"
+    "settings": "Innstillinger",
+    "stats": "Statistikk"
   },
   "navfoot": {
     "today": "I DAG",
@@ -628,7 +629,9 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "appearance": "Utseende",
     "maintenance": "Vedlikehold",
     "festivals": "Festivaler og serier",
-    "playback": "Avspilling"
+    "playback": "Avspilling",
+    "notifications": "Varsler",
+    "mediaserver": "Medieserver"
   },
   "tabs_hint": {
     "general": "Appens grunnleggende oppførsel.",
@@ -643,7 +646,9 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "appearance": "Utseende og følelse. Endringer forhåndsvises umiddelbart og blir permanente først etter lagring.",
     "maintenance": "Versjoner, oppdateringer, database.",
     "festivals": "Gjenkjenner festival eller serie, år, scene og sett-type ut fra de lagrede titlene – frakoblet, uten en eneste ekstra forespørsel.",
-    "playback": "Innebygd spiller, lydstyrkeutjevning, lagrede posisjoner og offline-analysen av filene dine."
+    "playback": "Innebygd spiller, lydstyrkeutjevning, lagrede posisjoner og offline-analysen av filene dine.",
+    "notifications": "Windows-varsler for nye sett i innboksen og ferdige eller mislykkede nedlastinger – samlet i én melding, aldri en flom. Et klikk åpner appen på riktig sted.",
+    "mediaserver": "La Plex- eller Jellyfin-serveren din skanne biblioteket på nytt etter nedlastinger – samlet, bare i hjemmenettet. Tokenet lagres i Windows Legitimasjonsbehandling, aldri i config.yaml."
   },
   "set": {
     "default": "Standard",
@@ -692,7 +697,10 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
       "loudness": "Lydstyrke",
       "memory": "Minne og bølgeform",
       "analysis": "Analyse (frakoblet, ffmpeg)",
-      "playlists": "Spillelister (M3U8)"
+      "playlists": "Spillelister (M3U8)",
+      "notify_events": "Varsle om",
+      "quiet": "Stille timer",
+      "ms_paths": "Stier og tidspunkt"
     },
     "general": {
       "language": {
@@ -1286,6 +1294,114 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
       "sync_title": "Skriv denne spillelisten på nytt etter nedlastinger",
       "forget": "Fjern fra listen (filen blir liggende)",
       "now": "Oppdater nå"
+    },
+    "notifications": {
+      "enabled": {
+        "label": "Windows-varsler",
+        "help": "Vis et varsel i Windows' varslingssenter – også etter en planlagt kontroll mens appen er lukket."
+      },
+      "new_sets": {
+        "label": "Nye sett i innboksen",
+        "help": "En kontroll av overvåkingslisten (i appen eller planlagt) fant nye sett."
+      },
+      "downloads_done": {
+        "label": "Nedlastinger ferdige",
+        "help": "Én melding per nedlastingsrunde med antall sett og titler."
+      },
+      "downloads_failed": {
+        "label": "Nedlastinger mislyktes",
+        "help": "Én melding per runde hvis en nedlasting mislyktes. Detaljer ligger under Nedlastinger."
+      },
+      "quiet_hours": {
+        "label": "Stille timer",
+        "help": "Ingen varsler i denne tiden. Det som skjedde, vises etterpå som én oppsummering."
+      },
+      "quiet_from": {
+        "label": "Fra",
+        "help": "Start på de stille timene (24 t)."
+      },
+      "quiet_to": {
+        "label": "Til",
+        "help": "Slutt på de stille timene. Tidligere enn starten = over midnatt (f.eks. 22:00–07:00)."
+      }
+    },
+    "notify": {
+      "on": "Varsler på",
+      "off": "Varsler av",
+      "detail": "Vises via {backend}. Flere hendelser tett etter hverandre blir ett varsel.",
+      "backend_powershell": "Windows PowerShell (inkludert i Windows)",
+      "backend_winrt": "Windows' varslings-API (pywinrt)",
+      "test": "Send test",
+      "testing": "Sender …",
+      "test_sent": "Testvarsel sendt – se nederst til høyre på skjermen.",
+      "unavailable": "Windows-varsler ikke tilgjengelige",
+      "unavailable_detail": "Systemet kan ikke vise dem (Windows PowerShell mangler eller er blokkert). Hendelser skrives bare til loggen."
+    },
+    "media_server": {
+      "type": {
+        "label": "Medieserver",
+        "help": "Hvilken server som skal skanne biblioteket sitt på nytt etter nedlastinger. Av = HCLoader kontakter ingen medieserver."
+      },
+      "url": {
+        "label": "Serveradresse",
+        "help": "Adresse i hjemmenettet, f.eks. http://192.168.1.10:32400 (Plex) eller http://nas:8096 (Jellyfin). Bare denne adressen kontaktes.",
+        "ph": "http://192.168.1.10:32400"
+      },
+      "server_root": {
+        "label": "Mappe på serveren",
+        "help": "Hvor serveren ser målmappen din (NAS, Docker), f.eks. /data/music/HCLoader. Tom = samme sti som her. Trengs for å skanne bare de nye mappene.",
+        "ph": "samme sti som målmappen"
+      },
+      "delay_seconds": {
+        "label": "Vent før skanning",
+        "help": "Vent så lenge etter siste nedlasting – flere nedlastinger blir da én skanning."
+      },
+      "verify_tls": {
+        "label": "Kontroller sertifikat",
+        "help": "For https://-adresser. Slå av bare for et selvsignert sertifikat i hjemmenettet."
+      }
+    },
+    "ms": {
+      "off": "Ingen medieserver",
+      "off_detail": "Velg Plex eller Jellyfin nedenfor for at biblioteket skal skannes på nytt etter nedlastinger.",
+      "unsaved": "Ulagrede endringer – skanningen bruker de lagrede innstillingene.",
+      "on": "{server} oppdateres etter nedlastinger",
+      "last_ok": "Siste skanning {t} ({n} nye filer)",
+      "last_fail": "Siste skanning {t} mislyktes",
+      "never": "Ingen skanning ennå",
+      "all_libraries": "Alle bibliotek",
+      "no_secret": "Ingen token / API-nøkkel lagret ennå – skriv den inn nedenfor og test tilkoblingen.",
+      "scan_now": "Skann nå",
+      "scanning": "Ber om …",
+      "scan_sent": "Skanning bedt om – serveren leser biblioteket i bakgrunnen.",
+      "secret_plex": {
+        "label": "Plex-token",
+        "help": "Din X-Plex-Token (Plex Web › et element › Hent info › Vis XML: «X-Plex-Token=» i adressen). Lagres i Windows Legitimasjonsbehandling etter en vellykket test – aldri i config.yaml eller loggen."
+      },
+      "secret_jellyfin": {
+        "label": "Jellyfin-API-nøkkel",
+        "help": "Kontrollpanel › API-nøkler › «+». Lagres i Windows Legitimasjonsbehandling etter en vellykket test – aldri i config.yaml eller loggen."
+      },
+      "secret_ph": "lim inn her",
+      "secret_kept": "lagret – la stå tomt for å beholde",
+      "stored_short": "lagret",
+      "stored_title": "Lagret i Windows Legitimasjonsbehandling",
+      "forget": "Fjern",
+      "forgotten": "Token fjernet fra Windows Legitimasjonsbehandling",
+      "connect": {
+        "label": "Tilkobling",
+        "help": "Sjekker adresse og token og henter listen over bibliotek. To korte forespørsler til serveren din, ingenting annet."
+      },
+      "test": "Test tilkobling",
+      "testing": "Tester …",
+      "test_ok": "Koblet til {name} (versjon {v}).",
+      "test_libs": "{n} bibliotek funnet.",
+      "stored": "Token lagret.",
+      "library": {
+        "label": "Bibliotek",
+        "help": "Hvilket bibliotek som skannes. «Alle bibliotek» skanner alt (tregere på store servere)."
+      },
+      "lib_paths": "Mapper på serveren: {p}"
     }
   },
   "opt": {
@@ -1328,6 +1444,13 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
         "chrome": "Chrome",
         "firefox": "Firefox",
         "brave": "Brave"
+      }
+    },
+    "media_server": {
+      "type": {
+        "off": "Av",
+        "plex": "Plex",
+        "jellyfin": "Jellyfin"
       }
     }
   },
@@ -1995,5 +2118,76 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
       "one": "{n} DJ",
       "other": "{n} DJ-er"
     }
+  },
+  "stats": {
+    "title": "Statistikk",
+    "sub": "Biblioteket ditt i tall – offline, fra databasen",
+    "range": "Periode",
+    "p_all": "Alt",
+    "p_12m": "12 måneder",
+    "p_30d": "30 dager",
+    "p_year": "I år",
+    "p_custom": "Egendefinert",
+    "from": "Fra",
+    "to": "Til",
+    "n_sets": {
+      "one": "{n} sett",
+      "other": "{n} sett"
+    },
+    "sets_word": {
+      "one": "sett",
+      "other": "sett"
+    },
+    "k_sets": "Sett",
+    "k_hours": "Spilletid",
+    "k_size": "På disken",
+    "k_avg": "Gjennomsnittlig sett",
+    "of_library": "av {n} i biblioteket",
+    "since": "siden {d}",
+    "days_nonstop": "{n} døgn nonstop",
+    "last_dl": "siste nedlasting {d}",
+    "avg_size": "{s} per sett",
+    "sizes_missing": {
+      "one": "{n} fil ikke målt ennå",
+      "other": "{n} filer ikke målt ennå"
+    },
+    "measuring": "Måler filstørrelser … {done} / {total}",
+    "h_months": "Nedlastinger per måned",
+    "h_years_dl": "Nedlastinger per år",
+    "best_month": "Best: {m} ({n})",
+    "h_genres": "Etter sjanger",
+    "h_sources": "Kilder",
+    "h_festivals": "Toppfestivaler",
+    "editions": {
+      "one": "{n} utgave",
+      "other": "{n} utgaver"
+    },
+    "festivals_other": "+ {n} sett fra {f} andre festivaler",
+    "no_festivals": "Ingen festivalsett i perioden – Innstillinger › Festivaler og serier tildeler dem.",
+    "h_djs": "Topp-DJ-er",
+    "open_dj": "Åpne DJ-siden til {name}",
+    "no_djs": "Ingen DJ-er gjenkjent i perioden.",
+    "h_years": "Etter settets år",
+    "year_unknown": "{n} uten kjent år",
+    "h_tracks": "Mest spilte låter",
+    "no_tracks": "Ingen låt finnes ennå i to sett – låtlister kommer fra kapitler og beskrivelser (Bibliotek › Låter).",
+    "h_watchlist": "Aktivitet i overvåkingslisten",
+    "w_checks": "Kontroller",
+    "w_scheduled": "av dem planlagt",
+    "w_found": "Funnet",
+    "w_inbox": "I innboksen",
+    "w_library": "I biblioteket",
+    "w_source": "Kilde",
+    "w_found_n": "{n} funnet",
+    "w_checks_n": "{n} kontroller",
+    "w_last": "siste kontroll {t}",
+    "w_none_range": "Ingen kilde fant noe i perioden.",
+    "w_no_sources": "Ingen kilder i overvåkingslisten ennå.",
+    "none": "Ingenting i perioden.",
+    "range_empty": "Ingenting ble lastet ned i perioden – velg en lengre.",
+    "error": "Statistikk ikke tilgjengelig",
+    "empty_title": "Ingen sett ennå",
+    "empty_text": "Så snart de første settene er i biblioteket, ser du her hva du samler – sjangre, festivaler, DJ-er, timer.",
+    "empty_go": "Oppdag sett"
   }
 });

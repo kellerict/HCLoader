@@ -1707,7 +1707,6 @@
     const wsum = years.reduce((a, x) => a + x[1], 0);
     const yrs = years.map(([y, w]) => ({ year: y, sets: Math.round((n * 0.97 * w) / wsum), seconds: Math.round((sec * 0.97 * w) / wsum) })).filter((y) => y.sets);
     if (n) yrs.push({ year: null, sets: Math.round(n * 0.03), seconds: 0 });
-    const days = Math.max(1, months.length * 30);
     const wl = months.map((m) => ({ month: m.month, checks: Math.round(30 * 1.4 + hfrac(m.month + 'c') * 6), found: Math.round(m.sets * 1.7 + hfrac(m.month + 'f') * 9) }));
     const found = wl.reduce((a, m) => a + m.found, 0);
     const src = SOURCES.filter((x) => x.enabled).map((x, i) => ({ id: x.id, name: x.name, type: x.type, platform: x.platform, found: Math.round(found * [0.24, 0.19, 0.15, 0.12, 0.09, 0.08, 0.07, 0.06][i % 8]), downloaded: 0, inbox: 0 }))
@@ -1723,7 +1722,7 @@
       months: n || from ? months.map((m) => ({ month: m.month, sets: m.sets, seconds: m.seconds, bytes: m.bytes })) : [],
       platforms: n ? [{ platform: 'youtube', sets: n - share(0.14), seconds: Math.round(sec * 0.86), bytes: Math.round(bytes * 0.86) }, { platform: 'soundcloud', sets: share(0.14), seconds: Math.round(sec * 0.14), bytes: Math.round(bytes * 0.14) }] : [],
       tracks: TRACKS.map(([artist, title, version, f]) => ({ key: `${artist}|${title}`.toLowerCase(), artist, title, version, sets: Math.round(n * f) })).filter((x) => x.sets >= 2),
-      watchlist: { checks: wl.reduce((a, m) => a + m.checks, 0), scheduled: Math.round(days * 0.95), found, downloaded: Math.round(found * 0.21), last: isoAt(0, 3, 0), months: wl, sources: empty ? [] : src.slice(0, 10), source_count: SOURCES.length, enabled_sources: SOURCES.filter((x) => x.enabled).length, inbox: 12 },
+      watchlist: { checks: wl.reduce((a, m) => a + m.checks, 0), scheduled: Math.round(wl.reduce((a, m) => a + m.checks, 0) * 0.64), found, downloaded: Math.round(found * 0.21), last: isoAt(0, 3, 0), months: wl, sources: empty ? [] : src.slice(0, 10), source_count: SOURCES.length, enabled_sources: SOURCES.filter((x) => x.enabled).length, inbox: 12 },
       series_count: 0,
     };
   }

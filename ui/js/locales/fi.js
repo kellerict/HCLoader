@@ -15,7 +15,8 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "downloads": "Lataukset",
     "library": "Kirjasto",
     "log": "Loki",
-    "settings": "Asetukset"
+    "settings": "Asetukset",
+    "stats": "Tilastot"
   },
   "navfoot": {
     "today": "TÄNÄÄN",
@@ -628,7 +629,9 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "appearance": "Ulkoasu",
     "maintenance": "Ylläpito",
     "festivals": "Festivaalit ja sarjat",
-    "playback": "Toisto"
+    "playback": "Toisto",
+    "notifications": "Ilmoitukset",
+    "mediaserver": "Mediapalvelin"
   },
   "tabs_hint": {
     "general": "Sovelluksen perustoiminta.",
@@ -643,7 +646,9 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "appearance": "Ulkoasu ja tuntuma. Muutokset esikatsellaan heti ja tulevat pysyviksi vasta tallennuksen jälkeen.",
     "maintenance": "Versiot, päivitykset, tietokanta.",
     "festivals": "Tunnistaa festivaalin tai sarjan, vuoden, lavan ja setin tyypin tallennetuista otsikoista – ilman verkkoa, ilman yhtäkään lisäpyyntöä.",
-    "playback": "Sisäänrakennettu soitin, äänenvoimakkuuden tasaus, muistetut kohdat ja tiedostojesi offline-analyysi."
+    "playback": "Sisäänrakennettu soitin, äänenvoimakkuuden tasaus, muistetut kohdat ja tiedostojesi offline-analyysi.",
+    "notifications": "Windows-ilmoitukset uusista seteistä saapuneissa sekä valmiista tai epäonnistuneista latauksista – koottuna yhdeksi viestiksi, ei koskaan tulvana. Napsautus avaa sovelluksen oikeaan kohtaan.",
+    "mediaserver": "Pyydä latausten jälkeen Plex- tai Jellyfin-palvelintasi skannaamaan kirjastonsa uudelleen – koottuna, vain kotiverkossa. Tunnus tallennetaan Windowsin tunnistetietojen hallintaan, ei koskaan config.yaml-tiedostoon."
   },
   "set": {
     "default": "Oletus",
@@ -692,7 +697,10 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
       "loudness": "Äänenvoimakkuus",
       "memory": "Muisti ja aaltomuoto",
       "analysis": "Analyysi (offline, ffmpeg)",
-      "playlists": "Soittolistat (M3U8)"
+      "playlists": "Soittolistat (M3U8)",
+      "notify_events": "Ilmoita",
+      "quiet": "Hiljaiset tunnit",
+      "ms_paths": "Polut ja ajoitus"
     },
     "general": {
       "language": {
@@ -1286,6 +1294,114 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
       "sync_title": "Kirjoita tämä soittolista uudelleen latausten jälkeen",
       "forget": "Poista listasta (tiedosto jää)",
       "now": "Päivitä nyt"
+    },
+    "notifications": {
+      "enabled": {
+        "label": "Windows-ilmoitukset",
+        "help": "Näytä ilmoitus Windowsin ilmoituskeskuksessa – myös ajastetun tarkistuksen jälkeen, kun sovellus on suljettu."
+      },
+      "new_sets": {
+        "label": "Uudet setit saapuneissa",
+        "help": "Seurantalistan tarkistus (sovelluksessa tai ajastettu) löysi uusia settejä."
+      },
+      "downloads_done": {
+        "label": "Lataukset valmiit",
+        "help": "Yksi viesti latauskierrosta kohden settien määrän ja nimien kera."
+      },
+      "downloads_failed": {
+        "label": "Lataukset epäonnistuivat",
+        "help": "Yksi viesti kierrosta kohden, jos lataus epäonnistui. Tiedot löytyvät kohdasta Lataukset."
+      },
+      "quiet_hours": {
+        "label": "Hiljaiset tunnit",
+        "help": "Ei ilmoituksia tänä aikana. Tapahtumat näytetään sen jälkeen yhtenä yhteenvetona."
+      },
+      "quiet_from": {
+        "label": "Alkaen",
+        "help": "Hiljaisten tuntien alku (24 h)."
+      },
+      "quiet_to": {
+        "label": "Asti",
+        "help": "Hiljaisten tuntien loppu. Aiemmin kuin alku = yli keskiyön (esim. 22:00–07:00)."
+      }
+    },
+    "notify": {
+      "on": "Ilmoitukset päällä",
+      "off": "Ilmoitukset pois",
+      "detail": "Näytetään {backend} kautta. Useat peräkkäiset tapahtumat yhdistetään yhdeksi ilmoitukseksi.",
+      "backend_powershell": "Windows PowerShellin (sisältyy Windowsiin)",
+      "backend_winrt": "Windowsin ilmoitusrajapinnan (pywinrt)",
+      "test": "Lähetä testi",
+      "testing": "Lähetetään …",
+      "test_sent": "Testi-ilmoitus lähetetty – katso näytön oikeaa alakulmaa.",
+      "unavailable": "Windows-ilmoitukset eivät ole käytettävissä",
+      "unavailable_detail": "Tämä järjestelmä ei voi näyttää niitä (Windows PowerShell puuttuu tai on estetty). Tapahtumat kirjataan vain lokiin."
+    },
+    "media_server": {
+      "type": {
+        "label": "Mediapalvelin",
+        "help": "Mikä palvelin skannaa kirjastonsa uudelleen latausten jälkeen. Pois = HCLoader ei ota yhteyttä mihinkään mediapalvelimeen."
+      },
+      "url": {
+        "label": "Palvelimen osoite",
+        "help": "Osoite kotiverkossa, esim. http://192.168.1.10:32400 (Plex) tai http://nas:8096 (Jellyfin). Vain tähän osoitteeseen otetaan yhteyttä.",
+        "ph": "http://192.168.1.10:32400"
+      },
+      "server_root": {
+        "label": "Kansio palvelimella",
+        "help": "Missä palvelin näkee kohdekansiosi (NAS, Docker), esim. /data/music/HCLoader. Tyhjä = sama polku kuin täällä. Tarvitaan, jotta vain uudet kansiot skannataan.",
+        "ph": "sama polku kuin kohdekansio"
+      },
+      "delay_seconds": {
+        "label": "Odota ennen skannausta",
+        "help": "Odota viimeisimmän latauksen jälkeen näin kauan – useasta latauksesta tulee silloin yksi skannaus."
+      },
+      "verify_tls": {
+        "label": "Tarkista varmenne",
+        "help": "https://-osoitteille. Poista käytöstä vain itse allekirjoitetulla varmenteella kotiverkossa."
+      }
+    },
+    "ms": {
+      "off": "Ei mediapalvelinta",
+      "off_detail": "Valitse alta Plex tai Jellyfin, niin sen kirjasto skannataan uudelleen latausten jälkeen.",
+      "unsaved": "Tallentamattomia muutoksia – skannaus käyttää tallennettuja asetuksia.",
+      "on": "{server} päivitetään latausten jälkeen",
+      "last_ok": "Viimeisin skannaus {t} ({n} uutta tiedostoa)",
+      "last_fail": "Viimeisin skannaus {t} epäonnistui",
+      "never": "Ei vielä skannausta",
+      "all_libraries": "Kaikki kirjastot",
+      "no_secret": "Tunnusta / API-avainta ei ole vielä tallennettu – anna se alla ja testaa yhteys.",
+      "scan_now": "Skannaa nyt",
+      "scanning": "Pyydetään …",
+      "scan_sent": "Skannausta pyydetty – palvelin lukee kirjaston taustalla.",
+      "secret_plex": {
+        "label": "Plex-tunnus",
+        "help": "X-Plex-Token (Plex Web › mikä tahansa kohde › Tiedot › Näytä XML: ”X-Plex-Token=” osoitteessa). Tallennetaan Windowsin tunnistetietojen hallintaan onnistuneen testin jälkeen – ei koskaan config.yaml-tiedostoon tai lokiin."
+      },
+      "secret_jellyfin": {
+        "label": "Jellyfin-API-avain",
+        "help": "Hallintapaneeli › API-avaimet › ”+”. Tallennetaan Windowsin tunnistetietojen hallintaan onnistuneen testin jälkeen – ei koskaan config.yaml-tiedostoon tai lokiin."
+      },
+      "secret_ph": "liitä tähän",
+      "secret_kept": "tallennettu – jätä tyhjäksi säilyttääksesi",
+      "stored_short": "tallennettu",
+      "stored_title": "Tallennettu Windowsin tunnistetietojen hallintaan",
+      "forget": "Poista",
+      "forgotten": "Tunnus poistettu Windowsin tunnistetietojen hallinnasta",
+      "connect": {
+        "label": "Yhteys",
+        "help": "Tarkistaa osoitteen ja tunnuksen ja hakee kirjastoluettelon. Kaksi lyhyttä pyyntöä palvelimellesi, ei muuta."
+      },
+      "test": "Testaa yhteys",
+      "testing": "Testataan …",
+      "test_ok": "Yhdistetty: {name} (versio {v}).",
+      "test_libs": "{n} kirjastoa löytyi.",
+      "stored": "Tunnus tallennettu.",
+      "library": {
+        "label": "Kirjasto",
+        "help": "Mikä kirjasto skannataan. ”Kaikki kirjastot” skannaa kaiken (hitaampaa suurilla palvelimilla)."
+      },
+      "lib_paths": "Kansiot palvelimella: {p}"
     }
   },
   "opt": {
@@ -1328,6 +1444,13 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
         "chrome": "Chrome",
         "firefox": "Firefox",
         "brave": "Brave"
+      }
+    },
+    "media_server": {
+      "type": {
+        "off": "Pois",
+        "plex": "Plex",
+        "jellyfin": "Jellyfin"
       }
     }
   },
@@ -1995,5 +2118,76 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
       "one": "{n} DJ",
       "other": "{n} DJ:tä"
     }
+  },
+  "stats": {
+    "title": "Tilastot",
+    "sub": "Kirjastosi lukuina – offline, tietokannasta",
+    "range": "Aikaväli",
+    "p_all": "Kaikki",
+    "p_12m": "12 kk",
+    "p_30d": "30 päivää",
+    "p_year": "Tämä vuosi",
+    "p_custom": "Mukautettu",
+    "from": "Alkaen",
+    "to": "Asti",
+    "n_sets": {
+      "one": "{n} setti",
+      "other": "{n} settiä"
+    },
+    "sets_word": {
+      "one": "setti",
+      "other": "settiä"
+    },
+    "k_sets": "Setit",
+    "k_hours": "Kesto",
+    "k_size": "Levyllä",
+    "k_avg": "Keskimääräinen setti",
+    "of_library": "kirjaston {n} setistä",
+    "since": "alkaen {d}",
+    "days_nonstop": "{n} päivää nonstop",
+    "last_dl": "viimeisin lataus {d}",
+    "avg_size": "{s} / setti",
+    "sizes_missing": {
+      "one": "{n} tiedosto vielä mittaamatta",
+      "other": "{n} tiedostoa vielä mittaamatta"
+    },
+    "measuring": "Mitataan tiedostokokoja … {done} / {total}",
+    "h_months": "Lataukset kuukausittain",
+    "h_years_dl": "Lataukset vuosittain",
+    "best_month": "Paras: {m} ({n})",
+    "h_genres": "Tyylilajeittain",
+    "h_sources": "Lähteet",
+    "h_festivals": "Kärkifestivaalit",
+    "editions": {
+      "one": "{n} kerta",
+      "other": "{n} kertaa"
+    },
+    "festivals_other": "+ {n} settiä {f} muulta festivaalilta",
+    "no_festivals": "Ei festivaalisettejä tällä aikavälillä – Asetukset › Festivaalit & sarjat liittää ne.",
+    "h_djs": "Kärki-DJ:t",
+    "open_dj": "Avaa DJ:n {name} sivu",
+    "no_djs": "Ei tunnistettuja DJ:itä tällä aikavälillä.",
+    "h_years": "Setin vuoden mukaan",
+    "year_unknown": "{n} ilman tunnettua vuotta",
+    "h_tracks": "Soitetuimmat kappaleet",
+    "no_tracks": "Mikään kappale ei vielä esiinny kahdessa setissä – kappalelistat tulevat luvuista ja kuvauksista (Kirjasto › Kappaleet).",
+    "h_watchlist": "Seurantalistan toiminta",
+    "w_checks": "Tarkistukset",
+    "w_scheduled": "joista ajastettuja",
+    "w_found": "Löydetyt",
+    "w_inbox": "Saapuneissa",
+    "w_library": "Kirjastossa",
+    "w_source": "Lähde",
+    "w_found_n": "{n} löydetty",
+    "w_checks_n": "{n} tarkistusta",
+    "w_last": "viimeisin tarkistus {t}",
+    "w_none_range": "Mikään lähde ei löytänyt mitään tällä aikavälillä.",
+    "w_no_sources": "Seurantalistalla ei ole vielä lähteitä.",
+    "none": "Ei mitään tällä aikavälillä.",
+    "range_empty": "Tällä aikavälillä ei ladattu mitään – valitse pidempi.",
+    "error": "Tilastot eivät ole käytettävissä",
+    "empty_title": "Ei vielä settejä",
+    "empty_text": "Kun ensimmäiset setit ovat kirjastossa, näet täältä mitä keräät – tyylilajit, festivaalit, DJ:t, tunnit.",
+    "empty_go": "Löydä settejä"
   }
 });

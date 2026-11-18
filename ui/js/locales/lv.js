@@ -15,7 +15,8 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "downloads": "Lejupielādes",
     "library": "Bibliotēka",
     "log": "Žurnāls",
-    "settings": "Iestatījumi"
+    "settings": "Iestatījumi",
+    "stats": "Statistika"
   },
   "navfoot": {
     "today": "ŠODIEN",
@@ -646,7 +647,9 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "appearance": "Izskats",
     "maintenance": "Apkope",
     "festivals": "Festivāli un sērijas",
-    "playback": "Atskaņošana"
+    "playback": "Atskaņošana",
+    "notifications": "Paziņojumi",
+    "mediaserver": "Multivides serveris"
   },
   "tabs_hint": {
     "general": "Lietotnes pamatuzvedība.",
@@ -661,7 +664,9 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "appearance": "Izskats un sajūta. Izmaiņas ir redzamas uzreiz un kļūst pastāvīgas tikai pēc saglabāšanas.",
     "maintenance": "Versijas, atjauninājumi, datubāze.",
     "festivals": "Atpazīst festivālu vai sēriju, gadu, skatuvi un seta veidu pēc saglabātajiem nosaukumiem – bezsaistē, bez neviena papildu pieprasījuma.",
-    "playback": "Iebūvētais atskaņotājs, skaļuma izlīdzināšana, atcerētas pozīcijas un jūsu failu bezsaistes analīze."
+    "playback": "Iebūvētais atskaņotājs, skaļuma izlīdzināšana, atcerētas pozīcijas un jūsu failu bezsaistes analīze.",
+    "notifications": "Windows paziņojumi par jauniem setiem iesūtnē un pabeigtām vai neizdevušām lejupielādēm – apvienoti vienā ziņā, nekad plūdos. Klikšķis atver lietotni pareizajā vietā.",
+    "mediaserver": "Pēc lejupielādēm lūgt jūsu Plex vai Jellyfin serverim atkārtoti skenēt bibliotēku – apvienoti, tikai mājas tīklā. Pilnvara glabājas Windows akreditācijas datu pārvaldniekā, nekad config.yaml."
   },
   "set": {
     "default": "Noklusējums",
@@ -712,7 +717,10 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
       "loudness": "Skaļums",
       "memory": "Atmiņa un viļņforma",
       "analysis": "Analīze (bezsaistē, ffmpeg)",
-      "playlists": "Atskaņošanas saraksti (M3U8)"
+      "playlists": "Atskaņošanas saraksti (M3U8)",
+      "notify_events": "Paziņot par",
+      "quiet": "Klusuma stundas",
+      "ms_paths": "Ceļi un laiks"
     },
     "general": {
       "language": {
@@ -1307,6 +1315,114 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
       "sync_title": "Pārrakstīt šo sarakstu pēc lejupielādēm",
       "forget": "Noņemt no saraksta (fails paliek)",
       "now": "Atjaunināt tagad"
+    },
+    "notifications": {
+      "enabled": {
+        "label": "Windows paziņojumi",
+        "help": "Rādīt paziņojumu Windows paziņojumu centrā – arī pēc ieplānotas pārbaudes, kad lietotne ir aizvērta."
+      },
+      "new_sets": {
+        "label": "Jauni seti iesūtnē",
+        "help": "Novērošanas saraksta pārbaude (lietotnē vai ieplānota) atrada jaunus setus."
+      },
+      "downloads_done": {
+        "label": "Lejupielādes pabeigtas",
+        "help": "Viena ziņa par lejupielāžu ciklu ar setu skaitu un nosaukumiem."
+      },
+      "downloads_failed": {
+        "label": "Lejupielādes neizdevās",
+        "help": "Viena ziņa par ciklu, ja lejupielāde neizdevās. Sīkāk – sadaļā Lejupielādes."
+      },
+      "quiet_hours": {
+        "label": "Klusuma stundas",
+        "help": "Šajā laikā paziņojumu nav. Notikušais tiek parādīts pēc tam vienā kopsavilkumā."
+      },
+      "quiet_from": {
+        "label": "No",
+        "help": "Klusuma stundu sākums (24 h)."
+      },
+      "quiet_to": {
+        "label": "Līdz",
+        "help": "Klusuma stundu beigas. Agrāk par sākumu = pāri pusnaktij (piem., 22:00–07:00)."
+      }
+    },
+    "notify": {
+      "on": "Paziņojumi ieslēgti",
+      "off": "Paziņojumi izslēgti",
+      "detail": "Tiek rādīti caur {backend}. Vairāki notikumi pēc kārtas kļūst par vienu paziņojumu.",
+      "backend_powershell": "Windows PowerShell (iekļauts Windows)",
+      "backend_winrt": "Windows paziņojumu API (pywinrt)",
+      "test": "Sūtīt testu",
+      "testing": "Sūta …",
+      "test_sent": "Testa paziņojums nosūtīts – paskatieties ekrāna apakšējā labajā stūrī.",
+      "unavailable": "Windows paziņojumi nav pieejami",
+      "unavailable_detail": "Šī sistēma tos nevar rādīt (nav Windows PowerShell vai tas ir bloķēts). Notikumi tiek tikai ierakstīti žurnālā."
+    },
+    "media_server": {
+      "type": {
+        "label": "Multivides serveris",
+        "help": "Kuram serverim pēc lejupielādēm atkārtoti skenēt bibliotēku. Izslēgts = HCLoader nesazinās ne ar vienu multivides serveri."
+      },
+      "url": {
+        "label": "Servera adrese",
+        "help": "Adrese mājas tīklā, piem., http://192.168.1.10:32400 (Plex) vai http://nas:8096 (Jellyfin). Tiek sazināts tikai ar šo adresi.",
+        "ph": "http://192.168.1.10:32400"
+      },
+      "server_root": {
+        "label": "Mape serverī",
+        "help": "Kur serveris redz jūsu mērķa mapi (NAS, Docker), piem., /data/music/HCLoader. Tukšs = tas pats ceļš kā šeit. Vajadzīgs, lai skenētu tikai jaunās mapes.",
+        "ph": "tas pats ceļš kā mērķa mapei"
+      },
+      "delay_seconds": {
+        "label": "Gaidīt pirms skenēšanas",
+        "help": "Pēc pēdējās lejupielādes gaidīt tik ilgi – vairākas lejupielādes kļūst par vienu skenēšanu."
+      },
+      "verify_tls": {
+        "label": "Pārbaudīt sertifikātu",
+        "help": "https:// adresēm. Izslēdziet tikai pašparakstītam sertifikātam mājas tīklā."
+      }
+    },
+    "ms": {
+      "off": "Nav multivides servera",
+      "off_detail": "Zemāk izvēlieties Plex vai Jellyfin, lai tā bibliotēka tiktu atkārtoti skenēta pēc lejupielādēm.",
+      "unsaved": "Nesaglabātas izmaiņas – skenēšana izmanto saglabātos iestatījumus.",
+      "on": "{server} tiek atjaunināts pēc lejupielādēm",
+      "last_ok": "Pēdējā skenēšana {t} (jauni faili: {n})",
+      "last_fail": "Pēdējā skenēšana {t} neizdevās",
+      "never": "Vēl nav skenēšanas",
+      "all_libraries": "Visas bibliotēkas",
+      "no_secret": "Pilnvara / API atslēga vēl nav saglabāta – ievadiet to zemāk un pārbaudiet savienojumu.",
+      "scan_now": "Skenēt tagad",
+      "scanning": "Pieprasa …",
+      "scan_sent": "Skenēšana pieprasīta – serveris lasa bibliotēku fonā.",
+      "secret_plex": {
+        "label": "Plex pilnvara",
+        "help": "Jūsu X-Plex-Token (Plex Web › jebkurš vienums › Informācija › Skatīt XML: “X-Plex-Token=” adresē). Pēc veiksmīgas pārbaudes tiek glabāta Windows akreditācijas datu pārvaldniekā – nekad config.yaml vai žurnālā."
+      },
+      "secret_jellyfin": {
+        "label": "Jellyfin API atslēga",
+        "help": "Informācijas panelis › API atslēgas › “+”. Pēc veiksmīgas pārbaudes tiek glabāta Windows akreditācijas datu pārvaldniekā – nekad config.yaml vai žurnālā."
+      },
+      "secret_ph": "ielīmējiet šeit",
+      "secret_kept": "saglabāta – atstājiet tukšu, lai paturētu",
+      "stored_short": "saglabāta",
+      "stored_title": "Saglabāta Windows akreditācijas datu pārvaldniekā",
+      "forget": "Noņemt",
+      "forgotten": "Pilnvara noņemta no Windows akreditācijas datu pārvaldnieka",
+      "connect": {
+        "label": "Savienojums",
+        "help": "Pārbauda adresi un pilnvaru un ielādē bibliotēku sarakstu. Divi īsi pieprasījumi jūsu serverim, nekas vairāk."
+      },
+      "test": "Pārbaudīt savienojumu",
+      "testing": "Pārbauda …",
+      "test_ok": "Savienots ar {name} (versija {v}).",
+      "test_libs": "Atrastas bibliotēkas: {n}.",
+      "stored": "Pilnvara saglabāta.",
+      "library": {
+        "label": "Bibliotēka",
+        "help": "Kuru bibliotēku skenēt. “Visas bibliotēkas” skenē visu (lēnāk lielos serveros)."
+      },
+      "lib_paths": "Mapes serverī: {p}"
     }
   },
   "opt": {
@@ -1349,6 +1465,13 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
         "chrome": "Chrome",
         "firefox": "Firefox",
         "brave": "Brave"
+      }
+    },
+    "media_server": {
+      "type": {
+        "off": "Izslēgts",
+        "plex": "Plex",
+        "jellyfin": "Jellyfin"
       }
     }
   },
@@ -2035,5 +2158,80 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
       "one": "{n} DJ",
       "other": "{n} DJ"
     }
+  },
+  "stats": {
+    "title": "Statistika",
+    "sub": "Jūsu bibliotēka skaitļos – bezsaistē, no datubāzes",
+    "range": "Periods",
+    "p_all": "Viss laiks",
+    "p_12m": "12 mēneši",
+    "p_30d": "30 dienas",
+    "p_year": "Šis gads",
+    "p_custom": "Pielāgots",
+    "from": "No",
+    "to": "Līdz",
+    "n_sets": {
+      "zero": "{n} setu",
+      "one": "{n} sets",
+      "other": "{n} seti"
+    },
+    "sets_word": {
+      "zero": "setu",
+      "one": "sets",
+      "other": "seti"
+    },
+    "k_sets": "Seti",
+    "k_hours": "Ilgums",
+    "k_size": "Diskā",
+    "k_avg": "Vidējais sets",
+    "of_library": "no {n} bibliotēkā",
+    "since": "kopš {d}",
+    "days_nonstop": "{n} dienas bez pārtraukuma",
+    "last_dl": "pēdējā lejupielāde {d}",
+    "avg_size": "{s} uz setu",
+    "sizes_missing": {
+      "zero": "{n} failu vēl nav izmērīts",
+      "one": "{n} fails vēl nav izmērīts",
+      "other": "{n} faili vēl nav izmērīti"
+    },
+    "measuring": "Mēra failu izmērus … {done} / {total}",
+    "h_months": "Lejupielādes pa mēnešiem",
+    "h_years_dl": "Lejupielādes pa gadiem",
+    "best_month": "Labākais: {m} ({n})",
+    "h_genres": "Pēc žanra",
+    "h_sources": "Avoti",
+    "h_festivals": "Populārākie festivāli",
+    "editions": {
+      "zero": "{n} izdevumu",
+      "one": "{n} izdevums",
+      "other": "{n} izdevumi"
+    },
+    "festivals_other": "+ {n} seti no vēl {f} festivāliem",
+    "no_festivals": "Šajā periodā nav festivālu setu – tos piešķir Iestatījumi › Festivāli un sērijas.",
+    "h_djs": "Populārākie DJ",
+    "open_dj": "Atvērt DJ {name} lapu",
+    "no_djs": "Šajā periodā DJ nav atpazīti.",
+    "h_years": "Pēc seta gada",
+    "year_unknown": "{n} bez zināma gada",
+    "h_tracks": "Visvairāk spēlētie skaņdarbi",
+    "no_tracks": "Neviens skaņdarbs vēl nav divos setos – skaņdarbu saraksti nāk no nodaļām un aprakstiem (Bibliotēka › Skaņdarbi).",
+    "h_watchlist": "Novērošanas saraksta aktivitāte",
+    "w_checks": "Pārbaudes",
+    "w_scheduled": "no tām ieplānotas",
+    "w_found": "Atrasti",
+    "w_inbox": "Iesūtnē",
+    "w_library": "Bibliotēkā",
+    "w_source": "Avots",
+    "w_found_n": "atrasti: {n}",
+    "w_checks_n": "pārbaudes: {n}",
+    "w_last": "pēdējā pārbaude {t}",
+    "w_none_range": "Šajā periodā neviens avots neko neatrada.",
+    "w_no_sources": "Novērošanas sarakstā vēl nav avotu.",
+    "none": "Šajā periodā nekā nav.",
+    "range_empty": "Šajā periodā nekas netika lejupielādēts – izvēlieties garāku.",
+    "error": "Statistika nav pieejama",
+    "empty_title": "Vēl nav setu",
+    "empty_text": "Tiklīdz bibliotēkā būs pirmie seti, šeit redzēsiet, ko krājat – žanrus, festivālus, DJ, stundas.",
+    "empty_go": "Atklāt setus"
   }
 });

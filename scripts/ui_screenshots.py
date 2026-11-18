@@ -737,13 +737,18 @@ class Shooter:
         page.fill("#ms-secret", "xYz-plex-token")
         page.click("[data-mstest]")
         page.wait_for_selector("[data-custom=msConnect] .notice.ok")
+        page.evaluate(
+            "document.querySelector('[data-custom=msConnect]').scrollIntoView({block: 'center'})"
+        )
         self.settle()
         self.shot("settings-mediaserver-test")
+        page.evaluate("document.querySelector('#spane-scroll').scrollTop = 0")
         page.click("#btn-save")
         page.wait_for_function("document.querySelector('#btn-save').disabled")
         page.wait_for_selector("[data-custom=msStatus] [data-msscan]:not([disabled])")
         page.click("[data-msscan]")
         page.wait_for_selector("[data-custom=msStatus] .notice.ok")
+        self.clear_toasts()
         self.settle()
         self.shot("settings-mediaserver")
         page.evaluate("HC.mock.api.reset_settings('media_server')")

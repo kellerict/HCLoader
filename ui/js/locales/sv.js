@@ -15,7 +15,8 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "downloads": "Nedladdningar",
     "library": "Bibliotek",
     "log": "Logg",
-    "settings": "Inställningar"
+    "settings": "Inställningar",
+    "stats": "Statistik"
   },
   "navfoot": {
     "today": "IDAG",
@@ -628,7 +629,9 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "appearance": "Utseende",
     "maintenance": "Underhåll",
     "festivals": "Festivaler & serier",
-    "playback": "Uppspelning"
+    "playback": "Uppspelning",
+    "notifications": "Aviseringar",
+    "mediaserver": "Mediaserver"
   },
   "tabs_hint": {
     "general": "Appens grundläggande beteende.",
@@ -643,7 +646,9 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "appearance": "Utseende och känsla. Ändringar förhandsvisas direkt och blir permanenta först när du sparar.",
     "maintenance": "Versioner, uppdateringar, databas.",
     "festivals": "Känner igen festival eller serie, år, scen och settyp ur de sparade titlarna – offline, utan en enda extra förfrågan.",
-    "playback": "Inbyggd spelare, ljudnormalisering, sparade positioner och offlineanalysen av dina filer."
+    "playback": "Inbyggd spelare, ljudnormalisering, sparade positioner och offlineanalysen av dina filer.",
+    "notifications": "Windows-aviseringar för nya set i inkorgen och klara eller misslyckade nedladdningar – samlade i ett meddelande, aldrig en flod. Ett klick öppnar appen på rätt ställe.",
+    "mediaserver": "Låt din Plex- eller Jellyfin-server skanna om biblioteket efter nedladdningar – samlat, bara i hemnätverket. Token sparas i Windows Autentiseringshanteraren, aldrig i config.yaml."
   },
   "set": {
     "default": "Standard",
@@ -692,7 +697,10 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
       "loudness": "Ljudstyrka",
       "memory": "Minne & vågform",
       "analysis": "Analys (offline, ffmpeg)",
-      "playlists": "Spellistor (M3U8)"
+      "playlists": "Spellistor (M3U8)",
+      "notify_events": "Avisera vid",
+      "quiet": "Tysta timmar",
+      "ms_paths": "Sökvägar & tidpunkt"
     },
     "general": {
       "language": {
@@ -1286,6 +1294,114 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
       "sync_title": "Skriv om den här spellistan efter nedladdningar",
       "forget": "Ta bort från listan (filen finns kvar)",
       "now": "Uppdatera nu"
+    },
+    "notifications": {
+      "enabled": {
+        "label": "Windows-aviseringar",
+        "help": "Visa en avisering i Windows meddelandecenter – även efter en schemalagd kontroll när appen är stängd."
+      },
+      "new_sets": {
+        "label": "Nya set i inkorgen",
+        "help": "En kontroll av bevakningslistan (i appen eller schemalagd) hittade nya set."
+      },
+      "downloads_done": {
+        "label": "Nedladdningar klara",
+        "help": "Ett meddelande per nedladdningsomgång med antal set och titlar."
+      },
+      "downloads_failed": {
+        "label": "Nedladdningar misslyckades",
+        "help": "Ett meddelande per omgång om en nedladdning misslyckades. Detaljer finns under Nedladdningar."
+      },
+      "quiet_hours": {
+        "label": "Tysta timmar",
+        "help": "Inga aviseringar under den här tiden. Det som hänt visas efteråt som en sammanfattning."
+      },
+      "quiet_from": {
+        "label": "Från",
+        "help": "Början på de tysta timmarna (24 h)."
+      },
+      "quiet_to": {
+        "label": "Till",
+        "help": "Slutet på de tysta timmarna. Tidigare än början = över midnatt (t.ex. 22:00–07:00)."
+      }
+    },
+    "notify": {
+      "on": "Aviseringar på",
+      "off": "Aviseringar av",
+      "detail": "Visas via {backend}. Flera händelser tätt efter varandra blir en avisering.",
+      "backend_powershell": "Windows PowerShell (ingår i Windows)",
+      "backend_winrt": "Windows aviserings-API (pywinrt)",
+      "test": "Skicka test",
+      "testing": "Skickar …",
+      "test_sent": "Testavisering skickad – titta längst ned till höger på skärmen.",
+      "unavailable": "Windows-aviseringar inte tillgängliga",
+      "unavailable_detail": "Systemet kan inte visa dem (Windows PowerShell saknas eller är blockerat). Händelser skrivs bara till loggen."
+    },
+    "media_server": {
+      "type": {
+        "label": "Mediaserver",
+        "help": "Vilken server som ska skanna om sitt bibliotek efter nedladdningar. Av = HCLoader kontaktar ingen mediaserver."
+      },
+      "url": {
+        "label": "Serveradress",
+        "help": "Adress i hemnätverket, t.ex. http://192.168.1.10:32400 (Plex) eller http://nas:8096 (Jellyfin). Bara denna adress kontaktas.",
+        "ph": "http://192.168.1.10:32400"
+      },
+      "server_root": {
+        "label": "Mapp på servern",
+        "help": "Var servern ser din målmapp (NAS, Docker), t.ex. /data/music/HCLoader. Tom = samma sökväg som här. Behövs för att bara skanna de nya mapparna.",
+        "ph": "samma sökväg som målmappen"
+      },
+      "delay_seconds": {
+        "label": "Vänta innan skanning",
+        "help": "Vänta så här länge efter den senaste nedladdningen – flera nedladdningar blir då en skanning."
+      },
+      "verify_tls": {
+        "label": "Kontrollera certifikat",
+        "help": "För https://-adresser. Stäng av bara för ett självsignerat certifikat i hemnätverket."
+      }
+    },
+    "ms": {
+      "off": "Ingen mediaserver",
+      "off_detail": "Välj Plex eller Jellyfin nedan för att biblioteket ska skannas om efter nedladdningar.",
+      "unsaved": "Osparade ändringar – skanningen använder de sparade inställningarna.",
+      "on": "{server} uppdateras efter nedladdningar",
+      "last_ok": "Senaste skanning {t} ({n} nya filer)",
+      "last_fail": "Senaste skanning {t} misslyckades",
+      "never": "Ingen skanning ännu",
+      "all_libraries": "Alla bibliotek",
+      "no_secret": "Ingen token / API-nyckel sparad ännu – ange den nedan och testa anslutningen.",
+      "scan_now": "Skanna nu",
+      "scanning": "Begär …",
+      "scan_sent": "Skanning begärd – servern läser in biblioteket i bakgrunden.",
+      "secret_plex": {
+        "label": "Plex-token",
+        "help": "Din X-Plex-Token (Plex Web › valfritt objekt › Hämta info › Visa XML: ”X-Plex-Token=” i adressen). Sparas i Windows Autentiseringshanteraren efter ett lyckat test – aldrig i config.yaml eller loggen."
+      },
+      "secret_jellyfin": {
+        "label": "Jellyfin-API-nyckel",
+        "help": "Kontrollpanel › API-nycklar › ”+”. Sparas i Windows Autentiseringshanteraren efter ett lyckat test – aldrig i config.yaml eller loggen."
+      },
+      "secret_ph": "klistra in här",
+      "secret_kept": "sparad – lämna tomt för att behålla",
+      "stored_short": "sparad",
+      "stored_title": "Sparad i Windows Autentiseringshanteraren",
+      "forget": "Ta bort",
+      "forgotten": "Token borttagen från Windows Autentiseringshanteraren",
+      "connect": {
+        "label": "Anslutning",
+        "help": "Kontrollerar adress och token och hämtar listan över bibliotek. Två korta förfrågningar till din server, inget annat."
+      },
+      "test": "Testa anslutning",
+      "testing": "Testar …",
+      "test_ok": "Ansluten till {name} (version {v}).",
+      "test_libs": "{n} bibliotek hittades.",
+      "stored": "Token sparad.",
+      "library": {
+        "label": "Bibliotek",
+        "help": "Vilket bibliotek som skannas. ”Alla bibliotek” skannar allt (långsammare på stora servrar)."
+      },
+      "lib_paths": "Mappar på servern: {p}"
     }
   },
   "opt": {
@@ -1328,6 +1444,13 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
         "chrome": "Chrome",
         "firefox": "Firefox",
         "brave": "Brave"
+      }
+    },
+    "media_server": {
+      "type": {
+        "off": "Av",
+        "plex": "Plex",
+        "jellyfin": "Jellyfin"
       }
     }
   },
@@ -1995,5 +2118,76 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
       "one": "{n} DJ",
       "other": "{n} DJ:er"
     }
+  },
+  "stats": {
+    "title": "Statistik",
+    "sub": "Ditt bibliotek i siffror – offline, från databasen",
+    "range": "Period",
+    "p_all": "Allt",
+    "p_12m": "12 månader",
+    "p_30d": "30 dagar",
+    "p_year": "I år",
+    "p_custom": "Anpassad",
+    "from": "Från",
+    "to": "Till",
+    "n_sets": {
+      "one": "{n} set",
+      "other": "{n} set"
+    },
+    "sets_word": {
+      "one": "set",
+      "other": "set"
+    },
+    "k_sets": "Set",
+    "k_hours": "Speltid",
+    "k_size": "På disken",
+    "k_avg": "Genomsnittligt set",
+    "of_library": "av {n} i biblioteket",
+    "since": "sedan {d}",
+    "days_nonstop": "{n} dagar nonstop",
+    "last_dl": "senaste nedladdning {d}",
+    "avg_size": "{s} per set",
+    "sizes_missing": {
+      "one": "{n} fil ännu inte mätt",
+      "other": "{n} filer ännu inte mätta"
+    },
+    "measuring": "Mäter filstorlekar … {done} / {total}",
+    "h_months": "Nedladdningar per månad",
+    "h_years_dl": "Nedladdningar per år",
+    "best_month": "Bäst: {m} ({n})",
+    "h_genres": "Efter genre",
+    "h_sources": "Källor",
+    "h_festivals": "Toppfestivaler",
+    "editions": {
+      "one": "{n} upplaga",
+      "other": "{n} upplagor"
+    },
+    "festivals_other": "+ {n} set från {f} andra festivaler",
+    "no_festivals": "Inga festivalset under perioden – Inställningar › Festivaler & serier tilldelar dem.",
+    "h_djs": "Topp-DJ:s",
+    "open_dj": "Öppna DJ-sidan för {name}",
+    "no_djs": "Inga DJ:s identifierade under perioden.",
+    "h_years": "Efter setets år",
+    "year_unknown": "{n} utan känt år",
+    "h_tracks": "Mest spelade låtar",
+    "no_tracks": "Ingen låt finns ännu i två set – låtlistor kommer från kapitel och beskrivningar (Bibliotek › Låtar).",
+    "h_watchlist": "Bevakningslistans aktivitet",
+    "w_checks": "Kontroller",
+    "w_scheduled": "varav schemalagda",
+    "w_found": "Hittade",
+    "w_inbox": "I inkorgen",
+    "w_library": "I biblioteket",
+    "w_source": "Källa",
+    "w_found_n": "{n} hittade",
+    "w_checks_n": "{n} kontroller",
+    "w_last": "senaste kontroll {t}",
+    "w_none_range": "Ingen källa hittade något under perioden.",
+    "w_no_sources": "Inga källor i bevakningslistan ännu.",
+    "none": "Inget under perioden.",
+    "range_empty": "Inget laddades ned under perioden – välj en längre.",
+    "error": "Statistik inte tillgänglig",
+    "empty_title": "Inga set ännu",
+    "empty_text": "Så snart de första seten finns i biblioteket ser du här vad du samlar – genrer, festivaler, DJ:s, timmar.",
+    "empty_go": "Upptäck set"
   }
 });

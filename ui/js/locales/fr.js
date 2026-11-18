@@ -15,7 +15,8 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
     "downloads": "Téléchargements",
     "library": "Bibliothèque",
     "log": "Journal",
-    "settings": "Paramètres"
+    "settings": "Paramètres",
+    "stats": "Statistiques"
   },
   "navfoot": {
     "today": "AUJOURD’HUI",
@@ -628,7 +629,9 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
     "appearance": "Apparence",
     "maintenance": "Maintenance",
     "festivals": "Festivals et séries",
-    "playback": "Lecture"
+    "playback": "Lecture",
+    "notifications": "Notifications",
+    "mediaserver": "Serveur multimédia"
   },
   "tabs_hint": {
     "general": "Comportement de base de l’app.",
@@ -643,7 +646,9 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
     "appearance": "Aspect et ambiance. Les modifications sont prévisualisées immédiatement et ne deviennent définitives qu’après enregistrement.",
     "maintenance": "Versions, mises à jour, base de données.",
     "festivals": "Reconnaît le festival ou la série, l’année, la scène et le type de set à partir des titres enregistrés – hors ligne, sans la moindre requête supplémentaire.",
-    "playback": "Lecteur intégré, harmonisation du volume, positions mémorisées et analyse hors ligne de vos fichiers."
+    "playback": "Lecteur intégré, harmonisation du volume, positions mémorisées et analyse hors ligne de vos fichiers.",
+    "notifications": "Notifications Windows pour les nouveaux sets dans la boîte de réception et les téléchargements terminés ou échoués – regroupées en un seul message, jamais une avalanche. Un clic ouvre l’app au bon endroit.",
+    "mediaserver": "Après les téléchargements, demander à ton serveur Plex ou Jellyfin de réanalyser sa bibliothèque – regroupé, réseau local uniquement. Le jeton est stocké dans le Gestionnaire d’identification Windows, jamais dans config.yaml."
   },
   "set": {
     "default": "Par défaut",
@@ -692,7 +697,10 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
       "loudness": "Volume",
       "memory": "Mémoire et forme d’onde",
       "analysis": "Analyse (hors ligne, ffmpeg)",
-      "playlists": "Playlists (M3U8)"
+      "playlists": "Playlists (M3U8)",
+      "notify_events": "Me prévenir pour",
+      "quiet": "Heures calmes",
+      "ms_paths": "Chemins & moment"
     },
     "general": {
       "language": {
@@ -1286,6 +1294,114 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
       "sync_title": "Réécrire cette playlist après les téléchargements",
       "forget": "Retirer de la liste (le fichier reste)",
       "now": "Mettre à jour"
+    },
+    "notifications": {
+      "enabled": {
+        "label": "Notifications Windows",
+        "help": "Afficher une notification dans le centre de notifications de Windows – aussi après une vérification planifiée, app fermée."
+      },
+      "new_sets": {
+        "label": "Nouveaux sets dans la boîte",
+        "help": "Une vérification de la watchlist (dans l’app ou planifiée) a trouvé de nouveaux sets."
+      },
+      "downloads_done": {
+        "label": "Téléchargements terminés",
+        "help": "Un message par série de téléchargements avec le nombre de sets et leurs titres."
+      },
+      "downloads_failed": {
+        "label": "Téléchargements échoués",
+        "help": "Un message par série si un téléchargement a échoué. Les détails restent sous Téléchargements."
+      },
+      "quiet_hours": {
+        "label": "Heures calmes",
+        "help": "Aucune notification pendant cette période. Ce qui s’est passé est affiché ensuite en un seul résumé."
+      },
+      "quiet_from": {
+        "label": "De",
+        "help": "Début des heures calmes (24 h)."
+      },
+      "quiet_to": {
+        "label": "À",
+        "help": "Fin des heures calmes. Plus tôt que le début = passe minuit (p. ex. 22:00–07:00)."
+      }
+    },
+    "notify": {
+      "on": "Notifications activées",
+      "off": "Notifications désactivées",
+      "detail": "Affichées via {backend}. Plusieurs événements rapprochés deviennent une seule notification.",
+      "backend_powershell": "Windows PowerShell (intégré à Windows)",
+      "backend_winrt": "l’API de notifications de Windows (pywinrt)",
+      "test": "Envoyer un test",
+      "testing": "Envoi …",
+      "test_sent": "Notification de test envoyée – regarde en bas à droite de l’écran.",
+      "unavailable": "Notifications Windows indisponibles",
+      "unavailable_detail": "Ce système ne peut pas les afficher (Windows PowerShell absent ou bloqué). Les événements sont seulement écrits dans le journal."
+    },
+    "media_server": {
+      "type": {
+        "label": "Serveur multimédia",
+        "help": "Quel serveur doit réanalyser sa bibliothèque après les téléchargements. Désactivé = HCLoader ne contacte aucun serveur multimédia."
+      },
+      "url": {
+        "label": "Adresse du serveur",
+        "help": "Adresse dans ton réseau local, p. ex. http://192.168.1.10:32400 (Plex) ou http://nas:8096 (Jellyfin). Seule cette adresse est contactée.",
+        "ph": "http://192.168.1.10:32400"
+      },
+      "server_root": {
+        "label": "Dossier sur le serveur",
+        "help": "Où le serveur voit ton dossier cible (NAS, Docker), p. ex. /data/music/HCLoader. Vide = le même chemin qu’ici. Nécessaire pour n’analyser que les nouveaux dossiers.",
+        "ph": "même chemin que le dossier cible"
+      },
+      "delay_seconds": {
+        "label": "Attendre avant l’analyse",
+        "help": "Après le dernier téléchargement, attendre ce délai – plusieurs téléchargements donnent alors une seule analyse."
+      },
+      "verify_tls": {
+        "label": "Vérifier le certificat",
+        "help": "Pour les adresses https://. À désactiver uniquement pour un certificat auto-signé dans ton réseau local."
+      }
+    },
+    "ms": {
+      "off": "Aucun serveur multimédia",
+      "off_detail": "Choisis Plex ou Jellyfin ci-dessous pour que sa bibliothèque soit réanalysée après les téléchargements.",
+      "unsaved": "Modifications non enregistrées – l’analyse utilise les paramètres enregistrés.",
+      "on": "{server} est mis à jour après les téléchargements",
+      "last_ok": "Dernière analyse {t} ({n} nouveaux fichiers)",
+      "last_fail": "Dernière analyse {t} échouée",
+      "never": "Pas encore d’analyse",
+      "all_libraries": "Toutes les bibliothèques",
+      "no_secret": "Aucun jeton / clé API enregistré – saisis-le ci-dessous et teste la connexion.",
+      "scan_now": "Analyser maintenant",
+      "scanning": "Demande …",
+      "scan_sent": "Analyse demandée – le serveur lit la bibliothèque en arrière-plan.",
+      "secret_plex": {
+        "label": "Jeton Plex",
+        "help": "Ton X-Plex-Token (Plex Web › un élément › Infos › Afficher le XML : « X-Plex-Token= » dans l’adresse). Stocké dans le Gestionnaire d’identification Windows après un test réussi – jamais dans config.yaml ni dans le journal."
+      },
+      "secret_jellyfin": {
+        "label": "Clé API Jellyfin",
+        "help": "Tableau de bord › Clés API › « + ». Stockée dans le Gestionnaire d’identification Windows après un test réussi – jamais dans config.yaml ni dans le journal."
+      },
+      "secret_ph": "colle-le ici",
+      "secret_kept": "enregistré – laisser vide pour le garder",
+      "stored_short": "enregistré",
+      "stored_title": "Stocké dans le Gestionnaire d’identification Windows",
+      "forget": "Supprimer",
+      "forgotten": "Jeton supprimé du Gestionnaire d’identification Windows",
+      "connect": {
+        "label": "Connexion",
+        "help": "Vérifie l’adresse et le jeton et charge la liste des bibliothèques. Deux courtes requêtes à ton serveur, rien d’autre."
+      },
+      "test": "Tester la connexion",
+      "testing": "Test …",
+      "test_ok": "Connecté à {name} (version {v}).",
+      "test_libs": "{n} bibliothèques trouvées.",
+      "stored": "Jeton enregistré.",
+      "library": {
+        "label": "Bibliothèque",
+        "help": "Quelle bibliothèque analyser. « Toutes les bibliothèques » analyse tout (plus lent sur les gros serveurs)."
+      },
+      "lib_paths": "Dossiers sur le serveur : {p}"
     }
   },
   "opt": {
@@ -1328,6 +1444,13 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
         "chrome": "Chrome",
         "firefox": "Firefox",
         "brave": "Brave"
+      }
+    },
+    "media_server": {
+      "type": {
+        "off": "Désactivé",
+        "plex": "Plex",
+        "jellyfin": "Jellyfin"
       }
     }
   },
@@ -1995,5 +2118,76 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
       "one": "{n} DJ",
       "other": "{n} DJ"
     }
+  },
+  "stats": {
+    "title": "Statistiques",
+    "sub": "Ta bibliothèque en chiffres – hors ligne, depuis la base de données",
+    "range": "Période",
+    "p_all": "Tout",
+    "p_12m": "12 mois",
+    "p_30d": "30 jours",
+    "p_year": "Cette année",
+    "p_custom": "Personnalisée",
+    "from": "Du",
+    "to": "Au",
+    "n_sets": {
+      "one": "{n} set",
+      "other": "{n} sets"
+    },
+    "sets_word": {
+      "one": "set",
+      "other": "sets"
+    },
+    "k_sets": "Sets",
+    "k_hours": "Durée totale",
+    "k_size": "Sur le disque",
+    "k_avg": "Set moyen",
+    "of_library": "sur {n} dans la bibliothèque",
+    "since": "depuis le {d}",
+    "days_nonstop": "{n} jours non-stop",
+    "last_dl": "dernier téléchargement {d}",
+    "avg_size": "{s} par set",
+    "sizes_missing": {
+      "one": "{n} fichier pas encore mesuré",
+      "other": "{n} fichiers pas encore mesurés"
+    },
+    "measuring": "Mesure des tailles de fichiers … {done} / {total}",
+    "h_months": "Téléchargements par mois",
+    "h_years_dl": "Téléchargements par an",
+    "best_month": "Meilleur : {m} ({n})",
+    "h_genres": "Par genre",
+    "h_sources": "Sources",
+    "h_festivals": "Top festivals",
+    "editions": {
+      "one": "{n} édition",
+      "other": "{n} éditions"
+    },
+    "festivals_other": "+ {n} sets de {f} autres festivals",
+    "no_festivals": "Aucun set de festival sur cette période – Paramètres › Festivals & séries les attribue.",
+    "h_djs": "Top DJs",
+    "open_dj": "Ouvrir la page DJ de {name}",
+    "no_djs": "Aucun DJ reconnu sur cette période.",
+    "h_years": "Par année du set",
+    "year_unknown": "{n} sans année connue",
+    "h_tracks": "Morceaux les plus joués",
+    "no_tracks": "Aucun morceau n’apparaît encore dans deux sets – les tracklists viennent des chapitres et descriptions (Bibliothèque › Morceaux).",
+    "h_watchlist": "Activité de la watchlist",
+    "w_checks": "Vérifications",
+    "w_scheduled": "dont planifiées",
+    "w_found": "Trouvés",
+    "w_inbox": "Dans la boîte",
+    "w_library": "Dans la bibliothèque",
+    "w_source": "Source",
+    "w_found_n": "{n} trouvés",
+    "w_checks_n": "{n} vérifications",
+    "w_last": "dernière vérification {t}",
+    "w_none_range": "Aucune source n’a rien trouvé sur cette période.",
+    "w_no_sources": "Pas encore de sources dans la watchlist.",
+    "none": "Rien sur cette période.",
+    "range_empty": "Rien n’a été téléchargé sur cette période – choisis-en une plus longue.",
+    "error": "Statistiques indisponibles",
+    "empty_title": "Pas encore de sets",
+    "empty_text": "Dès que les premiers sets sont dans ta bibliothèque, tu verras ici ce que tu collectionnes – genres, festivals, DJs, heures.",
+    "empty_go": "Découvrir des sets"
   }
 });

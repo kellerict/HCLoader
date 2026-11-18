@@ -15,7 +15,8 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "downloads": "Unduhan",
     "library": "Pustaka",
     "log": "Log",
-    "settings": "Pengaturan"
+    "settings": "Pengaturan",
+    "stats": "Statistik"
   },
   "navfoot": {
     "today": "HARI INI",
@@ -610,7 +611,9 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "appearance": "Tampilan",
     "maintenance": "Pemeliharaan",
     "festivals": "Festival & seri",
-    "playback": "Pemutaran"
+    "playback": "Pemutaran",
+    "notifications": "Notifikasi",
+    "mediaserver": "Server media"
   },
   "tabs_hint": {
     "general": "Perilaku dasar aplikasi.",
@@ -625,7 +628,9 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "appearance": "Tampilan & nuansa. Perubahan langsung dipratinjau dan baru permanen setelah disimpan.",
     "maintenance": "Versi, pembaruan, basis data.",
     "festivals": "Mengenali festival atau seri, tahun, panggung, dan jenis set dari judul yang tersimpan – luring, tanpa satu pun permintaan tambahan.",
-    "playback": "Pemutar bawaan, penyamaan kenyaringan, posisi yang diingat, dan analisis offline file Anda."
+    "playback": "Pemutar bawaan, penyamaan kenyaringan, posisi yang diingat, dan analisis offline file Anda.",
+    "notifications": "Notifikasi Windows untuk set baru di kotak masuk serta unduhan yang selesai atau gagal – digabung menjadi satu pesan, tidak pernah membanjiri. Klik membuka aplikasi di tempat yang tepat.",
+    "mediaserver": "Setelah unduhan, minta server Plex atau Jellyfin Anda memindai ulang perpustakaannya – digabung, hanya di jaringan lokal. Token disimpan di Windows Credential Manager, tidak pernah di config.yaml."
   },
   "set": {
     "default": "Bawaan",
@@ -672,7 +677,10 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
       "loudness": "Kenyaringan",
       "memory": "Memori & bentuk gelombang",
       "analysis": "Analisis (offline, ffmpeg)",
-      "playlists": "Playlist (M3U8)"
+      "playlists": "Playlist (M3U8)",
+      "notify_events": "Beri tahu saya tentang",
+      "quiet": "Jam tenang",
+      "ms_paths": "Jalur & waktu"
     },
     "general": {
       "language": {
@@ -1265,6 +1273,114 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
       "sync_title": "Tulis ulang playlist ini setelah unduhan",
       "forget": "Hapus dari daftar (file tetap ada)",
       "now": "Perbarui sekarang"
+    },
+    "notifications": {
+      "enabled": {
+        "label": "Notifikasi Windows",
+        "help": "Tampilkan notifikasi di pusat notifikasi Windows – juga setelah pemeriksaan terjadwal saat aplikasi ditutup."
+      },
+      "new_sets": {
+        "label": "Set baru di kotak masuk",
+        "help": "Pemeriksaan watchlist (di aplikasi atau terjadwal) menemukan set baru."
+      },
+      "downloads_done": {
+        "label": "Unduhan selesai",
+        "help": "Satu pesan per putaran unduhan dengan jumlah set dan judulnya."
+      },
+      "downloads_failed": {
+        "label": "Unduhan gagal",
+        "help": "Satu pesan per putaran jika ada unduhan yang gagal. Detail tetap di Unduhan."
+      },
+      "quiet_hours": {
+        "label": "Jam tenang",
+        "help": "Tidak ada notifikasi selama waktu ini. Yang terjadi ditampilkan setelahnya sebagai satu ringkasan."
+      },
+      "quiet_from": {
+        "label": "Dari",
+        "help": "Awal jam tenang (24 jam)."
+      },
+      "quiet_to": {
+        "label": "Sampai",
+        "help": "Akhir jam tenang. Lebih awal dari awal = melewati tengah malam (mis. 22:00–07:00)."
+      }
+    },
+    "notify": {
+      "on": "Notifikasi aktif",
+      "off": "Notifikasi nonaktif",
+      "detail": "Ditampilkan melalui {backend}. Beberapa kejadian berdekatan menjadi satu notifikasi.",
+      "backend_powershell": "Windows PowerShell (bawaan Windows)",
+      "backend_winrt": "API notifikasi Windows (pywinrt)",
+      "test": "Kirim uji",
+      "testing": "Mengirim …",
+      "test_sent": "Notifikasi uji terkirim – lihat pojok kanan bawah layar.",
+      "unavailable": "Notifikasi Windows tidak tersedia",
+      "unavailable_detail": "Sistem ini tidak dapat menampilkannya (Windows PowerShell tidak ada atau diblokir). Kejadian hanya ditulis ke log."
+    },
+    "media_server": {
+      "type": {
+        "label": "Server media",
+        "help": "Server mana yang memindai ulang perpustakaannya setelah unduhan. Nonaktif = HCLoader tidak menghubungi server media apa pun."
+      },
+      "url": {
+        "label": "Alamat server",
+        "help": "Alamat di jaringan rumah Anda, mis. http://192.168.1.10:32400 (Plex) atau http://nas:8096 (Jellyfin). Hanya alamat ini yang dihubungi.",
+        "ph": "http://192.168.1.10:32400"
+      },
+      "server_root": {
+        "label": "Folder di server",
+        "help": "Lokasi folder tujuan Anda menurut server (NAS, Docker), mis. /data/music/HCLoader. Kosong = jalur yang sama seperti di sini. Diperlukan agar hanya folder baru yang dipindai.",
+        "ph": "jalur yang sama dengan folder tujuan"
+      },
+      "delay_seconds": {
+        "label": "Tunggu sebelum memindai",
+        "help": "Setelah unduhan terakhir, tunggu selama ini – beberapa unduhan menjadi satu pemindaian."
+      },
+      "verify_tls": {
+        "label": "Periksa sertifikat",
+        "help": "Untuk alamat https://. Matikan hanya untuk sertifikat self-signed di jaringan rumah Anda."
+      }
+    },
+    "ms": {
+      "off": "Tidak ada server media",
+      "off_detail": "Pilih Plex atau Jellyfin di bawah agar perpustakaannya dipindai ulang setelah unduhan.",
+      "unsaved": "Perubahan belum disimpan – pemindaian memakai pengaturan yang tersimpan.",
+      "on": "{server} diperbarui setelah unduhan",
+      "last_ok": "Pemindaian terakhir {t} ({n} file baru)",
+      "last_fail": "Pemindaian terakhir {t} gagal",
+      "never": "Belum ada pemindaian",
+      "all_libraries": "Semua perpustakaan",
+      "no_secret": "Belum ada token / kunci API tersimpan – masukkan di bawah lalu uji koneksi.",
+      "scan_now": "Pindai sekarang",
+      "scanning": "Meminta …",
+      "scan_sent": "Pemindaian diminta – server membaca perpustakaan di latar belakang.",
+      "secret_plex": {
+        "label": "Token Plex",
+        "help": "X-Plex-Token Anda (Plex Web › item apa pun › Info › Lihat XML: “X-Plex-Token=” di alamat). Disimpan di Windows Credential Manager setelah uji berhasil – tidak pernah di config.yaml atau log."
+      },
+      "secret_jellyfin": {
+        "label": "Kunci API Jellyfin",
+        "help": "Dasbor › Kunci API › “+”. Disimpan di Windows Credential Manager setelah uji berhasil – tidak pernah di config.yaml atau log."
+      },
+      "secret_ph": "tempel di sini",
+      "secret_kept": "tersimpan – biarkan kosong untuk mempertahankan",
+      "stored_short": "tersimpan",
+      "stored_title": "Tersimpan di Windows Credential Manager",
+      "forget": "Hapus",
+      "forgotten": "Token dihapus dari Windows Credential Manager",
+      "connect": {
+        "label": "Koneksi",
+        "help": "Memeriksa alamat dan token serta memuat daftar perpustakaan. Dua permintaan singkat ke server Anda, tidak lebih."
+      },
+      "test": "Uji koneksi",
+      "testing": "Menguji …",
+      "test_ok": "Terhubung ke {name} (versi {v}).",
+      "test_libs": "{n} perpustakaan ditemukan.",
+      "stored": "Token tersimpan.",
+      "library": {
+        "label": "Perpustakaan",
+        "help": "Perpustakaan mana yang dipindai. “Semua perpustakaan” memindai semuanya (lebih lambat di server besar)."
+      },
+      "lib_paths": "Folder di server: {p}"
     }
   },
   "opt": {
@@ -1307,6 +1423,13 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
         "chrome": "Chrome",
         "firefox": "Firefox",
         "brave": "Brave"
+      }
+    },
+    "media_server": {
+      "type": {
+        "off": "Nonaktif",
+        "plex": "Plex",
+        "jellyfin": "Jellyfin"
       }
     }
   },
@@ -1955,5 +2078,72 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "sub_n": {
       "other": "{n} DJ"
     }
+  },
+  "stats": {
+    "title": "Statistik",
+    "sub": "Perpustakaan Anda dalam angka – offline, dari basis data",
+    "range": "Periode",
+    "p_all": "Semua",
+    "p_12m": "12 bulan",
+    "p_30d": "30 hari",
+    "p_year": "Tahun ini",
+    "p_custom": "Kustom",
+    "from": "Dari",
+    "to": "Sampai",
+    "n_sets": {
+      "other": "{n} set"
+    },
+    "sets_word": {
+      "other": "set"
+    },
+    "k_sets": "Set",
+    "k_hours": "Durasi total",
+    "k_size": "Di disk",
+    "k_avg": "Rata-rata set",
+    "of_library": "dari {n} di perpustakaan",
+    "since": "sejak {d}",
+    "days_nonstop": "{n} hari nonstop",
+    "last_dl": "unduhan terakhir {d}",
+    "avg_size": "{s} per set",
+    "sizes_missing": {
+      "other": "{n} file belum diukur"
+    },
+    "measuring": "Mengukur ukuran file … {done} / {total}",
+    "h_months": "Unduhan per bulan",
+    "h_years_dl": "Unduhan per tahun",
+    "best_month": "Terbaik: {m} ({n})",
+    "h_genres": "Menurut genre",
+    "h_sources": "Sumber",
+    "h_festivals": "Festival teratas",
+    "editions": {
+      "other": "{n} edisi"
+    },
+    "festivals_other": "+ {n} set dari {f} festival lain",
+    "no_festivals": "Tidak ada set festival pada periode ini – Pengaturan › Festival & seri yang menetapkannya.",
+    "h_djs": "DJ teratas",
+    "open_dj": "Buka halaman DJ {name}",
+    "no_djs": "Tidak ada DJ yang dikenali pada periode ini.",
+    "h_years": "Menurut tahun set",
+    "year_unknown": "{n} tanpa tahun yang diketahui",
+    "h_tracks": "Lagu paling sering diputar",
+    "no_tracks": "Belum ada lagu yang muncul di dua set – tracklist berasal dari bab dan deskripsi (Perpustakaan › Lagu).",
+    "h_watchlist": "Aktivitas watchlist",
+    "w_checks": "Pemeriksaan",
+    "w_scheduled": "di antaranya terjadwal",
+    "w_found": "Ditemukan",
+    "w_inbox": "Di kotak masuk",
+    "w_library": "Di perpustakaan",
+    "w_source": "Sumber",
+    "w_found_n": "{n} ditemukan",
+    "w_checks_n": "{n} pemeriksaan",
+    "w_last": "pemeriksaan terakhir {t}",
+    "w_none_range": "Tidak ada sumber yang menemukan apa pun pada periode ini.",
+    "w_no_sources": "Belum ada sumber di watchlist.",
+    "none": "Tidak ada apa pun pada periode ini.",
+    "range_empty": "Tidak ada yang diunduh pada periode ini – pilih yang lebih panjang.",
+    "error": "Statistik tidak tersedia",
+    "empty_title": "Belum ada set",
+    "empty_text": "Begitu set pertama ada di perpustakaan, Anda akan melihat di sini apa yang Anda koleksi – genre, festival, DJ, jam.",
+    "empty_go": "Temukan set"
   }
 });

@@ -15,7 +15,8 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "downloads": "Downloads",
     "library": "Bibliotheek",
     "log": "Logboek",
-    "settings": "Instellingen"
+    "settings": "Instellingen",
+    "stats": "Statistieken"
   },
   "navfoot": {
     "today": "VANDAAG",
@@ -628,7 +629,9 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "appearance": "Uiterlijk",
     "maintenance": "Onderhoud",
     "festivals": "Festivals & reeksen",
-    "playback": "Afspelen"
+    "playback": "Afspelen",
+    "notifications": "Meldingen",
+    "mediaserver": "Mediaserver"
   },
   "tabs_hint": {
     "general": "Basisgedrag van de app.",
@@ -643,7 +646,9 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "appearance": "Look-and-feel. Wijzigingen zijn direct te zien en worden pas permanent na opslaan.",
     "maintenance": "Versies, updates, database.",
     "festivals": "Herkent festival of reeks, jaar, stage en soort set uit de opgeslagen titels – offline, zonder één extra verzoek.",
-    "playback": "Ingebouwde speler, luidheidsnormalisatie, onthouden posities en de offline analyse van je bestanden."
+    "playback": "Ingebouwde speler, luidheidsnormalisatie, onthouden posities en de offline analyse van je bestanden.",
+    "notifications": "Windows-meldingen voor nieuwe sets in de inbox en voltooide of mislukte downloads – gebundeld tot één melding, nooit een stortvloed. Een klik opent de app op de juiste plek.",
+    "mediaserver": "Laat na downloads je Plex- of Jellyfin-server de bibliotheek opnieuw scannen – gebundeld, alleen in het thuisnetwerk. De token staat in Windows Referentiebeheer, nooit in config.yaml."
   },
   "set": {
     "default": "Standaard",
@@ -692,7 +697,10 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
       "loudness": "Luidheid",
       "memory": "Geheugen & golfvorm",
       "analysis": "Analyse (offline, ffmpeg)",
-      "playlists": "Playlists (M3U8)"
+      "playlists": "Playlists (M3U8)",
+      "notify_events": "Meld me bij",
+      "quiet": "Stille uren",
+      "ms_paths": "Paden & moment"
     },
     "general": {
       "language": {
@@ -1286,6 +1294,114 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
       "sync_title": "Deze playlist na downloads opnieuw schrijven",
       "forget": "Uit de lijst halen (het bestand blijft)",
       "now": "Nu bijwerken"
+    },
+    "notifications": {
+      "enabled": {
+        "label": "Windows-meldingen",
+        "help": "Een melding tonen in het Windows-meldingencentrum – ook na een geplande controle terwijl de app dicht is."
+      },
+      "new_sets": {
+        "label": "Nieuwe sets in de inbox",
+        "help": "Een watchlist-controle (in de app of gepland) vond nieuwe sets."
+      },
+      "downloads_done": {
+        "label": "Downloads voltooid",
+        "help": "Eén melding per downloadronde met het aantal sets en hun titels."
+      },
+      "downloads_failed": {
+        "label": "Downloads mislukt",
+        "help": "Eén melding per ronde als een download mislukte. Details blijven onder Downloads."
+      },
+      "quiet_hours": {
+        "label": "Stille uren",
+        "help": "Geen meldingen in deze tijd. Wat er gebeurde, volgt daarna als één samenvatting."
+      },
+      "quiet_from": {
+        "label": "Van",
+        "help": "Begin van de stille uren (24 u)."
+      },
+      "quiet_to": {
+        "label": "Tot",
+        "help": "Einde van de stille uren. Vroeger dan het begin = over middernacht (bv. 22:00–07:00)."
+      }
+    },
+    "notify": {
+      "on": "Meldingen aan",
+      "off": "Meldingen uit",
+      "detail": "Getoond via {backend}. Meerdere gebeurtenissen kort na elkaar worden één melding.",
+      "backend_powershell": "Windows PowerShell (onderdeel van Windows)",
+      "backend_winrt": "de Windows-meldings-API (pywinrt)",
+      "test": "Test sturen",
+      "testing": "Versturen …",
+      "test_sent": "Testmelding verstuurd – kijk rechtsonder op het scherm.",
+      "unavailable": "Windows-meldingen niet beschikbaar",
+      "unavailable_detail": "Dit systeem kan ze niet tonen (Windows PowerShell ontbreekt of is geblokkeerd). Gebeurtenissen gaan alleen naar het logboek."
+    },
+    "media_server": {
+      "type": {
+        "label": "Mediaserver",
+        "help": "Welke server na downloads zijn bibliotheek opnieuw moet scannen. Uit = HCLoader neemt geen contact op met een mediaserver."
+      },
+      "url": {
+        "label": "Serveradres",
+        "help": "Adres in je thuisnetwerk, bv. http://192.168.1.10:32400 (Plex) of http://nas:8096 (Jellyfin). Alleen dit adres wordt gecontacteerd.",
+        "ph": "http://192.168.1.10:32400"
+      },
+      "server_root": {
+        "label": "Map op de server",
+        "help": "Waar de server je doelmap ziet (NAS, Docker), bv. /data/music/HCLoader. Leeg = hetzelfde pad als hier. Nodig om alleen de nieuwe mappen te scannen.",
+        "ph": "zelfde pad als de doelmap"
+      },
+      "delay_seconds": {
+        "label": "Wachten voor het scannen",
+        "help": "Na de laatste download zo lang wachten – meerdere downloads worden dan één scan."
+      },
+      "verify_tls": {
+        "label": "Certificaat controleren",
+        "help": "Voor https://-adressen. Alleen uitzetten bij een zelfondertekend certificaat in je thuisnetwerk."
+      }
+    },
+    "ms": {
+      "off": "Geen mediaserver",
+      "off_detail": "Kies hieronder Plex of Jellyfin om de bibliotheek na downloads opnieuw te laten scannen.",
+      "unsaved": "Niet-opgeslagen wijzigingen – de scan gebruikt de opgeslagen instellingen.",
+      "on": "{server} wordt na downloads bijgewerkt",
+      "last_ok": "Laatste scan {t} ({n} nieuwe bestanden)",
+      "last_fail": "Laatste scan {t} mislukt",
+      "never": "Nog geen scan",
+      "all_libraries": "Alle bibliotheken",
+      "no_secret": "Nog geen token / API-sleutel opgeslagen – voer hem hieronder in en test de verbinding.",
+      "scan_now": "Nu scannen",
+      "scanning": "Aanvragen …",
+      "scan_sent": "Scan aangevraagd – de server leest de bibliotheek op de achtergrond in.",
+      "secret_plex": {
+        "label": "Plex-token",
+        "help": "Je X-Plex-Token (Plex Web › een item › Info › XML bekijken: “X-Plex-Token=” in het adres). Na een geslaagde test opgeslagen in Windows Referentiebeheer – nooit in config.yaml of het logboek."
+      },
+      "secret_jellyfin": {
+        "label": "Jellyfin-API-sleutel",
+        "help": "Dashboard › API-sleutels › “+”. Na een geslaagde test opgeslagen in Windows Referentiebeheer – nooit in config.yaml of het logboek."
+      },
+      "secret_ph": "hier plakken",
+      "secret_kept": "opgeslagen – leeg laten om te behouden",
+      "stored_short": "opgeslagen",
+      "stored_title": "Opgeslagen in Windows Referentiebeheer",
+      "forget": "Verwijderen",
+      "forgotten": "Token verwijderd uit Windows Referentiebeheer",
+      "connect": {
+        "label": "Verbinding",
+        "help": "Controleert adres en token en laadt de lijst met bibliotheken. Twee korte verzoeken aan je server, verder niets."
+      },
+      "test": "Verbinding testen",
+      "testing": "Testen …",
+      "test_ok": "Verbonden met {name} (versie {v}).",
+      "test_libs": "{n} bibliotheken gevonden.",
+      "stored": "Token opgeslagen.",
+      "library": {
+        "label": "Bibliotheek",
+        "help": "Welke bibliotheek gescand wordt. “Alle bibliotheken” scant alles (trager op grote servers)."
+      },
+      "lib_paths": "Mappen op de server: {p}"
     }
   },
   "opt": {
@@ -1328,6 +1444,13 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
         "chrome": "Chrome",
         "firefox": "Firefox",
         "brave": "Brave"
+      }
+    },
+    "media_server": {
+      "type": {
+        "off": "Uit",
+        "plex": "Plex",
+        "jellyfin": "Jellyfin"
       }
     }
   },
@@ -1995,5 +2118,76 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
       "one": "{n} DJ",
       "other": "{n} DJ’s"
     }
+  },
+  "stats": {
+    "title": "Statistieken",
+    "sub": "Je bibliotheek in cijfers – offline, uit de database",
+    "range": "Periode",
+    "p_all": "Alles",
+    "p_12m": "12 maanden",
+    "p_30d": "30 dagen",
+    "p_year": "Dit jaar",
+    "p_custom": "Aangepast",
+    "from": "Van",
+    "to": "Tot",
+    "n_sets": {
+      "one": "{n} set",
+      "other": "{n} sets"
+    },
+    "sets_word": {
+      "one": "set",
+      "other": "sets"
+    },
+    "k_sets": "Sets",
+    "k_hours": "Speelduur",
+    "k_size": "Op schijf",
+    "k_avg": "Gemiddelde set",
+    "of_library": "van {n} in de bibliotheek",
+    "since": "sinds {d}",
+    "days_nonstop": "{n} dagen non-stop",
+    "last_dl": "laatste download {d}",
+    "avg_size": "{s} per set",
+    "sizes_missing": {
+      "one": "{n} bestand nog niet gemeten",
+      "other": "{n} bestanden nog niet gemeten"
+    },
+    "measuring": "Bestandsgroottes worden gemeten … {done} / {total}",
+    "h_months": "Downloads per maand",
+    "h_years_dl": "Downloads per jaar",
+    "best_month": "Beste: {m} ({n})",
+    "h_genres": "Per genre",
+    "h_sources": "Bronnen",
+    "h_festivals": "Topfestivals",
+    "editions": {
+      "one": "{n} editie",
+      "other": "{n} edities"
+    },
+    "festivals_other": "+ {n} sets van {f} andere festivals",
+    "no_festivals": "Geen festivalsets in deze periode – Instellingen › Festivals & series wijst ze toe.",
+    "h_djs": "Top-dj's",
+    "open_dj": "Dj-pagina van {name} openen",
+    "no_djs": "Geen dj's herkend in deze periode.",
+    "h_years": "Per jaar van de set",
+    "year_unknown": "{n} zonder bekend jaar",
+    "h_tracks": "Meest gedraaide tracks",
+    "no_tracks": "Nog geen track komt in twee sets voor – tracklists komen uit hoofdstukken en beschrijvingen (Bibliotheek › Tracks).",
+    "h_watchlist": "Watchlist-activiteit",
+    "w_checks": "Controles",
+    "w_scheduled": "waarvan gepland",
+    "w_found": "Gevonden",
+    "w_inbox": "In de inbox",
+    "w_library": "In de bibliotheek",
+    "w_source": "Bron",
+    "w_found_n": "{n} gevonden",
+    "w_checks_n": "{n} controles",
+    "w_last": "laatste controle {t}",
+    "w_none_range": "Geen enkele bron vond iets in deze periode.",
+    "w_no_sources": "Nog geen watchlist-bronnen.",
+    "none": "Niets in deze periode.",
+    "range_empty": "In deze periode is niets gedownload – kies een langere.",
+    "error": "Statistieken niet beschikbaar",
+    "empty_title": "Nog geen sets",
+    "empty_text": "Zodra de eerste sets in je bibliotheek staan, zie je hier wat je verzamelt – genres, festivals, dj's, uren.",
+    "empty_go": "Sets ontdekken"
   }
 });

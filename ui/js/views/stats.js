@@ -215,10 +215,10 @@
     body.innerHTML = `${kpis(data)}
       ${zero ? `<p class="st-zero" id="st-zero">${I.info}${esc(t('stats.range_empty'))}</p>` : ''}
       <div class="st-grid">
-        ${monthsChart(data)}
+        ${zero ? '' : `${monthsChart(data)}
         ${genres(data)}${platforms(data)}
         ${festivals(data)}${djs(data)}
-        ${years(data)}${tracks(data)}
+        ${years(data)}${tracks(data)}`}
         ${watchlist(data)}
       </div>`;
     el.classList.toggle('st-anim', !document.body.classList.contains('reduced'));
@@ -256,10 +256,12 @@
       if (b.dataset.p === 'custom') { const cur = bounds(); range = { preset: 'custom', from: cur.from, to: cur.to }; } else range = { preset: b.dataset.p, from: '', to: '' };
       savePrefs();
       $('#st-actions', el).innerHTML = filterHtml();
+      el.classList.toggle('st-custom-on', range.preset === 'custom');
       wireFilter();
       load();
     });
     wireFilter();
+    el.classList.toggle('st-custom-on', range.preset === 'custom');
     $('#st-body', el).addEventListener('click', (e) => {
       const dj = e.target.closest('[data-dj]'), go = e.target.closest('[data-go]');
       if (dj) HC.app.go('library', `dj-${encodeURIComponent(dj.dataset.dj)}`);

@@ -1737,6 +1737,8 @@ button.tk-time:hover,button.tk-time:focus-visible{border-color:var(--acid);backg
    ===================================================================== */
 .sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 #v-stats .view-head .actions{min-width:0}
+#v-stats .view-head h2{flex:none}
+#v-stats.st-custom-on .view-head .sub{display:none}
 .st-filter{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
 .st-custom{display:inline-flex;align-items:center;gap:6px}
 .st-custom .input{width:150px;padding:4px 8px;font-size:12px}
@@ -1791,12 +1793,12 @@ button.tk-time:hover,button.tk-time:focus-visible{border-color:var(--acid);backg
 .st-bar{display:block;width:100%;max-width:34px;height:var(--h);min-height:1px;background:linear-gradient(180deg,var(--accent) 0%,var(--accent-2) 100%);border-radius:2px 2px 0 0;opacity:.78;transform-origin:bottom center}
 .st-col.zero .st-bar{background:var(--line-2);opacity:.6}
 .st-col.hl .st-bar{background:var(--acid);opacity:.9}
-.st-col:hover .st-bar,.st-col:focus-visible .st-bar{opacity:1}
+.st-col:hover .st-bar,.st-col:focus .st-bar{opacity:1}
 .st-col:focus-visible .st-bar{outline:1px solid var(--text);outline-offset:1px}
 .st-x{position:absolute;top:calc(100% + 5px);left:50%;transform:translateX(-50%);font-size:10px;color:var(--dim);white-space:nowrap}
 .st-tip{position:absolute;bottom:calc(var(--h, 0%) + 8px);left:50%;transform:translateX(-50%);background:var(--panel-3);border:1px solid var(--line-2);border-radius:var(--radius);padding:5px 8px;font-size:11px;color:var(--text);white-space:nowrap;pointer-events:none;opacity:0;z-index:5;display:flex;flex-direction:column;gap:2px;box-shadow:0 6px 18px rgba(0,0,0,.5)}
 .st-tip b{font-weight:600;color:var(--muted)}
-.st-col:hover .st-tip,.st-col:focus-visible .st-tip{opacity:1}
+.st-col:hover .st-tip,.st-col:focus .st-tip{opacity:1}
 .st-col:first-child .st-tip,.st-col:nth-child(2) .st-tip{left:0;transform:none}
 .st-col:last-child .st-tip,.st-col:nth-last-child(2) .st-tip{left:auto;right:0;transform:none}
 .st-col{--h:0%}

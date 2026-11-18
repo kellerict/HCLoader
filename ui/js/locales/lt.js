@@ -15,7 +15,8 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "downloads": "Atsisiuntimai",
     "library": "Biblioteka",
     "log": "Žurnalas",
-    "settings": "Nustatymai"
+    "settings": "Nustatymai",
+    "stats": "Statistika"
   },
   "navfoot": {
     "today": "ŠIANDIEN",
@@ -664,7 +665,9 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "appearance": "Išvaizda",
     "maintenance": "Priežiūra",
     "festivals": "Festivaliai ir serijos",
-    "playback": "Atkūrimas"
+    "playback": "Atkūrimas",
+    "notifications": "Pranešimai",
+    "mediaserver": "Medijos serveris"
   },
   "tabs_hint": {
     "general": "Pagrindinis programos elgesys.",
@@ -679,7 +682,9 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "appearance": "Išvaizda ir pojūtis. Pakeitimai matomi iškart ir tampa nuolatiniai tik po išsaugojimo.",
     "maintenance": "Versijos, naujinimai, duomenų bazė.",
     "festivals": "Atpažįsta festivalį ar seriją, metus, sceną ir seto tipą iš išsaugotų pavadinimų – neprisijungus, be nė vienos papildomos užklausos.",
-    "playback": "Integruotas grotuvas, garsumo suvienodinimas, įsimintos pozicijos ir jūsų failų analizė neprisijungus."
+    "playback": "Integruotas grotuvas, garsumo suvienodinimas, įsimintos pozicijos ir jūsų failų analizė neprisijungus.",
+    "notifications": "Windows pranešimai apie naujus setus gautuosiuose ir baigtus ar nepavykusius atsisiuntimus – sujungti į vieną žinutę, niekada ne srautas. Spustelėjus atsidaro tinkama programos vieta.",
+    "mediaserver": "Po atsisiuntimų paprašyti jūsų Plex ar Jellyfin serverio iš naujo nuskaityti biblioteką – sujungtai, tik namų tinkle. Prieigos raktas saugomas Windows kredencialų tvarkytuve, niekada config.yaml."
   },
   "set": {
     "default": "Numatyta",
@@ -732,7 +737,10 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
       "loudness": "Garsumas",
       "memory": "Atmintis ir bangos forma",
       "analysis": "Analizė (neprisijungus, ffmpeg)",
-      "playlists": "Grojaraščiai (M3U8)"
+      "playlists": "Grojaraščiai (M3U8)",
+      "notify_events": "Pranešti apie",
+      "quiet": "Tylos valandos",
+      "ms_paths": "Keliai ir laikas"
     },
     "general": {
       "language": {
@@ -1328,6 +1336,114 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
       "sync_title": "Perrašyti šį grojaraštį po atsisiuntimų",
       "forget": "Pašalinti iš sąrašo (failas lieka)",
       "now": "Atnaujinti dabar"
+    },
+    "notifications": {
+      "enabled": {
+        "label": "Windows pranešimai",
+        "help": "Rodyti pranešimą Windows pranešimų centre – taip pat po suplanuotos patikros, kai programa uždaryta."
+      },
+      "new_sets": {
+        "label": "Nauji setai gautuosiuose",
+        "help": "Stebimų sąrašo patikra (programoje ar suplanuota) rado naujų setų."
+      },
+      "downloads_done": {
+        "label": "Atsisiuntimai baigti",
+        "help": "Viena žinutė per atsisiuntimų ciklą su setų skaičiumi ir pavadinimais."
+      },
+      "downloads_failed": {
+        "label": "Atsisiuntimai nepavyko",
+        "help": "Viena žinutė per ciklą, jei atsisiuntimas nepavyko. Išsamiau – skiltyje Atsisiuntimai."
+      },
+      "quiet_hours": {
+        "label": "Tylos valandos",
+        "help": "Šiuo metu pranešimų nėra. Kas įvyko, parodoma vėliau viena santrauka."
+      },
+      "quiet_from": {
+        "label": "Nuo",
+        "help": "Tylos valandų pradžia (24 val.)."
+      },
+      "quiet_to": {
+        "label": "Iki",
+        "help": "Tylos valandų pabaiga. Anksčiau nei pradžia = per vidurnaktį (pvz., 22:00–07:00)."
+      }
+    },
+    "notify": {
+      "on": "Pranešimai įjungti",
+      "off": "Pranešimai išjungti",
+      "detail": "Rodoma per {backend}. Keli įvykiai iš eilės sujungiami į vieną pranešimą.",
+      "backend_powershell": "Windows PowerShell (įtrauktas į Windows)",
+      "backend_winrt": "Windows pranešimų API (pywinrt)",
+      "test": "Siųsti bandymą",
+      "testing": "Siunčiama …",
+      "test_sent": "Bandomasis pranešimas išsiųstas – pažiūrėkite į dešinį apatinį ekrano kampą.",
+      "unavailable": "Windows pranešimai nepasiekiami",
+      "unavailable_detail": "Ši sistema negali jų rodyti (nėra Windows PowerShell arba jis užblokuotas). Įvykiai tik įrašomi į žurnalą."
+    },
+    "media_server": {
+      "type": {
+        "label": "Medijos serveris",
+        "help": "Kuris serveris po atsisiuntimų iš naujo nuskaito savo biblioteką. Išjungta = HCLoader nesikreipia į jokį medijos serverį."
+      },
+      "url": {
+        "label": "Serverio adresas",
+        "help": "Adresas namų tinkle, pvz., http://192.168.1.10:32400 (Plex) arba http://nas:8096 (Jellyfin). Kreipiamasi tik šiuo adresu.",
+        "ph": "http://192.168.1.10:32400"
+      },
+      "server_root": {
+        "label": "Aplankas serveryje",
+        "help": "Kur serveris mato jūsų tikslinį aplanką (NAS, Docker), pvz., /data/music/HCLoader. Tuščia = tas pats kelias kaip čia. Reikia, kad būtų nuskaitomi tik nauji aplankai.",
+        "ph": "tas pats kelias kaip tikslinio aplanko"
+      },
+      "delay_seconds": {
+        "label": "Laukti prieš nuskaitymą",
+        "help": "Po paskutinio atsisiuntimo laukti tiek – keli atsisiuntimai virs vienu nuskaitymu."
+      },
+      "verify_tls": {
+        "label": "Tikrinti sertifikatą",
+        "help": "https:// adresams. Išjunkite tik savarankiškai pasirašytam sertifikatui namų tinkle."
+      }
+    },
+    "ms": {
+      "off": "Medijos serverio nėra",
+      "off_detail": "Žemiau pasirinkite Plex arba Jellyfin, kad jo biblioteka būtų nuskaityta po atsisiuntimų.",
+      "unsaved": "Neišsaugoti pakeitimai – nuskaitymas naudoja išsaugotus nustatymus.",
+      "on": "{server} atnaujinamas po atsisiuntimų",
+      "last_ok": "Paskutinis nuskaitymas {t} (naujų failų: {n})",
+      "last_fail": "Paskutinis nuskaitymas {t} nepavyko",
+      "never": "Nuskaitymų dar nebuvo",
+      "all_libraries": "Visos bibliotekos",
+      "no_secret": "Prieigos raktas / API raktas dar neišsaugotas – įveskite jį žemiau ir patikrinkite ryšį.",
+      "scan_now": "Nuskaityti dabar",
+      "scanning": "Prašoma …",
+      "scan_sent": "Nuskaitymas užsakytas – serveris skaito biblioteką fone.",
+      "secret_plex": {
+        "label": "Plex prieigos raktas",
+        "help": "Jūsų X-Plex-Token (Plex Web › bet kuris elementas › Informacija › Rodyti XML: „X-Plex-Token=“ adrese). Po sėkmingo bandymo saugomas Windows kredencialų tvarkytuve – niekada config.yaml ar žurnale."
+      },
+      "secret_jellyfin": {
+        "label": "Jellyfin API raktas",
+        "help": "Valdymo skydas › API raktai › „+“. Po sėkmingo bandymo saugomas Windows kredencialų tvarkytuve – niekada config.yaml ar žurnale."
+      },
+      "secret_ph": "įklijuokite čia",
+      "secret_kept": "išsaugotas – palikite tuščią, kad liktų",
+      "stored_short": "išsaugotas",
+      "stored_title": "Išsaugotas Windows kredencialų tvarkytuve",
+      "forget": "Pašalinti",
+      "forgotten": "Prieigos raktas pašalintas iš Windows kredencialų tvarkytuvo",
+      "connect": {
+        "label": "Ryšys",
+        "help": "Patikrina adresą ir prieigos raktą bei įkelia bibliotekų sąrašą. Dvi trumpos užklausos jūsų serveriui, nieko daugiau."
+      },
+      "test": "Tikrinti ryšį",
+      "testing": "Tikrinama …",
+      "test_ok": "Prisijungta prie {name} (versija {v}).",
+      "test_libs": "Rasta bibliotekų: {n}.",
+      "stored": "Prieigos raktas išsaugotas.",
+      "library": {
+        "label": "Biblioteka",
+        "help": "Kurią biblioteką nuskaityti. „Visos bibliotekos“ nuskaito viską (lėčiau dideliuose serveriuose)."
+      },
+      "lib_paths": "Aplankai serveryje: {p}"
     }
   },
   "opt": {
@@ -1370,6 +1486,13 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
         "chrome": "Chrome",
         "firefox": "Firefox",
         "brave": "Brave"
+      }
+    },
+    "media_server": {
+      "type": {
+        "off": "Išjungta",
+        "plex": "Plex",
+        "jellyfin": "Jellyfin"
       }
     }
   },
@@ -2075,5 +2198,84 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
       "many": "{n} DJ",
       "other": "{n} DJ"
     }
+  },
+  "stats": {
+    "title": "Statistika",
+    "sub": "Jūsų biblioteka skaičiais – neprisijungus, iš duomenų bazės",
+    "range": "Laikotarpis",
+    "p_all": "Visas laikas",
+    "p_12m": "12 mėn.",
+    "p_30d": "30 d.",
+    "p_year": "Šie metai",
+    "p_custom": "Pasirinktas",
+    "from": "Nuo",
+    "to": "Iki",
+    "n_sets": {
+      "one": "{n} setas",
+      "few": "{n} setai",
+      "many": "{n} seto",
+      "other": "{n} setų"
+    },
+    "sets_word": {
+      "one": "setas",
+      "few": "setai",
+      "many": "seto",
+      "other": "setų"
+    },
+    "k_sets": "Setai",
+    "k_hours": "Trukmė",
+    "k_size": "Diske",
+    "k_avg": "Vidutinis setas",
+    "of_library": "iš {n} bibliotekoje",
+    "since": "nuo {d}",
+    "days_nonstop": "{n} d. be pertraukos",
+    "last_dl": "paskutinis atsisiuntimas {d}",
+    "avg_size": "{s} vienam setui",
+    "sizes_missing": {
+      "one": "{n} failas dar neišmatuotas",
+      "few": "{n} failai dar neišmatuoti",
+      "many": "{n} failo dar neišmatuota",
+      "other": "{n} failų dar neišmatuota"
+    },
+    "measuring": "Matuojami failų dydžiai … {done} / {total}",
+    "h_months": "Atsisiuntimai per mėnesį",
+    "h_years_dl": "Atsisiuntimai per metus",
+    "best_month": "Geriausias: {m} ({n})",
+    "h_genres": "Pagal žanrą",
+    "h_sources": "Šaltiniai",
+    "h_festivals": "Populiariausi festivaliai",
+    "editions": {
+      "one": "{n} leidimas",
+      "few": "{n} leidimai",
+      "many": "{n} leidimo",
+      "other": "{n} leidimų"
+    },
+    "festivals_other": "+ {n} setų iš dar {f} festivalių",
+    "no_festivals": "Šiuo laikotarpiu festivalių setų nėra – juos priskiria Nustatymai › Festivaliai ir serijos.",
+    "h_djs": "Populiariausi DJ",
+    "open_dj": "Atidaryti DJ {name} puslapį",
+    "no_djs": "Šiuo laikotarpiu DJ neatpažinta.",
+    "h_years": "Pagal seto metus",
+    "year_unknown": "{n} be žinomų metų",
+    "h_tracks": "Dažniausiai grojami kūriniai",
+    "no_tracks": "Dar joks kūrinys nepasitaiko dviejuose setuose – kūrinių sąrašai gaunami iš skyrių ir aprašymų (Biblioteka › Kūriniai).",
+    "h_watchlist": "Stebimų sąrašo veikla",
+    "w_checks": "Patikros",
+    "w_scheduled": "iš jų suplanuotos",
+    "w_found": "Rasta",
+    "w_inbox": "Gautuosiuose",
+    "w_library": "Bibliotekoje",
+    "w_source": "Šaltinis",
+    "w_found_n": "rasta: {n}",
+    "w_checks_n": "patikrų: {n}",
+    "w_last": "paskutinė patikra {t}",
+    "w_none_range": "Šiuo laikotarpiu joks šaltinis nieko nerado.",
+    "w_no_sources": "Stebimų sąraše dar nėra šaltinių.",
+    "none": "Šiuo laikotarpiu nieko nėra.",
+    "range_empty": "Šiuo laikotarpiu nieko neatsisiųsta – pasirinkite ilgesnį.",
+    "error": "Statistika nepasiekiama",
+    "empty_title": "Setų dar nėra",
+    "empty_text": "Kai bibliotekoje atsiras pirmieji setai, čia matysite, ką kolekcionuojate – žanrus, festivalius, DJ, valandas.",
+    "empty_go": "Atrasti setus"
   }
 });

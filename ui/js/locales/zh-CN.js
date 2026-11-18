@@ -15,7 +15,8 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "downloads": "下载",
     "library": "媒体库",
     "log": "日志",
-    "settings": "设置"
+    "settings": "设置",
+    "stats": "统计"
   },
   "navfoot": {
     "today": "今日",
@@ -610,7 +611,9 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "appearance": "外观",
     "maintenance": "维护",
     "festivals": "音乐节与系列",
-    "playback": "播放"
+    "playback": "播放",
+    "notifications": "通知",
+    "mediaserver": "媒体服务器"
   },
   "tabs_hint": {
     "general": "应用的基本行为。",
@@ -625,7 +628,9 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "appearance": "外观与体验。更改会即时预览，保存后才会永久生效。",
     "maintenance": "版本、更新、数据库。",
     "festivals": "根据已保存的标题识别音乐节或系列、年份、舞台和 set 类型——离线进行，不产生任何额外请求。",
-    "playback": "内置播放器、响度均衡、记住的位置以及文件的离线分析。"
+    "playback": "内置播放器、响度均衡、记住的位置以及文件的离线分析。",
+    "notifications": "收件箱有新混音、下载完成或失败时显示 Windows 通知 – 合并为一条消息，绝不刷屏。点击即可打开应用的对应页面。",
+    "mediaserver": "下载后请求你的 Plex 或 Jellyfin 服务器重新扫描媒体库 – 合并处理，仅限局域网。令牌保存在 Windows 凭据管理器中，绝不写入 config.yaml。"
   },
   "set": {
     "default": "默认值",
@@ -672,7 +677,10 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
       "loudness": "响度",
       "memory": "记忆与波形",
       "analysis": "分析（离线，ffmpeg）",
-      "playlists": "播放列表（M3U8）"
+      "playlists": "播放列表（M3U8）",
+      "notify_events": "通知内容",
+      "quiet": "免打扰时段",
+      "ms_paths": "路径与时机"
     },
     "general": {
       "language": {
@@ -1265,6 +1273,114 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
       "sync_title": "下载后重写此播放列表",
       "forget": "从列表中移除（文件保留）",
       "now": "立即更新"
+    },
+    "notifications": {
+      "enabled": {
+        "label": "Windows 通知",
+        "help": "在 Windows 通知中心显示通知 – 应用关闭时的计划检查之后也会显示。"
+      },
+      "new_sets": {
+        "label": "收件箱有新混音",
+        "help": "监视列表检查（应用内或计划任务）找到了新混音。"
+      },
+      "downloads_done": {
+        "label": "下载完成",
+        "help": "每轮下载一条消息，包含混音数量和标题。"
+      },
+      "downloads_failed": {
+        "label": "下载失败",
+        "help": "某轮下载有失败时发一条消息。详情见“下载”。"
+      },
+      "quiet_hours": {
+        "label": "免打扰时段",
+        "help": "此时段内不显示通知。期间发生的事情之后会合并为一条摘要。"
+      },
+      "quiet_from": {
+        "label": "开始",
+        "help": "免打扰开始时间（24 小时制）。"
+      },
+      "quiet_to": {
+        "label": "结束",
+        "help": "免打扰结束时间。早于开始时间 = 跨越午夜（例如 22:00–07:00）。"
+      }
+    },
+    "notify": {
+      "on": "通知已开启",
+      "off": "通知已关闭",
+      "detail": "通过{backend}显示。短时间内的多个事件会合并为一条通知。",
+      "backend_powershell": "Windows PowerShell（Windows 自带）",
+      "backend_winrt": "Windows 通知 API（pywinrt）",
+      "test": "发送测试",
+      "testing": "正在发送 …",
+      "test_sent": "测试通知已发送 – 请查看屏幕右下角。",
+      "unavailable": "Windows 通知不可用",
+      "unavailable_detail": "此系统无法显示通知（缺少 Windows PowerShell 或已被阻止）。事件只会写入日志。"
+    },
+    "media_server": {
+      "type": {
+        "label": "媒体服务器",
+        "help": "下载后由哪个服务器重新扫描媒体库。关闭 = HCLoader 不联系任何媒体服务器。"
+      },
+      "url": {
+        "label": "服务器地址",
+        "help": "局域网中的地址，例如 http://192.168.1.10:32400（Plex）或 http://nas:8096（Jellyfin）。只会联系此地址。",
+        "ph": "http://192.168.1.10:32400"
+      },
+      "server_root": {
+        "label": "服务器上的文件夹",
+        "help": "服务器看到的目标文件夹路径（NAS、Docker），例如 /data/music/HCLoader。留空 = 与本机路径相同。用于只扫描新文件夹。",
+        "ph": "与目标文件夹路径相同"
+      },
+      "delay_seconds": {
+        "label": "扫描前等待",
+        "help": "最后一次下载后等待这么久 – 多次下载会合并为一次扫描。"
+      },
+      "verify_tls": {
+        "label": "验证证书",
+        "help": "用于 https:// 地址。仅当局域网中使用自签名证书时才关闭。"
+      }
+    },
+    "ms": {
+      "off": "未设置媒体服务器",
+      "off_detail": "在下方选择 Plex 或 Jellyfin，下载后即可重新扫描其媒体库。",
+      "unsaved": "有未保存的更改 – 扫描使用已保存的设置。",
+      "on": "下载后更新 {server}",
+      "last_ok": "上次扫描 {t}（{n} 个新文件）",
+      "last_fail": "上次扫描 {t} 失败",
+      "never": "尚未扫描",
+      "all_libraries": "全部媒体库",
+      "no_secret": "尚未保存令牌 / API 密钥 – 请在下方输入并测试连接。",
+      "scan_now": "立即扫描",
+      "scanning": "正在请求 …",
+      "scan_sent": "已请求扫描 – 服务器在后台读取媒体库。",
+      "secret_plex": {
+        "label": "Plex 令牌",
+        "help": "你的 X-Plex-Token（Plex Web › 任意项目 › 获取信息 › 查看 XML：地址中的“X-Plex-Token=”）。测试成功后保存在 Windows 凭据管理器中 – 绝不写入 config.yaml 或日志。"
+      },
+      "secret_jellyfin": {
+        "label": "Jellyfin API 密钥",
+        "help": "控制台 › API 密钥 › “+”。测试成功后保存在 Windows 凭据管理器中 – 绝不写入 config.yaml 或日志。"
+      },
+      "secret_ph": "粘贴到这里",
+      "secret_kept": "已保存 – 留空则保留",
+      "stored_short": "已保存",
+      "stored_title": "已保存在 Windows 凭据管理器中",
+      "forget": "移除",
+      "forgotten": "已从 Windows 凭据管理器移除令牌",
+      "connect": {
+        "label": "连接",
+        "help": "检查地址和令牌并加载媒体库列表。只向你的服务器发送两个简短请求。"
+      },
+      "test": "测试连接",
+      "testing": "正在测试 …",
+      "test_ok": "已连接到 {name}（版本 {v}）。",
+      "test_libs": "找到 {n} 个媒体库。",
+      "stored": "令牌已保存。",
+      "library": {
+        "label": "媒体库",
+        "help": "要扫描的媒体库。“全部媒体库”会扫描所有内容（大型服务器上较慢）。"
+      },
+      "lib_paths": "服务器上的文件夹：{p}"
     }
   },
   "opt": {
@@ -1307,6 +1423,13 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
         "chrome": "Chrome",
         "firefox": "Firefox",
         "brave": "Brave"
+      }
+    },
+    "media_server": {
+      "type": {
+        "off": "关闭",
+        "plex": "Plex",
+        "jellyfin": "Jellyfin"
       }
     }
   },
@@ -1955,5 +2078,72 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "sub_n": {
       "other": "{n} 位 DJ"
     }
+  },
+  "stats": {
+    "title": "统计",
+    "sub": "用数字看你的媒体库 – 离线，来自数据库",
+    "range": "时间范围",
+    "p_all": "全部",
+    "p_12m": "12 个月",
+    "p_30d": "30 天",
+    "p_year": "今年",
+    "p_custom": "自定义",
+    "from": "从",
+    "to": "到",
+    "n_sets": {
+      "other": "{n} 个混音"
+    },
+    "sets_word": {
+      "other": "个混音"
+    },
+    "k_sets": "混音",
+    "k_hours": "总时长",
+    "k_size": "磁盘占用",
+    "k_avg": "平均时长",
+    "of_library": "媒体库共 {n} 个",
+    "since": "自 {d} 起",
+    "days_nonstop": "连续播放 {n} 天",
+    "last_dl": "最近下载 {d}",
+    "avg_size": "每个 {s}",
+    "sizes_missing": {
+      "other": "{n} 个文件尚未测量"
+    },
+    "measuring": "正在测量文件大小 … {done} / {total}",
+    "h_months": "每月下载",
+    "h_years_dl": "每年下载",
+    "best_month": "最佳：{m}（{n}）",
+    "h_genres": "按风格",
+    "h_sources": "来源",
+    "h_festivals": "热门音乐节",
+    "editions": {
+      "other": "{n} 届"
+    },
+    "festivals_other": "+ 另外 {f} 个音乐节的 {n} 个混音",
+    "no_festivals": "此时间段没有音乐节混音 – 由 设置 › 音乐节与系列 进行归类。",
+    "h_djs": "热门 DJ",
+    "open_dj": "打开 {name} 的 DJ 页面",
+    "no_djs": "此时间段未识别到 DJ。",
+    "h_years": "按混音年份",
+    "year_unknown": "{n} 个年份未知",
+    "h_tracks": "最常播放的曲目",
+    "no_tracks": "还没有曲目出现在两个混音中 – 曲目列表来自章节和描述（媒体库 › 曲目）。",
+    "h_watchlist": "监视列表活动",
+    "w_checks": "检查",
+    "w_scheduled": "其中计划任务",
+    "w_found": "找到",
+    "w_inbox": "收件箱中",
+    "w_library": "媒体库中",
+    "w_source": "来源",
+    "w_found_n": "找到 {n} 个",
+    "w_checks_n": "{n} 次检查",
+    "w_last": "最近检查 {t}",
+    "w_none_range": "此时间段没有来源找到内容。",
+    "w_no_sources": "监视列表中还没有来源。",
+    "none": "此时间段没有内容。",
+    "range_empty": "此时间段没有下载任何内容 – 请选择更长的范围。",
+    "error": "统计不可用",
+    "empty_title": "还没有混音",
+    "empty_text": "媒体库中一有混音，你就能在这里看到收藏的内容 – 风格、音乐节、DJ、时长。",
+    "empty_go": "发现混音"
   }
 });

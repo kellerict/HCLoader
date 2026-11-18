@@ -15,7 +15,8 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "downloads": "Downloads",
     "library": "Biblioteca",
     "log": "Registro",
-    "settings": "Configurações"
+    "settings": "Configurações",
+    "stats": "Estatísticas"
   },
   "navfoot": {
     "today": "HOJE",
@@ -628,7 +629,9 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "appearance": "Aparência",
     "maintenance": "Manutenção",
     "festivals": "Festivais e séries",
-    "playback": "Reprodução"
+    "playback": "Reprodução",
+    "notifications": "Notificações",
+    "mediaserver": "Servidor de mídia"
   },
   "tabs_hint": {
     "general": "Comportamento básico do app.",
@@ -643,7 +646,9 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "appearance": "Visual e sensação. As alterações aparecem na hora e só ficam permanentes após salvar.",
     "maintenance": "Versões, atualizações, banco de dados.",
     "festivals": "Reconhece festival ou série, ano, palco e tipo de set a partir dos títulos salvos – offline, sem nenhuma requisição extra.",
-    "playback": "Player integrado, normalização de volume, posições lembradas e a análise offline dos seus arquivos."
+    "playback": "Player integrado, normalização de volume, posições lembradas e a análise offline dos seus arquivos.",
+    "notifications": "Notificações do Windows para sets novos na caixa de entrada e downloads concluídos ou com falha – agrupadas numa só mensagem, nunca uma enxurrada. Um clique abre o app no lugar certo.",
+    "mediaserver": "Depois dos downloads, pedir ao seu servidor Plex ou Jellyfin para reescanear a biblioteca – agrupado, só na rede local. O token fica no Gerenciador de Credenciais do Windows, nunca no config.yaml."
   },
   "set": {
     "default": "Padrão",
@@ -692,7 +697,10 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
       "loudness": "Volume",
       "memory": "Memória e forma de onda",
       "analysis": "Análise (offline, ffmpeg)",
-      "playlists": "Playlists (M3U8)"
+      "playlists": "Playlists (M3U8)",
+      "notify_events": "Avisar sobre",
+      "quiet": "Horário silencioso",
+      "ms_paths": "Caminhos e momento"
     },
     "general": {
       "language": {
@@ -1286,6 +1294,114 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
       "sync_title": "Regravar esta playlist após downloads",
       "forget": "Tirar da lista (o arquivo fica)",
       "now": "Atualizar agora"
+    },
+    "notifications": {
+      "enabled": {
+        "label": "Notificações do Windows",
+        "help": "Mostrar uma notificação na central de notificações do Windows – também após uma verificação agendada com o app fechado."
+      },
+      "new_sets": {
+        "label": "Sets novos na caixa de entrada",
+        "help": "Uma verificação da watchlist (no app ou agendada) encontrou sets novos."
+      },
+      "downloads_done": {
+        "label": "Downloads concluídos",
+        "help": "Uma mensagem por rodada de downloads com o número de sets e seus títulos."
+      },
+      "downloads_failed": {
+        "label": "Downloads com falha",
+        "help": "Uma mensagem por rodada se um download falhou. Os detalhes ficam em Downloads."
+      },
+      "quiet_hours": {
+        "label": "Horário silencioso",
+        "help": "Nenhuma notificação nesse horário. O que aconteceu aparece depois como um único resumo."
+      },
+      "quiet_from": {
+        "label": "De",
+        "help": "Início do horário silencioso (24 h)."
+      },
+      "quiet_to": {
+        "label": "Até",
+        "help": "Fim do horário silencioso. Antes do início = passa da meia-noite (ex. 22:00–07:00)."
+      }
+    },
+    "notify": {
+      "on": "Notificações ativadas",
+      "off": "Notificações desativadas",
+      "detail": "Exibidas via {backend}. Vários eventos em pouco tempo viram uma só notificação.",
+      "backend_powershell": "Windows PowerShell (incluído no Windows)",
+      "backend_winrt": "a API de notificações do Windows (pywinrt)",
+      "test": "Enviar teste",
+      "testing": "Enviando …",
+      "test_sent": "Notificação de teste enviada – olhe no canto inferior direito da tela.",
+      "unavailable": "Notificações do Windows indisponíveis",
+      "unavailable_detail": "Este sistema não consegue exibi-las (Windows PowerShell ausente ou bloqueado). Os eventos só vão para o registro."
+    },
+    "media_server": {
+      "type": {
+        "label": "Servidor de mídia",
+        "help": "Qual servidor deve reescanear a biblioteca após os downloads. Desativado = o HCLoader não contata nenhum servidor de mídia."
+      },
+      "url": {
+        "label": "Endereço do servidor",
+        "help": "Endereço na sua rede local, ex. http://192.168.1.10:32400 (Plex) ou http://nas:8096 (Jellyfin). Só este endereço é contatado.",
+        "ph": "http://192.168.1.10:32400"
+      },
+      "server_root": {
+        "label": "Pasta no servidor",
+        "help": "Onde o servidor vê sua pasta de destino (NAS, Docker), ex. /data/music/HCLoader. Vazio = o mesmo caminho daqui. Necessário para escanear só as pastas novas.",
+        "ph": "mesmo caminho da pasta de destino"
+      },
+      "delay_seconds": {
+        "label": "Esperar antes de escanear",
+        "help": "Após o último download, esperar este tempo – vários downloads viram então uma só varredura."
+      },
+      "verify_tls": {
+        "label": "Verificar certificado",
+        "help": "Para endereços https://. Desative só para um certificado autoassinado na sua rede local."
+      }
+    },
+    "ms": {
+      "off": "Nenhum servidor de mídia",
+      "off_detail": "Escolha Plex ou Jellyfin abaixo para que a biblioteca seja reescaneada após os downloads.",
+      "unsaved": "Alterações não salvas – a varredura usa as configurações salvas.",
+      "on": "{server} é atualizado após os downloads",
+      "last_ok": "Última varredura {t} ({n} arquivos novos)",
+      "last_fail": "Última varredura {t} falhou",
+      "never": "Nenhuma varredura ainda",
+      "all_libraries": "Todas as bibliotecas",
+      "no_secret": "Nenhum token / chave de API salvo ainda – digite-o abaixo e teste a conexão.",
+      "scan_now": "Escanear agora",
+      "scanning": "Solicitando …",
+      "scan_sent": "Varredura solicitada – o servidor lê a biblioteca em segundo plano.",
+      "secret_plex": {
+        "label": "Token do Plex",
+        "help": "Seu X-Plex-Token (Plex Web › qualquer item › Obter informações › Ver XML: “X-Plex-Token=” no endereço). Salvo no Gerenciador de Credenciais do Windows após um teste bem-sucedido – nunca no config.yaml nem no registro."
+      },
+      "secret_jellyfin": {
+        "label": "Chave de API do Jellyfin",
+        "help": "Painel › Chaves de API › “+”. Salva no Gerenciador de Credenciais do Windows após um teste bem-sucedido – nunca no config.yaml nem no registro."
+      },
+      "secret_ph": "cole aqui",
+      "secret_kept": "salvo – deixe vazio para manter",
+      "stored_short": "salvo",
+      "stored_title": "Salvo no Gerenciador de Credenciais do Windows",
+      "forget": "Remover",
+      "forgotten": "Token removido do Gerenciador de Credenciais do Windows",
+      "connect": {
+        "label": "Conexão",
+        "help": "Verifica o endereço e o token e carrega a lista de bibliotecas. Duas solicitações curtas ao seu servidor, nada mais."
+      },
+      "test": "Testar conexão",
+      "testing": "Testando …",
+      "test_ok": "Conectado a {name} (versão {v}).",
+      "test_libs": "{n} bibliotecas encontradas.",
+      "stored": "Token salvo.",
+      "library": {
+        "label": "Biblioteca",
+        "help": "Qual biblioteca escanear. “Todas as bibliotecas” escaneia tudo (mais lento em servidores grandes)."
+      },
+      "lib_paths": "Pastas no servidor: {p}"
     }
   },
   "opt": {
@@ -1328,6 +1444,13 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
         "chrome": "Chrome",
         "firefox": "Firefox",
         "brave": "Brave"
+      }
+    },
+    "media_server": {
+      "type": {
+        "off": "Desativado",
+        "plex": "Plex",
+        "jellyfin": "Jellyfin"
       }
     }
   },
@@ -1995,5 +2118,76 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
       "one": "{n} DJ",
       "other": "{n} DJs"
     }
+  },
+  "stats": {
+    "title": "Estatísticas",
+    "sub": "Sua biblioteca em números – offline, a partir do banco de dados",
+    "range": "Período",
+    "p_all": "Tudo",
+    "p_12m": "12 meses",
+    "p_30d": "30 dias",
+    "p_year": "Este ano",
+    "p_custom": "Personalizado",
+    "from": "De",
+    "to": "Até",
+    "n_sets": {
+      "one": "{n} set",
+      "other": "{n} sets"
+    },
+    "sets_word": {
+      "one": "set",
+      "other": "sets"
+    },
+    "k_sets": "Sets",
+    "k_hours": "Tempo total",
+    "k_size": "No disco",
+    "k_avg": "Set médio",
+    "of_library": "de {n} na biblioteca",
+    "since": "desde {d}",
+    "days_nonstop": "{n} dias sem parar",
+    "last_dl": "último download {d}",
+    "avg_size": "{s} por set",
+    "sizes_missing": {
+      "one": "{n} arquivo ainda não medido",
+      "other": "{n} arquivos ainda não medidos"
+    },
+    "measuring": "Medindo tamanhos de arquivo … {done} / {total}",
+    "h_months": "Downloads por mês",
+    "h_years_dl": "Downloads por ano",
+    "best_month": "Melhor: {m} ({n})",
+    "h_genres": "Por gênero",
+    "h_sources": "Fontes",
+    "h_festivals": "Principais festivais",
+    "editions": {
+      "one": "{n} edição",
+      "other": "{n} edições"
+    },
+    "festivals_other": "+ {n} sets de {f} outros festivais",
+    "no_festivals": "Nenhum set de festival neste período – Configurações › Festivais e séries os atribui.",
+    "h_djs": "Principais DJs",
+    "open_dj": "Abrir a página de DJ de {name}",
+    "no_djs": "Nenhum DJ reconhecido neste período.",
+    "h_years": "Por ano do set",
+    "year_unknown": "{n} sem ano conhecido",
+    "h_tracks": "Faixas mais tocadas",
+    "no_tracks": "Nenhuma faixa aparece ainda em dois sets – as tracklists vêm de capítulos e descrições (Biblioteca › Faixas).",
+    "h_watchlist": "Atividade da watchlist",
+    "w_checks": "Verificações",
+    "w_scheduled": "delas agendadas",
+    "w_found": "Encontrados",
+    "w_inbox": "Na caixa de entrada",
+    "w_library": "Na biblioteca",
+    "w_source": "Fonte",
+    "w_found_n": "{n} encontrados",
+    "w_checks_n": "{n} verificações",
+    "w_last": "última verificação {t}",
+    "w_none_range": "Nenhuma fonte encontrou algo neste período.",
+    "w_no_sources": "Ainda não há fontes na watchlist.",
+    "none": "Nada neste período.",
+    "range_empty": "Nada foi baixado neste período – escolha um mais longo.",
+    "error": "Estatísticas indisponíveis",
+    "empty_title": "Ainda não há sets",
+    "empty_text": "Assim que os primeiros sets estiverem na sua biblioteca, você verá aqui o que coleciona – gêneros, festivais, DJs, horas.",
+    "empty_go": "Descobrir sets"
   }
 });
