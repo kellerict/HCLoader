@@ -10,6 +10,8 @@ appears after «Show all changes» (`docs/RELEASING.md`).
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-11-18
+
 ### Highlights
 - The installer installs the Microsoft Edge WebView2 Runtime if it is missing (nothing happens if it is already there)
 - Portable build: a clear message with the download link when WebView2 is missing, instead of a broken window
