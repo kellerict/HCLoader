@@ -1358,7 +1358,8 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
   App sollen dieselbe Wahrheit sehen; pywebview würde mit einem Preview-Kanal starten.
 - **Entscheid:** Ohne Adminrechte (`PrivilegesRequired=lowest`) installiert der Bootstrapper pro
   Benutzer; scheitert er (offline, Proxy, Exitcode ≠ 0), bricht Setup **nicht** ab:
-  `SuppressibleMsgBox` mit Download-Seite, Log-Zeile `WebView2 install failed: …`. **Grund:** HCLoader
+  Hinweis mit Download-Seite (nur interaktiv, siehe Nachtrag unten), Log-Zeile
+  `WebView2 install failed: …`. **Grund:** HCLoader
   selbst ist installiert, die Runtime lässt sich nachholen; ein Abbruch würde nichts retten.
 - **Entscheid:** CI lädt den Bootstrapper bei jedem Build über den offiziellen fwlink und bricht ab,
   wenn die Authenticode-Signatur nicht `Valid` ist oder nicht auf `O=Microsoft Corporation` lautet.
@@ -1372,3 +1373,32 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
 - **Entscheid:** Installer-Texte für diesen Schritt stehen in `installer/webview2-messages.isi`
   (UTF-8 mit BOM, per `#include`), in allen zehn Installer-Sprachen. **Grund:** `HCLoader.iss` bleibt
   ASCII (ISCC liest es als ANSI), Russisch braucht Unicode; ISPP liest Include-Dateien als UTF-8.
+
+## 2026-11-18 – WebView2-Bootstrapper mit Frist, Silent ohne Meldung (Review v0.5.1)
+- **Entscheid:** Der Bootstrapper läuft über `RunBounded` (PowerShell: `Start-Process -PassThru`,
+  `WaitForExit(600 s)`, danach `taskkill /T /F`, selbst auf 30 s begrenzt, Exitcode 1460 =
+  `ERROR_TIMEOUT`). Bei Zeitüberschreitung: Log `WebView2 install timed out …`, Hinweis wie bei
+  einem Fehler, Setup läuft weiter. Die Statuszeile nennt die Frist («höchstens 10 Minuten»).
+  **Grund:** `Exec` wartet ohne Obergrenze; hinter einem hängenden Proxy oder blockiertem
+  EdgeUpdate stand Setup sonst still. PowerShell-Begrenzung wie beim Deinstallations-Cleanup statt
+  `CreateProcessW`/`WaitForSingleObject` per DLL-Import (Strukturen in Pascal Script fehleranfällig);
+  `ewNoWait` liefert keine PID, der Prozess liesse sich nicht beenden.
+- **Entscheid:** Fehler-/Timeout-Hinweis nur bei `not WizardSilent`; silent nur Log-Zeile.
+  **Grund:** `SuppressibleMsgBox` wird nur von `/SUPPRESSMSGBOXES` unterdrückt, nicht von
+  `/SILENT`/`/VERYSILENT` – ein unbeaufsichtigter Install hätte offline auf einen Klick gewartet.
+- **Entscheid:** `installer-defaults.json` wird vor dem Bootstrapper geschrieben. **Grund:** ein
+  abgebrochener Bootstrapper-Schritt darf die Datenschutz-Wahl nicht verlieren.
+- **Entscheid:** Installer und App erkennen gleich wie pywebview: Stable + Beta/Dev/Canary, HKLM
+  (WOW6432Node) und HKCU, leer/`0.0.0.0` = fehlt, Hauptversion ≥ 86 (pywebview vergleicht nur die
+  Hauptversion gegen 86.0.622.0). HKLM ohne WOW6432Node bleibt ein zusätzlicher Treffer.
+  **Grund:** kein «vorhanden» in der App bei MSHTML-Fallback in pywebview, kein unnötiger
+  Stable-Download, wenn nur ein Preview-Kanal da ist. Der 64-bit-Schlüssel wird von Microsoft
+  per machine nicht beschrieben; ihn zu ignorieren brächte nur ein Risiko für falsches «fehlt».
+  Die .NET-≥-4.6.2-Prüfung von pywebview wird nicht nachgebaut (ab Windows 10 1607 immer erfüllt).
+- **Entscheid:** CI prüft zusätzlich, dass die Signaturkette bei einer Microsoft-Root endet
+  (Root Certificate Authority 2010/2011 oder Identity Verification Root CA 2020; Zwischen-CAs aus
+  der Signatur). Kein Pin auf die Zwischen-CA. **Grund:** die ausstellende CA wechselt über die
+  Jahre (Code Signing PCA 2011/2024, ID Verified CS), die Roots nicht – robust und trotzdem härter
+  als nur der Subject-Regex.
+- **Entscheid:** CI-Smoke mit `/WEBVIEW2DRYRUN=timeout` (hängender `ping`-Stellvertreter, Frist 5 s)
+  ohne `/SUPPRESSMSGBOXES`. **Grund:** prüft Frist, Kill und «silent ohne Meldung» real unter Windows.
