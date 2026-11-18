@@ -2005,7 +2005,14 @@ class Api:
 
     def get_tracklist(self, video_id: str) -> dict[str, Any]:
         """Tracks of one set with timestamps; extracted on the spot if never examined."""
-        res = tracklist.get_tracklist(self._db, str(video_id))
+        vid = str(video_id)
+        try:
+            # a dead network share must not block the panel: then no audio/CUE file reads
+            files_ok = library.target_reachable(self._cfg.target_dir_path())
+            res = tracklist.get_tracklist(self._db, vid, files_ok=files_ok)
+        except Exception:  # e.g. a damaged MP3 (mutagen) – a message, not a stack trace
+            log.warning("Tracklist not readable: %s", vid, exc_info=True)
+            return {"ok": False, "error": tr("tracklist.read_failed")}
         if not res.get("ok"):
             return {"ok": False, "error": tr(res.pop("error_key", "tracklist.unknown_item"))}
         return res
@@ -2025,9 +2032,10 @@ class Api:
 
     def build_tracklists(self, opts: dict[str, Any] | None = None) -> dict[str, Any]:
         """Offline pass over the library in the maintenance worker; progress via
-        `tracklist_index`. opts {scope: "missing" (default) | "all"}."""
+        `tracklist_index`. opts {scope: "new" (default: never read or changed since; alias
+        "missing") | "all" (re-read everything)}."""
         o = opts if isinstance(opts, dict) else {}
-        scope = "all" if o.get("scope") == "all" else "missing"
+        scope = "all" if o.get("scope") == "all" else "new"
         if self._worker.busy("tracklists"):
             return {"ok": True, "started": False, "running": True}
         other = self._worker.other_job("tracklists")

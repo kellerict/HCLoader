@@ -448,6 +448,7 @@
     "pass_cancelled": "Lugude nimekirjade lugemine katkestatud: {n} kontrollitud, {sets} setti nimekirjaga, {tracks} lugu",
     "pass_failed": "Lugude nimekirjade lugemine ebaõnnestus: {error}",
     "search_failed": "Loo otsing ebaõnnestus: {error}",
+    "read_failed": "Selle seti lugude loendit ei õnnestunud lugeda (fail on vigane või kättesaamatu)",
     "unknown_item": "Seda setti pole teegis"
   },
   "update": {

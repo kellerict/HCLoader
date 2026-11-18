@@ -448,6 +448,7 @@
     "pass_cancelled": "Inläsning av spellistor avbruten: {n} kontrollerade, {sets} set med spellista, {tracks} låtar",
     "pass_failed": "Kunde inte läsa in spellistor: {error}",
     "search_failed": "Låtsökningen misslyckades: {error}",
+    "read_failed": "Låtlistan för det här setet kunde inte läsas (filen är skadad eller inte nåbar)",
     "unknown_item": "Det här setet finns inte i biblioteket"
   },
   "update": {

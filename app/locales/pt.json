@@ -447,6 +447,7 @@
     "pass_cancelled": "Leitura de tracklists cancelada: {n} verificados, {sets} sets com tracklist, {tracks} faixas",
     "pass_failed": "Falha ao ler as tracklists: {error}",
     "search_failed": "Falha na busca de faixas: {error}",
+    "read_failed": "Não foi possível ler a tracklist deste set (arquivo danificado ou inacessível)",
     "unknown_item": "Este set não está na biblioteca"
   },
   "update": {

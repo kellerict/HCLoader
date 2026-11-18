@@ -456,6 +456,7 @@
     "pass_cancelled": "Takelių sąrašų nuskaitymas nutrauktas: patikrinta {n}, setų su sąrašu {sets}, takelių {tracks}",
     "pass_failed": "Nepavyko nuskaityti takelių sąrašų: {error}",
     "search_failed": "Takelių paieška nepavyko: {error}",
+    "read_failed": "Šio seto takelių sąrašo nepavyko nuskaityti (failas sugadintas arba nepasiekiamas)",
     "unknown_item": "Šio seto nėra bibliotekoje"
   },
   "update": {

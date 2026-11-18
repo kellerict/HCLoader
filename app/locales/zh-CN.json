@@ -444,6 +444,7 @@
     "pass_cancelled": "读取曲目表已取消：检查 {n} 个，{sets} 个混音含曲目表，共 {tracks} 首曲目",
     "pass_failed": "读取曲目表失败：{error}",
     "search_failed": "曲目搜索失败：{error}",
+    "read_failed": "无法读取此混音集的曲目列表（文件损坏或无法访问）",
     "unknown_item": "该混音不在媒体库中"
   },
   "update": {

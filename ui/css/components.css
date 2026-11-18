@@ -1495,6 +1495,8 @@ tr.co-edit:hover td{background:var(--panel)}
 .tr-status{flex:1 1 300px;display:flex;align-items:center;justify-content:flex-end;gap:12px;min-width:0;font:12px var(--f-mono);color:var(--muted)}
 .tr-line{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap;justify-content:flex-end}
 .tr-line b{color:var(--text);font-weight:600}
+.tr-line>span,.tr-line b{white-space:nowrap}
+.tr-acts{display:flex;align-items:center;gap:6px;flex:none}
 .tr-line .sep,.tr-set-t .sep{color:var(--dim)}
 .tr-like svg{width:14px;height:14px;stroke:var(--warn);fill:none;stroke-width:2;vertical-align:-2px}
 .tr-prog{display:flex;align-items:center;gap:12px;flex:1;min-width:0;max-width:560px}

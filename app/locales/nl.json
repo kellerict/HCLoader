@@ -448,6 +448,7 @@
     "pass_cancelled": "Tracklists inlezen geannuleerd: {n} gecontroleerd, {sets} sets met tracklist, {tracks} tracks",
     "pass_failed": "Tracklists inlezen mislukt: {error}",
     "search_failed": "Tracks zoeken mislukt: {error}",
+    "read_failed": "De tracklist van deze set kon niet worden gelezen (bestand beschadigd of niet bereikbaar)",
     "unknown_item": "Deze set staat niet in de bibliotheek"
   },
   "update": {

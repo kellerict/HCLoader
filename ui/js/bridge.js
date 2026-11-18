@@ -209,7 +209,7 @@
                                            Track = {position, start (s|null), artist, title, version, label, is_id}
      get_top_tracks(limit?)             -> {ok, tracks:[{key, artist, title, version, sets}]}   «Meistgespielt» (>= 2 Sets)
      get_tracklist_status()             -> {total, scanned, sets, tracks, last_pass, engine, running}
-     build_tracklists(opts?)            -> {ok, started, scope} | {ok:false, error}   opts {scope:"missing"|"all"};
+     build_tracklists(opts?)            -> {ok, started, scope} | {ok:false, error}   opts {scope:"new"|"all"} ("new" = nie gelesen/geändert, Alias "missing");
                                            Fortschritt: Event "tracklist_index"
      cancel_build_tracklists()          -> {ok, running}
 

@@ -448,6 +448,7 @@
     "pass_cancelled": "Innlesing av sporlister avbrutt: {n} sjekket, {sets} sett med sporliste, {tracks} spor",
     "pass_failed": "Kunne ikke lese inn sporlister: {error}",
     "search_failed": "Sporsøket mislyktes: {error}",
+    "read_failed": "Sporlisten for dette settet kunne ikke leses (filen er skadet eller utilgjengelig)",
     "unknown_item": "Dette settet er ikke i biblioteket"
   },
   "update": {

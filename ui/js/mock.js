@@ -2179,7 +2179,7 @@
     }),
     build_tracklists(opts) {
       return later(60, () => {
-        const scope = opts && opts.scope === 'all' ? 'all' : 'missing';
+        const scope = opts && opts.scope === 'all' ? 'all' : 'new';
         if (tlState.running) return { ok: true, started: false, running: true };
         Object.assign(tlState, { running: true, cancel: false });
         const total = LIBRARY.length;

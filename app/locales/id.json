@@ -444,6 +444,7 @@
     "pass_cancelled": "Membaca tracklist dibatalkan: {n} diperiksa, {sets} set dengan tracklist, {tracks} lagu",
     "pass_failed": "Gagal membaca tracklist: {error}",
     "search_failed": "Pencarian lagu gagal: {error}",
+    "read_failed": "Daftar lagu set ini tidak dapat dibaca (file rusak atau tidak dapat dijangkau)",
     "unknown_item": "Set ini tidak ada di pustaka"
   },
   "update": {

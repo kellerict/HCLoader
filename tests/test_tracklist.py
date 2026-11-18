@@ -342,7 +342,7 @@ def test_migration_v10_adds_tables_keeps_rows_and_backs_up(tmp_path):
     conn.execute("INSERT INTO videos(id, title, status) VALUES ('abcdefghijk', 'Alt', 'done')")
     conn.close()
     with Database(path) as d:
-        assert d.schema_version() == len(dbmod.MIGRATIONS) == 10
+        assert d.schema_version() == len(dbmod.MIGRATIONS) == 11
         assert d.get_video("abcdefghijk")["title"] == "Alt"
         cols = {r["name"] for r in d.query("PRAGMA table_info(tracks)")}
         assert {
@@ -364,7 +364,9 @@ def test_migration_v10_adds_tables_keeps_rows_and_backs_up(tmp_path):
             "extracted",
         }
         assert tracklist.has_fts(d)  # this Python's SQLite has FTS5
-    assert len(list((tmp_path / "backups").glob("hcloader-premigrate-v9-to-v10-*.db"))) == 1
+        idx = {r["name"] for r in d.query("PRAGMA index_list(tracks)")}
+        assert "idx_tracks_key_video" in idx and "idx_tracks_key" not in idx  # migration 11
+    assert len(list((tmp_path / "backups").glob("hcloader-premigrate-v9-to-v11-*.db"))) == 1
 
 
 def test_migration_without_fts5_falls_back(tmp_path, monkeypatch):
@@ -618,3 +620,230 @@ def test_download_extracts_tracklist_and_search_finds_it(world, monkeypatch):  #
     tl = w.api.get_tracklist("hcLiveset01")
     assert tl["source"] in ("chapters", "description") and tl["tracks"][-1]["is_id"] is True
     assert w.api.get_tracklist_status()["sets"] == 1
+
+
+# =========================================================================== v0.6.0 follow-ups (review/QA minors)
+
+
+@pytest.mark.parametrize(
+    "desc, expected",
+    [
+        (
+            "Track 01 – Headhunterz - Dragonborn\nTrack 02 – Wildstylez - Lose My Mind",
+            ["-|Headhunterz|Dragonborn||", "-|Wildstylez|Lose My Mind||"],
+        ),
+        (
+            "Track 1: Angerfist - Incoming\nTrack 2: Miss K8 - Lion (D-Sturb Remix)",
+            ["-|Angerfist|Incoming||", "-|Miss K8|Lion|D-Sturb Remix|"],
+        ),
+        ("TRACK 1. A - One\ntrack 2) B - Two", ["-|A|One||", "-|B|Two||"]),
+        (
+            "00:00 Track 01 - A - One\n03:00 Track 02 - B - Two",
+            ["0:00|A|One||", "3:00|B|Two||"],
+        ),
+        ("Track 01 - 00:00 A - One\nTrack 02 - 03:00 B - Two", ["0:00|A|One||", "3:00|B|Two||"]),
+    ],
+)
+def test_track_number_prefix(desc, expected):
+    assert [fmt(t) for t in parse_description(desc).tracks] == expected
+
+
+def test_track_prefix_in_chapters_and_lone_track_title_kept():
+    tracks = tracklist.from_chapters(
+        [Chapter(0, "Track 01 - Zatox - Wrath"), Chapter(60, "Track 02: Rooler - Barbarian")]
+    )
+    assert [(t.artist, t.title) for t in tracks] == [("Zatox", "Wrath"), ("Rooler", "Barbarian")]
+    # «Track 1» without separator after the number is a title, not a prefix
+    assert tracklist._TRACK_PREFIX_RE.sub("", "Track 1") == "Track 1"
+
+
+def _store_two(d):
+    add_set(d, "aaaaaaaaaaa", "Set A")
+    tracklist.store(
+        d,
+        "aaaaaaaaaaa",
+        "description",
+        [parse_track("Angerfist - Incoming", 0.0), parse_track("Miss K8 - Lion", 60.0)],
+    )
+
+
+def test_fts_missing_module_drops_triggers_and_comes_back(tmp_path, monkeypatch):
+    path = tmp_path / "hc.db"
+    with Database(path) as d:
+        _store_two(d)
+        assert tracklist.has_fts(d)
+    # opened by a SQLite without FTS5: index table exists, module does not
+    monkeypatch.setattr(dbmod, "fts5_available", lambda conn: False)
+    with Database(path) as d:
+        assert not tracklist.has_fts(d)
+        trig = d.query(
+            "SELECT name FROM sqlite_master WHERE type='trigger' AND name LIKE 'tracks_fts%'"
+        )
+        assert trig == []  # writes to `tracks` no longer touch the index
+        add_set(d, "bbbbbbbbbbb", "Set B")
+        tracklist.store(d, "bbbbbbbbbbb", "chapters", [parse_track("Zatox - Wrath", 0.0)])
+        d.delete_video("aaaaaaaaaaa")  # cascade without the delete trigger
+        assert tracklist.search(d, "wrath")["engine"] == "like"
+    # FTS5 available again: triggers back, index rebuilt from `tracks`
+    monkeypatch.undo()
+    with Database(path) as d:
+        assert tracklist.has_fts(d)
+        res = tracklist.search(d, "wrath")
+        assert res["engine"] == "fts5" and [s["id"] for s in res["sets"]] == ["bbbbbbbbbbb"]
+        assert tracklist.search(d, "incoming")["sets"] == []
+        assert d.query_one("SELECT COUNT(*) AS n FROM tracks_fts")["n"] == 1
+
+
+def test_db_migrated_without_fts5_gets_index_later(tmp_path, monkeypatch):
+    path = tmp_path / "hc.db"
+    monkeypatch.setattr(dbmod, "fts5_available", lambda conn: False)
+    with Database(path) as d:
+        _store_two(d)
+        assert not tracklist.has_fts(d)
+    monkeypatch.undo()
+    with Database(path) as d:
+        assert tracklist.has_fts(d)
+        assert tracklist.search(d, "incom")["engine"] == "fts5"
+        assert [s["id"] for s in tracklist.search(d, "incom")["sets"]] == ["aaaaaaaaaaa"]
+
+
+ENGINE_QUERIES = [
+    "dragon",
+    "dragonborn",
+    "ragon",  # inside a word: no hit in either engine
+    "head drag",
+    "ZERO melt",
+    "hëadhunt",
+    "sub zero project",
+    "x",
+    "devin & sub",
+    "meltdown extended",
+    "q dance",
+    "lose my",
+    "my lose",
+    "id",
+    "100%",
+    "ext",
+    "o",
+    "",
+]
+
+
+@pytest.mark.parametrize("q", ENGINE_QUERIES)
+def test_fts_and_like_agree(lib, q):
+    _fill(lib)
+    fts = tracklist.search(lib, q, engine="fts5")
+    like = tracklist.search(lib, q, engine="like")
+    assert fts["engine"] == "fts5" and like["engine"] == "like"
+
+    def shape(r):
+        return [(s["id"], [h["position"] for h in s["hits"]], s["more"]) for s in r["sets"]]
+
+    assert shape(fts) == shape(like) and fts["hits"] == like["hits"]
+
+
+def test_like_matches_word_prefix_only(lib):
+    _fill(lib)
+    assert tracklist.search(lib, "ragon", engine="like")["sets"] == []
+    assert tracklist.search(lib, "dragon", engine="like")["hits"] == 3
+
+
+def test_deleted_sets_leave_no_spelling_or_tracks(lib, monkeypatch):
+    for vid in ("del00000001", "del00000002", "del00000003"):
+        add_set(lib, vid, vid)
+    tracklist.store(
+        lib, "del00000001", "description", [parse_track("HEADHUNTERZ - DRAGONBORN", 0.0)]
+    )
+    tracklist.store(
+        lib, "del00000002", "description", [parse_track("HEADHUNTERZ - DRAGONBORN", 0.0)]
+    )
+    tracklist.store(
+        lib, "del00000003", "description", [parse_track("Headhunterz - Dragonborn", 0.0)]
+    )
+    assert tracklist.top_tracks(lib)[0]["artist"] == "HEADHUNTERZ"
+    lib.mark_removed("del00000001")  # = library delete
+    assert lib.query_one("SELECT COUNT(*) AS n FROM tracks WHERE video_id='del00000001'")["n"] == 0
+    assert lib.query_one("SELECT 1 AS x FROM tracklists WHERE video_id='del00000001'") is None
+    top = tracklist.top_tracks(lib)
+    assert top[0]["sets"] == 2 and top[0]["title"] in ("DRAGONBORN", "Dragonborn")
+    # a stray tracklist (deleted before the cleanup existed) never wins the spelling …
+    lib.execute("UPDATE videos SET status='ignored' WHERE id='del00000002'")
+    for vid in ("del00000004", "del00000005"):
+        add_set(lib, vid, vid)
+        tracklist.store(lib, vid, "description", [parse_track("Headhunterz - Dragonborn", 0.0)])
+    top = tracklist.top_tracks(lib)
+    assert (top[0]["artist"], top[0]["sets"]) == ("Headhunterz", 3)
+    # … and the next pass removes it
+    tracklist.index_pass(lib, read=lambda _v: {}, files_ok=False, sidecar_mtime=lambda _v: None)
+    assert lib.query_one("SELECT COUNT(*) AS n FROM tracks WHERE video_id='del00000002'")["n"] == 0
+
+
+def test_top_tracks_fast_path_matches_join(lib):
+    _fill(lib)  # includes a queued item with tracks -> exact (join) path
+    slow = tracklist.top_tracks(lib, 20)
+    tracklist.prune(lib)  # no stray tracks left -> index-only path
+    assert tracklist.top_tracks(lib, 20) == slow
+    plan = " ".join(
+        r["detail"]
+        for r in lib.query(
+            "EXPLAIN QUERY PLAN SELECT key, COUNT(DISTINCT video_id) AS sets FROM tracks "
+            "WHERE key <> '' GROUP BY key"
+        )
+    )
+    assert "COVERING INDEX idx_tracks_key_video" in plan
+
+
+def test_index_pass_new_scope_reads_only_new_or_changed(lib):
+    for vid in ("inc00000001", "inc00000002", "inc00000003"):
+        add_set(lib, vid, vid, downloaded="2026-11-01T10:00:00+00:00")
+    descs = {
+        v: {"description": f"00:00 A - {v}\n01:00 B - Two"}
+        for v in ("inc00000001", "inc00000002", "inc00000003")
+    }
+    mtimes: dict[str, float] = {}
+    kw = {"read": descs.get, "files_ok": False, "sidecar_mtime": mtimes.get}
+    assert tracklist.index_pass(lib, **kw)["total"] == 3
+    assert tracklist.index_pass(lib, **kw)["total"] == 0  # nothing new
+    lib.execute(
+        "UPDATE tracklists SET extracted='2026-11-02T10:00:00+00:00'"
+    )  # deterministic «last read»
+    add_set(lib, "inc00000004", "new one")  # never read
+    descs["inc00000004"] = {"description": "00:00 C - Three\n01:00 D - Four"}
+    lib.execute(
+        "UPDATE videos SET downloaded_at='2026-11-03T10:00:00+00:00' WHERE id='inc00000002'"
+    )
+    from datetime import datetime
+
+    mtimes["inc00000003"] = datetime.fromisoformat("2026-11-02T12:00:00+00:00").timestamp()
+    mtimes["inc00000001"] = datetime.fromisoformat(
+        "2026-11-02T10:00:00.5+00:00"
+    ).timestamp()  # same second
+    seen = []
+    res = tracklist.index_pass(lib, **{**kw, "read": lambda v: seen.append(v) or descs.get(v)})
+    assert res["total"] == 3 and sorted(seen) == ["inc00000002", "inc00000003", "inc00000004"]
+    assert tracklist.index_pass(lib, scope="all", **kw)["total"] == 4
+    assert tracklist.index_pass(lib, scope="missing", **kw)["total"] == 0  # old alias of «new»
+
+
+def test_api_get_tracklist_broken_file_is_a_message(env, monkeypatch):  # noqa: F811
+    from mutagen import MutagenError
+
+    from app.core import library
+
+    api = env.make()
+    add_set(api._db, "broken00001", "Broken")
+
+    def boom(*_a, **_k):
+        raise MutagenError("can't sync to MPEG frame")
+
+    monkeypatch.setattr(tracklist, "extract", boom)
+    reach = []
+    monkeypatch.setattr(library, "target_reachable", lambda root: reach.append(root) or False)
+    r = api.get_tracklist("broken00001")
+    assert r["ok"] is False and "MPEG" not in r["error"] and r["error"]
+    assert reach  # the panel checks the target folder before touching files
+    seen = {}
+    monkeypatch.setattr(tracklist, "extract", lambda vid, **kw: seen.update(kw) or ("none", []))
+    assert api.get_tracklist("broken00001")["ok"] is True and seen["files_ok"] is False
+    assert api.build_tracklists()["scope"] == "new"
+    api._worker.run("wait", lambda: None, timeout=10)

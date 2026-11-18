@@ -6,6 +6,7 @@ All timestamps are ISO-8601 UTC strings.
 
 from __future__ import annotations
 
+import logging
 import sqlite3
 import threading
 from collections.abc import Callable, Iterable, Iterator, Sequence
@@ -16,6 +17,8 @@ from typing import Any
 
 from .i18n import tr
 from .platforms import platform_of
+
+log = logging.getLogger(__name__)
 
 STATUSES = ("new", "inbox", "queued", "downloading", "done", "ignored", "failed")
 SOURCE_TYPES = ("channel", "playlist", "search")
@@ -373,22 +376,66 @@ def _m10_tracklists(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX idx_tracks_key ON tracks(key)")
     if not fts5_available(conn):
         return
+    _create_tracks_fts(conn)
+
+
+_TRACKS_FTS_TRIGGERS = {
+    "tracks_fts_ai": "CREATE TRIGGER IF NOT EXISTS tracks_fts_ai AFTER INSERT ON tracks BEGIN "
+    "INSERT INTO tracks_fts(rowid, search) VALUES (new.id, new.search); END",
+    "tracks_fts_ad": "CREATE TRIGGER IF NOT EXISTS tracks_fts_ad AFTER DELETE ON tracks BEGIN "
+    "DELETE FROM tracks_fts WHERE rowid = old.id; END",
+    "tracks_fts_au": "CREATE TRIGGER IF NOT EXISTS tracks_fts_au AFTER UPDATE OF search ON tracks "
+    "BEGIN UPDATE tracks_fts SET search = new.search WHERE rowid = new.id; END",
+}
+
+
+def _create_tracks_fts(conn: sqlite3.Connection) -> None:
     conn.execute(
-        "CREATE VIRTUAL TABLE tracks_fts USING fts5("
+        "CREATE VIRTUAL TABLE IF NOT EXISTS tracks_fts USING fts5("
         "search, tokenize = 'unicode61 remove_diacritics 2')"
     )
-    conn.execute(
-        "CREATE TRIGGER tracks_fts_ai AFTER INSERT ON tracks BEGIN "
-        "INSERT INTO tracks_fts(rowid, search) VALUES (new.id, new.search); END"
-    )
-    conn.execute(
-        "CREATE TRIGGER tracks_fts_ad AFTER DELETE ON tracks BEGIN "
-        "DELETE FROM tracks_fts WHERE rowid = old.id; END"
-    )
-    conn.execute(
-        "CREATE TRIGGER tracks_fts_au AFTER UPDATE OF search ON tracks BEGIN "
-        "UPDATE tracks_fts SET search = new.search WHERE rowid = new.id; END"
-    )
+    for sql in _TRACKS_FTS_TRIGGERS.values():
+        conn.execute(sql)
+
+
+def ensure_tracks_fts(conn: sqlite3.Connection) -> bool:
+    """Startup check of the tracklist index (v0.6.0, review «has_fts»): is FTS5 really usable
+    with *this* SQLite? -> True = search via `tracks_fts`, False = LIKE fallback.
+
+    - module missing but index present (DB made by another SQLite build): drop the sync
+      triggers, otherwise every write to `tracks` (also `ON DELETE CASCADE`) would fail;
+    - module present but index or triggers missing (DB migrated without FTS5, or the triggers
+      were dropped by the case above): create them and rebuild the index from `tracks`.
+    """
+    names = {
+        r[0]
+        for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE name IN "
+            "('tracks', 'tracks_fts', 'tracks_fts_ai', 'tracks_fts_ad', 'tracks_fts_au')"
+        )
+    }
+    if "tracks" not in names:
+        return False
+    if not fts5_available(conn):
+        for trig in _TRACKS_FTS_TRIGGERS:
+            if trig in names:
+                conn.execute(f"DROP TRIGGER IF EXISTS {trig}")
+        if "tracks_fts" in names:
+            log.warning("SQLite without FTS5: tracklist search falls back to LIKE")
+        return False
+    if names >= {"tracks_fts", *_TRACKS_FTS_TRIGGERS}:
+        return True
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        _create_tracks_fts(conn)
+        conn.execute("DELETE FROM tracks_fts")
+        conn.execute("INSERT INTO tracks_fts(rowid, search) SELECT id, search FROM tracks")
+        conn.execute("COMMIT")
+    except Exception:
+        conn.execute("ROLLBACK")
+        raise
+    log.info("Tracklist search index (FTS5) rebuilt")
+    return True
 
 
 def fts5_available(conn: sqlite3.Connection) -> bool:
@@ -399,6 +446,14 @@ def fts5_available(conn: sqlite3.Connection) -> bool:
         return True
     except sqlite3.OperationalError:
         return False
+
+
+def _m11_tracks_key_index(conn: sqlite3.Connection) -> None:
+    """v0.6.0 follow-up (QA: «most played» ~0.5 s on 150k tracks): covering index
+    (key, video_id) so `top_tracks` counts sets per key from the index alone. Replaces
+    `idx_tracks_key` (its prefix)."""
+    conn.execute("CREATE INDEX idx_tracks_key_video ON tracks(key, video_id)")
+    conn.execute("DROP INDEX IF EXISTS idx_tracks_key")
 
 
 # Append new steps at the end; never edit existing ones. Step i upgrades version i -> i+1.
@@ -413,6 +468,7 @@ MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [
     _m8_backfill,
     _m9_collector,
     _m10_tracklists,
+    _m11_tracks_key_index,
 ]
 # statuses a user may put into the download queue (enqueue / retry)
 ENQUEUEABLE = ("new", "inbox", "failed")
@@ -510,6 +566,8 @@ class Database:
                 self._conn,
                 before=self._backup_before_migration if self.path != ":memory:" else None,
             )
+            # v0.6.0: FTS5 really usable with this SQLite? (index repaired / LIKE fallback)
+            self.fts = ensure_tracks_fts(self._conn)
 
     def _backup_before_migration(self, old: int, new: int) -> Path:
         """Self-update: copy of the DB before it is migrated to a higher schema version,
@@ -654,12 +712,16 @@ class Database:
         self.execute("UPDATE videos SET file_path=? WHERE id=?", (file_path, video_id))
 
     def mark_removed(self, video_id: str) -> None:
-        """Library item deleted by the user: status `ignored` (never loaded again), no file."""
-        self.execute(
-            "UPDATE videos SET status='ignored', file_path=NULL, error=NULL, queue_pos=NULL "
-            "WHERE id=?",
-            (video_id,),
-        )
+        """Library item deleted by the user: status `ignored` (never loaded again), no file.
+        Its tracklist goes too (no «most played» spelling or index row from a deleted set)."""
+        with self.transaction():
+            self.execute(
+                "UPDATE videos SET status='ignored', file_path=NULL, error=NULL, queue_pos=NULL "
+                "WHERE id=?",
+                (video_id,),
+            )
+            self.execute("DELETE FROM tracks WHERE video_id=?", (video_id,))
+            self.execute("DELETE FROM tracklists WHERE video_id=?", (video_id,))
 
     def set_genre(self, video_id: str, genre: str, *, manual: bool = True) -> None:
         self.execute(

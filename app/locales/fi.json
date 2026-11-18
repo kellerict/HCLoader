@@ -448,6 +448,7 @@
     "pass_cancelled": "Kappalelistojen luku peruttu: {n} tarkistettu, {sets} settiä kappalelistalla, {tracks} kappaletta",
     "pass_failed": "Kappalelistojen luku epäonnistui: {error}",
     "search_failed": "Kappalehaku epäonnistui: {error}",
+    "read_failed": "Tämän setin kappalelistaa ei voitu lukea (tiedosto vioittunut tai ei saatavilla)",
     "unknown_item": "Tämä setti ei ole kirjastossa"
   },
   "update": {

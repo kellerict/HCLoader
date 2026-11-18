@@ -448,6 +448,7 @@
     "pass_cancelled": "Tracklisten einlesen abgebrochen: {n} geprüft, {sets} Sets mit Trackliste, {tracks} Tracks",
     "pass_failed": "Tracklisten einlesen fehlgeschlagen: {error}",
     "search_failed": "Track-Suche fehlgeschlagen: {error}",
+    "read_failed": "Die Trackliste dieses Sets konnte nicht gelesen werden (Datei beschädigt oder nicht erreichbar)",
     "unknown_item": "Dieses Set ist nicht in der Bibliothek"
   },
   "update": {

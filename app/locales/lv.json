@@ -452,6 +452,7 @@
     "pass_cancelled": "Dziesmu sarakstu nolasīšana atcelta: pārbaudīti {n}, seti ar sarakstu {sets}, dziesmas {tracks}",
     "pass_failed": "Neizdevās nolasīt dziesmu sarakstus: {error}",
     "search_failed": "Dziesmu meklēšana neizdevās: {error}",
+    "read_failed": "Šī seta treku sarakstu neizdevās nolasīt (fails bojāts vai nav pieejams)",
     "unknown_item": "Šī seta nav bibliotēkā"
   },
   "update": {

@@ -1293,9 +1293,9 @@ class YtClient:
             source=platforms.label(platform),
         )
         sidecar.write(vid, side)
+        self._record_archive(vid)  # only after `done`: no crash window blocks a video forever
         # v0.6.0: tracklist for «Tracklist search» from chapters/description (offline, never fatal)
         tracklist.safe_refresh(self.db, vid, data=side, path=target)
-        self._record_archive(vid)  # only after `done`: no crash window blocks a video forever
         log.info(tr("yt.downloaded", id=vid, path=target))
         return DownloadResult(vid, "done", target, title, cue_path=cue_path, info=meta)
 

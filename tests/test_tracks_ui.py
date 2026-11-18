@@ -152,7 +152,7 @@ def test_first_open_reads_tracklists_with_progress_and_cancel(page):  # noqa: F8
     page.wait_for_selector("#lib-body tr[data-id]")
     page.click("#lib-tracks-btn")
     page.wait_for_selector(".tr-prog")  # started automatically, once
-    assert page.evaluate("window.__calls")[0] == ["build_tracklists", {"scope": "missing"}]
+    assert page.evaluate("window.__calls")[0] == ["build_tracklists", {"scope": "new"}]
     page.wait_for_function("document.querySelector('.tr-prog .unit').textContent.includes('/')")
     page.click("[data-tr=cancel]")
     page.wait_for_selector("[data-tr=scan]")

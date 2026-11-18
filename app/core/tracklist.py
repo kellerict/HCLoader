@@ -24,6 +24,7 @@ import threading
 import unicodedata
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -224,11 +225,17 @@ def parse_track(text: str, start: float | None = None, *, raw: str | None = None
 # --------------------------------------------------------------------------- description
 
 _TS = r"\d{1,2}:\d{2}(?::\d{2})?"
-_NUM = r"(?:#\s?(?P<hash>\d{1,3})\s*[.):-]?|(?P<num>\d{1,3})\s*[.)]|(?P<numdash>\d{1,3})\s+-)"
+_NUM = (
+    r"(?:#\s?(?P<hash>\d{1,3})\s*[.):-]?|(?P<num>\d{1,3})\s*[.)]|(?P<numdash>\d{1,3})\s+-|"
+    r"(?i:track|tr\.)\s*#?\s*(?P<trk>\d{1,3})\s*[.):-]?)"  # «Track 01 -», «Track 1:», «Tr. 3»
+)
 _LEAD_RE = re.compile(
     rf"^(?:{_NUM}\s*)?[\[(]?\s*(?P<ts>{_TS})\s*[\])]?(?:\s*[-|:~>.]+)?\s*(?P<rest>.*)$"
 )
 _NUM_RE = re.compile(rf"^{_NUM}\s*(?P<rest>.+)$")
+# «00:00 Track 01 - Artist - Title»: the track number after the timestamp (needs a separator,
+# so a lone «Track 1» stays a title)
+_TRACK_PREFIX_RE = re.compile(r"^(?i:track|tr\.)\s*#?\s*\d{1,3}\s*[.):-]\s*(?=\S)")
 _TRAIL_RE = re.compile(rf"^(?:{_NUM}\s*)?(?P<rest>.+?)\s*[-|]?\s*[\[(]?\s*(?P<ts>{_TS})\s*[\])]?$")
 _BULLET_RE = re.compile(r"^[\s*•·▶►▸→>»✓✔☆★♪♫🎵🎶🔥⏱️⏱🕐|~=+-]+")
 _HEADING_RE = re.compile(
@@ -280,7 +287,7 @@ def _line_candidates(description: str) -> tuple[list[_Line], list[_Line]]:
         body = _BULLET_RE.sub("", line) if not line[:1].isdigit() else line
         m = _LEAD_RE.match(body)
         if m:
-            rest = m.group("rest").strip()
+            rest = _TRACK_PREFIX_RE.sub("", m.group("rest").strip())
             if re.match(rf"^[-–]?\s*{_TS}\b", rest):  # «12:00 - 13:00 Artist» = timetable
                 continue
             if rest and not _JUNK_RE.search(rest):
@@ -293,7 +300,7 @@ def _line_candidates(description: str) -> tuple[list[_Line], list[_Line]]:
         m = _NUM_RE.match(body)
         if m:
             rest = m.group("rest").strip()
-            num = m.group("num") or m.group("hash") or m.group("numdash")
+            num = m.group("num") or m.group("hash") or m.group("numdash") or m.group("trk")
             if _TRACK_SEP_RE.search(rest) and not _JUNK_RE.search(rest):
                 listed.append(_Line(None, rest, int(num), raw=raw))
             continue
@@ -541,10 +548,9 @@ def safe_refresh(db: Database, video_id: str, **kw: Any) -> None:
 
 
 def has_fts(db: Database) -> bool:
-    return (
-        db.query_one("SELECT 1 AS x FROM sqlite_master WHERE type='table' AND name='tracks_fts'")
-        is not None
-    )
+    """FTS5 index really usable with this SQLite (probed once when the DB was opened,
+    `db.ensure_tracks_fts`: module present, index and sync triggers in place)."""
+    return bool(getattr(db, "fts", False))
 
 
 # --------------------------------------------------------------------------- queries
@@ -562,14 +568,17 @@ def _track_out(r: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-def get_tracklist(db: Database, video_id: str, *, extract_missing: bool = True) -> dict[str, Any]:
-    """Tracks of one item. Not examined yet -> extracted now (offline, one item)."""
+def get_tracklist(
+    db: Database, video_id: str, *, extract_missing: bool = True, files_ok: bool = True
+) -> dict[str, Any]:
+    """Tracks of one item. Not examined yet -> extracted now (offline, one item).
+    `files_ok=False` (target folder unreachable) skips reading the audio/CUE file."""
     row = db.get_video(video_id)
     if not row:
         return {"ok": False, "error_key": "tracklist.unknown_item"}
     meta = db.query_one("SELECT * FROM tracklists WHERE video_id = ?", (video_id,))
     if meta is None and extract_missing:
-        refresh(db, video_id)
+        refresh(db, video_id, files_ok=files_ok)
         meta = db.query_one("SELECT * FROM tracklists WHERE video_id = ?", (video_id,))
     rows = db.query("SELECT * FROM tracks WHERE video_id = ? ORDER BY position", (video_id,))
     return {
@@ -598,12 +607,19 @@ def search(
     *,
     set_limit: int = SEARCH_SET_LIMIT,
     hits_per_set: int = HITS_PER_SET,
+    engine: str | None = None,
 ) -> dict[str, Any]:
     """Sets (library items, status done) containing tracks that match all words of `query`
     (prefix match per word). -> {query, engine, sets:[{id, title, artist, …, hits:[track]}],
-    hits, truncated}. Newest download first; inside a set by position."""
+    hits, truncated}. Newest download first; inside a set by position.
+
+    Both engines have the same semantics: query and track text are folded the same way
+    (`fold`: letters/digits, single spaces), and every query word must be the *start of a
+    word* of the track. FTS5: `"w"*`; LIKE: `' ' || search LIKE '% w%'`. `engine` forces
+    one (tests)."""
     tokens = _query_tokens(query)
-    engine = "fts5" if has_fts(db) else "like"
+    if engine not in ("fts5", "like") or (engine == "fts5" and not has_fts(db)):
+        engine = "fts5" if has_fts(db) else "like"
     if not tokens:
         return {"query": query, "engine": engine, "sets": [], "hits": 0, "truncated": False}
     base = (
@@ -616,9 +632,10 @@ def search(
         sql = base + "AND t.id IN (SELECT rowid FROM tracks_fts WHERE tracks_fts MATCH ?)" + order
         params: list[Any] = [match, SEARCH_TRACK_LIMIT + 1]
     else:
-        like = " ".join("AND t.search LIKE ? ESCAPE '\\'" for _ in tokens)
+        # word prefix like FTS5: the folded text has single spaces between words
+        like = " ".join("AND (' ' || t.search) LIKE ? ESCAPE '\\'" for _ in tokens)
         sql = base + like + order
-        params = [f"%{_like_escape(w)}%" for w in tokens] + [SEARCH_TRACK_LIMIT + 1]
+        params = [f"% {_like_escape(w)}%" for w in tokens] + [SEARCH_TRACK_LIMIT + 1]
     rows = db.query(sql, params)
     truncated = len(rows) > SEARCH_TRACK_LIMIT
     rows = rows[:SEARCH_TRACK_LIMIT]
@@ -662,18 +679,35 @@ def _like_escape(text: str) -> str:
 def top_tracks(db: Database, limit: int = 20) -> list[dict[str, Any]]:
     """Tracks that appear in the most sets (at least two), with the most common spelling."""
     limit = max(1, min(int(limit or 20), TOP_LIMIT_MAX))
-    keys = db.query(
-        "SELECT t.key, COUNT(DISTINCT t.video_id) AS sets FROM tracks t "
-        "JOIN videos v ON v.id = t.video_id WHERE v.status = 'done' AND t.key <> '' "
-        "GROUP BY t.key HAVING sets >= 2 ORDER BY sets DESC, t.key LIMIT ?",
-        (limit,),
+    # Fast path (QA v0.6.0: ~0.5 s on 150k tracks): normally only library items have tracks
+    # (deleted sets are cleaned up, `db.mark_removed` / `prune`), so the count runs on the
+    # covering index `idx_tracks_key_video` without joining `videos`. If stray tracks of other
+    # items exist (a re-download in progress, an old DB), the exact join is used.
+    stray = db.query_one(
+        "SELECT 1 AS x FROM videos v CROSS JOIN tracks t ON t.video_id = v.id "
+        "WHERE v.status <> 'done' LIMIT 1"
     )
+    if stray is None:
+        keys = db.query(
+            "SELECT key, COUNT(DISTINCT video_id) AS sets FROM tracks WHERE key <> '' "
+            "GROUP BY key HAVING sets >= 2 ORDER BY sets DESC, key LIMIT ?",
+            (limit,),
+        )
+    else:
+        keys = db.query(
+            "SELECT t.key, COUNT(DISTINCT t.video_id) AS sets FROM tracks t "
+            "JOIN videos v ON v.id = t.video_id WHERE v.status = 'done' AND t.key <> '' "
+            "GROUP BY t.key HAVING sets >= 2 ORDER BY sets DESC, t.key LIMIT ?",
+            (limit,),
+        )
     if not keys:
         return []
     marks = ",".join("?" for _ in keys)
+    # display spelling: the most common one among the sets still in the library
     spell = db.query(
-        f"SELECT key, artist, title, version, COUNT(*) AS n FROM tracks WHERE key IN ({marks}) "
-        "GROUP BY key, artist, title, version ORDER BY n DESC, artist, title",
+        "SELECT t.key, t.artist, t.title, t.version, COUNT(*) AS n FROM tracks t "
+        f"JOIN videos v ON v.id = t.video_id WHERE v.status = 'done' AND t.key IN ({marks}) "
+        "GROUP BY t.key, t.artist, t.title, t.version ORDER BY n DESC, t.artist, t.title",
         [k["key"] for k in keys],
     )
     best: dict[str, dict[str, Any]] = {}
@@ -721,27 +755,74 @@ def status(db: Database) -> dict[str, Any]:
 # --------------------------------------------------------------------------- offline pass
 
 
+def prune(db: Database) -> int:
+    """Remove tracklists of items that are no longer in the library (status not `done`, e.g.
+    sets deleted before v0.6.0 cleaned up on delete). -> number of removed tracks."""
+    with db.transaction():
+        cur = db.execute(
+            "DELETE FROM tracks WHERE video_id IN (SELECT id FROM videos WHERE status <> 'done')"
+        )
+        db.execute(
+            "DELETE FROM tracklists WHERE video_id IN "
+            "(SELECT id FROM videos WHERE status <> 'done')"
+        )
+    return max(cur.rowcount, 0)
+
+
+def _iso_ts(value: Any) -> float | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value)).timestamp()
+    except ValueError:
+        return None
+
+
+def _sidecar_mtime(video_id: str) -> float | None:
+    try:
+        return sidecar.sidecar_path(video_id).stat().st_mtime
+    except (OSError, ValueError):
+        pass
+    try:
+        return sidecar._legacy_path(video_id).stat().st_mtime
+    except (OSError, ValueError):
+        return None
+
+
+def _needs_read(row: Mapping[str, Any], sidecar_mtime: Callable[[str], float | None]) -> bool:
+    """Scope «new»: never examined, re-downloaded since, or its sidecar changed since."""
+    extracted = _iso_ts(row.get("extracted"))
+    if extracted is None:
+        return True
+    downloaded = _iso_ts(row.get("downloaded_at"))
+    if downloaded is not None and downloaded > extracted:
+        return True
+    mtime = sidecar_mtime(row["id"])
+    # `extracted` has whole seconds: a sidecar written in the same second is not «newer»
+    return mtime is not None and mtime >= extracted + 1
+
+
 def index_pass(
     db: Database,
     *,
-    scope: str = "missing",
+    scope: str = "new",
     progress: Callable[[dict[str, Any]], None] | None = None,
     cancel: threading.Event | None = None,
     read: Callable[[str], Mapping[str, Any] | None] = sidecar.read,
     files_ok: bool = True,
+    sidecar_mtime: Callable[[str], float | None] = _sidecar_mtime,
 ) -> dict[str, Any]:
-    """Extract tracklists for the library (status done). scope «missing» = items never
-    examined, «all» = every item again. Offline; cancellable between items."""
-    if scope == "all":
-        rows = db.query(
-            "SELECT id, file_path, duration FROM videos WHERE status = 'done' ORDER BY id"
-        )
-    else:
-        rows = db.query(
-            "SELECT v.id, v.file_path, v.duration FROM videos v "
-            "LEFT JOIN tracklists l ON l.video_id = v.id "
-            "WHERE v.status = 'done' AND l.video_id IS NULL ORDER BY v.id"
-        )
+    """Extract tracklists for the library (status done). scope «new» (alias «missing») =
+    items never examined or changed since (re-downloaded, sidecar rewritten), «all» = every
+    item again. Tracklists of items no longer in the library are removed first. Offline;
+    cancellable between items."""
+    prune(db)
+    rows = db.query(
+        "SELECT v.id, v.file_path, v.duration, v.downloaded_at, l.extracted FROM videos v "
+        "LEFT JOIN tracklists l ON l.video_id = v.id WHERE v.status = 'done' ORDER BY v.id"
+    )
+    if scope != "all":
+        rows = [r for r in rows if _needs_read(r, sidecar_mtime)]
     total = len(rows)
     res = {"ok": True, "total": total, "done": 0, "sets": 0, "tracks": 0, "cancelled": False}
     for i, r in enumerate(rows, 1):

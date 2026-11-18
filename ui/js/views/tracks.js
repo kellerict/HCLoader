@@ -6,7 +6,8 @@
    (HC.tracks.panel, auch aus dem Menü ⋯ der Bibliothek) mit klickbaren Zeitstempeln.
 
    Tracklisten kommen offline aus Kapiteln, Beschreibungen, ID3-Kapiteln und CUE-Dateien (core/tracklist.py).
-   Einlesen: build_tracklists / Event tracklist_index (einmalig automatisch beim ersten Öffnen, danach per Knopf).
+   Einlesen: build_tracklists / Event tracklist_index (einmalig automatisch beim ersten Öffnen, danach per Knopf:
+   «Neue einlesen» = nur neue/geänderte Sets, «Alle neu einlesen» = alles).
    «ID – ID» (unveröffentlicht/unbekannt) erscheint gedämpft. Titel, Artists und Labels sind fremde Daten:
    alles läuft durch esc(); Hervorhebungen werden aus escapten Teilstücken gebaut.
    Vertrag: docs/bridge-api.md «Tracklist search».
@@ -38,25 +39,27 @@
   const nTracks = (n) => t('tracks.n_tracks', { n: util.fmtNum(n), count: n });
   const nSets = (n) => t('tracks.n_sets', { n: util.fmtNum(n), count: n });
 
-  /** Text escapen und die Suchwörter markieren (<mark>), diakritik- und gross/klein-unabhängig. */
+  /** Text escapen und die Suchwörter markieren (<mark>), diakritik- und gross/klein-unabhängig.
+      Wie das Backend nur am Wortanfang (Präfix pro Wort), nicht mitten im Wort. */
+  const WORD_CH = /[\p{L}\p{N}]/u;
   function mark(text, ws) {
     const s = String(text || '');
     if (!ws || !ws.length || !s) return esc(s);
-    const folded = util.norm(s);
-    /* util.norm behält die Länge bei (NFD-Zeichen werden entfernt -> Abgleich über eine Positionskarte). */
+    /* Zeichenweise falten, Positionskarte gefaltet -> Original (Länge kann sich ändern, z.B. ß -> ss). */
     const map = [];
     let f = '';
     for (let i = 0; i < s.length; i++) {
       const part = util.norm(s[i]);
       for (let j = 0; j < part.length; j++) { f += part[j]; map.push(i); }
     }
-    if (f !== folded && f.length !== folded.length) return esc(s);
     const hit = new Array(s.length).fill(false);
     ws.forEach((w) => {
       let at = f.indexOf(w);
       while (at >= 0) {
-        for (let k = at; k < at + w.length; k++) hit[map[k]] = true;
-        at = f.indexOf(w, at + w.length);
+        if (at === 0 || !WORD_CH.test(f[at - 1])) {
+          for (let k = at; k < at + w.length; k++) hit[map[k]] = true;
+        }
+        at = f.indexOf(w, at + 1);
       }
     });
     let out = '', on = false;
@@ -152,7 +155,9 @@
     const when = `${esc(t('tracks.status_last'))} <b>${esc(s.last_pass ? util.fmtWhen(s.last_pass) : t('fmt.never'))}</b>`;
     const like = s.engine === 'like' ? `<span class="tr-like" title="${esc(t('tracks.engine_like'))}">${I.info}</span>` : '';
     box.innerHTML = `<span class="tr-line">${line ? `<b>${esc(line)}</b><span class="sep">·</span>` : ''}<span>${when}</span>${like}</span>
-      <button type="button" class="btn sm${s.last_pass ? ' ghost' : ' primary'}" data-tr="scan" title="${esc(t('tracks.scan_title'))}"${s.total ? '' : ' disabled'}>${s.last_pass ? I.refresh : I.list}${esc(t(s.last_pass ? 'tracks.rescan' : 'tracks.scan'))}</button>`;
+      ${s.last_pass
+        ? `<span class="tr-acts"><button type="button" class="btn sm ghost" data-tr="scan" title="${esc(t('tracks.scan_new_title'))}"${s.total ? '' : ' disabled'}>${I.refresh}${esc(t('tracks.scan_new'))}</button><button type="button" class="iconbtn" data-tr="rescan" title="${esc(`${t('tracks.rescan')} – ${t('tracks.rescan_title')}`)}" aria-label="${esc(t('tracks.rescan'))}"${s.total ? '' : ' disabled'}>${I.retry}</button></span>`
+        : `<button type="button" class="btn sm primary" data-tr="scan" title="${esc(t('tracks.scan_title'))}"${s.total ? '' : ' disabled'}>${I.list}${esc(t('tracks.scan'))}</button>`}`;
   }
   async function loadStatus() {
     const s = await HC.bridge.safe('get_tracklist_status');
@@ -164,7 +169,7 @@
     return s;
   }
   async function scan(scope) {
-    const r = await HC.bridge.safe('build_tracklists', { scope: scope || 'all' });
+    const r = await HC.bridge.safe('build_tracklists', { scope: scope || 'new' });
     if (r && r.ok) { if (!pass) pass = { done: 0, total: 0 }; }
     else fail(r);
     paintStatus();
@@ -249,7 +254,8 @@
     const a = b.dataset.tr;
     if (a === 'back') { HC.app.go('library'); return; }
     if (a === 'discover') { HC.app.go('discover'); return; }
-    if (a === 'scan') { scan(status && status.last_pass ? 'all' : 'missing'); return; }
+    if (a === 'scan') { scan('new'); return; }
+    if (a === 'rescan') { scan('all'); return; }
     if (a === 'cancel') { if (pass) pass.cancelling = true; paintStatus(); HC.bridge.safe('cancel_build_tracklists'); return; }
     const card = b.closest('[data-set]');
     const s = card && setOf(card.dataset.set);
@@ -306,7 +312,7 @@
       const s = await loadStatus();
       if (!s) return;
       /* Einmalig: noch nie eingelesen -> offline einlesen (Fortschritt + Abbrechen im Kopf). */
-      if (!s.last_pass && !s.running && s.total && !autoStarted) { autoStarted = true; scan('missing'); }
+      if (!s.last_pass && !s.running && s.total && !autoStarted) { autoStarted = true; scan('new'); }
       await loadTop();
       if (query) await runSearch();
       else paintBody(true);
