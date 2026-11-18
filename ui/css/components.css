@@ -1661,7 +1661,7 @@ button.tk-time:hover,button.tk-time:focus-visible{border-color:var(--acid);backg
 .dj-aliases{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:20px}
 .dj-aka{font:11px var(--f-mono);color:var(--dim);text-transform:uppercase;letter-spacing:calc(.8px * var(--ls))}
 .dj-alias{display:inline-flex;align-items:center;gap:2px;font:12px/18px var(--f-mono);color:var(--muted);background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:0 2px 0 6px}
-.dj-alias button{width:16px;height:16px;line-height:14px;color:var(--dim);border-radius:2px}
+.dj-alias button{width:16px;height:16px;padding:0;background:none;border:0;font:14px/16px var(--f-body);color:var(--dim);border-radius:2px;cursor:pointer}
 .dj-alias button:hover{color:var(--error);background:var(--error-soft)}
 .dj-acts{flex-wrap:wrap;justify-content:flex-end}
 .dj-stats{display:flex;gap:10px;flex-wrap:wrap}
@@ -1685,6 +1685,8 @@ button.tk-time:hover,button.tk-time:focus-visible{border-color:var(--acid);backg
 .dj-s-t small{display:flex;align-items:center;gap:8px;color:var(--muted);font:11.5px var(--f-mono);white-space:nowrap;overflow:hidden}
 .dj-role{color:var(--acid);overflow:hidden;text-overflow:ellipsis}
 .dj-side{position:sticky;top:0}
+.dj-side .section-label svg{width:15px;height:15px;stroke:var(--accent);fill:none;stroke-width:2;flex:none}
+.pathbox.dj-target{border-left-color:var(--info)}
 .dj-tracks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
 .dj-tracks li{display:grid;grid-template-columns:26px minmax(0,1fr) auto;align-items:center;gap:8px;padding:6px 10px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);font-size:13px}
 .dj-tracks .mono{font:11px var(--f-mono);color:var(--dim);white-space:nowrap}

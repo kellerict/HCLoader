@@ -519,3 +519,24 @@ def test_api_playlists_and_sync_after_download(env, tmp_path):  # noqa: F811
     assert api.forget_playlist(pid) == {"ok": True}
     assert api.get_saved_playlists()["playlists"] == []
     assert json.loads(json.dumps(pv))  # bridge payloads are JSON
+
+
+def test_mix_channels_and_shows_name_no_dj(db, settings):
+    add_set(db, settings, "o1", "Overdrive – 1 Hour Uptempo Mix", channel="Distortion Unit")
+    add_set(db, settings, "q1", "Qlimax 2024 | Rise of the Celestials | Full Show")
+    add_set(
+        db,
+        settings,
+        "u1",
+        "Rooler – Summer Mix 2024",
+        channel="Rooler",
+        cid="UCrooler0000000000000000",
+    )
+    add_set(
+        db, settings, "u2", "Sunday Rave Session", channel="Rooler", cid="UCrooler0000000000000000"
+    )
+    artists.invalidate()
+    keys = {a["key"]: a for a in artists.list_artists(db, settings)}
+    assert "overdrive" not in keys and "distortionunit" not in keys
+    assert "riseofthecelestials" not in keys
+    assert keys["rooler"]["sets"] == 1  # own name in the title; «Sunday Rave Session» names nobody

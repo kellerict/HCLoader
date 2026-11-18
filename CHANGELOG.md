@@ -10,6 +10,43 @@ appears after «Show all changes» (`docs/RELEASING.md`).
 
 ## [Unreleased]
 
+### Highlights
+- **DJ pages**: every artist in your library with sets, hours, festivals and years – grouped by festival and year
+- **Aliases and b2b**: "HH" is Headhunterz, "SubZero Project" is Sub Zero Project, and a b2b set counts for every artist
+- **Play all** sets of a DJ in the built-in player, one after the other
+- **Add a DJ to the watchlist** with one click – their own channel if known, otherwise a "live set" search
+- **Playlist export (M3U8)** for a festival edition, a genre, a DJ, your current search, a collector checklist or "Continue listening"
+- Relative paths by default, so playlists keep working when the music folder moves; optional **auto-update after downloads**
+
+### Added
+- DJ pages (Library › **DJs**, `#library/djs`): list with search (also by alias), sort by sets, most
+  recent or name, hidden "not a DJ" entries; a page per DJ with an initials badge, stats (sets, hours,
+  festivals, years, b2b), sets grouped by festival and year with stage and b2b partners, the 10 most
+  played tracks of their sets (from the offline tracklists), **Play all**, **Export M3U**, **Add to
+  watchlist** (confirmation first, then the normal watchlist path; nothing is downloaded
+  automatically) and **Search in Discover**.
+- Artist detection runs offline on stored data (`app/core/artists.py`): confirmed festival-collector
+  rows, the set title (festival, year, stage and set type parts skipped, "… by <DJ>"), the artist's own
+  channel. b2b/vs/x and "&" credit every artist; a known act such as "D-Block & S-te-Fan" stays one.
+  Spelling variants fold to one DJ; a short built-in alias list (`app/data/artists.yaml`).
+- Edit name, aliases and own channel, merge two DJs, split an alias off again, hide entries that are
+  not DJs – stored in the database and kept across updates.
+- Playlist export (`app/core/playlists.py`): M3U8 (UTF-8, `#EXTM3U`, `#EXTINF` with duration and
+  "Artist - Title") from the library (selected festival edition/series, a genre, or search + filters
+  + sort), a DJ page, a collector checklist (downloaded sets) and "Continue listening". Relative paths
+  by default (a file on another drive or share is written with its full path, the dialog says how
+  many), file names cleaned for Windows and shortened to the path length limit, overwrite question,
+  folder picker, missing files skipped.
+- Saved playlists with **Keep up to date**: rewritten after downloads (also the scheduled run) when
+  *Update saved playlists after downloads* is on (off by default); list in Settings › Storage & tags.
+- New settings section `playlists` (`folder`, `relative_paths`, `sync_after_download`).
+- Database migration 13 (automatic backup first): tables `artists` and `playlists`.
+- Bridge methods `get_artists`, `get_artist`, `save_artist`, `merge_artists`, `split_artist`,
+  `hide_artist`, `get_artist_watch`, `preview_playlist`, `export_playlist`, `get_saved_playlists`,
+  `set_playlist_sync`, `forget_playlist`, `sync_playlists`; event `playlists_synced`
+  (`docs/bridge-api.md`).
+- Texts in all languages; wiki page *DJ pages and playlists*, *Settings reference* updated.
+
 ## [0.7.0] - 2026-11-18
 
 ### Highlights

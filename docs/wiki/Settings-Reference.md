@@ -159,6 +159,18 @@ The tab also contains:
 | `album_from_edition` | `true` | | v0.3.0: write the edition (e.g. `Defqon.1 2024`) as album tag when a festival or series is assigned, so Plex and Jellyfin show all sets of an edition as one album. Off = album is the title, as before. Also shown in the tab *Festivals & series*. |
 | `title_cleanup_patterns` | `\(Official[^)]*\)`, `\[HQ\]`, `\[HD\]`, `\(HQ\)`, `\(HD\)`, `\[Official[^\]]*\]` | list of valid regular expressions | Removed from titles before tagging and naming. |
 
+## playlists (tab Storage & tags, section «Playlists (M3U8)», v0.8.0)
+
+| Key | Default | Range / values | Description |
+|---|---|---|---|
+| `folder` | `""` | path | Where exported playlists are saved. Empty = `Playlists` inside `storage.target_dir`. The export dialog suggests it and lets you pick another folder. |
+| `relative_paths` | `true` | | Default path style in the export dialog: entries relative to the playlist. Files on another drive or share always get their full path. |
+| `sync_after_download` | `false` | | Rewrite saved playlists marked *Keep up to date* after every download (GUI and scheduled run). Local only. |
+
+The list of exported playlists (with *Keep up to date* per playlist) is stored in the database, not
+in `config.yaml`; it is shown below these settings. DJ aliases and merges are stored in the
+database as well – see [DJ pages and playlists](DJ-Pages-and-Playlists).
+
 ## throttle (tab Schonung): YouTube
 
 Details and rationale: [Throttling and backoff](Throttling-and-Backoff).

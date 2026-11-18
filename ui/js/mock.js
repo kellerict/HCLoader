@@ -1546,16 +1546,22 @@
   }
   function artCredit(l) {
     const series = SERIES.flatMap((x) => [x.name, ...x.aliases, ...(x.weak_aliases || [])]).map((a) => artWords(a).join(' ')).filter(Boolean);
+    const tw = ` ${artWords(l.title).join(' ')} `, hasSeries = !!l.festival || series.some((a) => tw.includes(` ${a} `));
+    if (/\b(full show|anthem show|full stream|livestream)\b/i.test(l.title)) return null;
     for (const seg of String(l.title).split(/\s+[|@~•·]\s+|\s+[-–—]\s+/)) {
       const by = /\b(?:mix|mixed|hosted|presented|set)\s+by\s+(.+)$/i.exec(seg);
       if (by) return artClean(by[1]);
       const w = artWords(seg).join(' ');
       if (!w || series.some((a) => ` ${w} `.includes(` ${a} `)) || /^(19|20)\d\d$/.test(w) || STAGES.some((x) => x.toLowerCase() === w)) continue;
-      if (/^(the )?(closing|opening) ceremony|^(saturday |sunday )?endshow|^power hour|^full (show|stream)|anthem show/.test(w)) continue;
-      const n = artClean(seg);
-      if (artSplit(n).length) return n;
+      if (/^(the )?(closing|opening) ceremony|^(saturday |sunday )?endshow|^power hour/.test(w)) continue;
+      const n = artClean(seg), parts = artSplit(n);
+      if (!parts.length) continue;
+      if (hasSeries || parts.some((x) => artRow(foldName(x))) || parts.some((x) => foldName(x) === foldName(l.artist))) return n;
+      break;
     }
-    if (!l.festival && artPlausible(l.artist) && !SERIES.some((x) => (x.channels || []).includes(l.artist))) return l.artist;
+    /* Kanal als Artist: kein Veranstalter, kein Festival-Set, und der Kanalname steht im Titel. */
+    if (!l.festival && artPlausible(l.artist) && !SERIES.some((x) => (x.channels || []).includes(l.artist))
+      && (artRow(foldName(l.artist)) || foldName(l.title).includes(foldName(l.artist)))) return l.artist;
     return null;
   }
   function artIndex() {

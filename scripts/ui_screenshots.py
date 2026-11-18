@@ -717,7 +717,7 @@ class Shooter:
         self.shot("library-dj-b2b")
         page.click("[data-dj=more]")
         page.click('.menu [data-k="edit"]')
-        page.wait_for_selector("#dj-f-aliases .tags input")
+        page.wait_for_selector("#dj-f-aliases input")
         self.settle()
         self.shot("library-dj-edit")
         page.keyboard.press("Escape")

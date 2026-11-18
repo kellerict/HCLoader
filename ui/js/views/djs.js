@@ -220,7 +220,7 @@
       title: t('djs.watch_title', { name: a.name }),
       okLabel: t('djs.watch_ok'),
       body: `<p>${esc(t(isChannel ? 'djs.watch_channel' : 'djs.watch_search', { name: a.name }))}</p>
-        <div class="pathbox">${esc(src.url_or_query)}</div>${ui.notice('info', esc(t('djs.watch_note')))}`,
+        <div class="pathbox dj-target">${esc(src.url_or_query)}</div>${ui.notice('info', esc(t('djs.watch_note')))}`,
     });
     if (!yes) return;
     const s = await HC.bridge.safe('save_source', Object.assign({ enabled: true, auto_download: false, max_entries: null, default_genre: null }, src));

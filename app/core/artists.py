@@ -374,6 +374,51 @@ def _organiser_channels(cat: fx.Catalog) -> set[str]:
     return {fx.norm(c) for s in cat.series for c in s.channels if fx.norm(c)}
 
 
+# set types after which a title names a show, not a DJ («Qlimax 2024 | Rise of the Celestials |
+# Full Show», «Qlimax 2023 | The Anthem Show»)
+_SHOW_TYPES = {"full_show", "anthem"}
+
+
+def _has_series(text_norm: str, cat: fx.Catalog) -> bool:
+    return any(fx.contains(text_norm, a) for _s, forms in cat.compiled() for a, _strong in forms)
+
+
+def title_names(row: Mapping[str, Any], cat: fx.Catalog, known: _Known) -> list[str]:
+    """Artists named in the title. Only trusted where the title format is known: a festival /
+    radio title (series name or assigned edition), «… by <DJ>», a known artist, or the
+    channel's own name. «Overdrive – 1 Hour Uptempo Mix» from a mix channel names no DJ."""
+    title = str(row.get("title") or "")
+    text = fx.title_text(title)
+    if fx.find_set_type(text, cat.set_types) in _SHOW_TYPES:
+        return []
+    credit = credit_from_title(title, cat, known)
+    names = split_credit(credit, known) if credit else []
+    if not names:
+        return []
+    channel = key_of(row.get("channel_name"))
+    if (
+        row.get("edition_id")
+        or _has_series(text, cat)
+        or _BY.search(title)
+        or any(known.resolve(n) for n in names)
+        or (channel and any(key_of(n) == channel for n in names))
+    ):
+        return names
+    return []
+
+
+def channel_names(row: Mapping[str, Any], organisers: set[str], known: _Known) -> list[str]:
+    """The channel as artist: not an organiser channel, not a festival set, and the channel's
+    name appears in the title (an artist uploading their own set names themselves; a mix
+    channel's «Euphoric Hardstyle Yearmix» does not)."""
+    ch = str(row.get("channel_name") or "").strip()
+    if not ch or fx.norm(ch) in organisers or row.get("edition_id"):
+        return []
+    if not known.resolve(ch) and key_of(ch) not in key_of(row.get("title")):
+        return []
+    return split_credit(ch, known)
+
+
 def build_index(db: Database, settings: Settings) -> Index:
     cat = series.catalog(db, settings)
     known = _known(db)
@@ -397,12 +442,9 @@ def build_index(db: Database, settings: Settings) -> Index:
         credit = collector.get(vid)
         names = split_credit(credit, known) if credit else []
         if not names:
-            credit = credit_from_title(row.get("title") or "", cat, known)
-            names = split_credit(credit, known) if credit else []
+            names = title_names(row, cat, known)
         if not names:
-            ch = str(row.get("channel_name") or "").strip()
-            if ch and fx.norm(ch) not in organisers and not row.get("edition_id"):
-                names = split_credit(ch, known)
+            names = channel_names(row, organisers, known)
         if not names:
             continue
         role = "b2b" if len(names) > 1 else "solo"

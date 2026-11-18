@@ -172,6 +172,32 @@ Vertrag docs/bridge-api.md «Loudness, waveform, player memory».
   Datei beim Tag-Schreiben während der Wiedergabe, Dauer eines Durchlaufs über eine grosse Bibliothek)
 - [ ] 6 Release v0.7.0
 
+## v0.8.0 – Playlist-Export (M3U8) und DJ-Seiten mit Aliassen (docs/ROADMAP.md)
+DJ-Seiten mit Aliassen, b2b-Zuordnung, «Alle abspielen», Ein-Klick-Watchlist; M3U8-Export für Festival/Ausgabe,
+Genre, DJ, Bibliotheksfilter, Checkliste und «Weiterhören», gespeicherte Playlists mit «Aktuell halten».
+Entscheide: docs/decisions.md «DJ pages and playlist export (v0.8.0)», Vertrag docs/bridge-api.md
+«DJ pages, playlist export».
+- [x] 1 Backend + Integration (`integrator`): Migration 13 (`artists`, `playlists`, Backup automatisch),
+  `app/core/artists.py` (Ableitung offline aus Checklisten-Zeile > Titel > eigener Kanal, b2b/vs/x/&, bekannte
+  Acts, Alias-Faltung, Startliste `app/data/artists.yaml`, Zusammenführen/Abtrennen/Ausblenden,
+  Watchlist-Vorschlag), `app/core/playlists.py` (M3U8, relative Pfade mit Rückfall absolut bei anderem
+  Laufwerk/UNC, Dateiname + Pfadlänge, Überschreiben, gespeicherte Playlists, Sync), Sync nach Downloads
+  (GUI gebündelt im eigenen Thread, Headless-Lauf), 13 Bridge-Methoden + Event `playlists_synced`,
+  Einstellungen `playlists.*`, Texte in 18 Sprachen (nl-BE/de-x-frk erben)
+- [x] 2 UI: Unteransicht «DJs» (`#library/djs`, `ui/js/views/djs.js`: Liste mit Suche/Sortierung/Ausgeblendet,
+  DJ-Seite mit Initialen-Badge, Kennzahlen, Sets nach Festival/Jahr, b2b-Partner, Meistgespielt, Bearbeiten,
+  Zusammenführen, Abtrennen, Watchlist mit Bestätigung, In Entdecken suchen), Export-Dialog
+  (`ui/js/playlist.js`, Überschreiben im Dialog), Knöpfe «M3U» in Bibliothek/Checkliste/Weiterhören,
+  Warteschlange «Alle abspielen» im Player, Einstellungen › Ablage › Playlists mit Liste; Mock; Screenshots
+- [x] 3 Tests: `tests/test_artists_playlists.py` (Titel-/b2b-Parser, Index, Aliasse, Zusammenführen/Abtrennen,
+  Watchlist-Vorschlag, Migration 13 aus v12, M3U8-Format, relative Pfade inkl. anderes Laufwerk/UNC mit
+  `ntpath`, Dateinamen, alle Export-Arten, Sync, API), `tests/test_djs_ui.py` (Playwright, nur explizite Waits)
+- [x] 4 Doku: CHANGELOG [Unreleased] mit Highlights, Wiki «DJ pages and playlists» + Settings reference,
+  bridge-api, settings-schema, decisions
+- [ ] 5 QA + Review (u.a. echte Bibliothek unter Windows: Qualität der DJ-Erkennung, Playlist in foobar2000/
+  VLC/Handy, Laufwerkswechsel D: → E:, langer Pfad)
+- [ ] 6 Release v0.8.0
+
 ## Geplant für spätere Versionen
 - Phase 7b: Mixcloud + hearthis.at (Watchlist); 7c: archive.org (optional)
 
@@ -223,3 +249,4 @@ Vertrag docs/bridge-api.md «Loudness, waveform, player memory».
 - 2026-11-18 – v0.6.0 Tracklist-Suche: Review FREIGEGEBEN, QA BESTANDEN; Minors behoben (Panel-Fehler abgefangen, FTS5-Prüfung beim Start, FTS/LIKE gleiche Treffer, gelöschte Sets räumen auf, «Neue einlesen» inkrementell, Migration 11 für «Meistgespielt», «Track 01 –»-Präfix, Screenshots 5,8 → ca. 1 MB); Version 0.6.0 + CHANGELOG → bereit für Release (ca. 15 Min. bis Merge/Tag durch Orchestrator).
 - 2026-11-18 – v0.7.0 Lautheit, Wellenform, Player-Gedächtnis, Schlaf-Timer gebaut (Backend, UI, 19 Sprachen, Tests, Screenshots, Doku); offen: QA, Review, Test unter Windows, Release (ca. 1–2 Std.)
 - 2026-11-18 – v0.7.0: QA BESTANDEN; Review M1 (keine Tags in die Datei im Player, atomares Tag-Schreiben) und M2 (Web-Audio-Rückfall bei Stille, ALLOW_FILE_URLS explizit) behoben, Minors m1–m5/m7/m9, Migration-12-Test, ru-Kürzungen; Version 0.7.0 + CHANGELOG → bereit für Release (ca. 15 Min. bis Merge/Tag durch Orchestrator; echter WebView2-Test im Smoke offen).
+- 2026-11-18 – v0.8.0 Playlist-Export und DJ-Seiten gebaut (Backend, UI, 19 Sprachen, Tests, Screenshots, Doku); offen: QA, Review, Test unter Windows, Release (ca. 1–2 Std.)

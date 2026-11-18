@@ -14,6 +14,7 @@
 - [Downloads and queue](Downloads-and-Queue)
 - [Library and player](Library-and-Player)
 - [Tracklist search](Tracklist-Search)
+- [DJ pages and playlists](DJ-Pages-and-Playlists)
 - [Festival collector](Festival-Collector)
 - [File naming and tags](File-Naming-and-Tags)
 - [Scheduled checks](Scheduled-Checks)
