@@ -242,7 +242,7 @@ def test_resume_ask_resume_and_start_over(page):
     assert "0:08" in page.inner_text("#pl-resume")
     page.click("#pl-resume [data-r=resume]")
     page.wait_for_function("HC.player.state().playing")
-    assert abs(page.evaluate("HC.player.audio.currentTime") - 8.05) < 0.5
+    page.wait_for_function("Math.abs(HC.player.audio.currentTime - 8.05) < 0.5")
     assert page.is_hidden("#pl-resume")
     page.evaluate("HC.player.close()")
     page.click('#lib-body tr[data-id="zZrhPod0006"] [data-act="play"]')
@@ -257,7 +257,7 @@ def test_resume_auto_and_off(page):
     _set(page, "player", {"resume": "auto"})
     page.click('#lib-body tr[data-id="kRawNation4"] [data-act="play"]')
     page.wait_for_function("HC.player.state().playing")
-    assert abs(page.evaluate("HC.player.audio.currentTime") - 8.05) < 0.6
+    page.wait_for_function("Math.abs(HC.player.audio.currentTime - 8.05) < 0.6")
     assert page.evaluate("HC.player.output().resume") == "auto"
     assert page.locator("#pl-resume [data-r=resume]").count() == 0
     assert "Resumed at" in page.inner_text("#pl-resume")
@@ -277,7 +277,7 @@ def test_jump_from_tracklist_skips_the_prompt(page):
     page.evaluate("HC.player.playAt({id: 'kRawNation4'}, 3)")
     page.wait_for_function("HC.player.state().playing")
     assert page.is_hidden("#pl-resume")
-    assert abs(page.evaluate("HC.player.audio.currentTime") - 3) < 0.5
+    page.wait_for_function("Math.abs(HC.player.audio.currentTime - 3) < 0.5")
 
 
 def test_position_saved_on_pause_and_close(page):
@@ -315,7 +315,7 @@ def test_continue_listening_shelf(page):
     page.click('#lib-continue [data-cl="kRawNation4"]')
     page.wait_for_function("HC.player.state().playing")
     assert page.is_hidden("#pl-resume")
-    assert abs(page.evaluate("HC.player.audio.currentTime") - 8.05) < 0.6
+    page.wait_for_function("Math.abs(HC.player.audio.currentTime - 8.05) < 0.6")
     # hidden while searching
     page.fill("#lib-q", "gabber")
     page.wait_for_selector("#lib-continue", state="hidden")

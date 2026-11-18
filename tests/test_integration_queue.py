@@ -740,3 +740,47 @@ def test_n3_cancel_after_point_of_no_return_reports_done(world, monkeypatch):
     assert answers == [{"ok": False, "error": "Download bereits fertig"}]
     assert w.db.get_video(vid)["status"] == "done"
     assert w.api.queue_cancel(vid) == {"ok": False, "error": "Download bereits fertig"}
+
+
+# --------------------------------------------------------------------------- v0.7.0 analysis
+
+
+def test_download_then_offline_analysis_tags_and_player_data(world):
+    """Search → enqueue → download → tags → analysis (ffmpeg mocked) → ReplayGain tag, DB row,
+    waveform cache, `media_analysed` events and the player data of get_media."""
+    from mutagen.id3 import ID3
+
+    from app.core import analysis, tagging
+    from app.core.analysis import Loudness, RunResult
+
+    w = world
+    seen = []
+
+    def runner(path, *, loudness=True, peaks=True, cancel=None, **kw):
+        seen.append((Path(path).name, loudness, peaks))
+        return RunResult(Loudness(-8.0, 0.9, 4.0), [5, 120, 255, 60], 4 * 200)
+
+    w.api._analysis._runner = runner
+    _res, picked = search_and_pick(w)
+    picked = picked[:2]
+    assert w.api.enqueue(picked)["ok"]
+    w.api._queue.start()
+    assert w.api._queue.wait_idle(60)
+    deadline = time.monotonic() + 10
+    while len(of(w.events, "media_analysed")) < 2 and time.monotonic() < deadline:
+        time.sleep(0.02)
+    w.api._bus.flush(5)
+    done = {d["id"]: d for d in of(w.events, "media_analysed")}
+    assert set(done) == set(picked) and all(d["ok"] and d["tagged"] for d in done.values())
+    assert len(seen) == 2 and all(lo and pk for _n, lo, pk in seen)
+    for vid in picked:
+        row = analysis.get_row(w.db, vid)
+        assert row["lufs"] == -8.0 and row["tagged"] == 1 and row["peaks"] == 1
+        path = Path(w.db.get_video(vid)["file_path"])
+        assert str(ID3(path)["TXXX:REPLAYGAIN_TRACK_GAIN"]) == "-10.00 dB"
+        assert tagging.read_replaygain(path).peak == pytest.approx(1.109175, abs=1e-6)
+        media = w.api.get_media(vid)
+        assert media["ok"] and media["loudness"]["gain"] == -10.0
+        assert media["peaks"] == [5, 120, 255, 60] and media["resume"] is None
+    st = w.api.get_analysis_status()
+    assert st["analysed"] == 2 and st["tagged"] == 2 and st["pending"] == 0
