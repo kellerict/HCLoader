@@ -127,6 +127,10 @@ Entscheide: docs/decisions.md «Festival-Sammler (v0.5.0)», Vertrag docs/bridge
 ## Geplant für spätere Versionen
 - Phase 7b: Mixcloud + hearthis.at (Watchlist); 7c: archive.org (optional)
 
+## Offen für den User (Nacht 17./18.11.)
+- **v0.5.0 Festival-Sammler NICHT veröffentlicht.** Backend, UI, Review (M1 b2b-Fehlbestätigung behoben) und Windows-Build sind ok. Die QA scheitert aber zum 4. Mal knapp am Timetable-Parser (Text einfügen): 18/22 frische Beispiele, Schwelle 20. Kein stiller Datenverlust mehr (unlesbare Zeilen werden angezeigt), die Vorschau erlaubt Bearbeiten/Entfernen vor dem Import. Restfehler: Werbe-/UI-Zeilen wie «Swipe for more» als Artist, «Bühne: Zeit Artist, …» inline, Bühnenname als Zeilenpräfix, «UNDERGROUND» als Artist in Line-ups ohne Zeiten.
+- Entscheid nötig: (A) v0.5.0 so veröffentlichen, Text-Import als «Beta» kennzeichnen (Vorschau korrigierbar), Parser in v0.5.x verbessern – Empfehlung; (B) weitere Parser-Runde vor dem Release; (C) Text-Import vorerst ausblenden, nur Playlist/Datei/manuell.
+
 ## Blockiert
 - **GitHub Actions**: seit 16:16 starten alle Jobs nicht (Abbruch nach ~2 s, ohne Log) – vermutlich Actions-Minuten aufgebraucht (privates Repo, Windows ×2; ~20 Läufe hingen je ~1 h wegen MessageBox-Hänger). User prüft Settings → Billing. Danach: CI-Lauf auswerten (ein Windows-Test war rot, Name unbekannt; CI jetzt mit `pytest -v`), Portable-Workflow per workflow_dispatch starten, Artefakt prüfen.
 - Smoke-Test (echter Download) – siehe Vorbedingungen.
@@ -163,3 +167,4 @@ Entscheide: docs/decisions.md «Festival-Sammler (v0.5.0)», Vertrag docs/bridge
 - 2026-11-18 – v0.4.0 «Alles einlesen (einmalig)» gebaut (Backend, UI, 19 Sprachen, Tests, Screenshots, Doku); offen: QA, Review, echter Test unter Windows, Release (ca. 1–2 Std.)
 - 2026-11-18 – v0.4.0 «Alles einlesen»: Review M1–M3 behoben, QA BESTANDEN → Release vorbereitet (nach v0.3.0).
 - 2026-11-18 – v0.3.0 und v0.4.0 veröffentlicht (automatisch). Installer-Smoke hing sporadisch (Runner wurde vermutlich vom Restart Manager getroffen) → eigener Job installer-smoke, /NOCLOSEAPPLICATIONS, Uninstall-Aufräumen max. 60 s. v0.5.0 Festival-Sammler: Backend fertig, UI läuft.
+- 2026-11-18 – Nacht: v0.3.0 und v0.4.0 veröffentlicht; v0.5.0 fertig, Release zurückgehalten (Parser-QA 4× knapp nicht bestanden) → Entscheid User.
