@@ -5,9 +5,13 @@
   `18:00 - 19:00 Headhunterz`, `Headhunterz 18:00–19:00`, `Headhunterz | 18:00–19:00 | RED`,
   `18.00 Headhunterz (RED)`, CSV/TSV/semicolon tables with a header row, day headings
   (`Saturday`, `Samstag 28.06.`, `Day 2`, `## Zaterdag`) and stage headings (`RED`, `Stage: BLUE`,
-  `[UV]`, `Mainstage:`, `=== The Gathering Stage ===`). A line without a time that is no heading
-  is a row with the artist only (plain line-up lists). Nothing is guessed from websites: the
-  user pastes, the parser only splits (docs/concepts/festivals.md, no scraping).
+  `[UV]`, `Mainstage:`, `=== The Gathering Stage ===`), combined headings (`Saturday – RED`,
+  `SAT | RED STAGE`), `Sat 18.00–19.00 Name @ PURPLE`, CSV without header row (columns told
+  apart by content). Emoji/symbols and `**bold**` are removed first. A line without a time that
+  is no heading is a row with the artist only (plain line-up lists); a line without any letter
+  or digit is never a stage: it is reported in `skipped` (unless it is a separator like `=====`).
+  Nothing is guessed from websites: the user pastes, the parser only splits
+  (docs/concepts/festivals.md, no scraping).
 - Shipped timetable files `app/data/timetables/<series-key>/<year>[-<variant>].json`
   (`list_files`, `load_file`); format in docs/bridge-api.md «Festival collector».
 
@@ -19,6 +23,7 @@ from __future__ import annotations
 import csv
 import json
 import re
+import unicodedata
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any
@@ -132,7 +137,7 @@ def _day_heading(text: str) -> str | None:
     if len(words) == 1:
         # very short forms ("do", "so", "za") only as a whole heading line (always the case here)
         return clean
-    rest = clean[len(clean.split()[0]) :] if " " in clean else ""
+    rest = clean[len(clean.split()[0]) :]  # any whitespace, also tabs
     rest_words = [w for w in words[1:] if w not in _MONTHS and not w.isdigit()]
     if rest_words and not _DATEISH.match(rest):
         return None
@@ -141,12 +146,44 @@ def _day_heading(text: str) -> str | None:
     return clean
 
 
-def _day_prefix(text: str) -> tuple[str | None, str]:
-    """«Saturday – RED» -> ('Saturday', 'RED'); no long weekday name first -> (None, text)."""
-    m = re.match(r"^\s*([^\W\d_]+)\b[\s,:\-–—|/]+(.+)$", text)
-    if m and m.group(1).casefold() in _LONG_DAY_WORDS:
-        return m.group(1), m.group(2).strip()
+_DAY_LEAD = re.compile(r"^([^\W\d_]{2,12})\.?(?: ?[|,:/\-–—])? ?(?=\d)")
+
+
+def _day_lead(text: str) -> tuple[str | None, str]:
+    """«Sat 18.00-19.00 Lil Texas» -> ('Sat', '18.00-19.00 Lil Texas'): a weekday directly in
+    front of the time of a set line; anything else -> (None, text)."""
+    m = _DAY_LEAD.match(text)
+    if m and m.group(1).casefold() in _DAY_WORDS:
+        return m.group(1), text[m.end() :]
     return None, text
+
+
+# separators between day and stage in one heading: punctuation (also «Sat | RED», «Sat, RED»)
+# or plain spaces («SAT RED STAGE»); the searched text is a short heading line
+_HEAD_SEP = re.compile(r" ?(?:[|,:/–—]|-(?= )) ?| ")
+
+
+def _combined_heading(text: str, names: dict[str, str]) -> tuple[str, str] | None:
+    """«Saturday – RED» / «SAT | RED STAGE» / «RED - Sunday» -> (day, stage); else None."""
+    if len(text) > MAX_DAY + MAX_STAGE or not re.search(r"[^\W\d_]", text):
+        return None
+    seps = list(_HEAD_SEP.finditer(text))[:16]
+    for m in reversed(seps):  # the last separator first: «Saturday 28.06. – RED»
+        a, b = text[: m.start()].strip(), text[m.end() :].strip()
+        if not a or not b:
+            continue
+        punct = m.group(0).strip() != ""
+        day = _day_heading(a)
+        if day and (punct or len(a.split()[0]) >= 3):
+            stage = _stage_label(b, names, loose=punct)
+            if stage:
+                return day, stage
+        day = _day_heading(b) if punct else None
+        if day:
+            stage = _stage_label(a, names, loose=True)
+            if stage:
+                return day, stage
+    return None
 
 
 # --------------------------------------------------------------------------- stages
@@ -184,8 +221,37 @@ def _clean_stage(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip(" :-–—=*#[]()|").strip()[:MAX_STAGE]
 
 
-def _stage_heading(raw: str, text: str, names: dict[str, str]) -> str | None:
-    """Stage label when the (time-less) line is a stage heading, else None."""
+def _has_letter(text: str | None) -> bool:
+    return bool(text) and re.search(r"[^\W\d_]", text) is not None
+
+
+def _stage_label(text: str, names: dict[str, str], *, loose: bool = False) -> str | None:
+    """`text` as a stage name: known stage, «Stage: X», a stage word, a short capital label
+    («RED», «THE GATHERING»); `loose` also accepts any short name («Black»)."""
+    text = text.strip()
+    if not _has_letter(text) or len(text) > MAX_STAGE or re.match(r"^\d", text):
+        return None
+    m = _STAGE_PREFIX.match(text)
+    if m:
+        return _known_stage(m.group(1), names) or _clean_stage(m.group(1)) or None
+    known = _known_stage(text, names)
+    if known:
+        return known
+    words = fx.norm(text).split()
+    if not 0 < len(words) <= 6:
+        return None
+    if any(w in _STAGE_WORDS for w in words) or _caps_label(text) or (loose and len(words) <= 3):
+        return _clean_stage(text) or None
+    return None
+
+
+def _stage_heading(
+    raw: str, text: str, names: dict[str, str], *, wrapped: bool = False
+) -> str | None:
+    """Stage label when the (time-less) line is a stage heading, else None. `wrapped`: the
+    line was framed by decoration («🔥 RED 🔥», «=== RED ===»)."""
+    if not _has_letter(text):
+        return None  # «????? ##» is never a stage
     m = _STAGE_PREFIX.match(text)
     if m:
         return _known_stage(m.group(1), names) or _clean_stage(m.group(1))
@@ -193,7 +259,8 @@ def _stage_heading(raw: str, text: str, names: dict[str, str]) -> str | None:
     if known:
         return known
     marked = (
-        raw.lstrip().startswith(("#", "[", "==", "--", "**"))
+        wrapped
+        or raw.lstrip().startswith(("#", "[", "==", "--", "**"))
         or raw.rstrip().endswith(":")
         or re.match(r"^\s*\[.+\]\s*$", raw) is not None
     )
@@ -257,6 +324,9 @@ def _split_artist(
     m = re.search(r"(?:@|\bat\b|[-–—|/]) ?([^@\-–—|/]+)$", out)
     if m and stage is None:
         known = _known_stage(m.group(1), names)
+        if not known and m.group(0).startswith("@"):
+            # «Lil Texas @ PURPLE»: after an explicit «@» a short name is the stage
+            known = _stage_label(m.group(1), names, loose=True)
         if known:
             stage = known
             out = out[: m.start()]
@@ -340,6 +410,78 @@ def _csv_layout(line: str) -> tuple[str, list[str | None]] | None:
     return None
 
 
+def _time_cell(cell: str) -> str | None:
+    """'time' for «18:00-19:00», 'single' for «18:00», else None."""
+    c = cell.strip()
+    m = _RANGE_RE.fullmatch(c)
+    if m and norm_time(m.group("s") or m.group("s4")):
+        return "time"
+    return "single" if norm_time(c) and re.search(r"\d[:.hH]\d|[ap]\.?m", c, re.I) else None
+
+
+def _headerless_layout(
+    lines: list[str], names: dict[str, str], set_types: Sequence[fx.SetTypeDef]
+) -> tuple[str, list[str | None]] | None:
+    """(delimiter, column keys) of a CSV without header row («Dillytek,BLUE,Sat,16:00,17:00»):
+    most lines split into the same number (>= 3) of cells and one column holds only times.
+    The columns are told apart by their content: times, weekdays, set types, stages (known,
+    capitals, stage words, few distinct values) and the artist (the rest)."""
+    for delim in (";", ","):
+        table = [
+            next(csv.reader([ln], delimiter=delim, skipinitialspace=True))
+            for ln in lines
+            if delim in ln
+        ]
+        table = [[c.strip() for c in row] for row in table]
+        counts: dict[int, int] = {}
+        for row in table:
+            if len(row) >= 3:
+                counts[len(row)] = counts.get(len(row), 0) + 1
+        if not counts:
+            continue
+        width = max(counts, key=lambda k: counts[k])
+        rows = [row for row in table if len(row) == width]
+        if len(rows) < max(1, (len(lines) * 3 + 4) // 5):
+            continue
+        keys: list[str | None] = [None] * width
+        texts: list[int] = []
+        for j in range(width):
+            col = [row[j] for row in rows if row[j]]
+            if not col:
+                continue
+            kinds = {_time_cell(c) for c in col}
+            if kinds == {"time"}:
+                keys[j] = "time"
+            elif kinds == {"single"}:
+                keys[j] = "end" if "start" in keys else "start"
+            elif all(_day_heading(c) for c in col):
+                keys[j] = "day"
+            elif all(c in fx.SET_TYPES or _set_type(c, set_types) for c in col):
+                keys[j] = "set_type"
+            elif any(_has_letter(c) for c in col):
+                texts.append(j)
+        if not any(k in ("time", "start") for k in keys) or not texts:
+            continue
+
+        def stageness(j: int, rows: list[list[str]] = rows) -> tuple[float, float, int]:
+            col = [row[j] for row in rows if row[j]]
+            hits = sum(
+                1
+                for c in col
+                if _known_stage(c, names)
+                or _caps_label(c)
+                or any(w in _STAGE_WORDS for w in fx.norm(c).split())
+            )
+            return hits / len(col), -len({fx.norm(c) for c in col}) / len(col), -j
+
+        ordered = sorted(texts, key=stageness)
+        keys[ordered[0]] = "artist"
+        if len(ordered) > 1:
+            keys[ordered[-1]] = "stage"
+        return delim, keys
+    return None
+
+
 # --------------------------------------------------------------------------- parse
 
 
@@ -371,8 +513,12 @@ def _parse_csv(
 ) -> tuple[list[dict[str, Any]], list[str]]:
     rows: list[dict[str, Any]] = []
     skipped: list[str] = []
-    for cells in csv.reader(lines, delimiter=delim):
+    for cells in csv.reader(
+        [_undecorate(ln)[0] for ln in lines], delimiter=delim, skipinitialspace=True
+    ):
         if not any(re.search(r"[^\W_]", c) for c in cells):
+            if not _filler_only(delim.join(cells)):
+                skipped.append(delim.join(cells))
             continue  # empty line or a markdown separator row (|---|---|)
         values: dict[str, str] = {}
         for k, c in zip(keys, cells, strict=False):
@@ -476,6 +622,45 @@ def _caps_label(text: str) -> bool:
 
 
 _SPACES = re.compile(r"[^\S\t\n]+")
+_DECOR_CHARS = frozenset("\ufe0f\ufe0e\u200d\u20e3")
+_FRAME = frozenset("=*#~-–—_+")
+_FILLER = frozenset(" \t=-–—_*~#+.:;,|/\\<>•·[](){}")
+
+
+def _is_symbol(c: str) -> bool:
+    """Emoji and pictographs (🔥 ★ ► ♫ ⏰ ─), their joiners/selectors and skin tones."""
+    if c in _DECOR_CHARS or "\U0001f3fb" <= c <= "\U0001f3ff":
+        return True
+    return unicodedata.category(c) in ("So", "Cs", "Co")
+
+
+def _undecorate(text: str) -> tuple[str, bool, bool]:
+    """(text without emoji/symbols and **bold** marks, framed, leading-only). `framed`: the
+    line had decoration on both sides («🔥 RED 🔥», «=== RED ===», «**RED**»): a heading;
+    `leading-only` («► Sefa»): a list bullet."""
+    chars = [" " if _is_symbol(c) else c for c in text]
+    first = next((i for i, c in enumerate(chars) if c.isalnum()), None)
+    if first is None:
+        lead = trail = ""
+    else:
+        last = max(i for i, c in enumerate(chars) if c.isalnum())
+        lead, trail = text[:first], text[last + 1 :]
+
+    def decor(part: str) -> bool:
+        return any(_is_symbol(c) or c in _FRAME for c in part)
+
+    clean = "".join(chars).replace("**", " ").replace("__", " ")
+    clean = _SPACES.sub(" ", clean).strip(" ")
+    framed = decor(lead) and decor(trail.rstrip(":"))
+    bullet = not framed and any(_is_symbol(c) for c in lead)
+    return clean, framed, bullet
+
+
+def _filler_only(text: str) -> bool:
+    """A separator line («=====», «-----», «|---|---|», «🔥🔥🔥» after cleaning): not reported."""
+    return all(c in _FILLER for c in text)
+
+
 _MULTI_SPLIT = re.compile(r" ?[|,;/] ?")
 
 
@@ -498,10 +683,12 @@ def _line(raw: str) -> str:
     return _SPACES.sub(" ", raw)[:MAX_LINE]
 
 
-def _heading_before_times(raw: str, body: str, following: list[str]) -> bool:
+def _heading_before_times(raw: str, body: str, following: list[str], bullet: bool) -> bool:
     """A short time-less line (no list bullet) directly above a line with a time is a stage
     heading of an unknown stage («RED», «Black», «THE GATHERING»), not a set without time."""
-    if not following or _BULLET.match(raw) or len(body) > MAX_STAGE:
+    if not following or bullet or _BULLET.match(raw) or len(body) > MAX_STAGE:
+        return False
+    if not _has_letter(body):
         return False
     if not 0 < len(body.split()) <= 3:
         return False
@@ -509,6 +696,79 @@ def _heading_before_times(raw: str, body: str, following: list[str]) -> bool:
     if _day_heading(nxt) or _cells(nxt) is not None and not _RANGE_RE.search(nxt):
         return False
     return _find_times(_BULLET.sub("", nxt) if not _RANGE_RE.match(nxt) else nxt)[0] is not None
+
+
+def _parse_lines(
+    lines: list[str], names: dict[str, str], set_types: Sequence[fx.SetTypeDef]
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """Free-form timetable lines -> (rows, skipped). Every line that is neither a row, a
+    heading, a title/comment nor a blank or separator line is reported in `skipped`."""
+    rows: list[dict[str, Any]] = []
+    skipped: list[str] = []
+    day: str | None = None
+    stage: str | None = None
+    # (original line, cleaned piece, framed, bullet) - one entry per set
+    expanded: list[tuple[str, str, bool, bool]] = []
+    for ln in lines:
+        clean, framed, bullet = _undecorate(ln)
+        for piece in _split_sets(clean):
+            expanded.append((ln.strip(), piece, framed, bullet))
+    for i, (orig, raw, framed, bullet) in enumerate(expanded):
+        line = raw.strip()
+        if line.startswith("//"):
+            continue
+        if not re.search(r"[^\W_]", line):
+            if not _filler_only(line):
+                skipped.append(orig)  # «????? ##»: no letter, no digit -> reported, no stage
+            continue
+        body = _BULLET.sub("", line) if not _RANGE_RE.match(line) else line
+        body = body.strip().strip("=*").strip()
+        if not body:
+            continue
+        lead_day, timed = _day_lead(body)
+        if lead_day and _find_times(timed)[0] is not None:
+            body = timed  # «Sat 18.00-19.00 Lil Texas @ PURPLE»
+        else:
+            lead_day = None
+        start, end, rest = _find_times(body)
+        if start is None:
+            if _TITLE_RE.search(body):
+                continue  # «Defqon.1 2024 – Timetable»: a title line, no row and no heading
+            label = _day_heading(body)
+            if label:
+                day, stage = label, None
+                continue
+            both = _combined_heading(body, names)
+            if both:
+                day, stage = both
+                continue
+        cells = _cells(body)
+        if cells is not None:
+            a, st, d, s, e, t = _parse_cells(cells, names, set_types)
+            if a:
+                rows.append(
+                    _row(a, stage=st or stage, day=d or lead_day or day, start=s, end=e, set_type=t)
+                )
+            else:
+                skipped.append(orig)
+            continue
+        if start is None:
+            heading = _stage_heading(raw, body, names, wrapped=framed)
+            if heading:
+                stage = heading
+                continue
+            following = [p for _o, p, _f, _b in expanded[i + 1 : i + 2]]
+            if _heading_before_times(raw, body, following, bullet):
+                stage = _clean_stage(body)  # «RED» / «Black» above timed sets
+                continue
+        artist, st, t = _split_artist(rest, names, set_types)
+        if not artist or not re.search(r"[^\W_]", artist):
+            skipped.append(orig)
+            continue
+        rows.append(
+            _row(artist, stage=st or stage, day=lead_day or day, start=start, end=end, set_type=t)
+        )
+    return rows, skipped
 
 
 def parse(
@@ -527,56 +787,25 @@ def parse(
     skipped: list[str] = []
     used_csv = False
     if lines:
-        layout = _csv_layout(lines[0])
+        layout = _csv_layout(_undecorate(lines[0])[0])
         if layout is not None:
             used_csv = True
             rows, skipped = _parse_csv(lines[1:], layout[0], layout[1], names, set_types)
+        else:
+            layout = _headerless_layout(lines, names, set_types)
+            if layout is not None:
+                used_csv = True
+                table: list[str] = []
+                for ln in lines:
+                    cells = next(csv.reader([ln], delimiter=layout[0], skipinitialspace=True))
+                    if len(cells) == len(layout[1]):
+                        table.append(ln)
+                    elif not _filler_only(_undecorate(ln)[0]):
+                        skipped.append(ln.strip())  # a heading or note between the rows
+                rows, more = _parse_csv(table, layout[0], layout[1], names, set_types)
+                skipped += more
     if not used_csv:
-        day: str | None = None
-        stage: str | None = None
-        expanded = [piece for ln in lines for piece in _split_sets(ln)]
-        for i, raw in enumerate(expanded):
-            line = raw.strip()
-            if line.startswith("//"):
-                continue
-            body = _BULLET.sub("", line) if not _RANGE_RE.match(line) else line
-            body = body.strip().strip("=*").strip()
-            if not body:
-                continue
-            cells = _cells(body)
-            if cells is not None:
-                a, st, d, s, e, t = _parse_cells(cells, names, set_types)
-                if a:
-                    rows.append(
-                        _row(a, stage=st or stage, day=d or day, start=s, end=e, set_type=t)
-                    )
-                else:
-                    skipped.append(line)
-                continue
-            start, end, rest = _find_times(body)
-            if start is None and _TITLE_RE.search(body):
-                continue  # «Defqon.1 2024 – Timetable»: a title line, no row and no heading
-            if start is None:
-                label = _day_heading(body)
-                if label:
-                    day, stage = label, None
-                    continue
-                dprefix, after = _day_prefix(body)
-                if dprefix and _stage_heading(after, after, names):
-                    day, stage = dprefix, _stage_heading(after, after, names)
-                    continue
-                heading = _stage_heading(raw, body, names)
-                if heading:
-                    stage = heading
-                    continue
-                if _heading_before_times(raw, body, expanded[i + 1 : i + 2]):
-                    stage = _clean_stage(body)  # «RED» / «Black» above timed sets
-                    continue
-            artist, st, t = _split_artist(rest, names, set_types)
-            if not artist or not re.search(r"[^\W_]", artist):
-                skipped.append(line)
-                continue
-            rows.append(_row(artist, stage=st or stage, day=day, start=start, end=end, set_type=t))
+        rows, skipped = _parse_lines(lines, names, set_types)
     out: list[dict[str, Any]] = []
     seen: set[tuple[str, str, str, str]] = set()
     for r in rows:

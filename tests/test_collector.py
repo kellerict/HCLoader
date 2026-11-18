@@ -289,6 +289,178 @@ def test_parser_qa_snippets_without_catalog(text, expected):
     assert key(got) == key(expected)
 
 
+# QA v0.5.0 re-check («Nachprüfung», snippets 7/12/17/21/22) plus variations: (text, rows,
+# skipped lines). Checked with the app catalog and bare (no catalog, see `_bare_key`).
+RECHECK_CASES = [
+    # --- 7 CSV without header row: columns inferred from their content
+    (
+        "Dillytek,BLUE,Sat,16:00,17:00",
+        [("Dillytek", "BLUE", "Sat", "16:00", "17:00", N)],
+        [],
+    ),
+    (
+        "Dillytek,BLUE,Sat,16:00,17:00\nSefa,RED,Sat,17:00,18:00",
+        [
+            ("Dillytek", "BLUE", "Sat", "16:00", "17:00", N),
+            ("Sefa", "RED", "Sat", "17:00", "18:00", N),
+        ],
+        [],
+    ),
+    (
+        "Sat;16:00-17:00;Dillytek;Purple\nSun;18:00-19:00;Sefa;Purple\nSun;19:00-20:00;Rooler;Red",
+        [
+            ("Dillytek", "PURPLE", "Sat", "16:00", "17:00", N),
+            ("Sefa", "PURPLE", "Sun", "18:00", "19:00", N),
+            ("Rooler", "RED", "Sun", "19:00", "20:00", N),
+        ],
+        [],
+    ),
+    (
+        '"Da Tweekaz", "THE GATHERING", Friday, 6pm, 7pm',
+        [("Da Tweekaz", "THE GATHERING", "Friday", "18:00", "19:00", N)],
+        [],
+    ),
+    (
+        "Dillytek,Hardcore Stage,16:00\nnote without commas\nSefa,Hardcore Stage,17:00",
+        [
+            ("Dillytek", "Hardcore Stage", N, "16:00", N, N),
+            ("Sefa", "Hardcore Stage", N, "17:00", N, N),
+        ],
+        ["note without commas"],
+    ),
+    # --- 12 day and stage in one heading line
+    (
+        "Saturday – RED\n18:00 - 19:00 Headhunterz",
+        [("Headhunterz", "RED", "Saturday", "18:00", "19:00", N)],
+        [],
+    ),
+    ("SAT | RED STAGE\n18:00 Headhunterz", [("Headhunterz", "RED", "SAT", "18:00", N, N)], []),
+    (
+        "Saturday 28.06. – RED\n18:00 Headhunterz",
+        [("Headhunterz", "RED", "Saturday 28.06.", "18:00", N, N)],
+        [],
+    ),
+    ("Sunday, Black\n18:00 Angerfist", [("Angerfist", "BLACK", "Sunday", "18:00", N, N)], []),
+    ("PURPLE – Sunday\n18:00 Sefa", [("Sefa", "PURPLE", "Sunday", "18:00", N, N)], []),
+    (
+        "Saturday - The Gathering\n18:00 Warface",
+        [("Warface", "The Gathering", "Saturday", "18:00", N, N)],
+        [],
+    ),
+    # --- 17 emoji and markdown decoration
+    ("🔥 RED STAGE 🔥\n⏰ 18:00 🎧 Warface", [("Warface", "RED", N, "18:00", N, N)], []),
+    (
+        "★ BLUE ★\n► 19:00 - 20:00 Wildstylez",
+        [("Wildstylez", "BLUE", N, "19:00", "20:00", N)],
+        [],
+    ),
+    ("=== UV ===\n--- 20:00 Rebelion ---", [("Rebelion", "UV", N, "20:00", N, N)], []),
+    (
+        "**Saturday**\n**RED**\n18:00 **Headhunterz** 🔥🔥",
+        [("Headhunterz", "RED", "Saturday", "18:00", N, N)],
+        [],
+    ),
+    # a leading symbol only is a list bullet, no heading
+    (
+        "★ Atmozfears\n★ Sefa",
+        [("Atmozfears", N, N, N, N, N), ("Sefa", N, N, N, N, N)],
+        [],
+    ),
+    # separator lines are no rows and not reported
+    ("🎶🎶🎶\n=====\n18:00 Sefa\n-----", [("Sefa", N, N, "18:00", N, N)], []),
+    # --- 21 day prefix, dotted times, «@ stage» suffix
+    (
+        "Sat 18.00-19.00 Lil Texas @ PURPLE",
+        [("Lil Texas", "PURPLE", "Sat", "18:00", "19:00", N)],
+        [],
+    ),
+    (
+        "Sat 18.00–19.00 Headhunterz @ PURPLE",
+        [("Headhunterz", "PURPLE", "Sat", "18:00", "19:00", N)],
+        [],
+    ),
+    (
+        "Sun 20.00 - 21.00 Sefa @ The Gathering",
+        [("Sefa", "The Gathering", "Sun", "20:00", "21:00", N)],
+        [],
+    ),
+    ("Fr 18:00 Rooler", [("Rooler", N, "Fr", "18:00", N, N)], []),
+    (
+        "Saturday\nSun 18:00 Headhunterz @ Hardcore Stage\n19:00 Sefa",
+        [
+            ("Headhunterz", "Hardcore Stage", "Sun", "18:00", N, N),
+            ("Sefa", N, "Saturday", "19:00", N, N),
+        ],
+        [],
+    ),
+    # --- 22 garbage lines are reported, never a stage
+    (
+        "RED\n18:00 Headhunterz\n????? ##\n19:00 Wildstylez",
+        [("Headhunterz", "RED", N, "18:00", N, N), ("Wildstylez", "RED", N, "19:00", N, N)],
+        ["????? ##"],
+    ),
+    ("????? ##\n18:00 Sefa", [("Sefa", N, N, "18:00", N, N)], ["????? ##"]),
+    ("18:00 Sefa\n!!!\n%%%%", [("Sefa", N, N, "18:00", N, N)], ["!!!", "%%%%"]),
+    ("18:00 - 19:00\n19:00 Sefa", [("Sefa", N, N, "19:00", N, N)], ["18:00 - 19:00"]),
+    # a weekday word inside a name is no day
+    (
+        "Sunday Service\nMonday Night Fever",
+        [("Sunday Service", N, N, N, N, N), ("Monday Night Fever", N, N, N, N, N)],
+        [],
+    ),
+]
+
+
+def _bare_key(rows):
+    # without the catalog a stage keeps the spelling of the paste («Black», «RED STAGE»)
+    return [(a, fx.norm(st).removesuffix(" stage"), d, s, e, t) for a, st, d, s, e, t in rows]
+
+
+def _tuples(res):
+    return [
+        (r["artist"], r["stage"], r["day"], r["start"], r["end"], r["set_type"])
+        for r in res["rows"]
+    ]
+
+
+@pytest.mark.parametrize(("text", "expected", "skipped"), RECHECK_CASES)
+def test_parser_recheck_snippets(text, expected, skipped):
+    res = parse(text)
+    assert _tuples(res) == expected
+    assert res["skipped"] == skipped
+
+
+@pytest.mark.parametrize(("text", "expected", "skipped"), RECHECK_CASES)
+def test_parser_recheck_snippets_without_catalog(text, expected, skipped):
+    res = tt.parse(text)
+    assert _bare_key(_tuples(res)) == _bare_key(expected)
+    assert res["skipped"] == skipped
+
+
+def test_parser_headerless_csv_is_flagged_as_csv():
+    assert parse("Dillytek,BLUE,Sat,16:00,17:00")["csv"] is True
+    # two sets on one line stay the free-form path
+    assert parse("18:00 Headhunterz, 19:00 Wildstylez")["csv"] is False
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "🔥" * 300_000,
+        ("Saturday – " + "RED " * 100 + "\n") * 300,
+        ("a," * 250 + "18:00\n") * 300,
+        "Sat " + "18.00 " * 50_000,
+    ],
+)
+def test_parser_stays_fast_on_decorated_or_wide_input(text):
+    import time
+
+    t0 = time.perf_counter()
+    res = parse(text)
+    assert time.perf_counter() - t0 < 2.0
+    assert isinstance(res["rows"], list)
+
+
 def test_endshow_closing_ceremony_keeps_its_name():
     assert rows_of("23:00 Endshow Closing Ceremony") == [
         ("Endshow Closing Ceremony", N, N, "23:00", N, "closing_ceremony")
