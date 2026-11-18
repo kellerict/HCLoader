@@ -61,7 +61,8 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "results": "resultater",
     "entries": "oppføringer",
     "clock": "24 t",
-    "req_h": "foresp./t"
+    "req_h": "foresp./t",
+    "lufs": "LUFS"
   },
   "range": {
     "ge_sleep": "≥ minimum",
@@ -500,7 +501,11 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "group_festival": "Festival",
     "group_artist": "Artist",
     "group_year": "År",
-    "group_unknown": "Ukjent"
+    "group_unknown": "Ukjent",
+    "continue": "Fortsett å lytte",
+    "continue_title": "Fortsett «{title}» ved {t}",
+    "continue_left": "{t} igjen",
+    "continue_forget": "Fjern fra «Fortsett å lytte»"
   },
   "player": {
     "label": "Minispiller",
@@ -527,7 +532,22 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "err_load": "Kan ikke spilles av",
     "err_src": "Kan ikke spilles av: ugyldig filadresse",
     "err_play": "Filen kan ikke spilles av: {title}",
-    "external": "Åpner i standardspilleren …"
+    "external": "Åpner i standardspilleren …",
+    "norm_title": "Lydstyrke utjevnet: {lufs} LUFS → mål {target} LUFS ({gain})",
+    "norm_capped": "bare senket – forsterkning krever lydmotoren",
+    "resume_q": "Fortsette der du slapp?",
+    "resume_at": "ved {t}",
+    "resume": "Fortsett",
+    "restart": "Fra start",
+    "resumed_at": "Fortsatte ved {t}",
+    "sleep": "Sovetimer",
+    "sleep_min": "{n} min",
+    "sleep_end": "Slutten av dette settet",
+    "sleep_end_short": "slutt",
+    "sleep_off": "Slå av",
+    "sleep_on": "Sovetimer: stopper om {t}",
+    "sleep_end_on": "Sovetimer: stopper på slutten av dette settet",
+    "sleep_done": "Sovetimer: avspillingen stoppet"
   },
   "log": {
     "title": "Logg",
@@ -600,7 +620,8 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "schedule": "Plan",
     "appearance": "Utseende",
     "maintenance": "Vedlikehold",
-    "festivals": "Festivaler og serier"
+    "festivals": "Festivaler og serier",
+    "playback": "Avspilling"
   },
   "tabs_hint": {
     "general": "Appens grunnleggende oppførsel.",
@@ -614,7 +635,8 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "schedule": "Når overvåkingen sjekkes automatisk – i appen og via Windows Oppgaveplanlegger.",
     "appearance": "Utseende og følelse. Endringer forhåndsvises umiddelbart og blir permanente først etter lagring.",
     "maintenance": "Versjoner, oppdateringer, database.",
-    "festivals": "Gjenkjenner festival eller serie, år, scene og sett-type ut fra de lagrede titlene – frakoblet, uten en eneste ekstra forespørsel."
+    "festivals": "Gjenkjenner festival eller serie, år, scene og sett-type ut fra de lagrede titlene – frakoblet, uten en eneste ekstra forespørsel.",
+    "playback": "Innebygd spiller, lydstyrkeutjevning, lagrede posisjoner og offline-analysen av filene dine."
   },
   "set": {
     "default": "Standard",
@@ -659,7 +681,10 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
       "reset": "Tilbakestilling",
       "detection": "Gjenkjenning",
       "series": "Serier",
-      "backfill": "Les inn alt (én gang)"
+      "backfill": "Les inn alt (én gang)",
+      "loudness": "Lydstyrke",
+      "memory": "Minne og bølgeform",
+      "analysis": "Analyse (frakoblet, ffmpeg)"
     },
     "general": {
       "language": {
@@ -683,6 +708,22 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
       "mode": {
         "label": "Spill av med",
         "help": "Hva ▶ i biblioteket bruker. Den innebygde spilleren viser kapitler som hoppmerker og fortsetter å spille når du bytter visning. Det andre alternativet finnes per oppføring i menyen."
+      },
+      "normalize": {
+        "label": "Utjevn lydstyrke",
+        "help": "Spiller hvert sett med samme opplevde lydstyrke (ReplayGain fra offline-analysen eller eksisterende tagger). Klipper aldri: forsterkningen begrenses av målt true peak."
+      },
+      "target_lufs": {
+        "label": "Mållydstyrke",
+        "help": "−18 LUFS er referansen for ReplayGain 2.0. Høyere (f.eks. −14) = sterkere, men flere sett når toppgrensen."
+      },
+      "resume": {
+        "label": "Husk posisjon",
+        "help": "Per sett, utenfor de første og siste 30 sekundene. «Spør» tilbyr å fortsette, «Automatisk» fortsetter stille. Biblioteket viser de fem siste uferdige settene."
+      },
+      "waveform": {
+        "label": "Bølgeform som tidslinje",
+        "help": "Viser settet som bølgeform med tracklistemerkene. Beregnes én gang per fil med ffmpeg (ved første avspilling eller i analysen); ellers den enkle linjen."
       }
     },
     "search": {
@@ -1186,6 +1227,32 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
         "label": "Forespørsler per time",
         "help": "Sideforespørsler fra «Les inn alt» fordeles jevnt (120 = én hvert 30. s); vanlig avstand og backoff gjelder også. En planlagt kjøring (Oppgaveplanlegging) fortsetter med maks. så mange forespørsler."
       }
+    },
+    "loudness": {
+      "analyse_after_download": {
+        "label": "Analyser etter hver nedlasting",
+        "help": "Måler lydstyrken (EBU R128) og beregner bølgeformen rett etter en nedlasting – frakoblet, med lav prioritet, én fil om gangen."
+      },
+      "write_tags": {
+        "label": "Skriv ReplayGain-tagger",
+        "help": "Skriver REPLAYGAIN_TRACK_GAIN/PEAK (MP3, M4A) eller R128_TRACK_GAIN (Opus) i filen slik at andre spillere også kan bruke det. Lyden kodes aldri om."
+      },
+      "waveforms": {
+        "label": "Forhåndsberegn bølgeformer",
+        "help": "Beregner bølgeformer også under analysen. Av: først når et sett spilles for første gang."
+      }
+    },
+    "analysis": {
+      "title": "{done} av {total} filer analysert",
+      "counts": "{tagged} tagget · {waves} bølgeformer · {failed} mislyktes",
+      "help": "Kjører frakoblet over biblioteket, én fil om gangen med lav prioritet – uten nettverk, lyden forblir urørt. Kan avbrytes når som helst.",
+      "button": "Analyser nye filer",
+      "button_n": "Analyser {n} nye",
+      "all": "Analyser alt på nytt",
+      "all_title": "Mål hver fil på nytt (f.eks. etter at filer er byttet ut utenfor appen)",
+      "running": "Analyserer … {done} / {total}",
+      "no_ffmpeg_title": "ffmpeg mangler",
+      "no_ffmpeg": "Lydstyrke og bølgeformer trenger ffmpeg (bin\\ffmpeg.exe, installert av setup.ps1). Innstillinger › Vedlikehold viser status."
     }
   },
   "opt": {
@@ -1204,6 +1271,11 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
       "mode": {
         "internal": "Innebygd spiller (anbefalt)",
         "external": "Windows’ standardspiller"
+      },
+      "resume": {
+        "ask": "Spør",
+        "auto": "Automatisk",
+        "off": "Av"
       }
     },
     "download": {
@@ -1373,7 +1445,9 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "series_hidden": "Serien «{name}» skjult",
     "series_reset": "Innebygde serier gjenopprettet",
     "assign_done": "Festivaler tilordnet: {assigned} nye, {suggested} forslag",
-    "assign_cancelled": "Tilordningen ble avbrutt: {assigned} nye, {suggested} forslag"
+    "assign_cancelled": "Tilordningen ble avbrutt: {assigned} nye, {suggested} forslag",
+    "analysis_done": "Lydstyrke analysert: {n} filer ({failed} mislyktes)",
+    "analysis_cancelled": "Analysen ble avbrutt etter {n} filer"
   },
   "upd": {
     "available": "Versjon {v} er tilgjengelig",

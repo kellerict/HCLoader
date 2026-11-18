@@ -61,7 +61,8 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "results": "tulosta",
     "entries": "merkintää",
     "clock": "24 h",
-    "req_h": "pyynt./h"
+    "req_h": "pyynt./h",
+    "lufs": "LUFS"
   },
   "range": {
     "ge_sleep": "≥ vähimmäisarvo",
@@ -500,7 +501,11 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "group_festival": "Festivaali",
     "group_artist": "Artisti",
     "group_year": "Vuosi",
-    "group_unknown": "Tuntematon"
+    "group_unknown": "Tuntematon",
+    "continue": "Jatka kuuntelua",
+    "continue_title": "Jatka setistä ”{title}” kohdasta {t}",
+    "continue_left": "{t} jäljellä",
+    "continue_forget": "Poista listalta ”Jatka kuuntelua”"
   },
   "player": {
     "label": "Minisoitin",
@@ -527,7 +532,22 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "err_load": "Ei voi toistaa",
     "err_src": "Ei voi toistaa: virheellinen tiedoston osoite",
     "err_play": "Tiedostoa ei voi toistaa: {title}",
-    "external": "Avataan oletussoittimessa …"
+    "external": "Avataan oletussoittimessa …",
+    "norm_title": "Äänenvoimakkuus tasattu: {lufs} LUFS → tavoite {target} LUFS ({gain})",
+    "norm_capped": "vain hiljennetty – vahvistus vaatii äänimoottorin",
+    "resume_q": "Jatketaanko siitä, mihin jäit?",
+    "resume_at": "kohdassa {t}",
+    "resume": "Jatka",
+    "restart": "Alusta",
+    "resumed_at": "Jatkettu kohdasta {t}",
+    "sleep": "Uniajastin",
+    "sleep_min": "{n} min",
+    "sleep_end": "Tämän setin loppu",
+    "sleep_end_short": "loppu",
+    "sleep_off": "Poista käytöstä",
+    "sleep_on": "Uniajastin: pysähtyy {t} kuluttua",
+    "sleep_end_on": "Uniajastin: pysähtyy tämän setin lopussa",
+    "sleep_done": "Uniajastin: toisto pysäytetty"
   },
   "log": {
     "title": "Loki",
@@ -600,7 +620,8 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "schedule": "Aikataulu",
     "appearance": "Ulkoasu",
     "maintenance": "Ylläpito",
-    "festivals": "Festivaalit ja sarjat"
+    "festivals": "Festivaalit ja sarjat",
+    "playback": "Toisto"
   },
   "tabs_hint": {
     "general": "Sovelluksen perustoiminta.",
@@ -614,7 +635,8 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "schedule": "Milloin seuranta tarkistetaan automaattisesti – sovelluksessa ja Windowsin tehtävien ajoituksella.",
     "appearance": "Ulkoasu ja tuntuma. Muutokset esikatsellaan heti ja tulevat pysyviksi vasta tallennuksen jälkeen.",
     "maintenance": "Versiot, päivitykset, tietokanta.",
-    "festivals": "Tunnistaa festivaalin tai sarjan, vuoden, lavan ja setin tyypin tallennetuista otsikoista – ilman verkkoa, ilman yhtäkään lisäpyyntöä."
+    "festivals": "Tunnistaa festivaalin tai sarjan, vuoden, lavan ja setin tyypin tallennetuista otsikoista – ilman verkkoa, ilman yhtäkään lisäpyyntöä.",
+    "playback": "Sisäänrakennettu soitin, äänenvoimakkuuden tasaus, muistetut kohdat ja tiedostojesi offline-analyysi."
   },
   "set": {
     "default": "Oletus",
@@ -659,7 +681,10 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
       "reset": "Palautus",
       "detection": "Tunnistus",
       "series": "Sarjat",
-      "backfill": "Lue kaikki (kerran)"
+      "backfill": "Lue kaikki (kerran)",
+      "loudness": "Äänenvoimakkuus",
+      "memory": "Muisti ja aaltomuoto",
+      "analysis": "Analyysi (offline, ffmpeg)"
     },
     "general": {
       "language": {
@@ -683,6 +708,22 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
       "mode": {
         "label": "Toistotapa",
         "help": "Mitä kirjaston ▶ käyttää. Sisäänrakennettu soitin näyttää luvut hyppymerkkeinä ja jatkaa toistoa, kun vaihdat näkymää. Toinen vaihtoehto on valittavissa merkintäkohtaisesti valikosta."
+      },
+      "normalize": {
+        "label": "Tasaa äänenvoimakkuus",
+        "help": "Soittaa jokaisen setin samalla koetulla voimakkuudella (ReplayGain offline-analyysistä tai olemassa olevista tunnisteista). Ei koskaan säröydy: vahvistusta rajoittaa mitattu true peak."
+      },
+      "target_lufs": {
+        "label": "Tavoitevoimakkuus",
+        "help": "−18 LUFS on ReplayGain 2.0 -viitearvo. Korkeampi (esim. −14) = kovempi, mutta useampi setti osuu huippurajaansa."
+      },
+      "resume": {
+        "label": "Muista kohta",
+        "help": "Setti kerrallaan, ensimmäisten ja viimeisten 30 sekunnin ulkopuolella. ”Kysy” tarjoaa jatkamista, ”Automaattinen” jatkaa hiljaa. Kirjasto näyttää viisi viimeisintä keskeneräistä settiä."
+      },
+      "waveform": {
+        "label": "Aaltomuoto aikajanana",
+        "help": "Näyttää setin aaltomuotona tracklistin merkinnöillä. Lasketaan kerran tiedostoa kohden ffmpegillä (ensimmäisellä toistolla tai analyysissä); muuten tavallinen palkki."
       }
     },
     "search": {
@@ -1186,6 +1227,32 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
         "label": "Pyyntöjä tunnissa",
         "help": "”Lue kaikki” -toiminnon sivupyynnöt jaetaan tasaisesti (120 = yksi 30 s välein); tavallinen väli ja backoff pätevät myös. Ajastettu ajo (Tehtävien ajoitus) jatkaa enintään näin monella pyynnöllä."
       }
+    },
+    "loudness": {
+      "analyse_after_download": {
+        "label": "Analysoi jokaisen latauksen jälkeen",
+        "help": "Mittaa äänenvoimakkuuden (EBU R128) ja laskee aaltomuodon heti latauksen jälkeen – offline, matalalla prioriteetilla, tiedosto kerrallaan."
+      },
+      "write_tags": {
+        "label": "Kirjoita ReplayGain-tunnisteet",
+        "help": "Kirjoittaa REPLAYGAIN_TRACK_GAIN/PEAK (MP3, M4A) tai R128_TRACK_GAIN (Opus) tiedostoon, jotta muutkin soittimet voivat käyttää sitä. Ääntä ei koskaan koodata uudelleen."
+      },
+      "waveforms": {
+        "label": "Laske aaltomuodot etukäteen",
+        "help": "Laskee aaltomuodot myös analyysin aikana. Pois: vasta kun setti soitetaan ensimmäistä kertaa."
+      }
+    },
+    "analysis": {
+      "title": "{done}/{total} tiedostoa analysoitu",
+      "counts": "{tagged} tunnisteella · {waves} aaltomuotoa · {failed} epäonnistui",
+      "help": "Toimii offline koko kirjastolle, tiedosto kerrallaan matalalla prioriteetilla – ei verkkoa, ääni pysyy koskemattomana. Voidaan keskeyttää milloin tahansa.",
+      "button": "Analysoi uudet tiedostot",
+      "button_n": "Analysoi {n} uutta",
+      "all": "Analysoi kaikki uudelleen",
+      "all_title": "Mittaa jokainen tiedosto uudelleen (esim. kun tiedostoja on vaihdettu sovelluksen ulkopuolella)",
+      "running": "Analysoidaan … {done} / {total}",
+      "no_ffmpeg_title": "ffmpeg puuttuu",
+      "no_ffmpeg": "Äänenvoimakkuus ja aaltomuodot tarvitsevat ffmpegin (bin\\ffmpeg.exe, asennetaan setup.ps1:llä). Asetukset › Ylläpito näyttää tilan."
     }
   },
   "opt": {
@@ -1204,6 +1271,11 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
       "mode": {
         "internal": "Sisäänrakennettu soitin (suositus)",
         "external": "Windowsin oletussoitin"
+      },
+      "resume": {
+        "ask": "Kysy",
+        "auto": "Automaattinen",
+        "off": "Pois"
       }
     },
     "download": {
@@ -1373,7 +1445,9 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "series_hidden": "Sarja ”{name}” piilotettu",
     "series_reset": "Sisäänrakennetut sarjat palautettu",
     "assign_done": "Festivaalit kohdistettu: {assigned} uutta, {suggested} ehdotusta",
-    "assign_cancelled": "Kohdistus keskeytetty: {assigned} uutta, {suggested} ehdotusta"
+    "assign_cancelled": "Kohdistus keskeytetty: {assigned} uutta, {suggested} ehdotusta",
+    "analysis_done": "Äänenvoimakkuus analysoitu: {n} tiedostoa ({failed} epäonnistui)",
+    "analysis_cancelled": "Analyysi keskeytettiin {n} tiedoston jälkeen"
   },
   "upd": {
     "available": "Versio {v} saatavilla",

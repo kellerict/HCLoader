@@ -67,7 +67,8 @@
       max_downloads_per_run: 10, max_downloads_per_day: 25, max_searches_per_hour: 20,
       backoff_initial_hours: 6, backoff_max_hours: 48,
     },
-    player: { mode: 'internal' },
+    player: { mode: 'internal', normalize: true, target_lufs: -18, resume: 'ask', waveform: true },
+    loudness: { analyse_after_download: true, write_tags: true, waveforms: true },
     festivals: { detect: true, min_confidence: 0.65, year_from_upload_date: true, match_description: true, extra_stages: [], extra_set_types: [], collector_searches_per_hour: 10, collector_results_per_search: 10, collector_auto_confirm: 0.85 },
     schedule: { watchlist_interval_hours: 24, in_app_check: true, task_scheduler_enabled: false, task_time: '03:00', entries_per_source: 30 },
     watchlist: { backfill_max_entries: 2000, backfill_requests_per_hour: 120 },
@@ -163,6 +164,13 @@
     'maintenance.update_repo': { str: 1, required: 1 },
     'soundcloud.enabled': { bool: 1 },
     'player.mode': { oneOf: ['internal', 'external'] },
+    'player.normalize': { bool: 1 },
+    'player.target_lufs': { min: -30, max: -6 },
+    'player.resume': { oneOf: ['ask', 'auto', 'off'] },
+    'player.waveform': { bool: 1 },
+    'loudness.analyse_after_download': { bool: 1 },
+    'loudness.write_tags': { bool: 1 },
+    'loudness.waveforms': { bool: 1 },
   };
   /* Abschnitt «soundcloud» erbt die Schonungs-Felder (gleiche Grenzen und Meldungen wie «throttle»). */
   Object.keys(RULES).filter((k) => k.startsWith('throttle.')).forEach((k) => { RULES[k.replace('throttle.', 'soundcloud.')] = RULES[k]; });
@@ -1325,6 +1333,48 @@
     return toneUrl;
   }
 
+  /* ---------- v0.7.0 Lautheit, Wellenform, Gedächtnis ----------
+     Die Tonfolge dauert TONE_S; gemerkte Positionen stehen in echten Sekunden des Sets (Bibliothek) und werden
+     linear auf die Tonfolge umgerechnet – so zeigen «Weiterhören» und Player plausible Werte. */
+  const TONE_S = CHAPTERS.length * CHAPTER_S, MARGIN_S = 30, PEAK_N = 1600;
+  const NOT_ANALYSED = new Set(['tTerrNight1', 'nNightShift', 'dTerrMega25']);
+  const analysed = new Set();
+  const anState = { running: false, cancel: false, timer: 0, lastPass: null };
+  const PB = new Map([
+    ['gGabbClassM', { at: 4363, h: 1 }], ['kRawNation4', { at: 2470, h: 5 }], ['zZrhPod0006', { at: 1325, h: 26 }],
+    ['rIndoorCls2', { at: 3105, h: 49 }], ['cIndVol016', { at: 1980, h: 75 }], ['bBunkerSet2', { at: 5000, h: 98 }],
+  ].map(([id, x]) => [id, { position: x.at, updated: new Date(Date.now() - x.h * 3600000).toISOString() }]));
+  const seeded = (id) => { let h = 2166136261; for (let i = 0; i < id.length; i++) { h ^= id.charCodeAt(i); h = Math.imul(h, 16777619); } return () => { h = Math.imul(h ^ (h >>> 15), 2246822507) ^ Math.imul(h ^ (h >>> 13), 3266489909); return ((h >>>= 0) % 10000) / 10000; }; };
+  function loudnessOf(id) {
+    if (NOT_ANALYSED.has(id) && !analysed.has(id)) return null;
+    const r = seeded(id + ':lufs'), lufs = +(-6.4 - r() * 3.4).toFixed(1), tp = +(0.2 + r() * 1.3).toFixed(1);
+    return { lufs, true_peak: tp, gain: +(-18 - lufs).toFixed(2), peak: +Math.pow(10, tp / 20).toFixed(6), source: 'analysis' };
+  }
+  /** Hardstyle-artige Hüllkurve: pro Track Intro, Kick-Teil, Breakdown in der Mitte, Aufbau, Kick-Teil. */
+  function peaksOf(id) {
+    const r = seeded(id + ':peaks'), l = LIBRARY.find((x) => x.id === id) || {};
+    const tracks = l.has_cue ? CHAPTERS.length : 9 + Math.floor(r() * 10), out = new Array(PEAK_N);
+    for (let i = 0; i < PEAK_N; i++) {
+      const pos = (i / PEAK_N) * tracks, f = pos - Math.floor(pos);
+      let v = 0.86 + r() * 0.14;
+      if (f < 0.04) v *= 0.35 + f * 14; // Übergang
+      else if (f > 0.42 && f < 0.56) v *= 0.3 + 0.12 * Math.sin(i * 0.9) + r() * 0.08; // Breakdown
+      else if (f >= 0.56 && f < 0.62) v *= 0.45 + (f - 0.56) * 9; // Aufbau
+      if (i < 12) v *= i / 12;
+      if (i > PEAK_N - 18) v *= (PEAK_N - i) / 18;
+      out[i] = Math.max(0, Math.min(255, Math.round(v * 248)));
+    }
+    return out;
+  }
+  const hasPeaks = (id) => !NOT_ANALYSED.has(id) || analysed.has(id);
+  const realDur = (id) => { const l = LIBRARY.find((x) => x.id === id); return l ? l.duration : TONE_S; };
+  const resumeOn = () => settings.player.resume !== 'off';
+  function resumeFor(id) {
+    const x = PB.get(id), d = realDur(id);
+    if (!x || !resumeOn() || x.position < MARGIN_S || x.position > d - MARGIN_S) return null;
+    return { position: +((x.position / d) * TONE_S).toFixed(2), duration: TONE_S, updated: x.updated, real: x.position };
+  }
+
   /* ---------- API ---------- */
   /* ---------- App-Update (Selbst-Update, wie core/selfupdate.py) ---------- */
   /* Release-Notizen wie ein echtes GitHub-Release (CHANGELOG-Abschnitt + Signing-Hinweis der Release-Automatik). */
@@ -1918,9 +1968,73 @@
         if (l.missing) return { ok: false, error: 'File missing' };
         /* Kurze synthetische Tonfolge statt einer echten Datei: ein Abschnitt pro Kapitel. */
         const chapters = l.has_cue ? CHAPTERS.map(([title, performer], i) => ({ start: i * CHAPTER_S, title, performer })) : [];
-        return { ok: true, id, src: demoTone(), title: l.title, artist: l.artist, genre: l.genre, platform: l.platform || 'youtube', duration: CHAPTERS.length * CHAPTER_S, cover: null, chapters };
+        return { ok: true, id, src: demoTone(), title: l.title, artist: l.artist, genre: l.genre, platform: l.platform || 'youtube', duration: CHAPTERS.length * CHAPTER_S, cover: null, chapters,
+          loudness: loudnessOf(id), resume: resumeFor(id), peaks: hasPeaks(id) ? peaksOf(id) : null };
       });
     },
+    /* v0.7.0 Wellenform (lazy), Gedächtnis, Analyse-Durchlauf */
+    get_waveform(id) {
+      return later(30, () => {
+        const l = LIBRARY.find((x) => x.id === id);
+        if (!l || l.missing) return { ok: false, error: 'Entry is not in the library' };
+        if (hasPeaks(id)) return { ok: true, status: 'ready', peaks: peaksOf(id), duration: l.duration };
+        setTimeout(() => { analysed.add(id); emit('waveform', { id, ok: true, peaks: peaksOf(id), duration: l.duration, loudness: loudnessOf(id) }); }, 1400 * speed.factor);
+        return { ok: true, status: 'pending' };
+      });
+    },
+    save_position(id, position, duration) {
+      return later(10, () => {
+        if (!resumeOn()) return { ok: true, stored: false };
+        const d = realDur(id), real = ((+position || 0) / (+duration || TONE_S)) * d;
+        if (!(real >= MARGIN_S && real <= d - MARGIN_S)) { PB.delete(id); return { ok: true, stored: false }; }
+        PB.set(id, { position: Math.round(real), updated: new Date().toISOString() });
+        return { ok: true, stored: true };
+      });
+    },
+    forget_position: (id) => later(10, () => { PB.delete(id); return { ok: true }; }),
+    get_continue_listening(limit) {
+      return later(20, () => {
+        if (!resumeOn()) return { ok: true, items: [] };
+        const items = [...PB.entries()].map(([id, x]) => ({ id, x, l: LIBRARY.find((v) => v.id === id) }))
+          .filter((e) => e.l && !e.l.missing && e.x.position >= MARGIN_S && e.x.position <= e.l.duration - MARGIN_S)
+          .sort((a, b) => b.x.updated.localeCompare(a.x.updated))
+          .slice(0, Math.max(1, Math.min(20, +limit || 5)))
+          .map((e) => ({ id: e.id, position: e.x.position, duration: e.l.duration, updated: e.x.updated, title: e.l.title, artist: e.l.artist, genre: e.l.genre, platform: e.l.platform || 'youtube' }));
+        return { ok: true, items };
+      });
+    },
+    get_analysis_status: () => later(30, () => {
+      const lib = LIBRARY.filter((l) => !l.missing), done = lib.filter((l) => hasPeaks(l.id)).length;
+      return { total: lib.length, analysed: done, tagged: done, waveforms: done, failed: 0, pending: lib.length - done, last_pass: anState.lastPass, ffmpeg: true, running: anState.running };
+    }),
+    analyse_library(opts) {
+      return later(60, () => {
+        const scope = opts && opts.scope === 'all' ? 'all' : 'new';
+        if (anState.running) return { ok: true, started: false, running: true };
+        const todo = LIBRARY.filter((l) => !l.missing && (scope === 'all' || !hasPeaks(l.id)));
+        Object.assign(anState, { running: true, cancel: false });
+        emit('audio_analysis', { phase: 'start', scope });
+        pushLog('info', 'Analysing loudness and waveforms (offline, one file at a time) …');
+        let done = 0;
+        const total = todo.length;
+        const step = () => {
+          if (!anState.cancel && done < total) {
+            const l = todo[done++];
+            analysed.add(l.id);
+            emit('media_analysed', { id: l.id, ok: true, loudness: loudnessOf(l.id), peaks: true, tagged: true });
+            emit('audio_analysis', { phase: 'progress', scope, done, total, analysed: done, failed: 0 });
+          }
+          if (!anState.cancel && done < total) { anState.timer = setTimeout(step, 700 * speed.factor); return; }
+          anState.running = false;
+          if (!anState.cancel) anState.lastPass = new Date().toISOString();
+          pushLog('ok', `Loudness analysed: ${done} files, ${done} done, 0 failed`);
+          emit('audio_analysis', { phase: 'done', scope, ok: true, cancelled: anState.cancel, total, done, analysed: done, failed: 0 });
+        };
+        anState.timer = setTimeout(step, 300 * speed.factor);
+        return { ok: true, started: true, scope };
+      });
+    },
+    cancel_analyse_library: () => later(20, () => { anState.cancel = true; return { ok: true, running: anState.running }; }),
     play_external(id) {
       return later(60, () => {
         const l = LIBRARY.find((x) => x.id === id);

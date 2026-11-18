@@ -199,6 +199,10 @@ tr.leave td{transition:opacity 180ms;opacity:0}
 .player.enter{animation:playerIn 260ms var(--ease-out) backwards}
 .player.leave{transition:opacity 180ms ease-in,transform 180ms ease-in;opacity:0;transform:translateY(12px);pointer-events:none}
 .pl-list{animation:listUp 200ms var(--ease-out)}
+.pl-resume.enter{animation:resumeUp 220ms var(--ease-out)}
+@keyframes resumeUp{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translateX(-50%)}}
+.pl-seek.wave-in .pl-wave{animation:fadeIn 360ms ease-out}
+.pl-sleep.on.fading svg{animation:fadeIn 1s ease-in-out infinite alternate}
 .pl-track.swap span{animation:fadeIn 320ms ease-out}
 .player.playing .pl-play::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;box-shadow:0 0 14px var(--accent-glow);animation:kickGlow var(--beat) linear infinite}
 .player.playing .eqb i,tr.now:not(.paused) .eqb i,.lib-card.now:not(.paused) .eqb i{animation:eqBar calc(var(--beat) * 2) ease-in-out infinite alternate}

@@ -14,6 +14,10 @@
    Der Eintrag, der gerade läuft, ist markiert (Equalizer-Balken).
    Genre: Klick auf das Genre-Badge -> set_genre + retag (verschiebt die Datei in den Ordner des Genres).
 
+   Weiterhören (v0.7.0): Leiste über der Liste mit den zuletzt unfertig gehörten Sets (get_continue_listening, max. 5);
+   Klick spielt ab der gemerkten Stelle, ✕ vergisst sie (forget_position). Sichtbar ohne aktive Filter/Suche,
+   nicht in der Festival-Kachelansicht und nicht bei player.resume «off» bzw. Standardplayer.
+
    get_library() wird ohne Filter aufgerufen: gefiltert, sortiert und gruppiert wird hier
    (sofortige Reaktion, kein Roundtrip). Grosse Bibliotheken werden in Blöcken gezeichnet.
    ===================================================================== */
@@ -40,6 +44,8 @@
   const prefs = { view: 'list', sort: 'newest', group: 'none' };
   /* Festival-Ansicht: series null = Kacheln, Zahl = Serie, 'none' = ohne Zuordnung; edition null = neueste, 'all' = alle. */
   const nav = { series: null, edition: null };
+  let cont = []; // «Weiterhören»: [{id, position, duration, updated, …}]
+  let contSeq = 0;
 
   /* ---------- Einstellungen der Ansicht (bleiben über Neustarts erhalten) ---------- */
   function loadPrefs() {
@@ -298,7 +304,55 @@
       ? t('library.sub_shown', { n: util.fmtNum(all.length), total: util.fmtNum(items.length) })
       : t('library.sub', { n: util.fmtNum(items.length), count: items.length });
     $('#lib-clear', el).hidden = !filtersActive();
+    renderContinue(animate);
     if (animate) $$(tiles ? '.fest-tiles' : prefs.view === 'grid' ? '.lib-grid' : 'tbody', body).forEach((c) => fx.stagger(c));
+  }
+
+  /* ---------- Weiterhören (v0.7.0) ---------- */
+  const contOn = () => { const pl = HC.settings.values.player || {}; return pl.resume !== 'off' && pl.mode !== 'external'; };
+  function contItems() {
+    return cont.map((c) => Object.assign({}, items.find((l) => l.id === c.id) || {}, c)).filter((c) => c.title && !c.missing);
+  }
+  function renderContinue(animate) {
+    const box = $('#lib-continue', el), list = contItems();
+    const show = contOn() && list.length > 0 && !filtersActive() && !(prefs.group === 'festival' && nav.series == null);
+    box.hidden = !show;
+    if (!show) return;
+    box.innerHTML = `<div class="section-label cl-head">${I.resume}<span>${esc(t('library.continue'))}</span></div>
+      <div class="cl-row">${list.map((c) => {
+        const d = +c.duration || 0, p = d ? Math.min(1, Math.max(0, c.position / d)) : 0, playingNow = isNow(c) && now.playing;
+        return `<div class="cl-card${isNow(c) ? ' now' : ''}" data-cl="${esc(c.id)}" role="button" tabindex="0" style="--c:${HC.genres.color(c.genre)}"
+            title="${esc(t('library.continue_title', { title: c.title, t: util.fmtDur(c.position) }))}">
+          <div class="cl-art">${ui.thumb(c, 'cl-thumb')}</div><span class="cl-play">${playingNow ? ui.eq('on-cover') : I.play}</span></div>
+          <div class="cl-meta"><b>${esc(c.title)}</b><small>${esc(c.artist || '')}</small>
+            <span class="cl-time mono">${esc(util.fmtDur(c.position))}<span> · ${esc(t('library.continue_left', { t: util.fmtDur(Math.max(0, d - c.position)) }))}</span></span></div>
+          <button type="button" class="iconbtn cl-x" data-forget title="${esc(t('library.continue_forget'))}" aria-label="${esc(t('library.continue_forget'))}">${I.x}</button>
+          <i class="cl-bar"><i style="transform:scaleX(${p.toFixed(4)})"></i></i>
+        </div>`;
+      }).join('')}</div>`;
+    if (animate) fx.stagger($('.cl-row', box));
+  }
+  async function loadContinue() {
+    if (!contOn()) { cont = []; if (loaded) renderContinue(); return; }
+    const seq = ++contSeq;
+    const r = await HC.bridge.call('get_continue_listening', 5).catch(() => null);
+    if (seq !== contSeq || !r || !r.ok) return;
+    cont = Array.isArray(r.items) ? r.items : [];
+    if (loaded) renderContinue();
+  }
+  function onContinue(e) {
+    const card = e.target.closest('[data-cl]');
+    if (!card) return;
+    const c = contItems().find((x) => x.id === card.dataset.cl);
+    if (!c) return;
+    if (e.target.closest('[data-forget]')) {
+      cont = cont.filter((x) => x.id !== c.id);
+      renderContinue();
+      HC.bridge.safe('forget_position', c.id).then(loadContinue); // ein älteres Set rückt nach
+      return;
+    }
+    if (isNow(c)) { HC.player.toggle(); return; }
+    HC.player.play(c, { resume: true });
   }
 
   /* ---------- Kennzahlen ---------- */
@@ -380,6 +434,7 @@
     box.innerHTML = targetDown ? ui.notice('warn', `<b>${esc(t('library.target_down', { path: targetDown }))}</b><br>${esc(t('library.target_down_hint'))}`) : '';
   }
   async function refresh(animate, flashId) {
+    loadContinue();
     const [list] = await Promise.all([HC.bridge.safe('get_library'), HC.collector.preload()]);
     if (list) { items = list; loaded = true; }
     const st = list && items.some((l) => l.unknown) ? await HC.bridge.safe('get_library_status') : null;
@@ -599,7 +654,7 @@
           <button type="button" class="chip warnchip" id="lib-missing" title="${esc(t('library.missing_chip_title'))}" hidden>${I.warn}<span></span></button>
         </div>
       </div>
-      <div class="scroll" id="lib-scroll"><div id="lib-body"></div></div>
+      <div class="scroll" id="lib-scroll"><section class="lib-continue" id="lib-continue" aria-label="${esc(t('library.continue'))}" hidden></section><div id="lib-body"></div></div>
       <div class="collector" id="lib-collector" hidden></div>
       <div class="tracks" id="lib-tracks" hidden></div>`;
     paintControls();
@@ -662,6 +717,10 @@
       render(true);
     });
     $('#lib-missing', el).addEventListener('click', () => { onlyMissing = !onlyMissing; refilter(true); });
+    $('#lib-continue', el).addEventListener('click', onContinue);
+    $('#lib-continue', el).addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-cl]')) { e.preventDefault(); onContinue(e); } });
+    /* Position gemerkt/vergessen (Pause, Schliessen, Ende) -> Leiste nachladen. */
+    HC.bridge.on('resume_changed', util.debounce(() => { if (loaded && HC.app.current() === 'library') loadContinue(); }, 300));
     $('#lib-clear', el).addEventListener('click', clearFilters);
     $('#ls-genres', el).addEventListener('click', (e) => {
       const b = e.target.closest('.gstat');
@@ -705,12 +764,13 @@
       now = { id: d.id == null ? null : d.id, playing: !!d.playing };
       if (!loaded) return;
       [prev.id, now.id].filter((id, i, a) => id != null && a.indexOf(id) === i).forEach((id) => { const l = items.find((x) => x.id === id); if (l) repaint(l); });
+      if (cont.some((c) => c.id === prev.id || c.id === now.id)) renderContinue();
     });
     window.addEventListener('resize', util.debounce(() => { if (loaded && HC.app.current() === 'library') fixSpans(); }, 120));
     HC.bridge.on('done', (d) => { if (HC.app.current() === 'library') refresh(false, d.id); });
     /* «Festivals zuordnen» ist durch (Einstellungen): Zuordnungen neu laden. */
     HC.bridge.on('festival_assign', (d) => { if (d.phase === 'done' && loaded && HC.app.current() === 'library') refresh(); });
-    HC.bridge.on('settings_changed', () => { if (!loaded) return; fillSelects(); $('#ls-bar', el)._sig = null; renderStats(false); render(); });
+    HC.bridge.on('settings_changed', () => { if (!loaded) return; fillSelects(); $('#ls-bar', el)._sig = null; renderStats(false); render(); loadContinue(); });
   }
 
   HC.views.library = {
@@ -727,6 +787,6 @@
       if (C.active()) C.close(true);
       return refresh(changed);
     },
-    reset() { items = []; loaded = false; targetDown = null; limit = PAGE; onlyMissing = false; busy.clear(); nav.series = nav.edition = null; HC.collector.reset(); HC.tracks.reset(); },
+    reset() { items = []; cont = []; loaded = false; targetDown = null; limit = PAGE; onlyMissing = false; busy.clear(); nav.series = nav.edition = null; HC.collector.reset(); HC.tracks.reset(); },
   };
 })();

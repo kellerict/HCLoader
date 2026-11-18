@@ -63,7 +63,8 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "results": "rezultatų",
     "entries": "įrašų",
     "clock": "val.",
-    "req_h": "užkl./val."
+    "req_h": "užkl./val.",
+    "lufs": "LUFS"
   },
   "range": {
     "ge_sleep": "≥ minimumas",
@@ -528,7 +529,11 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "group_festival": "Festivalis",
     "group_artist": "Atlikėjas",
     "group_year": "Metai",
-    "group_unknown": "Nežinoma"
+    "group_unknown": "Nežinoma",
+    "continue": "Klausyti toliau",
+    "continue_title": "Tęsti „{title}“ nuo {t}",
+    "continue_left": "liko {t}",
+    "continue_forget": "Pašalinti iš „Klausyti toliau“"
   },
   "player": {
     "label": "Mini grotuvas",
@@ -557,7 +562,22 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "err_load": "Groti nepavyksta",
     "err_src": "Groti nepavyksta: neteisingas failo adresas",
     "err_play": "Failo groti nepavyksta: {title}",
-    "external": "Atidaroma numatytajame grotuve …"
+    "external": "Atidaroma numatytajame grotuve …",
+    "norm_title": "Garsumas suvienodintas: {lufs} LUFS → tikslas {target} LUFS ({gain})",
+    "norm_capped": "tik sumažinta – stiprinti reikia garso variklio",
+    "resume_q": "Tęsti nuo ten, kur baigėte?",
+    "resume_at": "ties {t}",
+    "resume": "Tęsti",
+    "restart": "Nuo pradžios",
+    "resumed_at": "Tęsiama nuo {t}",
+    "sleep": "Miego laikmatis",
+    "sleep_min": "{n} min.",
+    "sleep_end": "Šio seto pabaiga",
+    "sleep_end_short": "pabaiga",
+    "sleep_off": "Išjungti",
+    "sleep_on": "Laikmatis: sustos po {t}",
+    "sleep_end_on": "Laikmatis: sustos šio seto pabaigoje",
+    "sleep_done": "Laikmatis: atkūrimas sustabdytas"
   },
   "log": {
     "title": "Žurnalas",
@@ -636,7 +656,8 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "schedule": "Tvarkaraštis",
     "appearance": "Išvaizda",
     "maintenance": "Priežiūra",
-    "festivals": "Festivaliai ir serijos"
+    "festivals": "Festivaliai ir serijos",
+    "playback": "Atkūrimas"
   },
   "tabs_hint": {
     "general": "Pagrindinis programos elgesys.",
@@ -650,7 +671,8 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "schedule": "Kada stebimi šaltiniai tikrinami automatiškai – programoje ir per „Windows“ užduočių planuoklį.",
     "appearance": "Išvaizda ir pojūtis. Pakeitimai matomi iškart ir tampa nuolatiniai tik po išsaugojimo.",
     "maintenance": "Versijos, naujinimai, duomenų bazė.",
-    "festivals": "Atpažįsta festivalį ar seriją, metus, sceną ir seto tipą iš išsaugotų pavadinimų – neprisijungus, be nė vienos papildomos užklausos."
+    "festivals": "Atpažįsta festivalį ar seriją, metus, sceną ir seto tipą iš išsaugotų pavadinimų – neprisijungus, be nė vienos papildomos užklausos.",
+    "playback": "Integruotas grotuvas, garsumo suvienodinimas, įsimintos pozicijos ir jūsų failų analizė neprisijungus."
   },
   "set": {
     "default": "Numatyta",
@@ -699,7 +721,10 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
       "reset": "Atstatymas",
       "detection": "Atpažinimas",
       "series": "Serijos",
-      "backfill": "Nuskaityti viską (vieną kartą)"
+      "backfill": "Nuskaityti viską (vieną kartą)",
+      "loudness": "Garsumas",
+      "memory": "Atmintis ir bangos forma",
+      "analysis": "Analizė (neprisijungus, ffmpeg)"
     },
     "general": {
       "language": {
@@ -723,6 +748,22 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
       "mode": {
         "label": "Groti naudojant",
         "help": "Ką naudoja ▶ bibliotekoje. Integruotas grotuvas rodo skyrius kaip šuolio žymes ir toliau groja keičiant rodinius. Kita parinktis pasiekiama kiekvieno įrašo meniu."
+      },
+      "normalize": {
+        "label": "Suvienodinti garsumą",
+        "help": "Kiekvieną setą groja vienodu suvokiamu garsumu (ReplayGain iš analizės neprisijungus arba esamų žymų). Niekada neiškraipo: stiprinimą riboja išmatuotas true peak."
+      },
+      "target_lufs": {
+        "label": "Tikslinis garsumas",
+        "help": "−18 LUFS – ReplayGain 2.0 etalonas. Didesnis (pvz., −14) = garsiau, bet daugiau setų pasiekia savo piko ribą."
+      },
+      "resume": {
+        "label": "Įsiminti poziciją",
+        "help": "Kiekvienam setui, už pirmų ir paskutinių 30 sekundžių ribų. „Klausti“ siūlo tęsti, „Automatiškai“ tęsia tyliai. Biblioteka rodo penkis paskutinius nebaigtus setus."
+      },
+      "waveform": {
+        "label": "Bangos forma kaip laiko juosta",
+        "help": "Rodo setą kaip bangos formą su grojaraščio žymomis. Apskaičiuojama vieną kartą kiekvienam failui su ffmpeg (pirmą kartą grojant arba analizės metu); kitaip – paprasta juosta."
       }
     },
     "search": {
@@ -1228,6 +1269,32 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
         "label": "Užklausų per valandą",
         "help": "„Nuskaityti viską“ puslapių užklausos paskirstomos tolygiai (120 = viena kas 30 s); taip pat galioja įprastas intervalas ir backoff. Suplanuotas paleidimas (Užduočių planuoklis) tęsia daugiausia tiek užklausų."
       }
+    },
+    "loudness": {
+      "analyse_after_download": {
+        "label": "Analizuoti po kiekvieno atsisiuntimo",
+        "help": "Išmatuoja garsumą (EBU R128) ir apskaičiuoja bangos formą iškart po atsisiuntimo – neprisijungus, žemu prioritetu, po vieną failą."
+      },
+      "write_tags": {
+        "label": "Rašyti ReplayGain žymas",
+        "help": "Įrašo REPLAYGAIN_TRACK_GAIN/PEAK (MP3, M4A) arba R128_TRACK_GAIN (Opus) į failą, kad ir kiti grotuvai galėtų jas naudoti. Garsas niekada neperkoduojamas."
+      },
+      "waveforms": {
+        "label": "Iš anksto skaičiuoti bangos formas",
+        "help": "Bangos formas skaičiuoja ir analizės metu. Išjungta: tik kai setas grojamas pirmą kartą."
+      }
+    },
+    "analysis": {
+      "title": "Išanalizuota failų: {done} iš {total}",
+      "counts": "su žymomis {tagged} · bangos formų {waves} · nepavyko {failed}",
+      "help": "Veikia neprisijungus visai bibliotekai, po vieną failą žemu prioritetu – be tinklo, garsas lieka nepakitęs. Galima bet kada atšaukti.",
+      "button": "Analizuoti naujus failus",
+      "button_n": "Analizuoti naujų: {n}",
+      "all": "Analizuoti viską iš naujo",
+      "all_title": "Iš naujo išmatuoti kiekvieną failą (pvz., pakeitus failus ne programoje)",
+      "running": "Analizuojama … {done} / {total}",
+      "no_ffmpeg_title": "Trūksta ffmpeg",
+      "no_ffmpeg": "Garsumui ir bangos formoms reikia ffmpeg (bin\\ffmpeg.exe, įdiegia setup.ps1). Nustatymai › Priežiūra rodo būseną."
     }
   },
   "opt": {
@@ -1246,6 +1313,11 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
       "mode": {
         "internal": "Integruotas grotuvas (rekomenduojama)",
         "external": "Numatytasis „Windows“ grotuvas"
+      },
+      "resume": {
+        "ask": "Klausti",
+        "auto": "Automatiškai",
+        "off": "Išjungta"
       }
     },
     "download": {
@@ -1435,7 +1507,9 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "series_hidden": "Serija „{name}“ paslėpta",
     "series_reset": "Integruotos serijos atkurtos",
     "assign_done": "Festivaliai priskirti: naujų {assigned}, pasiūlymų {suggested}",
-    "assign_cancelled": "Priskyrimas nutrauktas: naujų {assigned}, pasiūlymų {suggested}"
+    "assign_cancelled": "Priskyrimas nutrauktas: naujų {assigned}, pasiūlymų {suggested}",
+    "analysis_done": "Garsumas išanalizuotas: failų {n} (nepavyko {failed})",
+    "analysis_cancelled": "Analizė atšaukta po {n} failų"
   },
   "upd": {
     "available": "Yra versija {v}",

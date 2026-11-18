@@ -61,7 +61,8 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "results": "tulemust",
     "entries": "kirjet",
     "clock": "kell",
-    "req_h": "päring./h"
+    "req_h": "päring./h",
+    "lufs": "LUFS"
   },
   "range": {
     "ge_sleep": "≥ miinimum",
@@ -500,7 +501,11 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "group_festival": "Festival",
     "group_artist": "Artist",
     "group_year": "Aasta",
-    "group_unknown": "Teadmata"
+    "group_unknown": "Teadmata",
+    "continue": "Jätka kuulamist",
+    "continue_title": "Jätka „{title}“ kohalt {t}",
+    "continue_left": "jäänud {t}",
+    "continue_forget": "Eemalda loendist „Jätka kuulamist“"
   },
   "player": {
     "label": "Minipleier",
@@ -527,7 +532,22 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "err_load": "Esitamine ebaõnnestus",
     "err_src": "Esitamine ebaõnnestus: vigane faili aadress",
     "err_play": "Faili ei saa esitada: {title}",
-    "external": "Avamine vaikimisi esitajas …"
+    "external": "Avamine vaikimisi esitajas …",
+    "norm_title": "Valjus ühtlustatud: {lufs} LUFS → siht {target} LUFS ({gain})",
+    "norm_capped": "ainult vaigistatud – võimendamiseks on vaja helimootorit",
+    "resume_q": "Kas jätkata sealt, kus pooleli jäi?",
+    "resume_at": "kohal {t}",
+    "resume": "Jätka",
+    "restart": "Algusest",
+    "resumed_at": "Jätkatud kohalt {t}",
+    "sleep": "Unetaimer",
+    "sleep_min": "{n} min",
+    "sleep_end": "Selle seti lõpp",
+    "sleep_end_short": "lõpp",
+    "sleep_off": "Lülita välja",
+    "sleep_on": "Taimer: peatub {t} pärast",
+    "sleep_end_on": "Taimer: peatub selle seti lõpus",
+    "sleep_done": "Taimer: taasesitus peatatud"
   },
   "log": {
     "title": "Logi",
@@ -600,7 +620,8 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "schedule": "Ajakava",
     "appearance": "Välimus",
     "maintenance": "Hooldus",
-    "festivals": "Festivalid ja sarjad"
+    "festivals": "Festivalid ja sarjad",
+    "playback": "Taasesitus"
   },
   "tabs_hint": {
     "general": "Rakenduse põhikäitumine.",
@@ -614,7 +635,8 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "schedule": "Millal jälgitavaid allikaid automaatselt kontrollitakse – rakenduses ja Windowsi tegumiplaanija kaudu.",
     "appearance": "Välimus ja tunnetus. Muudatused on kohe eelvaates ja jäävad püsima alles pärast salvestamist.",
     "maintenance": "Versioonid, uuendused, andmebaas.",
-    "festivals": "Tuvastab salvestatud pealkirjadest festivali või sarja, aasta, lava ja seti liigi – võrguühenduseta, ilma ühegi lisapäringuta."
+    "festivals": "Tuvastab salvestatud pealkirjadest festivali või sarja, aasta, lava ja seti liigi – võrguühenduseta, ilma ühegi lisapäringuta.",
+    "playback": "Sisseehitatud mängija, valjuse ühtlustamine, meelde jäetud asukohad ja failide võrguta analüüs."
   },
   "set": {
     "default": "Vaikimisi",
@@ -659,7 +681,10 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
       "reset": "Lähtestamine",
       "detection": "Tuvastamine",
       "series": "Sarjad",
-      "backfill": "Loe kõik sisse (üks kord)"
+      "backfill": "Loe kõik sisse (üks kord)",
+      "loudness": "Valjus",
+      "memory": "Mälu ja lainekuju",
+      "analysis": "Analüüs (võrguta, ffmpeg)"
     },
     "general": {
       "language": {
@@ -683,6 +708,22 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
       "mode": {
         "label": "Esita rakendusega",
         "help": "Mida kasutab ▶ kogus. Sisseehitatud pleier näitab peatükke hüppemärkidena ja jätkab mängimist vaadete vahetamisel. Teine valik on iga kirje menüüs."
+      },
+      "normalize": {
+        "label": "Ühtlusta valjust",
+        "help": "Mängib iga seti sama tajutava valjusega (ReplayGain võrguta analüüsist või olemasolevatest siltidest). Ei moonuta kunagi: võimendust piirab mõõdetud true peak."
+      },
+      "target_lufs": {
+        "label": "Sihtvaljus",
+        "help": "−18 LUFS on ReplayGain 2.0 võrdlustase. Kõrgem (nt −14) = valjem, kuid rohkem sette jõuab oma tipupiirini."
+      },
+      "resume": {
+        "label": "Jäta asukoht meelde",
+        "help": "Iga seti kohta, väljaspool esimest ja viimast 30 sekundit. „Küsi“ pakub jätkamist, „Automaatne“ jätkab vaikselt. Kogu näitab viit viimast lõpetamata setti."
+      },
+      "waveform": {
+        "label": "Lainekuju ajaribana",
+        "help": "Näitab setti lainekujuna koos lugude loendi märkidega. Arvutatakse ffmpegiga üks kord faili kohta (esimesel esitusel või analüüsis); muidu lihtne riba."
       }
     },
     "search": {
@@ -1186,6 +1227,32 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
         "label": "Päringuid tunnis",
         "help": "„Loe kõik sisse” lehekülje päringud jaotatakse ühtlaselt (120 = üks iga 30 s järel); kehtivad ka tavaline vahe ja backoff. Ajastatud käivitus (Tööplaanur) jätkab kuni nii mitme päringuga."
       }
+    },
+    "loudness": {
+      "analyse_after_download": {
+        "label": "Analüüsi pärast igat allalaadimist",
+        "help": "Mõõdab valjuse (EBU R128) ja arvutab lainekuju kohe pärast allalaadimist – võrguta, madala prioriteediga, üks fail korraga."
+      },
+      "write_tags": {
+        "label": "Kirjuta ReplayGaini sildid",
+        "help": "Kirjutab faili REPLAYGAIN_TRACK_GAIN/PEAK (MP3, M4A) või R128_TRACK_GAIN (Opus), et ka teised mängijad saaksid seda kasutada. Heli ei kodeerita kunagi ümber."
+      },
+      "waveforms": {
+        "label": "Arvuta lainekujud ette",
+        "help": "Arvutab lainekujud ka analüüsi ajal. Väljas: alles siis, kui setti esimest korda mängitakse."
+      }
+    },
+    "analysis": {
+      "title": "Analüüsitud {done} faili {total}-st",
+      "counts": "{tagged} sildiga · {waves} lainekuju · {failed} ebaõnnestus",
+      "help": "Töötab võrguta kogu kogu peal, üks fail korraga madala prioriteediga – ilma võrguta, heli jääb puutumata. Saab igal ajal katkestada.",
+      "button": "Analüüsi uued failid",
+      "button_n": "Analüüsi {n} uut",
+      "all": "Analüüsi kõik uuesti",
+      "all_title": "Mõõda iga fail uuesti (nt pärast failide asendamist väljaspool rakendust)",
+      "running": "Analüüsin … {done} / {total}",
+      "no_ffmpeg_title": "ffmpeg puudub",
+      "no_ffmpeg": "Valjus ja lainekujud vajavad ffmpegi (bin\\ffmpeg.exe, paigaldab setup.ps1). Seaded › Hooldus näitab olekut."
     }
   },
   "opt": {
@@ -1204,6 +1271,11 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
       "mode": {
         "internal": "Sisseehitatud pleier (soovitatav)",
         "external": "Windowsi vaikimisi pleier"
+      },
+      "resume": {
+        "ask": "Küsi",
+        "auto": "Automaatne",
+        "off": "Väljas"
       }
     },
     "download": {
@@ -1373,7 +1445,9 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "series_hidden": "Sari „{name}“ peidetud",
     "series_reset": "Sisseehitatud sarjad taastatud",
     "assign_done": "Festivalid määratud: {assigned} uut, {suggested} soovitust",
-    "assign_cancelled": "Määramine katkestati: {assigned} uut, {suggested} soovitust"
+    "assign_cancelled": "Määramine katkestati: {assigned} uut, {suggested} soovitust",
+    "analysis_done": "Valjus analüüsitud: {n} faili ({failed} ebaõnnestus)",
+    "analysis_cancelled": "Analüüs katkestati pärast {n} faili"
   },
   "upd": {
     "available": "Saadaval on versioon {v}",

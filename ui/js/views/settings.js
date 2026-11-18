@@ -28,6 +28,7 @@
      {h: key} = Zwischenüberschrift, {custom: name, arg} = Sonderblock
      Felder, die das Backend (noch) nicht kennt (kein Standardwert), werden nicht gezeigt.          */
   const SC_ON = (w) => !!(w.soundcloud && w.soundcloud.enabled);
+  const PL_IN = (w) => !w.player || w.player.mode !== 'external';
   const TABS = [
     { id: 'general', fields: [
       { k: 'general.language', type: 'select', options: ['auto', ...HC.i18n.SUPPORTED],
@@ -35,8 +36,21 @@
       { k: 'general.start_view', type: 'select', options: ['discover', 'inbox', 'watchlist', 'downloads', 'library', 'log'], optLabel: (v) => t('nav.' + v) },
       { k: 'general.log_level', type: 'select', options: ['DEBUG', 'INFO', 'WARNING', 'ERROR'] },
       { k: 'general.confirm_delete', type: 'bool' },
-      { h: 'set.h.playback' },
+    ] },
+    /* v0.7.0: eigener Tab «Wiedergabe» (Player, Lautheit, Gedächtnis, Wellenform, Analyse) */
+    { id: 'playback', fields: [
       { k: 'player.mode', type: 'seg', options: ['internal', 'external'] },
+      { h: 'set.h.loudness' },
+      { k: 'player.normalize', type: 'bool', enabled: PL_IN },
+      { k: 'player.target_lufs', type: 'float', min: -30, max: -6, unit: 'unit.lufs', enabled: (w) => PL_IN(w) && w.player.normalize },
+      { h: 'set.h.memory' },
+      { k: 'player.resume', type: 'seg', options: ['ask', 'auto', 'off'], enabled: PL_IN },
+      { k: 'player.waveform', type: 'bool', enabled: PL_IN },
+      { h: 'set.h.analysis' },
+      { custom: 'analysis' },
+      { k: 'loudness.analyse_after_download', type: 'bool' },
+      { k: 'loudness.write_tags', type: 'bool' },
+      { k: 'loudness.waveforms', type: 'bool' },
     ] },
     { id: 'filters', fields: [
       { h: 'set.h.search' },
@@ -194,7 +208,7 @@
   let cur = 'general';
   let genreKeys = []; // stabile Schlüssel für die Genre-Zeilen (FLIP)
   let gk = 0;
-  const cache = { task: null, versions: null, blacklist: null, poTest: null, update: null, before: null, restart: false, backups: [], freshBackup: '', fest: null, assign: null, series: null, seriesHidden: false };
+  const cache = { task: null, versions: null, blacklist: null, poTest: null, update: null, before: null, restart: false, backups: [], freshBackup: '', fest: null, assign: null, series: null, seriesHidden: false, analysis: null, anRun: null };
 
   const isDirtyKey = (k) => !eq(get(work, k), get(saved, k));
   const dirtyKeys = () => [...new Set(TABS.flatMap(tabKeys))].filter(isDirtyKey); // ein Feld kann in zwei Tabs stehen
@@ -723,6 +737,51 @@
       });
     },
 
+    /* ---------- Wiedergabe (v0.7.0): Stand der Analyse + «Lautheit & Wellenform analysieren» ---------- */
+    /* analyse_library / cancel_analyse_library, Fortschritt: Event audio_analysis */
+    analysis(host) {
+      const paint = () => {
+        const s = cache.analysis, a = cache.anRun;
+        if (!s) { host.innerHTML = box('off', t('common.loading'), '&nbsp;', '', '', 'off'); return; }
+        const running = a ? !!a.running : !!s.running;
+        const pct = a && a.total ? Math.round(((a.done || 0) / a.total) * 100) : 0;
+        if (!s.ffmpeg) {
+          host.innerHTML = box('warn', esc(t('set.analysis.no_ffmpeg_title')), esc(t('set.analysis.no_ffmpeg')), '', '', 'warn');
+          return;
+        }
+        const detail = `${esc(t('set.analysis.counts', { tagged: util.fmtNum(s.tagged), waves: util.fmtNum(s.waveforms), failed: util.fmtNum(s.failed) }))} · ${t('set.fest_status.last')}: <b>${esc(s.last_pass ? util.fmtWhen(s.last_pass) : t('fmt.never'))}</b><br>${esc(t('set.analysis.help'))}`;
+        const actions = running
+          ? `<button class="btn sm danger" data-an="cancel"${a && a.cancelling ? ' disabled' : ''}>${I.x}${t('common.cancel')}</button>`
+          : `<button class="btn sm primary" data-an="new"${s.total ? '' : ' disabled'}>${I.wave}${esc(s.pending ? t('set.analysis.button_n', { n: util.fmtNum(s.pending) }) : t('set.analysis.button'))}</button>
+             <button class="btn sm ghost" data-an="all"${s.total ? '' : ' disabled'} title="${esc(t('set.analysis.all_title'))}">${esc(t('set.analysis.all'))}</button>`;
+        const res = a && a.result;
+        const extra = running
+          ? `<div class="fest-prog"><div class="progress${a && a.total ? '' : ' indet'}"><div class="bar kick" style="width:${pct}%;--p:${pct}"></div></div><span class="unit">${esc(t('set.analysis.running', { done: util.fmtNum((a && a.done) || 0), total: a && a.total ? util.fmtNum(a.total) : '…' }))}</span></div>`
+          : res ? ui.notice(res.ok === false ? 'error' : res.cancelled ? 'warn' : 'ok', esc(res.ok === false ? res.error || t('err.generic') : t(res.cancelled ? 'toast.analysis_cancelled' : 'toast.analysis_done', { n: res.analysed || 0, failed: res.failed || 0 }))) : '';
+        host.innerHTML = box(running ? 'warn' : s.pending ? 'off' : 'ok', esc(t('set.analysis.title', { done: util.fmtNum(s.analysed), total: util.fmtNum(s.total) })), detail, actions, extra, running ? 'warn blink' : s.pending ? 'off' : '');
+      };
+      const load = async () => { const s = await HC.bridge.safe('get_analysis_status'); if (s) { cache.analysis = s; if (!s.running && cache.anRun && cache.anRun.running) cache.anRun = null; if (host.isConnected) paint(); } };
+      host._paint = paint;
+      host._load = load;
+      host.addEventListener('click', async (e) => {
+        const b = e.target.closest('[data-an]');
+        if (!b || b.disabled) return;
+        if (b.dataset.an === 'cancel') {
+          if (cache.anRun) cache.anRun.cancelling = true;
+          paint();
+          await HC.bridge.safe('cancel_analyse_library');
+          return;
+        }
+        ui.busy(b, true);
+        const r = await HC.bridge.safe('analyse_library', { scope: b.dataset.an });
+        if (r && r.ok) { if (!cache.anRun || !cache.anRun.running) cache.anRun = { running: true, done: 0, total: 0 }; }
+        else if (r) ui.toast(r.error || t('err.generic'), 'err');
+        paint();
+      });
+      paint();
+      load();
+    },
+
     /* ---------- Festivals & Serien (v0.3.0) ---------- */
     /* Stand der Zuordnung + «Festivals jetzt zuordnen» (assign_festivals, Fortschritt: Event festival_assign) */
     festStatus(host) {
@@ -1138,6 +1197,18 @@
       if (HC.app.current() === 'settings' && e.ctrlKey && e.key.toLowerCase() === 's') { e.preventDefault(); if (!$('#btn-save', el).disabled) save(); }
     });
     HC.bridge.on('log', onUpdateLog);
+    /* v0.7.0 «Lautheit & Wellenform analysieren»: Fortschritt in den Tab, Ergebnis als Toast. */
+    HC.bridge.on('audio_analysis', (d) => {
+      const host = $('[data-custom=analysis]', el);
+      if (d.phase === 'start' || d.phase === 'progress') cache.anRun = Object.assign(cache.anRun && cache.anRun.running ? cache.anRun : { running: true, done: 0, total: 0 }, d.done != null ? { done: d.done } : {}, d.total != null ? { total: d.total } : {});
+      else {
+        cache.anRun = { running: false, result: d };
+        if (d.phase === 'error' || d.ok === false) ui.toast(d.error || t('err.generic'), 'err');
+        else ui.toast(t(d.cancelled ? 'toast.analysis_cancelled' : 'toast.analysis_done', { n: d.analysed || 0, failed: d.failed || 0 }), d.cancelled ? 'warn' : 'ok', 5000);
+        if (host && host._load) host._load();
+      }
+      if (host && host._paint) host._paint();
+    });
     /* «Festivals zuordnen»: Fortschritt in den Tab, Ergebnis als Toast (auch wenn ein anderer Tab offen ist). */
     HC.bridge.on('festival_assign', (d) => {
       const host = $('[data-custom=festStatus]', el);
@@ -1161,5 +1232,5 @@
     render();
   }
 
-  HC.views.settings = { init, show, reset() { saved = null; Object.assign(cache, { task: null, versions: null, blacklist: null, poTest: null, update: null, before: null, restart: false, backups: [], freshBackup: '', fest: null, assign: null, series: null, seriesHidden: false }); } };
+  HC.views.settings = { init, show, reset() { saved = null; Object.assign(cache, { task: null, versions: null, blacklist: null, poTest: null, update: null, before: null, restart: false, backups: [], freshBackup: '', fest: null, assign: null, series: null, seriesHidden: false, analysis: null, anRun: null }); } };
 })();

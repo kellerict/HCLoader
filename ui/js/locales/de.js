@@ -61,7 +61,8 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "results": "Treffer",
     "entries": "Einträge",
     "clock": "Uhr",
-    "req_h": "Anfr./h"
+    "req_h": "Anfr./h",
+    "lufs": "LUFS"
   },
   "range": {
     "ge_sleep": "≥ Minimum",
@@ -500,7 +501,11 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "group_festival": "Festival",
     "group_artist": "Artist",
     "group_year": "Jahr",
-    "group_unknown": "Unbekannt"
+    "group_unknown": "Unbekannt",
+    "continue": "Weiterhören",
+    "continue_title": "«{title}» bei {t} fortsetzen",
+    "continue_left": "noch {t}",
+    "continue_forget": "Aus «Weiterhören» entfernen"
   },
   "player": {
     "label": "Mini-Player",
@@ -527,7 +532,22 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "err_load": "Abspielen nicht möglich",
     "err_src": "Abspielen nicht möglich: ungültige Dateiadresse",
     "err_play": "Die Datei kann nicht abgespielt werden: {title}",
-    "external": "Wird im Standardplayer geöffnet …"
+    "external": "Wird im Standardplayer geöffnet …",
+    "norm_title": "Lautheit angeglichen: {lufs} LUFS → Ziel {target} LUFS ({gain})",
+    "norm_capped": "nur abgesenkt – Anheben braucht die Audio-Engine",
+    "resume_q": "Dort weiterhören, wo du aufgehört hast?",
+    "resume_at": "bei {t}",
+    "resume": "Fortsetzen",
+    "restart": "Von vorn",
+    "resumed_at": "Fortgesetzt bei {t}",
+    "sleep": "Schlaf-Timer",
+    "sleep_min": "{n} Min.",
+    "sleep_end": "Ende dieses Sets",
+    "sleep_end_short": "Ende",
+    "sleep_off": "Ausschalten",
+    "sleep_on": "Schlaf-Timer: stoppt in {t}",
+    "sleep_end_on": "Schlaf-Timer: stoppt am Ende dieses Sets",
+    "sleep_done": "Schlaf-Timer: Wiedergabe gestoppt"
   },
   "log": {
     "title": "Protokoll",
@@ -600,7 +620,8 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "schedule": "Zeitplan",
     "appearance": "Darstellung",
     "maintenance": "Wartung",
-    "festivals": "Festivals & Serien"
+    "festivals": "Festivals & Serien",
+    "playback": "Wiedergabe"
   },
   "tabs_hint": {
     "general": "Grundlegendes Verhalten der App.",
@@ -614,7 +635,8 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "schedule": "Wann die Watchlist automatisch geprüft wird – in der App und über die Windows-Aufgabenplanung.",
     "appearance": "Look & Feel. Änderungen sind sofort als Vorschau sichtbar und gelten erst nach dem Speichern dauerhaft.",
     "maintenance": "Versionen, Updates, Datenbank.",
-    "festivals": "Erkennt Festival oder Serie, Jahr, Bühne und Set-Art aus den gespeicherten Titeln – offline, ohne eine einzige Zusatzanfrage."
+    "festivals": "Erkennt Festival oder Serie, Jahr, Bühne und Set-Art aus den gespeicherten Titeln – offline, ohne eine einzige Zusatzanfrage.",
+    "playback": "Eingebauter Player, Lautheitsangleichung, gemerkte Positionen und die Offline-Analyse deiner Dateien."
   },
   "set": {
     "default": "Standard",
@@ -659,7 +681,10 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
       "reset": "Zurücksetzen",
       "detection": "Erkennung",
       "series": "Serien",
-      "backfill": "Alles einlesen (einmalig)"
+      "backfill": "Alles einlesen (einmalig)",
+      "loudness": "Lautheit",
+      "memory": "Gedächtnis & Wellenform",
+      "analysis": "Analyse (offline, ffmpeg)"
     },
     "general": {
       "start_view": {
@@ -683,6 +708,22 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
       "mode": {
         "label": "Abspielen mit",
         "help": "Womit ▶ in der Bibliothek abspielt. Der eingebaute Player zeigt Kapitel als Sprungmarken und spielt beim Ansichtswechsel weiter. Die andere Variante steht pro Eintrag im Menü."
+      },
+      "normalize": {
+        "label": "Lautheit angleichen",
+        "help": "Spielt jedes Set gleich laut (ReplayGain aus der Offline-Analyse oder vorhandenen Tags). Übersteuert nie: die Verstärkung ist durch den gemessenen True Peak begrenzt."
+      },
+      "target_lufs": {
+        "label": "Ziel-Lautheit",
+        "help": "−18 LUFS ist die ReplayGain-2.0-Referenz. Höher (z. B. −14) = lauter, aber mehr Sets stossen an ihre Peak-Grenze."
+      },
+      "resume": {
+        "label": "Position merken",
+        "help": "Pro Set, ausserhalb der ersten und letzten 30 Sekunden. «Nachfragen» bietet das Fortsetzen an, «Automatisch» setzt still fort. Die Bibliothek zeigt die letzten fünf unfertigen Sets."
+      },
+      "waveform": {
+        "label": "Wellenform als Zeitleiste",
+        "help": "Zeigt das Set als Wellenform mit den Tracklist-Marken. Wird pro Datei einmal mit ffmpeg berechnet (beim ersten Abspielen oder in der Analyse); sonst der einfache Balken."
       }
     },
     "search": {
@@ -1186,6 +1227,32 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
         "label": "Anfragen pro Stunde",
         "help": "Seiten-Anfragen von «Alles einlesen» werden gleichmässig verteilt (120 = alle 30 s); der normale Abstand und der Backoff gelten zusätzlich. Ein geplanter Lauf (Aufgabenplanung) macht höchstens so viele Anfragen weiter."
       }
+    },
+    "loudness": {
+      "analyse_after_download": {
+        "label": "Nach jedem Download analysieren",
+        "help": "Misst die Lautheit (EBU R128) und berechnet die Wellenform direkt nach einem Download – offline, mit niedriger Priorität, eine Datei nach der anderen."
+      },
+      "write_tags": {
+        "label": "ReplayGain-Tags schreiben",
+        "help": "Schreibt REPLAYGAIN_TRACK_GAIN/PEAK (MP3, M4A) bzw. R128_TRACK_GAIN (Opus) in die Datei, damit auch andere Player sie nutzen. Das Audio wird nie neu kodiert."
+      },
+      "waveforms": {
+        "label": "Wellenformen vorberechnen",
+        "help": "Berechnet die Wellenformen auch bei der Analyse. Aus: erst wenn ein Set zum ersten Mal abgespielt wird."
+      }
+    },
+    "analysis": {
+      "title": "{done} von {total} Dateien analysiert",
+      "counts": "{tagged} getaggt · {waves} Wellenformen · {failed} fehlgeschlagen",
+      "help": "Läuft offline über die Bibliothek, eine Datei nach der anderen mit niedriger Priorität – kein Netzwerk, das Audio bleibt unverändert. Jederzeit abbrechbar.",
+      "button": "Neue Dateien analysieren",
+      "button_n": "{n} neue analysieren",
+      "all": "Alle neu analysieren",
+      "all_title": "Jede Datei nochmals messen (z. B. nach dem Ersetzen von Dateien ausserhalb der App)",
+      "running": "Analysiere … {done} / {total}",
+      "no_ffmpeg_title": "ffmpeg fehlt",
+      "no_ffmpeg": "Lautheit und Wellenformen brauchen ffmpeg (bin\\ffmpeg.exe, installiert von setup.ps1). Einstellungen › Wartung zeigt den Stand."
     }
   },
   "opt": {
@@ -1204,6 +1271,11 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
       "mode": {
         "internal": "Eingebauter Player (empfohlen)",
         "external": "Windows-Standardplayer"
+      },
+      "resume": {
+        "ask": "Nachfragen",
+        "auto": "Automatisch",
+        "off": "Aus"
       }
     },
     "download": {
@@ -1373,7 +1445,9 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "series_hidden": "Serie «{name}» ausgeblendet",
     "series_reset": "Mitgelieferte Serien wiederhergestellt",
     "assign_done": "Festivals zugeordnet: {assigned} neu, {suggested} Vorschläge",
-    "assign_cancelled": "Zuordnung abgebrochen: {assigned} neu, {suggested} Vorschläge"
+    "assign_cancelled": "Zuordnung abgebrochen: {assigned} neu, {suggested} Vorschläge",
+    "analysis_done": "Lautheit analysiert: {n} Dateien ({failed} fehlgeschlagen)",
+    "analysis_cancelled": "Analyse nach {n} Dateien abgebrochen"
   },
   "upd": {
     "available": "Version {v} verfügbar",

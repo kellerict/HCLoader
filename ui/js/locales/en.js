@@ -61,7 +61,8 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "results": "results",
     "entries": "entries",
     "clock": "o’clock",
-    "req_h": "req./h"
+    "req_h": "req./h",
+    "lufs": "LUFS"
   },
   "range": {
     "ge_sleep": "≥ minimum",
@@ -500,7 +501,11 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "group_festival": "Festival",
     "group_artist": "Artist",
     "group_year": "Year",
-    "group_unknown": "Unknown"
+    "group_unknown": "Unknown",
+    "continue": "Continue listening",
+    "continue_title": "Continue “{title}” at {t}",
+    "continue_left": "{t} left",
+    "continue_forget": "Remove from “Continue listening”"
   },
   "player": {
     "label": "Mini player",
@@ -527,7 +532,22 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "err_load": "Cannot play",
     "err_src": "Cannot play: invalid file address",
     "err_play": "The file cannot be played: {title}",
-    "external": "Opening in the default player …"
+    "external": "Opening in the default player …",
+    "norm_title": "Loudness normalised: {lufs} LUFS → target {target} LUFS ({gain})",
+    "norm_capped": "only lowered – boosting needs the audio engine",
+    "resume_q": "Continue where you left off?",
+    "resume_at": "at {t}",
+    "resume": "Resume",
+    "restart": "Start over",
+    "resumed_at": "Resumed at {t}",
+    "sleep": "Sleep timer",
+    "sleep_min": "{n} min",
+    "sleep_end": "End of this set",
+    "sleep_end_short": "end",
+    "sleep_off": "Turn off",
+    "sleep_on": "Sleep timer: stops in {t}",
+    "sleep_end_on": "Sleep timer: stops at the end of this set",
+    "sleep_done": "Sleep timer: playback stopped"
   },
   "log": {
     "title": "Log",
@@ -600,7 +620,8 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "schedule": "Schedule",
     "appearance": "Appearance",
     "maintenance": "Maintenance",
-    "festivals": "Festivals & series"
+    "festivals": "Festivals & series",
+    "playback": "Playback"
   },
   "tabs_hint": {
     "general": "Basic app behaviour.",
@@ -614,7 +635,8 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "schedule": "When the watchlist is checked automatically – in the app and via the Windows Task Scheduler.",
     "appearance": "Look & feel. Changes are previewed immediately and only become permanent after saving.",
     "maintenance": "Versions, updates, database.",
-    "festivals": "Recognizes festival or series, year, stage and set type from the stored titles – offline, without a single extra request."
+    "festivals": "Recognizes festival or series, year, stage and set type from the stored titles – offline, without a single extra request.",
+    "playback": "Built-in player, loudness normalisation, remembered positions and the offline analysis of your files."
   },
   "set": {
     "default": "Default",
@@ -659,7 +681,10 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
       "reset": "Reset",
       "detection": "Detection",
       "series": "Series",
-      "backfill": "Read everything (once)"
+      "backfill": "Read everything (once)",
+      "loudness": "Loudness",
+      "memory": "Memory & waveform",
+      "analysis": "Analysis (offline, ffmpeg)"
     },
     "general": {
       "language": {
@@ -683,6 +708,22 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
       "mode": {
         "label": "Play with",
         "help": "What ▶ in the library uses. The built-in player shows chapters as jump marks and keeps playing when you switch views. The other option is available per entry in the menu."
+      },
+      "normalize": {
+        "label": "Normalise loudness",
+        "help": "Plays every set at the same perceived loudness (ReplayGain from the offline analysis or existing tags). Never clips: the gain is limited by the measured true peak."
+      },
+      "target_lufs": {
+        "label": "Target loudness",
+        "help": "−18 LUFS is the ReplayGain 2.0 reference. Higher (e.g. −14) = louder, but more sets reach their peak limit."
+      },
+      "resume": {
+        "label": "Remember position",
+        "help": "Per set, outside the first and last 30 seconds. «Ask» offers to resume, «Automatic» continues silently. The library shows the last five unfinished sets."
+      },
+      "waveform": {
+        "label": "Waveform seek bar",
+        "help": "Shows the set as a waveform with the tracklist marks. Computed once per file with ffmpeg (on first play or in the analysis); otherwise the plain bar."
       }
     },
     "search": {
@@ -1186,6 +1227,32 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
         "label": "Requests per hour",
         "help": "Page requests of “Read everything” are spread evenly (120 = one every 30 s); the normal spacing and the backoff apply as well. A scheduled run (Task Scheduler) continues for at most this many requests."
       }
+    },
+    "loudness": {
+      "analyse_after_download": {
+        "label": "Analyse after each download",
+        "help": "Measures loudness (EBU R128) and computes the waveform right after a download – offline, at low priority, one file at a time."
+      },
+      "write_tags": {
+        "label": "Write ReplayGain tags",
+        "help": "Writes REPLAYGAIN_TRACK_GAIN/PEAK (MP3, M4A) or R128_TRACK_GAIN (Opus) into the file so other players can use it too. The audio is never re-encoded."
+      },
+      "waveforms": {
+        "label": "Precompute waveforms",
+        "help": "Computes waveforms during the analysis as well. Off: only when a set is played for the first time."
+      }
+    },
+    "analysis": {
+      "title": "{done} of {total} files analysed",
+      "counts": "{tagged} tagged · {waves} waveforms · {failed} failed",
+      "help": "Runs offline over the library, one file at a time at low priority – no network, the audio stays untouched. Can be cancelled at any time.",
+      "button": "Analyse new files",
+      "button_n": "Analyse {n} new",
+      "all": "Analyse all again",
+      "all_title": "Measure every file again (e.g. after replacing files outside the app)",
+      "running": "Analysing … {done} / {total}",
+      "no_ffmpeg_title": "ffmpeg missing",
+      "no_ffmpeg": "Loudness and waveforms need ffmpeg (bin\\ffmpeg.exe, installed by setup.ps1). Settings › Maintenance shows its status."
     }
   },
   "opt": {
@@ -1204,6 +1271,11 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
       "mode": {
         "internal": "Built-in player (recommended)",
         "external": "Windows default player"
+      },
+      "resume": {
+        "ask": "Ask",
+        "auto": "Automatic",
+        "off": "Off"
       }
     },
     "download": {
@@ -1373,7 +1445,9 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "series_hidden": "Series “{name}” hidden",
     "series_reset": "Built-in series restored",
     "assign_done": "Festivals assigned: {assigned} new, {suggested} suggestions",
-    "assign_cancelled": "Assignment cancelled: {assigned} new, {suggested} suggestions"
+    "assign_cancelled": "Assignment cancelled: {assigned} new, {suggested} suggestions",
+    "analysis_done": "Loudness analysed: {n} files ({failed} failed)",
+    "analysis_cancelled": "Analysis cancelled after {n} files"
   },
   "upd": {
     "available": "Version {v} available",

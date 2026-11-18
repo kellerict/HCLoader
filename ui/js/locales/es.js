@@ -61,7 +61,8 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
     "results": "resultados",
     "entries": "entradas",
     "clock": "h",
-    "req_h": "pet./h"
+    "req_h": "pet./h",
+    "lufs": "LUFS"
   },
   "range": {
     "ge_sleep": "≥ mínimo",
@@ -500,7 +501,11 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
     "group_festival": "Festival",
     "group_artist": "Artista",
     "group_year": "Año",
-    "group_unknown": "Desconocido"
+    "group_unknown": "Desconocido",
+    "continue": "Seguir escuchando",
+    "continue_title": "Continuar «{title}» en {t}",
+    "continue_left": "quedan {t}",
+    "continue_forget": "Quitar de «Seguir escuchando»"
   },
   "player": {
     "label": "Minirreproductor",
@@ -527,7 +532,22 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
     "err_load": "No se puede reproducir",
     "err_src": "No se puede reproducir: dirección de archivo no válida",
     "err_play": "No se puede reproducir el archivo: {title}",
-    "external": "Abriendo en el reproductor predeterminado …"
+    "external": "Abriendo en el reproductor predeterminado …",
+    "norm_title": "Volumen normalizado: {lufs} LUFS → objetivo {target} LUFS ({gain})",
+    "norm_capped": "solo atenuado: amplificar requiere el motor de audio",
+    "resume_q": "¿Continuar donde lo dejaste?",
+    "resume_at": "en {t}",
+    "resume": "Continuar",
+    "restart": "Desde el principio",
+    "resumed_at": "Continuado en {t}",
+    "sleep": "Temporizador de apagado",
+    "sleep_min": "{n} min",
+    "sleep_end": "Final de este set",
+    "sleep_end_short": "fin",
+    "sleep_off": "Desactivar",
+    "sleep_on": "Temporizador: se detiene en {t}",
+    "sleep_end_on": "Temporizador: se detiene al final de este set",
+    "sleep_done": "Temporizador: reproducción detenida"
   },
   "log": {
     "title": "Registro",
@@ -600,7 +620,8 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
     "schedule": "Programación",
     "appearance": "Apariencia",
     "maintenance": "Mantenimiento",
-    "festivals": "Festivales y series"
+    "festivals": "Festivales y series",
+    "playback": "Reproducción"
   },
   "tabs_hint": {
     "general": "Comportamiento básico de la app.",
@@ -614,7 +635,8 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
     "schedule": "Cuándo se revisa la lista de seguimiento automáticamente: en la app y con el Programador de tareas de Windows.",
     "appearance": "Aspecto y comportamiento. Los cambios se ven al instante y solo son permanentes tras guardar.",
     "maintenance": "Versiones, actualizaciones, base de datos.",
-    "festivals": "Reconoce festival o serie, año, escenario y tipo de set a partir de los títulos guardados: sin conexión, sin una sola petición extra."
+    "festivals": "Reconoce festival o serie, año, escenario y tipo de set a partir de los títulos guardados: sin conexión, sin una sola petición extra.",
+    "playback": "Reproductor integrado, normalización de volumen, posiciones recordadas y el análisis sin conexión de tus archivos."
   },
   "set": {
     "default": "Predeterminado",
@@ -659,7 +681,10 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
       "reset": "Restablecer",
       "detection": "Detección",
       "series": "Series",
-      "backfill": "Leer todo (una vez)"
+      "backfill": "Leer todo (una vez)",
+      "loudness": "Volumen",
+      "memory": "Memoria y forma de onda",
+      "analysis": "Análisis (sin conexión, ffmpeg)"
     },
     "general": {
       "language": {
@@ -683,6 +708,22 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
       "mode": {
         "label": "Reproducir con",
         "help": "Lo que usa ▶ en la biblioteca. El reproductor integrado muestra los capítulos como marcas de salto y sigue sonando al cambiar de vista. La otra opción está disponible por entrada en el menú."
+      },
+      "normalize": {
+        "label": "Normalizar volumen",
+        "help": "Reproduce cada set con el mismo volumen percibido (ReplayGain del análisis sin conexión o de etiquetas existentes). Nunca satura: la ganancia está limitada por el true peak medido."
+      },
+      "target_lufs": {
+        "label": "Volumen objetivo",
+        "help": "−18 LUFS es la referencia de ReplayGain 2.0. Más alto (p. ej. −14) = más fuerte, pero más sets alcanzan su límite de pico."
+      },
+      "resume": {
+        "label": "Recordar posición",
+        "help": "Por set, fuera de los primeros y últimos 30 segundos. «Preguntar» ofrece continuar, «Automático» continúa sin preguntar. La biblioteca muestra los últimos cinco sets sin terminar."
+      },
+      "waveform": {
+        "label": "Forma de onda como barra de búsqueda",
+        "help": "Muestra el set como forma de onda con las marcas de la tracklist. Se calcula una vez por archivo con ffmpeg (al reproducir por primera vez o en el análisis); si no, la barra simple."
       }
     },
     "search": {
@@ -1186,6 +1227,32 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
         "label": "Peticiones por hora",
         "help": "Las peticiones de páginas de «Leer todo» se reparten de forma uniforme (120 = una cada 30 s); también rigen el intervalo normal y el backoff. Una ejecución programada (Programador de tareas) continúa como máximo con esta cantidad de peticiones."
       }
+    },
+    "loudness": {
+      "analyse_after_download": {
+        "label": "Analizar tras cada descarga",
+        "help": "Mide el volumen (EBU R128) y calcula la forma de onda justo después de una descarga: sin conexión, con baja prioridad, un archivo tras otro."
+      },
+      "write_tags": {
+        "label": "Escribir etiquetas ReplayGain",
+        "help": "Escribe REPLAYGAIN_TRACK_GAIN/PEAK (MP3, M4A) o R128_TRACK_GAIN (Opus) en el archivo para que otros reproductores también lo usen. El audio nunca se recodifica."
+      },
+      "waveforms": {
+        "label": "Precalcular formas de onda",
+        "help": "Calcula también las formas de onda durante el análisis. Desactivado: solo al reproducir un set por primera vez."
+      }
+    },
+    "analysis": {
+      "title": "{done} de {total} archivos analizados",
+      "counts": "{tagged} etiquetados · {waves} formas de onda · {failed} con error",
+      "help": "Se ejecuta sin conexión sobre la biblioteca, un archivo tras otro con baja prioridad: sin red, el audio queda intacto. Se puede cancelar en cualquier momento.",
+      "button": "Analizar archivos nuevos",
+      "button_n": "Analizar {n} nuevos",
+      "all": "Volver a analizar todo",
+      "all_title": "Medir de nuevo cada archivo (p. ej. tras reemplazar archivos fuera de la app)",
+      "running": "Analizando … {done} / {total}",
+      "no_ffmpeg_title": "Falta ffmpeg",
+      "no_ffmpeg": "El volumen y las formas de onda necesitan ffmpeg (bin\\ffmpeg.exe, instalado por setup.ps1). Ajustes › Mantenimiento muestra su estado."
     }
   },
   "opt": {
@@ -1204,6 +1271,11 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
       "mode": {
         "internal": "Reproductor integrado (recomendado)",
         "external": "Reproductor predeterminado de Windows"
+      },
+      "resume": {
+        "ask": "Preguntar",
+        "auto": "Automático",
+        "off": "Desactivado"
       }
     },
     "download": {
@@ -1373,7 +1445,9 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
     "series_hidden": "Serie «{name}» ocultada",
     "series_reset": "Series incluidas restauradas",
     "assign_done": "Festivales asignados: {assigned} nuevos, {suggested} sugerencias",
-    "assign_cancelled": "Asignación cancelada: {assigned} nuevos, {suggested} sugerencias"
+    "assign_cancelled": "Asignación cancelada: {assigned} nuevos, {suggested} sugerencias",
+    "analysis_done": "Volumen analizado: {n} archivos ({failed} con error)",
+    "analysis_cancelled": "Análisis cancelado tras {n} archivos"
   },
   "upd": {
     "available": "Versión {v} disponible",

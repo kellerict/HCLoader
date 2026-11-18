@@ -61,7 +61,8 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "results": "resultat",
     "entries": "poster",
     "clock": "24 h",
-    "req_h": "förfr./h"
+    "req_h": "förfr./h",
+    "lufs": "LUFS"
   },
   "range": {
     "ge_sleep": "≥ minimum",
@@ -500,7 +501,11 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "group_festival": "Festival",
     "group_artist": "Artist",
     "group_year": "År",
-    "group_unknown": "Okänt"
+    "group_unknown": "Okänt",
+    "continue": "Fortsätt lyssna",
+    "continue_title": "Fortsätt ”{title}” vid {t}",
+    "continue_left": "{t} kvar",
+    "continue_forget": "Ta bort från ”Fortsätt lyssna”"
   },
   "player": {
     "label": "Minispelare",
@@ -527,7 +532,22 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "err_load": "Kan inte spelas",
     "err_src": "Kan inte spelas: ogiltig filadress",
     "err_play": "Filen kan inte spelas: {title}",
-    "external": "Öppnar i standardspelaren …"
+    "external": "Öppnar i standardspelaren …",
+    "norm_title": "Ljudstyrka utjämnad: {lufs} LUFS → mål {target} LUFS ({gain})",
+    "norm_capped": "endast sänkt – förstärkning kräver ljudmotorn",
+    "resume_q": "Fortsätta där du slutade?",
+    "resume_at": "vid {t}",
+    "resume": "Fortsätt",
+    "restart": "Från början",
+    "resumed_at": "Fortsatte vid {t}",
+    "sleep": "Insomningstimer",
+    "sleep_min": "{n} min",
+    "sleep_end": "Slutet av det här setet",
+    "sleep_end_short": "slut",
+    "sleep_off": "Stäng av",
+    "sleep_on": "Timer: stoppar om {t}",
+    "sleep_end_on": "Timer: stoppar i slutet av det här setet",
+    "sleep_done": "Timer: uppspelningen stoppad"
   },
   "log": {
     "title": "Logg",
@@ -600,7 +620,8 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "schedule": "Schema",
     "appearance": "Utseende",
     "maintenance": "Underhåll",
-    "festivals": "Festivaler & serier"
+    "festivals": "Festivaler & serier",
+    "playback": "Uppspelning"
   },
   "tabs_hint": {
     "general": "Appens grundläggande beteende.",
@@ -614,7 +635,8 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "schedule": "När bevakningen kontrolleras automatiskt – i appen och via Windows Aktivitetshanteraren.",
     "appearance": "Utseende och känsla. Ändringar förhandsvisas direkt och blir permanenta först när du sparar.",
     "maintenance": "Versioner, uppdateringar, databas.",
-    "festivals": "Känner igen festival eller serie, år, scen och settyp ur de sparade titlarna – offline, utan en enda extra förfrågan."
+    "festivals": "Känner igen festival eller serie, år, scen och settyp ur de sparade titlarna – offline, utan en enda extra förfrågan.",
+    "playback": "Inbyggd spelare, ljudnormalisering, sparade positioner och offlineanalysen av dina filer."
   },
   "set": {
     "default": "Standard",
@@ -659,7 +681,10 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
       "reset": "Återställning",
       "detection": "Igenkänning",
       "series": "Serier",
-      "backfill": "Läs in allt (en gång)"
+      "backfill": "Läs in allt (en gång)",
+      "loudness": "Ljudstyrka",
+      "memory": "Minne & vågform",
+      "analysis": "Analys (offline, ffmpeg)"
     },
     "general": {
       "language": {
@@ -683,6 +708,22 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
       "mode": {
         "label": "Spela med",
         "help": "Vad ▶ i biblioteket använder. Den inbyggda spelaren visar kapitel som hoppmarkörer och fortsätter spela när du byter vy. Det andra alternativet finns per post i menyn."
+      },
+      "normalize": {
+        "label": "Utjämna ljudstyrka",
+        "help": "Spelar varje set med samma upplevda ljudstyrka (ReplayGain från offlineanalysen eller befintliga taggar). Klipper aldrig: förstärkningen begränsas av den uppmätta true peak."
+      },
+      "target_lufs": {
+        "label": "Målljudstyrka",
+        "help": "−18 LUFS är referensen för ReplayGain 2.0. Högre (t.ex. −14) = starkare, men fler set når sin toppgräns."
+      },
+      "resume": {
+        "label": "Kom ihåg position",
+        "help": "Per set, utanför de första och sista 30 sekunderna. ”Fråga” erbjuder att fortsätta, ”Automatiskt” fortsätter tyst. Biblioteket visar de fem senaste ofärdiga seten."
+      },
+      "waveform": {
+        "label": "Vågform som tidslinje",
+        "help": "Visar setet som vågform med tracklistans markeringar. Beräknas en gång per fil med ffmpeg (vid första uppspelningen eller i analysen); annars den enkla stapeln."
       }
     },
     "search": {
@@ -1186,6 +1227,32 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
         "label": "Förfrågningar per timme",
         "help": "Sidförfrågningar från ”Läs in allt” fördelas jämnt (120 = en var 30:e s); det vanliga avståndet och backoffen gäller också. En schemalagd körning (Schemaläggaren) fortsätter med högst så många förfrågningar."
       }
+    },
+    "loudness": {
+      "analyse_after_download": {
+        "label": "Analysera efter varje nedladdning",
+        "help": "Mäter ljudstyrkan (EBU R128) och beräknar vågformen direkt efter en nedladdning – offline, med låg prioritet, en fil i taget."
+      },
+      "write_tags": {
+        "label": "Skriv ReplayGain-taggar",
+        "help": "Skriver REPLAYGAIN_TRACK_GAIN/PEAK (MP3, M4A) eller R128_TRACK_GAIN (Opus) i filen så att andra spelare också kan använda det. Ljudet kodas aldrig om."
+      },
+      "waveforms": {
+        "label": "Förberäkna vågformer",
+        "help": "Beräknar vågformer även under analysen. Av: först när ett set spelas för första gången."
+      }
+    },
+    "analysis": {
+      "title": "{done} av {total} filer analyserade",
+      "counts": "{tagged} taggade · {waves} vågformer · {failed} misslyckade",
+      "help": "Körs offline över biblioteket, en fil i taget med låg prioritet – inget nätverk, ljudet lämnas orört. Kan avbrytas när som helst.",
+      "button": "Analysera nya filer",
+      "button_n": "Analysera {n} nya",
+      "all": "Analysera allt igen",
+      "all_title": "Mät varje fil igen (t.ex. efter att filer ersatts utanför appen)",
+      "running": "Analyserar … {done} / {total}",
+      "no_ffmpeg_title": "ffmpeg saknas",
+      "no_ffmpeg": "Ljudstyrka och vågformer kräver ffmpeg (bin\\ffmpeg.exe, installeras av setup.ps1). Inställningar › Underhåll visar status."
     }
   },
   "opt": {
@@ -1204,6 +1271,11 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
       "mode": {
         "internal": "Inbyggd spelare (rekommenderas)",
         "external": "Windows standardspelare"
+      },
+      "resume": {
+        "ask": "Fråga",
+        "auto": "Automatiskt",
+        "off": "Av"
       }
     },
     "download": {
@@ -1373,7 +1445,9 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "series_hidden": "Serien ”{name}” dold",
     "series_reset": "Inbyggda serier återställda",
     "assign_done": "Festivaler tilldelade: {assigned} nya, {suggested} förslag",
-    "assign_cancelled": "Tilldelningen avbröts: {assigned} nya, {suggested} förslag"
+    "assign_cancelled": "Tilldelningen avbröts: {assigned} nya, {suggested} förslag",
+    "analysis_done": "Ljudstyrka analyserad: {n} filer ({failed} misslyckade)",
+    "analysis_cancelled": "Analysen avbröts efter {n} filer"
   },
   "upd": {
     "available": "Version {v} finns",

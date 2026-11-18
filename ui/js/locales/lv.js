@@ -62,7 +62,8 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "results": "rezultāti",
     "entries": "ieraksti",
     "clock": "st.",
-    "req_h": "piepr./h"
+    "req_h": "piepr./h",
+    "lufs": "LUFS"
   },
   "range": {
     "ge_sleep": "≥ minimums",
@@ -514,7 +515,11 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "group_festival": "Festivāls",
     "group_artist": "Izpildītājs",
     "group_year": "Gads",
-    "group_unknown": "Nezināms"
+    "group_unknown": "Nezināms",
+    "continue": "Turpināt klausīties",
+    "continue_title": "Turpināt “{title}” no {t}",
+    "continue_left": "atlikušas {t}",
+    "continue_forget": "Noņemt no “Turpināt klausīties”"
   },
   "player": {
     "label": "Mini atskaņotājs",
@@ -542,7 +547,22 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "err_load": "Atskaņot nevar",
     "err_src": "Atskaņot nevar: nederīga faila adrese",
     "err_play": "Failu nevar atskaņot: {title}",
-    "external": "Tiek atvērts noklusējuma atskaņotājā …"
+    "external": "Tiek atvērts noklusējuma atskaņotājā …",
+    "norm_title": "Skaļums izlīdzināts: {lufs} LUFS → mērķis {target} LUFS ({gain})",
+    "norm_capped": "tikai samazināts – pastiprināšanai vajag audio dzinēju",
+    "resume_q": "Turpināt no vietas, kur apstājāties?",
+    "resume_at": "pie {t}",
+    "resume": "Turpināt",
+    "restart": "No sākuma",
+    "resumed_at": "Turpināts no {t}",
+    "sleep": "Miega taimeris",
+    "sleep_min": "{n} min",
+    "sleep_end": "Šī seta beigas",
+    "sleep_end_short": "beigas",
+    "sleep_off": "Izslēgt",
+    "sleep_on": "Taimeris: apstāsies pēc {t}",
+    "sleep_end_on": "Taimeris: apstāsies šī seta beigās",
+    "sleep_done": "Taimeris: atskaņošana apturēta"
   },
   "log": {
     "title": "Žurnāls",
@@ -618,7 +638,8 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "schedule": "Grafiks",
     "appearance": "Izskats",
     "maintenance": "Apkope",
-    "festivals": "Festivāli un sērijas"
+    "festivals": "Festivāli un sērijas",
+    "playback": "Atskaņošana"
   },
   "tabs_hint": {
     "general": "Lietotnes pamatuzvedība.",
@@ -632,7 +653,8 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "schedule": "Kad vērojamie avoti tiek pārbaudīti automātiski – lietotnē un ar Windows uzdevumu plānotāju.",
     "appearance": "Izskats un sajūta. Izmaiņas ir redzamas uzreiz un kļūst pastāvīgas tikai pēc saglabāšanas.",
     "maintenance": "Versijas, atjauninājumi, datubāze.",
-    "festivals": "Atpazīst festivālu vai sēriju, gadu, skatuvi un seta veidu pēc saglabātajiem nosaukumiem – bezsaistē, bez neviena papildu pieprasījuma."
+    "festivals": "Atpazīst festivālu vai sēriju, gadu, skatuvi un seta veidu pēc saglabātajiem nosaukumiem – bezsaistē, bez neviena papildu pieprasījuma.",
+    "playback": "Iebūvētais atskaņotājs, skaļuma izlīdzināšana, atcerētas pozīcijas un jūsu failu bezsaistes analīze."
   },
   "set": {
     "default": "Noklusējums",
@@ -679,7 +701,10 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
       "reset": "Atiestatīšana",
       "detection": "Atpazīšana",
       "series": "Sērijas",
-      "backfill": "Ielasīt visu (vienreiz)"
+      "backfill": "Ielasīt visu (vienreiz)",
+      "loudness": "Skaļums",
+      "memory": "Atmiņa un viļņforma",
+      "analysis": "Analīze (bezsaistē, ffmpeg)"
     },
     "general": {
       "language": {
@@ -703,6 +728,22 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
       "mode": {
         "label": "Atskaņot ar",
         "help": "Ko izmanto ▶ bibliotēkā. Iebūvētais atskaņotājs rāda nodaļas kā lēkšanas atzīmes un turpina atskaņot, mainot skatus. Otra iespēja ir pieejama katra ieraksta izvēlnē."
+      },
+      "normalize": {
+        "label": "Izlīdzināt skaļumu",
+        "help": "Atskaņo katru setu ar vienādu uztverto skaļumu (ReplayGain no bezsaistes analīzes vai esošajām birkām). Nekad nepārsniedz: pastiprinājumu ierobežo izmērītais true peak."
+      },
+      "target_lufs": {
+        "label": "Mērķa skaļums",
+        "help": "−18 LUFS ir ReplayGain 2.0 atsauce. Augstāks (piem., −14) = skaļāk, bet vairāk setu sasniedz savu maksimuma robežu."
+      },
+      "resume": {
+        "label": "Atcerēties pozīciju",
+        "help": "Katram setam, ārpus pirmajām un pēdējām 30 sekundēm. “Jautāt” piedāvā turpināt, “Automātiski” turpina klusi. Bibliotēka rāda piecus pēdējos nepabeigtos setus."
+      },
+      "waveform": {
+        "label": "Viļņforma kā laika josla",
+        "help": "Rāda setu kā viļņformu ar treku saraksta atzīmēm. Aprēķina vienreiz katram failam ar ffmpeg (pirmajā atskaņošanā vai analīzē); citādi vienkārša josla."
       }
     },
     "search": {
@@ -1207,6 +1248,32 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
         "label": "Pieprasījumi stundā",
         "help": "“Ielasīt visu” lapu pieprasījumi tiek sadalīti vienmērīgi (120 = viens ik pēc 30 s); spēkā ir arī parastais intervāls un backoff. Ieplānota palaišana (Uzdevumu plānotājs) turpina ne vairāk kā ar tik daudz pieprasījumiem."
       }
+    },
+    "loudness": {
+      "analyse_after_download": {
+        "label": "Analizēt pēc katras lejupielādes",
+        "help": "Izmēra skaļumu (EBU R128) un aprēķina viļņformu tūlīt pēc lejupielādes – bezsaistē, ar zemu prioritāti, pa vienam failam."
+      },
+      "write_tags": {
+        "label": "Rakstīt ReplayGain birkas",
+        "help": "Ieraksta failā REPLAYGAIN_TRACK_GAIN/PEAK (MP3, M4A) vai R128_TRACK_GAIN (Opus), lai to varētu izmantot arī citi atskaņotāji. Audio nekad netiek pārkodēts."
+      },
+      "waveforms": {
+        "label": "Iepriekš aprēķināt viļņformas",
+        "help": "Aprēķina viļņformas arī analīzes laikā. Izslēgts: tikai tad, kad sets tiek atskaņots pirmo reizi."
+      }
+    },
+    "analysis": {
+      "title": "Analizēti {done} no {total} failiem",
+      "counts": "{tagged} ar birkām · {waves} viļņformas · {failed} neizdevās",
+      "help": "Darbojas bezsaistē visai bibliotēkai, pa vienam failam ar zemu prioritāti – bez tīkla, audio paliek neskarts. Var atcelt jebkurā brīdī.",
+      "button": "Analizēt jaunos failus",
+      "button_n": "Analizēt {n} jaunos",
+      "all": "Analizēt visu vēlreiz",
+      "all_title": "Izmērīt katru failu vēlreiz (piem., pēc failu aizstāšanas ārpus lietotnes)",
+      "running": "Analizē … {done} / {total}",
+      "no_ffmpeg_title": "Trūkst ffmpeg",
+      "no_ffmpeg": "Skaļumam un viļņformām vajag ffmpeg (bin\\ffmpeg.exe, instalē setup.ps1). Iestatījumi › Apkope rāda statusu."
     }
   },
   "opt": {
@@ -1225,6 +1292,11 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
       "mode": {
         "internal": "Iebūvētais atskaņotājs (ieteicams)",
         "external": "Windows noklusējuma atskaņotājs"
+      },
+      "resume": {
+        "ask": "Jautāt",
+        "auto": "Automātiski",
+        "off": "Izslēgts"
       }
     },
     "download": {
@@ -1404,7 +1476,9 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "series_hidden": "Sērija “{name}” paslēpta",
     "series_reset": "Iebūvētās sērijas atjaunotas",
     "assign_done": "Festivāli piešķirti: jauni {assigned}, ieteikumi {suggested}",
-    "assign_cancelled": "Piešķiršana pārtraukta: jauni {assigned}, ieteikumi {suggested}"
+    "assign_cancelled": "Piešķiršana pārtraukta: jauni {assigned}, ieteikumi {suggested}",
+    "analysis_done": "Skaļums analizēts: {n} faili ({failed} neizdevās)",
+    "analysis_cancelled": "Analīze atcelta pēc {n} failiem"
   },
   "upd": {
     "available": "Pieejama versija {v}",

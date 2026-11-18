@@ -691,6 +691,35 @@ tr.working td:first-child{box-shadow:inset 2px 0 0 var(--acid)}
 .iconbtn .spinner{width:12px;height:12px;color:var(--acid)}
 .iconbtn:disabled:has(.spinner){opacity:1}
 .lib-more{display:flex;justify-content:center;padding:18px 0 4px}
+/* v0.7.0 «Weiterhören»: ruhige Leiste über der Liste, eine Zeile Karten mit Fortschrittslinie */
+.lib-continue{padding:16px 0 2px}
+.lib-continue .cl-head{margin:0 0 10px}
+.lib-continue .cl-head svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;flex:none}
+.cl-row{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(208px,calc((100% - 40px) / 5));gap:10px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
+.cl-card{position:relative;display:grid;grid-template-columns:52px minmax(0,1fr);gap:11px;align-items:center;padding:8px 30px 10px 8px;background:var(--panel);border:1px solid var(--line);
+  border-radius:var(--radius);cursor:pointer;outline:none;overflow:hidden;transition:border-color var(--t-fast),background var(--t-fast)}
+.cl-card:hover,.cl-card:focus-visible{background:var(--panel-2);border-color:var(--line-2)}
+.cl-card:focus-visible{box-shadow:0 0 0 1px var(--accent)}
+.cl-card.now{border-color:var(--accent-2)}
+.cl-art{position:relative;width:52px;height:52px;border-radius:var(--radius-sm);overflow:hidden}
+.cl-art .thumb{aspect-ratio:auto;width:100%;height:100%;border-radius:0}
+.cl-art .thumb .wave{padding:0 4px;gap:1px}
+.cl-play{position:absolute;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.45);opacity:0;transition:opacity var(--t-fast)}
+.cl-play svg{width:16px;height:16px;fill:#fff;stroke:#fff;stroke-width:1.5;stroke-linejoin:round}
+.cl-play .eqb{height:12px}
+.cl-play .eqb i{background:#fff;width:2px}
+.cl-card:hover .cl-play,.cl-card:focus-visible .cl-play,.cl-card.now .cl-play{opacity:1}
+.cl-meta{min-width:0;display:flex;flex-direction:column;gap:1px}
+.cl-meta b{font-weight:600;font-size:13px;line-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cl-meta small{font-size:11.5px;line-height:15px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cl-time{font-size:11px;line-height:15px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.cl-time span{color:var(--dim)}
+.cl-x{position:absolute;top:5px;right:4px;width:22px;height:22px;border-color:transparent;background:none;opacity:0;transition:opacity var(--t-fast)}
+.cl-x svg{width:12px;height:12px}
+.cl-card:hover .cl-x,.cl-card:focus-within .cl-x{opacity:1}
+.cl-x:focus-visible{opacity:1}
+.cl-bar{position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--line)}
+.cl-bar i{display:block;height:100%;background:var(--c,var(--accent));transform-origin:left;opacity:.9}
 .lib-none #lib-scroll{border-top:0;display:grid;place-items:center}
 .lib-empty{padding:20px}
 .lib-empty p{margin-bottom:4px}
@@ -946,6 +975,33 @@ tr.now .cell-title b{color:#fff}
 .pl-tip span{overflow:hidden;text-overflow:ellipsis}
 .pl-tip.snap{border-color:var(--acid)}
 .pl-tip.snap span{color:var(--text)}
+
+/* v0.7.0 Wellenform als Zeitleiste: zwei Canvas (Grund + gespielter Teil per clip-path), Kapitel als feine Linien */
+.pl-seek{--wave-h:22px;--wave-base:#3b3b47;--wave-on:var(--accent)}
+.pl-wave{position:absolute;left:0;top:0;display:none;pointer-events:none}
+.pl-seek.has-wave{height:var(--wave-h)}
+.pl-seek.has-wave .pl-wave{display:block}
+.pl-seek.has-wave .pl-rail{display:none}
+.pl-seek.has-wave .pl-marks{top:0;height:100%}
+.pl-seek.has-wave .pl-marks i{width:1px;margin-left:0;height:100%;background:rgba(236,236,240,.22)}
+.pl-seek.has-wave .pl-marks i.past{background:rgba(0,0,0,.55)}
+.pl-seek.has-wave .pl-marks i.hot{width:2px;margin-left:-1px;height:calc(100% + 4px);top:-2px;background:var(--acid)}
+.pl-seek.has-wave .pl-knob{top:-2px;left:-1px;width:2px;height:calc(100% + 4px);border-radius:0}
+.pl-seek.has-wave .pl-tip{bottom:calc(var(--wave-h) + 6px)}
+.pl-seek.has-wave:focus-visible{box-shadow:0 0 0 1px var(--accent);border-radius:var(--radius-sm)}
+.pl-seek.has-wave:hover .pl-wave:not(.on){opacity:.85}
+.pl-norm{flex:none;margin-left:auto;padding:1px 6px;border:1px solid var(--line-2);border-radius:var(--radius-sm);font-size:10.5px;line-height:14px;color:var(--muted);letter-spacing:0;cursor:default}
+.pl-norm.capped{border-style:dashed}
+.pl-side .iconbtn.pl-sleep{width:auto;min-width:30px;padding:0 7px;display:inline-flex;align-items:center;gap:5px}
+.pl-sleep i{font:600 11px/1 var(--f-mono);font-style:normal}
+.pl-sleep i:empty{display:none}
+.pl-sleep.on{color:var(--info);border-color:rgba(127,183,255,.55)}
+.pl-resume{position:absolute;left:50%;bottom:calc(100% + 10px);transform:translateX(-50%);display:flex;align-items:center;gap:10px;max-width:calc(100vw - 28px);
+  padding:8px 10px 8px 14px;background:var(--panel-2);border:1px solid var(--line-2);border-top:2px solid var(--accent);border-radius:var(--radius);box-shadow:0 -10px 36px rgba(0,0,0,.7);white-space:nowrap;z-index:2}
+.pl-resume .pl-r-txt{display:flex;align-items:baseline;gap:10px;min-width:0;font-size:13px;color:var(--text)}
+.pl-resume .pl-r-txt b{font-weight:600}
+.pl-resume .pl-r-txt .mono{font:11.5px var(--f-mono);color:var(--muted)}
+.pl-resume .btn svg{width:11px;height:11px;fill:currentColor}
 
 .pl-side{display:flex;align-items:center;gap:6px}
 .pl-side .iconbtn.pl-listbtn{width:auto;padding:0 8px;display:inline-flex;align-items:center;gap:6px}

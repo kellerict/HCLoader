@@ -60,7 +60,8 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "results": "条结果",
     "entries": "条",
     "clock": "点",
-    "req_h": "次/时"
+    "req_h": "次/时",
+    "lufs": "LUFS"
   },
   "range": {
     "ge_sleep": "≥ 最小值",
@@ -486,7 +487,11 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "group_festival": "音乐节",
     "group_artist": "艺人",
     "group_year": "年份",
-    "group_unknown": "未知"
+    "group_unknown": "未知",
+    "continue": "继续收听",
+    "continue_title": "从 {t} 继续「{title}」",
+    "continue_left": "剩余 {t}",
+    "continue_forget": "从「继续收听」中移除"
   },
   "player": {
     "label": "迷你播放器",
@@ -512,7 +517,22 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "err_load": "无法播放",
     "err_src": "无法播放：文件地址无效",
     "err_play": "无法播放该文件：{title}",
-    "external": "正在用默认播放器打开…"
+    "external": "正在用默认播放器打开…",
+    "norm_title": "响度已均衡：{lufs} LUFS → 目标 {target} LUFS（{gain}）",
+    "norm_capped": "仅降低 —— 提升需要音频引擎",
+    "resume_q": "要从上次停下的地方继续吗？",
+    "resume_at": "于 {t}",
+    "resume": "继续",
+    "restart": "从头开始",
+    "resumed_at": "已从 {t} 继续",
+    "sleep": "睡眠定时器",
+    "sleep_min": "{n} 分钟",
+    "sleep_end": "本场结束时",
+    "sleep_end_short": "结束",
+    "sleep_off": "关闭",
+    "sleep_on": "睡眠定时器：{t} 后停止",
+    "sleep_end_on": "睡眠定时器：本场结束时停止",
+    "sleep_done": "睡眠定时器：已停止播放"
   },
   "log": {
     "title": "日志",
@@ -582,7 +602,8 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "schedule": "计划",
     "appearance": "外观",
     "maintenance": "维护",
-    "festivals": "音乐节与系列"
+    "festivals": "音乐节与系列",
+    "playback": "播放"
   },
   "tabs_hint": {
     "general": "应用的基本行为。",
@@ -596,7 +617,8 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "schedule": "关注列表何时自动检查 – 在应用内以及通过 Windows 任务计划程序。",
     "appearance": "外观与体验。更改会即时预览，保存后才会永久生效。",
     "maintenance": "版本、更新、数据库。",
-    "festivals": "根据已保存的标题识别音乐节或系列、年份、舞台和 set 类型——离线进行，不产生任何额外请求。"
+    "festivals": "根据已保存的标题识别音乐节或系列、年份、舞台和 set 类型——离线进行，不产生任何额外请求。",
+    "playback": "内置播放器、响度均衡、记住的位置以及文件的离线分析。"
   },
   "set": {
     "default": "默认值",
@@ -639,7 +661,10 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
       "reset": "重置",
       "detection": "识别",
       "series": "系列",
-      "backfill": "全部读取（一次性）"
+      "backfill": "全部读取（一次性）",
+      "loudness": "响度",
+      "memory": "记忆与波形",
+      "analysis": "分析（离线，ffmpeg）"
     },
     "general": {
       "language": {
@@ -663,6 +688,22 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
       "mode": {
         "label": "播放方式",
         "help": "媒体库中 ▶ 使用的播放器。内置播放器会把章节显示为跳转标记，切换视图时继续播放。另一种方式可在每个条目的菜单中选用。"
+      },
+      "normalize": {
+        "label": "均衡响度",
+        "help": "以相同的感知响度播放每一场（来自离线分析或现有标签的 ReplayGain）。绝不削波：增益受测得的真峰值限制。"
+      },
+      "target_lufs": {
+        "label": "目标响度",
+        "help": "−18 LUFS 是 ReplayGain 2.0 的参考值。更高（如 −14）= 更响，但更多场次会触及峰值上限。"
+      },
+      "resume": {
+        "label": "记住位置",
+        "help": "按场记录，开头和结尾 30 秒除外。「询问」会提示继续，「自动」会直接继续。资料库显示最近五个未听完的场次。"
+      },
+      "waveform": {
+        "label": "波形进度条",
+        "help": "以波形显示整场并标出曲目列表。每个文件用 ffmpeg 计算一次（首次播放或分析时）；否则显示普通进度条。"
       }
     },
     "search": {
@@ -1165,6 +1206,32 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
         "label": "每小时请求数",
         "help": "“全部读取”的分页请求会均匀分布（120 = 每 30 秒一次）；常规间隔和退避同样适用。计划运行（任务计划程序）最多继续这么多次请求。"
       }
+    },
+    "loudness": {
+      "analyse_after_download": {
+        "label": "每次下载后分析",
+        "help": "下载后立即测量响度（EBU R128）并计算波形 —— 离线、低优先级、逐个文件。"
+      },
+      "write_tags": {
+        "label": "写入 ReplayGain 标签",
+        "help": "将 REPLAYGAIN_TRACK_GAIN/PEAK（MP3、M4A）或 R128_TRACK_GAIN（Opus）写入文件，方便其他播放器使用。音频绝不重新编码。"
+      },
+      "waveforms": {
+        "label": "预先计算波形",
+        "help": "在分析时也计算波形。关闭：仅在首次播放某场时计算。"
+      }
+    },
+    "analysis": {
+      "title": "已分析 {done} / {total} 个文件",
+      "counts": "{tagged} 个已写标签 · {waves} 个波形 · {failed} 个失败",
+      "help": "离线遍历资料库，以低优先级逐个处理 —— 不联网，音频保持不变。随时可以取消。",
+      "button": "分析新文件",
+      "button_n": "分析 {n} 个新文件",
+      "all": "全部重新分析",
+      "all_title": "重新测量每个文件（例如在应用外替换了文件之后）",
+      "running": "正在分析 … {done} / {total}",
+      "no_ffmpeg_title": "缺少 ffmpeg",
+      "no_ffmpeg": "响度和波形需要 ffmpeg（bin\\ffmpeg.exe，由 setup.ps1 安装）。设置 › 维护中可查看状态。"
     }
   },
   "opt": {
@@ -1183,6 +1250,11 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
       "mode": {
         "internal": "内置播放器（推荐）",
         "external": "Windows 默认播放器"
+      },
+      "resume": {
+        "ask": "询问",
+        "auto": "自动",
+        "off": "关闭"
       }
     },
     "download": {
@@ -1342,7 +1414,9 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "series_hidden": "系列“{name}”已隐藏",
     "series_reset": "内置系列已恢复",
     "assign_done": "音乐节已归类：新增 {assigned} 个，建议 {suggested} 条",
-    "assign_cancelled": "归类已取消：新增 {assigned} 个，建议 {suggested} 条"
+    "assign_cancelled": "归类已取消：新增 {assigned} 个，建议 {suggested} 条",
+    "analysis_done": "响度已分析：{n} 个文件（{failed} 个失败）",
+    "analysis_cancelled": "已在 {n} 个文件后取消分析"
   },
   "upd": {
     "available": "有新版本 {v}",

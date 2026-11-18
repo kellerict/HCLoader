@@ -6,6 +6,16 @@
 
    Kapitel (aus CUE/Sidecar): Marker auf der Zeitleiste mit Tooltip, aufklappbare Trackliste,
    ⏮/⏭ = vorheriger/nächster Track, aktueller Track neben dem Titel.
+
+   v0.7.0:
+   - Lautheit angleichen (player.normalize, player.target_lufs): Web Audio (Quelle → ReplayGain-Gain → Lautstärke-Gain),
+     Verstärkung = Ziel − gemessene Lautheit, begrenzt durch den True Peak (kein Übersteuern; Peak unbekannt = nur
+     absenken). Ohne laufenden AudioContext (keine Nutzergeste, Fehler) nur absenken über audio.volume.
+   - Wellenform (player.waveform): Peaks aus get_media/get_waveform als Zeitleiste (2 Canvas: Grund + gespielter Teil,
+     per clip-path), Kapitel als feine Linien; ohne Peaks der bisherige Balken.
+   - Gedächtnis (player.resume ask|auto|off): Position alle 15 s, bei Pause/Sprung/Schliessen per save_position;
+     beim Laden mit gemerkter Position fragt der Player (ask) oder springt (auto).
+   - Schlaf-Timer: 15/30/45/60 min oder Ende des Sets, die letzten 10 s blenden aus.
    Tastatur: Leertaste = Play/Pause, ←/→ = ±10 s (nicht in Eingabefeldern, nicht bei Tastaturfokus
    auf einem Bedienelement, nicht bei offenem Dialog/Menü).
 
@@ -20,6 +30,11 @@
   const I = HC.icons;
   const STORE_KEY = 'hc.player';
   const SNAP_PX = 5; // so nah an einem Kapitel-Marker rastet der Zeiger ein
+  const SAVE_EVERY_MS = 15000; // Position merken: höchstens so oft während der Wiedergabe
+  const FADE_S = 10; // Schlaf-Timer: so lange wird ausgeblendet
+  const SLEEP_MIN = [15, 30, 45, 60];
+  const AUTO_HINT_MS = 6000;
+  const WAVE_BAR = 2, WAVE_GAP = 1;
 
   let el = null;
   let audio = null;
@@ -36,6 +51,18 @@
   let pendingSeek = null; // Position, die nach dem Laden der Metadaten gesetzt wird
   let swallowSpaceUp = false;
   const prefs = { volume: 0.8, muted: false };
+  /* v0.7.0 */
+  let graph = null; // {ctx, rg, vol} – Web Audio, sobald einmal erfolgreich aufgebaut (bleibt für das Element)
+  let graphBroken = false; // AudioContext nicht verfügbar/Fehler: nur noch audio.volume
+  let gainNow = 1; // angewandte Normalisierung (linear)
+  let fade = 1; // Schlaf-Timer-Ausblendung 0..1
+  let peaks = null; // Wellenform des geladenen Sets (0..255) oder null
+  let waveSeq = 0;
+  let lastSave = 0;
+  let resumeBox = null; // {mode, at} – offene Frage «Fortsetzen?» bzw. Hinweis «Fortgesetzt»
+  let resumeTimer = 0;
+  let sleep = null; // {mode:'min', minutes, until} | {mode:'end'}
+  let sleepTimer = 0;
 
   /* ---------- Lautstärke merken ---------- */
   function loadPrefs() {
@@ -72,6 +99,207 @@
     return null;
   }
   const emit = () => HC.bridge.emit('player', { id: media ? media.id : null, playing: playing() });
+  const plSet = () => (HC.settings && HC.settings.values && HC.settings.values.player) || {};
+  const resumeMode = () => { const m = plSet().resume; return m === 'auto' || m === 'off' ? m : 'ask'; };
+  const waveOn = () => plSet().waveform !== false;
+
+  /* ---------- Lautheit (ReplayGain) und Ausgang ---------- */
+  /** Lineare Verstärkung für das geladene Set: Ziel − Lautheit, höchstens 1/Peak; ohne Peak nie verstärken. */
+  function normGain() {
+    const pl = plSet(), lo = media && media.loudness;
+    if (pl.normalize === false || !lo || !isFinite(+lo.lufs)) return 1;
+    const target = isFinite(+pl.target_lufs) ? +pl.target_lufs : -18;
+    let g = Math.pow(10, (target - +lo.lufs) / 20);
+    const pk = +lo.peak;
+    g = pk > 0 ? Math.min(g, 1 / pk) : Math.min(g, 1);
+    return isFinite(g) && g > 0 ? g : 1;
+  }
+  /** Lautstärke × Ausblendung × Normalisierung auf den Ausgang legen. */
+  function applyOutput() {
+    if (!audio) return;
+    gainNow = normGain();
+    const v = (prefs.muted ? 0 : prefs.volume) * fade;
+    if (graph) {
+      const t0 = graph.ctx.currentTime;
+      try { graph.rg.gain.setTargetAtTime(gainNow, t0, 0.04); graph.vol.gain.setTargetAtTime(v, t0, 0.04); } catch (e) { graph.rg.gain.value = gainNow; graph.vol.gain.value = v; }
+      audio.volume = 1;
+      audio.muted = false;
+    } else {
+      audio.volume = clamp(v * Math.min(gainNow, 1), 0, 1);
+      audio.muted = prefs.muted;
+    }
+    paintNorm();
+  }
+  /** Web-Audio-Graph einmal aufbauen – nur mit laufendem AudioContext (sonst bliebe das Element stumm). */
+  async function ensureGraph() {
+    if (graph) { if (graph.ctx.state === 'suspended') { try { await graph.ctx.resume(); } catch (e) { /* egal */ } } return; }
+    if (graphBroken || plSet().normalize === false) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) { graphBroken = true; return; }
+    let ctx = null;
+    try {
+      ctx = new AC();
+      if (ctx.state !== 'running') await Promise.race([ctx.resume(), new Promise((r) => setTimeout(r, 400))]);
+      if (ctx.state !== 'running') { ctx.close(); return; } // keine Nutzergeste: später nochmals
+      const src = ctx.createMediaElementSource(audio);
+      const rg = ctx.createGain(), vol = ctx.createGain();
+      src.connect(rg).connect(vol).connect(ctx.destination);
+      graph = { ctx, rg, vol };
+    } catch (e) {
+      graphBroken = true;
+      if (ctx) { try { ctx.close(); } catch (err) { /* egal */ } }
+    }
+    applyOutput();
+  }
+  function paintNorm() {
+    const n = el && $('#pl-norm', el);
+    if (!n) return;
+    const lo = media && media.loudness, on = plSet().normalize !== false && lo && isFinite(+lo.lufs);
+    n.hidden = !on;
+    if (!on) return;
+    const db = 20 * Math.log10(gainNow), full = graph || gainNow <= 1;
+    n.textContent = `${db > 0.05 ? '+' : db < -0.05 ? '−' : '±'}${util.fmtDec(Math.abs(db), 1, true)} dB`;
+    n.classList.toggle('capped', !full);
+    n.title = t('player.norm_title', { lufs: util.fmtDec(+lo.lufs, 1, true), target: util.fmtDec(isFinite(+plSet().target_lufs) ? +plSet().target_lufs : -18, 1), gain: n.textContent }) + (full ? '' : ` · ${t('player.norm_capped')}`);
+  }
+
+  /* ---------- Wellenform ---------- */
+  function setPeaks(p) {
+    peaks = Array.isArray(p) && p.length ? p.map((x) => clamp(+x || 0, 0, 255)) : null;
+    drawWave(true);
+  }
+  function requestWave(id) {
+    if (!waveOn() || peaks) return;
+    const seq = ++waveSeq;
+    HC.bridge.call('get_waveform', id).then((r) => {
+      if (seq !== waveSeq || !media || media.id !== id || !r || !r.ok) return;
+      if (r.status === 'ready') setPeaks(r.peaks); // pending: Event «waveform» folgt
+    }).catch(() => { /* ohne Wellenform: einfacher Balken */ });
+  }
+  /** Peaks auf n Balken verdichten (Maximum je Abschnitt), 0..1 mit sanfter Kurve gegen «Ziegelstein»-Optik. */
+  function bars(n) {
+    const src = peaks, len = src.length, out = new Array(n);
+    let mx = 1;
+    for (let i = 0; i < len; i++) if (src[i] > mx) mx = src[i];
+    for (let k = 0; k < n; k++) {
+      const a = Math.floor((k * len) / n), b = Math.max(a + 1, Math.floor(((k + 1) * len) / n));
+      let m = 0;
+      for (let i = a; i < b && i < len; i++) if (src[i] > m) m = src[i];
+      out[k] = Math.pow(m / mx, 1.6);
+    }
+    return out;
+  }
+  function drawWave(fresh) {
+    if (!el) return;
+    const sk = $('#pl-seek', el), on = !!(peaks && waveOn());
+    const was = sk.classList.contains('has-wave');
+    sk.classList.toggle('has-wave', on);
+    if (!on) return;
+    if (!was && fresh && !fx.reduced()) { sk.classList.remove('wave-in'); void sk.offsetWidth; sk.classList.add('wave-in'); }
+    const w = sk.clientWidth, cs = getComputedStyle(sk), h = parseFloat(cs.getPropertyValue('--wave-h')) || 22;
+    if (!w) return;
+    const dpr = window.devicePixelRatio || 1, n = Math.max(1, Math.floor((w + WAVE_GAP) / (WAVE_BAR + WAVE_GAP)));
+    const vals = bars(n), step = w / n;
+    [['#pl-wave', cs.getPropertyValue('--wave-base').trim() || '#3a3a45'], ['#pl-wave-on', cs.getPropertyValue('--wave-on').trim() || '#ff1f1f']].forEach(([sel, color]) => {
+      const c = $(sel, el), g = c.getContext('2d');
+      c.width = Math.round(w * dpr);
+      c.height = Math.round(h * dpr);
+      c.style.width = `${w}px`;
+      c.style.height = `${h}px`;
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.clearRect(0, 0, w, h);
+      g.fillStyle = color;
+      for (let k = 0; k < n; k++) {
+        const bh = Math.max(2, vals[k] * (h - 2));
+        g.fillRect(Math.round(k * step), Math.round((h - bh) / 2), WAVE_BAR, Math.round(bh));
+      }
+    });
+    paint();
+  }
+
+  /* ---------- Gedächtnis (Position pro Set) ---------- */
+  function savePos(why) {
+    if (!media || resumeMode() === 'off' || !audio || audio.readyState < 1 || pendingSeek != null || resumeBox && resumeBox.mode === 'ask') return;
+    lastSave = Date.now();
+    const id = media.id, at = audio.ended ? dur() : audio.currentTime || 0;
+    HC.bridge.call('save_position', id, at, dur() || null)
+      .then(() => { if (why) HC.bridge.emit('resume_changed', { id }); })
+      .catch(() => { /* egal: beim nächsten Mal */ });
+  }
+  function showResume(mode, at) {
+    clearTimeout(resumeTimer);
+    resumeBox = { mode, at };
+    const box = $('#pl-resume', el);
+    box.innerHTML = mode === 'ask'
+      ? `<span class="pl-r-txt"><b>${esc(t('player.resume_q'))}</b><span class="mono">${esc(t('player.resume_at', { t: util.fmtDur(at) }))}</span></span>
+         <button type="button" class="btn sm primary" data-r="resume">${I.play}${esc(t('player.resume'))}</button>
+         <button type="button" class="btn sm ghost" data-r="restart">${esc(t('player.restart'))}</button>`
+      : `<span class="pl-r-txt"><span>${esc(t('player.resumed_at', { t: util.fmtDur(at) }))}</span></span>
+         <button type="button" class="linkbtn" data-r="restart">${esc(t('player.restart'))}</button>`;
+    box.hidden = false;
+    if (!fx.reduced()) { box.classList.remove('enter'); void box.offsetWidth; box.classList.add('enter'); }
+    if (mode === 'ask') { const b = $('[data-r=resume]', box); if (b && document.activeElement === document.body) b.focus({ preventScroll: true }); }
+    else resumeTimer = setTimeout(hideResume, AUTO_HINT_MS);
+  }
+  function hideResume() {
+    clearTimeout(resumeTimer);
+    resumeBox = null;
+    if (el) $('#pl-resume', el).hidden = true;
+  }
+  function answerResume(choice) {
+    const rb = resumeBox;
+    if (!rb || !media) return;
+    hideResume();
+    if (choice === 'resume') { seek(rb.at); if (audio.paused) start(); }
+    else { seek(0); if (audio.paused) start(); }
+  }
+
+  /* ---------- Schlaf-Timer ---------- */
+  function setSleep(v) {
+    clearInterval(sleepTimer);
+    sleep = v == null ? null : v === 'end' ? { mode: 'end' } : { mode: 'min', minutes: v, until: Date.now() + v * 60000 };
+    fade = 1;
+    if (sleep) sleepTimer = setInterval(sleepTick, 250);
+    applyOutput();
+    paintSleep();
+  }
+  function sleepLeft() {
+    if (!sleep) return Infinity;
+    return sleep.mode === 'end' ? Math.max(0, dur() - pos()) : (sleep.until - Date.now()) / 1000;
+  }
+  function sleepTick() {
+    if (!sleep) return;
+    const left = sleepLeft(), was = fade;
+    /* «Ende des Sets»: nur ausblenden, solange es läuft; Minuten laufen auch in der Pause ab. */
+    fade = left < FADE_S && (sleep.mode === 'min' || playing()) ? clamp(left / FADE_S, 0, 1) : 1;
+    if (fade !== was) applyOutput();
+    if (left <= 0) {
+      const stop = playing();
+      if (audio && stop) audio.pause();
+      setSleep(null);
+      if (stop) ui.toast(t('player.sleep_done'), 'info');
+      return;
+    }
+    paintSleep();
+  }
+  function paintSleep() {
+    if (!el) return;
+    const b = $('[data-p=sleep]', el), badge = $('i', b);
+    b.classList.toggle('on', !!sleep);
+    if (!sleep) { badge.textContent = ''; b.title = t('player.sleep'); b.setAttribute('aria-label', b.title); return; }
+    const left = sleepLeft();
+    badge.textContent = sleep.mode === 'end' ? t('player.sleep_end_short') : `${Math.max(1, Math.ceil(left / 60))}′`;
+    b.title = sleep.mode === 'end' ? t('player.sleep_end_on') : t('player.sleep_on', { t: util.fmtDur(Math.max(0, left)) });
+    b.setAttribute('aria-label', b.title);
+    b.classList.toggle('fading', fade < 1);
+  }
+  function sleepMenu(anchor) {
+    const cur = sleep ? (sleep.mode === 'end' ? 'end' : sleep.minutes) : null;
+    ui.menu(anchor, [{ head: t('player.sleep') }]
+      .concat(SLEEP_MIN.map((m) => ({ label: t('player.sleep_min', { n: m }), key: `sleep-${m}`, current: cur === m, onClick: () => setSleep(m) })))
+      .concat([{ label: t('player.sleep_end'), key: 'sleep-end', current: cur === 'end', onClick: () => setSleep('end') }])
+      .concat(sleep ? ['sep', { label: t('player.sleep_off'), key: 'sleep-off', icon: I.x, onClick: () => setSleep(null) }] : []));
+  }
 
   /* ---------- Zeichnen ---------- */
   function paintState() {
@@ -95,6 +323,7 @@
     if (!el || !media) return;
     const d = dur(), x = clamp(pos(), 0, d || Infinity), p = d ? clamp(x / d, 0, 1) : 0;
     $('#pl-fill', el).style.transform = `scaleX(${p})`;
+    if (peaks) $('#pl-wave-on', el).style.clipPath = `inset(0 ${((1 - p) * 100).toFixed(3)}% 0 0)`;
     $('#pl-knob', el).style.transform = `translateX(${p * seekW}px)`;
     const sec = Math.floor(x);
     if (sec !== lastSec || dragging) {
@@ -140,7 +369,7 @@
   }
   function paintVolume() {
     const v = prefs.muted ? 0 : prefs.volume;
-    if (audio) { audio.volume = prefs.volume; audio.muted = prefs.muted; }
+    applyOutput();
     const r = $('#pl-vol', el);
     r.value = Math.round(v * 100);
     r.style.setProperty('--p', `${Math.round(v * 100)}%`);
@@ -167,7 +396,7 @@
       try { navigator.mediaSession.metadata = new window.MediaMetadata({ title: media.title || '', artist: media.artist || '', album: media.genre || '' }); } catch (e) { /* egal */ }
     }
   }
-  function measure() { seekW = el ? $('#pl-seek', el).clientWidth : 0; lastSec = -1; paint(); }
+  function measure() { seekW = el ? $('#pl-seek', el).clientWidth : 0; lastSec = -1; if (peaks) drawWave(); else paint(); }
 
   /* ---------- Trackliste ---------- */
   function setList(open) {
@@ -191,6 +420,8 @@
   }
   const seekBy = (delta) => seek(pos() + delta);
   function start() {
+    if (resumeBox && resumeBox.mode === 'ask') hideResume(); // ▶/Leertaste statt Antwort = von vorn
+    ensureGraph();
     const p = audio.play();
     if (p && p.catch) p.catch(() => paintState()); // z.B. Autoplay-Sperre: bleibt pausiert, ▶ startet
   }
@@ -217,6 +448,8 @@
   function unload() {
     cancelAnimationFrame(raf);
     if (!audio) return;
+    if (media && audio.getAttribute('src')) savePos(true);
+    hideResume();
     audio.pause();
     audio.removeAttribute('src');
     try { audio.load(); } catch (e) { /* egal */ }
@@ -228,6 +461,8 @@
       .filter((c) => isFinite(c.start) && c.start >= 0 && (c.title || c.performer))
       .sort((a, b) => a.start - b.start);
     chapters.forEach((c, i) => { if (!c.title) c.title = `Track ${i + 1}`; });
+    peaks = null;
+    waveSeq++;
     const fresh = el.hidden;
     el.hidden = false;
     el.classList.remove('leave');
@@ -239,8 +474,10 @@
     measure();
     paintChapters();
     paintVolume();
+    if (Array.isArray(r.peaks) && r.peaks.length) setPeaks(r.peaks); else { drawWave(); requestWave(media.id); }
   }
-  /** Mix laden und abspielen. item: LibraryItem (mindestens {id}); derselbe Mix nochmals = Play/Pause. */
+  /** Mix laden und abspielen. item: LibraryItem (mindestens {id}); derselbe Mix nochmals = Play/Pause.
+      o: {reload, at (s), paused, resume (an der gemerkten Stelle, ohne Rückfrage)} */
   async function play(item, o) {
     if (!el || !item || item.id == null) return;
     const opt = o || {};
@@ -255,7 +492,14 @@
     pendingSeek = opt.at > 0 ? opt.at : null;
     show(r, item);
     audio.src = src;
-    if (opt.paused) { audio.load(); paintState(); } else start();
+    lastSave = Date.now();
+    /* Gemerkte Position: nicht bei Sprung (Tracklist, «Weiterhören») oder Neuladen nach dem Taggen. */
+    const rp = r.resume && +r.resume.position > 0 ? +r.resume.position : 0, mode = resumeMode();
+    if (rp && opt.resume) { pendingSeek = rp; start(); } // «Weiterhören»: ohne Rückfrage an die gemerkte Stelle
+    else if (rp && opt.at == null && !opt.reload && mode !== 'off') {
+      if (mode === 'auto') { pendingSeek = rp; start(); showResume('auto', rp); }
+      else { audio.load(); paintState(); showResume('ask', rp); }
+    } else if (opt.paused) { audio.load(); paintState(); } else start();
     emit();
   }
   /** Mix ab Sekunde `at` spielen (Tracklist-Suche): läuft er schon, nur springen und weiterspielen. */
@@ -277,6 +521,9 @@
     media = null;
     chapters = [];
     pendingSeek = null;
+    peaks = null;
+    if (sleep) setSleep(null);
+    drawWave();
     setList(false);
     el.classList.remove('playing');
     document.body.classList.remove('has-player');
@@ -356,6 +603,7 @@
     loadPrefs();
     el.setAttribute('aria-label', t('player.label'));
     el.innerHTML = `
+      <div class="pl-resume" id="pl-resume" role="status" hidden></div>
       <div class="pl-list" id="pl-list" hidden>
         <div class="pl-list-head"><b>${t('player.tracks')}</b><span class="mono" id="pl-list-n"></span><span class="spacer"></span><span class="keys">${esc(t('player.keys'))}</span></div>
         <ol class="pl-tracks" id="pl-tracks"></ol>
@@ -364,7 +612,7 @@
         <div class="pl-cover" id="pl-cover"></div>
         <div class="pl-meta">
           <div class="pl-head"><span class="pl-title" id="pl-title"></span><span class="pl-artist" id="pl-artist"></span></div>
-          <div class="pl-sub"><span id="pl-pbadge"></span><span class="pl-artist2" id="pl-artist2"></span><button type="button" class="pl-track" id="pl-track" aria-expanded="false" hidden>${I.play}<span></span></button></div>
+          <div class="pl-sub"><span id="pl-pbadge"></span><span class="pl-artist2" id="pl-artist2"></span><button type="button" class="pl-track" id="pl-track" aria-expanded="false" hidden>${I.play}<span></span></button><span class="pl-norm mono" id="pl-norm" hidden></span></div>
         </div>
       </div>
       <div class="pl-mid">
@@ -379,6 +627,7 @@
           <span class="pl-time" id="pl-cur">0:00</span>
           <div class="pl-seek" id="pl-seek" role="slider" tabindex="0" aria-label="${esc(t('player.seek'))}" aria-valuemin="0" aria-valuenow="0">
             <div class="pl-rail"><i class="pl-fill" id="pl-fill"></i></div>
+            <canvas class="pl-wave" id="pl-wave" aria-hidden="true"></canvas><canvas class="pl-wave on" id="pl-wave-on" aria-hidden="true"></canvas>
             <div class="pl-marks" id="pl-marks"></div>
             <i class="pl-knob" id="pl-knob"></i>
             <div class="pl-tip" id="pl-tip" hidden></div>
@@ -388,6 +637,7 @@
       </div>
       <div class="pl-side">
         <button type="button" class="iconbtn pl-listbtn" data-p="list" title="${esc(t('player.tracks_toggle'))}" aria-expanded="false" hidden>${I.list}<i></i></button>
+        <button type="button" class="iconbtn pl-sleep" data-p="sleep" aria-haspopup="menu">${I.moon}<i></i></button>
         <button type="button" class="iconbtn" data-p="mute"></button>
         <input type="range" class="range pl-vol" id="pl-vol" min="0" max="100" step="1" aria-label="${esc(t('player.volume'))}" title="${esc(t('player.volume'))}">
         <button type="button" class="iconbtn" data-p="close" title="${esc(t('player.close'))}">${I.x}</button>
@@ -396,10 +646,10 @@
     audio = new Audio();
     audio.preload = 'auto';
     audio.addEventListener('play', () => { paintState(); emit(); });
-    audio.addEventListener('pause', () => { paintState(); paint(); emit(); });
-    audio.addEventListener('ended', () => { paintState(); paint(); emit(); });
-    audio.addEventListener('timeupdate', paint);
-    audio.addEventListener('seeked', () => { lastSec = -1; paint(); });
+    audio.addEventListener('pause', () => { paintState(); paint(); emit(); if (!audio.ended) savePos(true); });
+    audio.addEventListener('ended', () => { paintState(); paint(); emit(); savePos(true); if (sleep && sleep.mode === 'end') { setSleep(null); ui.toast(t('player.sleep_done'), 'info'); } });
+    audio.addEventListener('timeupdate', () => { paint(); if (playing() && Date.now() - lastSave > SAVE_EVERY_MS) savePos(false); });
+    audio.addEventListener('seeked', () => { lastSec = -1; paint(); if (resumeBox && resumeBox.mode === 'auto' && Math.abs(audio.currentTime - resumeBox.at) > 2) hideResume(); });
     audio.addEventListener('loadedmetadata', () => {
       if (pendingSeek != null) { const to = pendingSeek; pendingSeek = null; seek(to); }
       $('#pl-seek', el).setAttribute('aria-valuemax', Math.floor(dur()));
@@ -413,6 +663,8 @@
     });
 
     el.addEventListener('click', (e) => {
+      const r = e.target.closest('[data-r]');
+      if (r) { answerResume(r.dataset.r); return; }
       const li = e.target.closest('#pl-tracks li');
       if (li) { gotoChapter(+li.dataset.i, true); return; }
       if (e.target.closest('#pl-track')) { setList(!listOpen); return; }
@@ -425,6 +677,7 @@
       else if (a === 'prev') prevChapter();
       else if (a === 'next') nextChapter();
       else if (a === 'list') setList(!listOpen);
+      else if (a === 'sleep') sleepMenu(b);
       else if (a === 'mute') { prefs.muted = !prefs.muted; if (!prefs.muted && prefs.volume === 0) prefs.volume = 0.5; savePrefs(); paintVolume(); }
       else if (a === 'close') close();
     });
@@ -474,7 +727,28 @@
     if (window.ResizeObserver) new ResizeObserver(measure).observe(sk);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) paintState(); });
     /* Genre-Farben geändert bzw. Effekte ein/aus -> Platzhalter-Cover und Lauf des Balkens anpassen. */
-    HC.bridge.on('settings_changed', () => { if (media) { paintMeta(); paintState(); } });
+    HC.bridge.on('settings_changed', () => {
+      if (!media) return;
+      paintMeta();
+      paintState();
+      applyOutput();
+      if (plSet().normalize !== false && !audio.paused) ensureGraph();
+      if (waveOn() && !peaks) requestWave(media.id); else drawWave();
+      if (resumeMode() === 'off') hideResume();
+    });
+    /* v0.7.0: Analyse fertig (nach Download/Durchlauf) bzw. angeforderte Wellenform da. */
+    HC.bridge.on('waveform', (d) => {
+      if (!media || d.id !== media.id || !d.ok) return;
+      if (d.loudness) { media.loudness = d.loudness; applyOutput(); }
+      if (Array.isArray(d.peaks) && waveOn()) setPeaks(d.peaks);
+    });
+    HC.bridge.on('media_analysed', (d) => {
+      if (!media || d.id !== media.id || !d.ok) return;
+      if (d.loudness) { media.loudness = d.loudness; applyOutput(); }
+      if (d.peaks && !peaks) requestWave(media.id);
+    });
+    window.addEventListener('beforeunload', () => savePos(false));
+    document.addEventListener('visibilitychange', () => { if (document.hidden && playing()) savePos(false); });
 
     if ('mediaSession' in navigator) {
       const act = (name, fn) => { try { navigator.mediaSession.setActionHandler(name, fn); } catch (e) { /* nicht unterstützt */ } };
@@ -486,6 +760,7 @@
       act('nexttrack', nextChapter);
     }
     paintVolume();
+    paintSleep();
     paintState();
   }
 
@@ -496,5 +771,8 @@
     /** -> {id, playing} – id null = nichts geladen */
     state: () => ({ id: media ? media.id : null, playing: playing() }),
     get audio() { return audio; },
+    /** v0.7.0 (Diagnose/Tests): Ausgang und Zusatzzustand. */
+    output: () => ({ mode: graph ? 'webaudio' : 'volume', gain: gainNow, fade, volume: audio ? audio.volume : 1, peaks: peaks ? peaks.length : 0, sleep: sleep ? (sleep.mode === 'end' ? 'end' : sleep.minutes) : null, sleepLeft: sleep ? sleepLeft() : null, resume: resumeBox ? resumeBox.mode : null }),
+    sleep: setSleep,
   };
 })();

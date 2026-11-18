@@ -61,7 +61,8 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "results": "resultados",
     "entries": "entradas",
     "clock": "h",
-    "req_h": "req./h"
+    "req_h": "req./h",
+    "lufs": "LUFS"
   },
   "range": {
     "ge_sleep": "≥ mínimo",
@@ -500,7 +501,11 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "group_festival": "Festival",
     "group_artist": "Artista",
     "group_year": "Ano",
-    "group_unknown": "Desconhecido"
+    "group_unknown": "Desconhecido",
+    "continue": "Continuar ouvindo",
+    "continue_title": "Continuar “{title}” em {t}",
+    "continue_left": "faltam {t}",
+    "continue_forget": "Remover de “Continuar ouvindo”"
   },
   "player": {
     "label": "Minirreprodutor",
@@ -527,7 +532,22 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "err_load": "Não é possível reproduzir",
     "err_src": "Não é possível reproduzir: endereço de arquivo inválido",
     "err_play": "Não foi possível reproduzir o arquivo: {title}",
-    "external": "Abrindo no player padrão …"
+    "external": "Abrindo no player padrão …",
+    "norm_title": "Volume normalizado: {lufs} LUFS → alvo {target} LUFS ({gain})",
+    "norm_capped": "apenas reduzido – aumentar exige o motor de áudio",
+    "resume_q": "Continuar de onde você parou?",
+    "resume_at": "em {t}",
+    "resume": "Continuar",
+    "restart": "Do início",
+    "resumed_at": "Retomado em {t}",
+    "sleep": "Timer de desligamento",
+    "sleep_min": "{n} min",
+    "sleep_end": "Fim deste set",
+    "sleep_end_short": "fim",
+    "sleep_off": "Desligar",
+    "sleep_on": "Timer: para em {t}",
+    "sleep_end_on": "Timer: para no fim deste set",
+    "sleep_done": "Timer: reprodução parada"
   },
   "log": {
     "title": "Registro",
@@ -600,7 +620,8 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "schedule": "Agendamento",
     "appearance": "Aparência",
     "maintenance": "Manutenção",
-    "festivals": "Festivais e séries"
+    "festivals": "Festivais e séries",
+    "playback": "Reprodução"
   },
   "tabs_hint": {
     "general": "Comportamento básico do app.",
@@ -614,7 +635,8 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "schedule": "Quando a lista de monitoramento é verificada automaticamente – no app e pelo Agendador de Tarefas do Windows.",
     "appearance": "Visual e sensação. As alterações aparecem na hora e só ficam permanentes após salvar.",
     "maintenance": "Versões, atualizações, banco de dados.",
-    "festivals": "Reconhece festival ou série, ano, palco e tipo de set a partir dos títulos salvos – offline, sem nenhuma requisição extra."
+    "festivals": "Reconhece festival ou série, ano, palco e tipo de set a partir dos títulos salvos – offline, sem nenhuma requisição extra.",
+    "playback": "Player integrado, normalização de volume, posições lembradas e a análise offline dos seus arquivos."
   },
   "set": {
     "default": "Padrão",
@@ -659,7 +681,10 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
       "reset": "Redefinir",
       "detection": "Detecção",
       "series": "Séries",
-      "backfill": "Ler tudo (uma vez)"
+      "backfill": "Ler tudo (uma vez)",
+      "loudness": "Volume",
+      "memory": "Memória e forma de onda",
+      "analysis": "Análise (offline, ffmpeg)"
     },
     "general": {
       "language": {
@@ -683,6 +708,22 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
       "mode": {
         "label": "Reproduzir com",
         "help": "O que o ▶ da biblioteca usa. O player integrado mostra capítulos como marcas de salto e continua tocando ao trocar de tela. A outra opção está disponível por entrada no menu."
+      },
+      "normalize": {
+        "label": "Normalizar volume",
+        "help": "Toca cada set com o mesmo volume percebido (ReplayGain da análise offline ou de tags existentes). Nunca distorce: o ganho é limitado pelo true peak medido."
+      },
+      "target_lufs": {
+        "label": "Volume alvo",
+        "help": "−18 LUFS é a referência do ReplayGain 2.0. Mais alto (ex.: −14) = mais forte, mas mais sets atingem o limite de pico."
+      },
+      "resume": {
+        "label": "Lembrar posição",
+        "help": "Por set, fora dos primeiros e últimos 30 segundos. “Perguntar” oferece continuar, “Automático” continua sem perguntar. A biblioteca mostra os últimos cinco sets inacabados."
+      },
+      "waveform": {
+        "label": "Forma de onda como barra de busca",
+        "help": "Mostra o set como forma de onda com as marcas da tracklist. Calculada uma vez por arquivo com ffmpeg (na primeira reprodução ou na análise); senão, a barra simples."
       }
     },
     "search": {
@@ -1186,6 +1227,32 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
         "label": "Requisições por hora",
         "help": "As requisições de páginas de “Ler tudo” são distribuídas por igual (120 = uma a cada 30 s); o intervalo normal e o backoff também valem. Uma execução agendada (Agendador de Tarefas) continua por no máximo esta quantidade de requisições."
       }
+    },
+    "loudness": {
+      "analyse_after_download": {
+        "label": "Analisar após cada download",
+        "help": "Mede o volume (EBU R128) e calcula a forma de onda logo após um download – offline, com baixa prioridade, um arquivo por vez."
+      },
+      "write_tags": {
+        "label": "Gravar tags ReplayGain",
+        "help": "Grava REPLAYGAIN_TRACK_GAIN/PEAK (MP3, M4A) ou R128_TRACK_GAIN (Opus) no arquivo para que outros players também usem. O áudio nunca é recodificado."
+      },
+      "waveforms": {
+        "label": "Pré-calcular formas de onda",
+        "help": "Calcula as formas de onda também durante a análise. Desligado: só quando um set é tocado pela primeira vez."
+      }
+    },
+    "analysis": {
+      "title": "{done} de {total} arquivos analisados",
+      "counts": "{tagged} com tags · {waves} formas de onda · {failed} com falha",
+      "help": "Roda offline sobre a biblioteca, um arquivo por vez com baixa prioridade – sem rede, o áudio fica intacto. Pode ser cancelado a qualquer momento.",
+      "button": "Analisar arquivos novos",
+      "button_n": "Analisar {n} novos",
+      "all": "Analisar tudo de novo",
+      "all_title": "Medir cada arquivo novamente (ex.: após substituir arquivos fora do app)",
+      "running": "Analisando … {done} / {total}",
+      "no_ffmpeg_title": "ffmpeg ausente",
+      "no_ffmpeg": "Volume e formas de onda precisam do ffmpeg (bin\\ffmpeg.exe, instalado pelo setup.ps1). Configurações › Manutenção mostra o status."
     }
   },
   "opt": {
@@ -1204,6 +1271,11 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
       "mode": {
         "internal": "Player integrado (recomendado)",
         "external": "Player padrão do Windows"
+      },
+      "resume": {
+        "ask": "Perguntar",
+        "auto": "Automático",
+        "off": "Desligado"
       }
     },
     "download": {
@@ -1373,7 +1445,9 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "series_hidden": "Série “{name}” ocultada",
     "series_reset": "Séries embutidas restauradas",
     "assign_done": "Festivais atribuídos: {assigned} novos, {suggested} sugestões",
-    "assign_cancelled": "Atribuição cancelada: {assigned} novos, {suggested} sugestões"
+    "assign_cancelled": "Atribuição cancelada: {assigned} novos, {suggested} sugestões",
+    "analysis_done": "Volume analisado: {n} arquivos ({failed} com falha)",
+    "analysis_cancelled": "Análise cancelada após {n} arquivos"
   },
   "upd": {
     "available": "Versão {v} disponível",

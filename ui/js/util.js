@@ -256,6 +256,9 @@
     timeline: svg('<path d="M6 3v18"/><circle cx="6" cy="7" r="2"/><circle cx="6" cy="16" r="2"/><path d="M12 7h8M12 16h6"/>'),
     copy: svg('<path d="M9 9h11v11H9z"/><path d="M5 15H4V4h11v1"/>'),
     wave: svg('<path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 10v4"/>'),
+    /* v0.7.0 Schlaf-Timer, Weiterhören */
+    moon: svg('<path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/>'),
+    resume: svg('<path d="M4 12a8 8 0 1 0 2.6-5.9"/><path d="M4 4v5h5"/><path d="M10.5 9.5l4 2.5-4 2.5z"/>'),
     skip_prev: svg('<path d="M6 5v14"/><path d="M19 5l-10 7 10 7z"/>'),
     skip_next: svg('<path d="M18 5v14"/><path d="M5 5l10 7-10 7z"/>'),
     volume: svg('<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 010 7"/><path d="M19.2 6a8.5 8.5 0 010 12"/>'),

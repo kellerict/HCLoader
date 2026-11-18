@@ -367,7 +367,7 @@ def test_migration_v10_adds_tables_keeps_rows_and_backs_up(tmp_path):
         assert tracklist.has_fts(d)  # this Python's SQLite has FTS5
         idx = {r["name"] for r in d.query("PRAGMA index_list(tracks)")}
         assert "idx_tracks_key_video" in idx and "idx_tracks_key" not in idx  # migration 11
-    assert len(list((tmp_path / "backups").glob("hcloader-premigrate-v9-to-v11-*.db"))) == 1
+    assert len(list((tmp_path / "backups").glob("hcloader-premigrate-v9-to-v12-*.db"))) == 1
 
 
 def test_migration_without_fts5_falls_back(tmp_path, monkeypatch):

@@ -61,7 +61,8 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
     "results": "résultats",
     "entries": "entrées",
     "clock": "h",
-    "req_h": "req./h"
+    "req_h": "req./h",
+    "lufs": "LUFS"
   },
   "range": {
     "ge_sleep": "≥ minimum",
@@ -500,7 +501,11 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
     "group_festival": "Festival",
     "group_artist": "Artiste",
     "group_year": "Année",
-    "group_unknown": "Inconnu"
+    "group_unknown": "Inconnu",
+    "continue": "Reprendre l’écoute",
+    "continue_title": "Reprendre « {title} » à {t}",
+    "continue_left": "encore {t}",
+    "continue_forget": "Retirer de « Reprendre l’écoute »"
   },
   "player": {
     "label": "Mini-lecteur",
@@ -527,7 +532,22 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
     "err_load": "Lecture impossible",
     "err_src": "Lecture impossible : adresse de fichier non valide",
     "err_play": "Le fichier ne peut pas être lu : {title}",
-    "external": "Ouverture dans le lecteur par défaut …"
+    "external": "Ouverture dans le lecteur par défaut …",
+    "norm_title": "Volume harmonisé : {lufs} LUFS → cible {target} LUFS ({gain})",
+    "norm_capped": "seulement abaissé – l’amplification nécessite le moteur audio",
+    "resume_q": "Reprendre là où vous vous étiez arrêté ?",
+    "resume_at": "à {t}",
+    "resume": "Reprendre",
+    "restart": "Depuis le début",
+    "resumed_at": "Repris à {t}",
+    "sleep": "Minuterie de sommeil",
+    "sleep_min": "{n} min",
+    "sleep_end": "Fin de ce set",
+    "sleep_end_short": "fin",
+    "sleep_off": "Désactiver",
+    "sleep_on": "Minuterie : arrêt dans {t}",
+    "sleep_end_on": "Minuterie : arrêt à la fin de ce set",
+    "sleep_done": "Minuterie : lecture arrêtée"
   },
   "log": {
     "title": "Journal",
@@ -600,7 +620,8 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
     "schedule": "Planification",
     "appearance": "Apparence",
     "maintenance": "Maintenance",
-    "festivals": "Festivals et séries"
+    "festivals": "Festivals et séries",
+    "playback": "Lecture"
   },
   "tabs_hint": {
     "general": "Comportement de base de l’app.",
@@ -614,7 +635,8 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
     "schedule": "Quand la liste de suivi est vérifiée automatiquement – dans l’app et via le Planificateur de tâches Windows.",
     "appearance": "Aspect et ambiance. Les modifications sont prévisualisées immédiatement et ne deviennent définitives qu’après enregistrement.",
     "maintenance": "Versions, mises à jour, base de données.",
-    "festivals": "Reconnaît le festival ou la série, l’année, la scène et le type de set à partir des titres enregistrés – hors ligne, sans la moindre requête supplémentaire."
+    "festivals": "Reconnaît le festival ou la série, l’année, la scène et le type de set à partir des titres enregistrés – hors ligne, sans la moindre requête supplémentaire.",
+    "playback": "Lecteur intégré, harmonisation du volume, positions mémorisées et analyse hors ligne de vos fichiers."
   },
   "set": {
     "default": "Par défaut",
@@ -659,7 +681,10 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
       "reset": "Réinitialisation",
       "detection": "Détection",
       "series": "Séries",
-      "backfill": "Tout lire (une fois)"
+      "backfill": "Tout lire (une fois)",
+      "loudness": "Volume",
+      "memory": "Mémoire et forme d’onde",
+      "analysis": "Analyse (hors ligne, ffmpeg)"
     },
     "general": {
       "language": {
@@ -683,6 +708,22 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
       "mode": {
         "label": "Lire avec",
         "help": "Ce qu’utilise ▶ dans la bibliothèque. Le lecteur intégré affiche les chapitres comme repères de saut et continue la lecture quand vous changez de vue. L’autre option est disponible par entrée dans le menu."
+      },
+      "normalize": {
+        "label": "Harmoniser le volume",
+        "help": "Joue chaque set au même volume perçu (ReplayGain issu de l’analyse hors ligne ou des tags existants). Jamais de saturation : le gain est limité par le true peak mesuré."
+      },
+      "target_lufs": {
+        "label": "Volume cible",
+        "help": "−18 LUFS est la référence ReplayGain 2.0. Plus haut (p. ex. −14) = plus fort, mais davantage de sets atteignent leur limite de crête."
+      },
+      "resume": {
+        "label": "Mémoriser la position",
+        "help": "Par set, hors des 30 premières et dernières secondes. « Demander » propose de reprendre, « Automatique » reprend sans rien demander. La bibliothèque affiche les cinq derniers sets inachevés."
+      },
+      "waveform": {
+        "label": "Forme d’onde comme barre de lecture",
+        "help": "Affiche le set sous forme d’onde avec les repères de la tracklist. Calculée une fois par fichier avec ffmpeg (à la première lecture ou lors de l’analyse) ; sinon la barre simple."
       }
     },
     "search": {
@@ -1186,6 +1227,32 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
         "label": "Requêtes par heure",
         "help": "Les requêtes de pages de « Tout lire » sont réparties régulièrement (120 = une toutes les 30 s) ; l’intervalle normal et le backoff s’appliquent aussi. Une exécution planifiée (Planificateur de tâches) continue pour au plus ce nombre de requêtes."
       }
+    },
+    "loudness": {
+      "analyse_after_download": {
+        "label": "Analyser après chaque téléchargement",
+        "help": "Mesure le volume (EBU R128) et calcule la forme d’onde juste après un téléchargement – hors ligne, en basse priorité, un fichier à la fois."
+      },
+      "write_tags": {
+        "label": "Écrire les tags ReplayGain",
+        "help": "Écrit REPLAYGAIN_TRACK_GAIN/PEAK (MP3, M4A) ou R128_TRACK_GAIN (Opus) dans le fichier pour que d’autres lecteurs puissent l’utiliser. L’audio n’est jamais réencodé."
+      },
+      "waveforms": {
+        "label": "Précalculer les formes d’onde",
+        "help": "Calcule aussi les formes d’onde pendant l’analyse. Désactivé : seulement à la première lecture d’un set."
+      }
+    },
+    "analysis": {
+      "title": "{done} fichiers sur {total} analysés",
+      "counts": "{tagged} taggés · {waves} formes d’onde · {failed} en échec",
+      "help": "S’exécute hors ligne sur la bibliothèque, un fichier à la fois en basse priorité – aucun réseau, l’audio reste intact. Annulable à tout moment.",
+      "button": "Analyser les nouveaux fichiers",
+      "button_n": "Analyser {n} nouveaux",
+      "all": "Tout réanalyser",
+      "all_title": "Mesurer à nouveau chaque fichier (p. ex. après avoir remplacé des fichiers hors de l’app)",
+      "running": "Analyse … {done} / {total}",
+      "no_ffmpeg_title": "ffmpeg absent",
+      "no_ffmpeg": "Le volume et les formes d’onde nécessitent ffmpeg (bin\\ffmpeg.exe, installé par setup.ps1). Paramètres › Maintenance indique son état."
     }
   },
   "opt": {
@@ -1204,6 +1271,11 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
       "mode": {
         "internal": "Lecteur intégré (recommandé)",
         "external": "Lecteur par défaut de Windows"
+      },
+      "resume": {
+        "ask": "Demander",
+        "auto": "Automatique",
+        "off": "Désactivé"
       }
     },
     "download": {
@@ -1373,7 +1445,9 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
     "series_hidden": "Série « {name} » masquée",
     "series_reset": "Séries intégrées restaurées",
     "assign_done": "Festivals attribués : {assigned} nouveaux, {suggested} suggestions",
-    "assign_cancelled": "Attribution annulée : {assigned} nouveaux, {suggested} suggestions"
+    "assign_cancelled": "Attribution annulée : {assigned} nouveaux, {suggested} suggestions",
+    "analysis_done": "Volume analysé : {n} fichiers ({failed} en échec)",
+    "analysis_cancelled": "Analyse annulée après {n} fichiers"
   },
   "upd": {
     "available": "Version {v} disponible",
