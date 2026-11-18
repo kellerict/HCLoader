@@ -102,7 +102,8 @@
     "headless_needs_watchlist": "--headless требует --run-watchlist.",
     "run_watchlist": "проверить список наблюдения (вместе с --headless)",
     "smoke": "выполнить ровно одну загрузку (только QA)",
-    "open": "открыть раздел, например inbox (также hcloader://inbox из уведомления)"
+    "open": "открыть раздел, например inbox (также hcloader://inbox из уведомления)",
+    "open_alone": "--open нельзя сочетать с --smoke, --headless или --run-watchlist."
   },
   "collector": {
     "artist_required": "Не указан DJ / исполнитель",

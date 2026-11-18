@@ -100,7 +100,8 @@
     "headless_needs_watchlist": "--headless vaatii valitsimen --run-watchlist.",
     "run_watchlist": "tarkista seuranta (valitsimen --headless kanssa)",
     "smoke": "suorita täsmälleen yksi lataus (vain laadunvarmistus)",
-    "open": "avaa näkymä, esim. inbox (myös hcloader://inbox ilmoituksesta)"
+    "open": "avaa näkymä, esim. inbox (myös hcloader://inbox ilmoituksesta)",
+    "open_alone": "--open-valintaa ei voi yhdistää valintoihin --smoke, --headless tai --run-watchlist."
   },
   "collector": {
     "artist_required": "DJ / artisti puuttuu",

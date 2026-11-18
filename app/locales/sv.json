@@ -100,7 +100,8 @@
     "headless_needs_watchlist": "--headless kräver --run-watchlist.",
     "run_watchlist": "kontrollera bevakningen (med --headless)",
     "smoke": "kör exakt en nedladdning (endast QA)",
-    "open": "öppna en vy, t.ex. inbox (även hcloader://inbox från en avisering)"
+    "open": "öppna en vy, t.ex. inbox (även hcloader://inbox från en avisering)",
+    "open_alone": "--open kan inte kombineras med --smoke, --headless eller --run-watchlist."
   },
   "collector": {
     "artist_required": "DJ / artist saknas",

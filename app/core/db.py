@@ -781,11 +781,13 @@ class Database:
         return rows[0] if rows else None
 
     @contextmanager
-    def transaction(self) -> Iterator[None]:
+    def transaction(self, *, immediate: bool = False) -> Iterator[None]:
         """BEGIN … COMMIT (ROLLBACK on error) under the connection lock (Review Phase 3 m7).
-        The connection runs in autocommit mode; nested use is not supported."""
+        The connection runs in autocommit mode; nested use is not supported. `immediate` takes
+        the write lock right away (read-modify-write shared with another process, e.g. the
+        notification batch of the GUI and a scheduled headless run)."""
         with self._lock:
-            self._conn.execute("BEGIN")
+            self._conn.execute("BEGIN IMMEDIATE" if immediate else "BEGIN")
             try:
                 yield
             except BaseException:

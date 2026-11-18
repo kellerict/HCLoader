@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import logging
 import os
+import re
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -24,7 +25,8 @@ log = logging.getLogger("hcloader")
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="app.main", description="HCLoader")
+    # no abbreviations: `--op`/`--prot` must not silently match a real option (review v0.9.0 M1)
+    p = argparse.ArgumentParser(prog="app.main", description="HCLoader", allow_abbrev=False)
     p.add_argument("--smoke", metavar="URL", help=tr("cli.smoke"))
     p.add_argument("--headless", action="store_true", help=tr("cli.headless"))
     p.add_argument("--run-watchlist", action="store_true", help=tr("cli.run_watchlist"))
@@ -45,6 +47,47 @@ def view_arg(value: str | None) -> str | None:
         v = v[len("hcloader:") :]
     v = v.strip("/")
     return v if v in OPEN_VIEWS else None
+
+
+# Review v0.9.0 M1: `hcloader:` links (toast click, or any other program/web page) may only
+# navigate. Registered command: `... -c "<code>" --protocol "%1"`; see main() / docs/decisions.md.
+PROTOCOL_FLAG = "--protocol"
+PROTOCOL_VIEWS = ("inbox", "downloads", "library", "stats")
+_PROTOCOL_RE = re.compile(r"hcloader://(?:open/)?(inbox|downloads|library|stats)/?")
+_PROTOCOL_CHARS = re.compile(r"[A-Za-z:/]{1,64}")
+
+
+def protocol_view(url: str | None) -> str | None:
+    """Strict allow-list: `hcloader://open/<view>` (or the v0.9.0 form `hcloader://<view>`) with
+    <view> in PROTOCOL_VIEWS, optional trailing slash -> view; anything else -> None. No
+    percent-decoding, no query/fragment, no spaces/quotes/dashes."""
+    if not url or not _PROTOCOL_CHARS.fullmatch(url):
+        return None
+    m = _PROTOCOL_RE.fullmatch(url.lower())
+    return m.group(1) if m else None
+
+
+def _is_protocol_call(argv: Sequence[str]) -> bool:
+    return any(a == PROTOCOL_FLAG or a.startswith(PROTOCOL_FLAG + "=") for a in argv)
+
+
+def run_protocol(argv: Sequence[str]) -> int:
+    """`--protocol <url>`: exactly these two arguments, otherwise nothing happens. Only forwards
+    the view to the running instance or starts the GUI at it - never smoke, watchlist,
+    headless or a download."""
+    if len(argv) != 2 or argv[0] != PROTOCOL_FLAG:
+        log.warning("hcloader: link refused (unexpected arguments)")
+        return EXIT_USAGE
+    view = protocol_view(argv[1])
+    if view is None:
+        log.warning("hcloader: link refused (not an allowed target)")
+        return EXIT_USAGE
+    _init_language()
+    if sys.platform == "win32" and (
+        selfupdate.interrupted(update_dir()) or selfupdate.update_in_progress(update_dir())
+    ):
+        return EXIT_BUSY  # a link does not start the updater recovery; a normal start does
+    return _start_gui(view)
 
 
 def _reset_interrupted(db: Database) -> None:
@@ -227,6 +270,12 @@ def _run_gui(view: str | None = None) -> int:
         ),
     )
     api = Api()  # logs config warnings itself
+    try:  # M1: a v0.9.0 dev build registered the old `--open "%1"` command - rewrite it
+        from .core import notify
+
+        notify.refresh_registration(config.app_root(), notify.icon_file(config.app_root()))
+    except Exception:
+        log.debug("Protocol registration refresh failed", exc_info=True)
     if view:
         api.set_open_view(view)  # v0.9.0: --open / click on a notification, first get_settings
     _set_app_user_model_id()
@@ -365,9 +414,18 @@ def _init_language() -> None:
         i18n.set_language(i18n.REFERENCE)
 
 
+ACTION_FLAGS = ("smoke", "headless", "run_watchlist")
+
+
 def main(argv: Sequence[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if _is_protocol_call(argv):  # first, before any other flag is looked at (M1)
+        return run_protocol(argv)
     _init_language()
     args = build_parser().parse_args(argv)
+    if args.open is not None and any(getattr(args, f) for f in ACTION_FLAGS):
+        print(tr("cli.open_alone"), file=sys.stderr)
+        return EXIT_USAGE
     if args.smoke:
         return run_smoke(args.smoke)
     if (args.run_watchlist or not args.headless) and _recover_interrupted_update(args):
@@ -386,11 +444,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.headless:
         print(tr("cli.headless_needs_watchlist"), file=sys.stderr)
         return EXIT_USAGE
+    return _start_gui(view_arg(args.open))
+
+
+def _start_gui(view: str | None) -> int:
+    """Single instance: forward `view` to the running window, or start the GUI at it."""
     instance = locks.acquire_single_instance()
     if instance is None:
         from .instance import request_activation
 
-        view = view_arg(args.open)
         acked = request_activation(view=view) if view else request_activation()
         if not acked:
             print(tr("main.already_running"), file=sys.stderr)
@@ -407,7 +469,6 @@ def main(argv: Sequence[str] | None = None) -> int:
                 return EXIT_FAILED
             finally:
                 run_lock.release()
-        view = view_arg(args.open)
         return run_gui(view) if view else run_gui()
     finally:
         instance.release()

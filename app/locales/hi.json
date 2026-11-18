@@ -100,7 +100,8 @@
     "headless_needs_watchlist": "--headless के साथ --run-watchlist ज़रूरी है।",
     "run_watchlist": "वॉचलिस्ट जाँचें (--headless के साथ)",
     "smoke": "ठीक एक डाउनलोड चलाएँ (केवल QA के लिए)",
-    "open": "कोई व्यू खोलें, जैसे inbox (नोटिफ़िकेशन से hcloader://inbox भी)"
+    "open": "कोई व्यू खोलें, जैसे inbox (नोटिफ़िकेशन से hcloader://inbox भी)",
+    "open_alone": "--open को --smoke, --headless या --run-watchlist के साथ नहीं जोड़ा जा सकता।"
   },
   "collector": {
     "artist_required": "DJ / कलाकार आवश्यक है",

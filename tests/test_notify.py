@@ -105,9 +105,9 @@ def test_build_single_and_combined_messages():
 
 def test_toast_xml_is_escaped_and_launches_the_view():
     xml = notify.toast_xml(notify.Toast('A <b>&"x"', "Body & more", "downloads"))
-    assert 'launch="hcloader://downloads" activationType="protocol"' in xml
+    assert 'launch="hcloader://open/downloads" activationType="protocol"' in xml
     assert 'A &lt;b&gt;&amp;"x"' in xml and "Body &amp; more" in xml
-    assert notify.launch_uri("evil://x") == "hcloader://inbox"
+    assert notify.launch_uri("evil://x") == "hcloader://open/inbox"
 
 
 def test_flush_quiet_gap_disabled_unavailable_error(db):
@@ -187,6 +187,15 @@ class FakeReg:
         self.writes += 1
         self.values[(key.path, name)] = value
 
+    def OpenKey(self, root, path, reserved=0, access=1):  # noqa: N802
+        if not any(p == path for p, _ in self.values):
+            raise OSError("missing key")
+        return FakeKey(self, path)
+
+    def DeleteKey(self, root, path):  # noqa: N802
+        for k in [k for k in self.values if k[0] == path]:
+            del self.values[k]
+
 
 def test_registration_is_per_user_and_idempotent(tmp_path):
     reg = FakeReg()
@@ -196,7 +205,9 @@ def test_registration_is_per_user_and_idempotent(tmp_path):
     assert v[(r"Software\Classes\AppUserModelId\HCLoader.App", "DisplayName")] == "HCLoader"
     assert v[(r"Software\Classes\hcloader", "URL Protocol")] == ""
     cmd = v[(r"Software\Classes\hcloader\shell\open\command", "")]
-    assert "-m" not in cmd and '--open "%1"' in cmd and str(root) in cmd
+    assert "-m" not in cmd and str(root) in cmd
+    assert cmd.endswith(' --protocol "%1"') and "--open" not in cmd  # M1: last and only argument
+    assert " -I -c " in cmd  # m7: isolated, no caller directory on sys.path
     first = reg.writes
     real_ensure_registered(root, root / "ui" / "img" / "hcloader.ico", reg=reg)
     assert reg.writes == first  # nothing rewritten
@@ -268,7 +279,7 @@ def test_api_hooks_queue_runs_and_watchlist(tmp_path, monkeypatch):
         )
         a._notifier.flush()
         assert len(rec.shown) == 1 and "2 sets downloaded · 1 download failed" in rec.shown[0]
-        assert 'launch="hcloader://downloads"' in rec.shown[0]
+        assert 'launch="hcloader://open/downloads"' in rec.shown[0]
         a.open_view("inbox")
         a.open_view("../../evil")
         assert bus.flush(5)
@@ -477,3 +488,155 @@ def test_second_start_with_open_forwards_view(monkeypatch):
     )
     assert app_main.main(["--open", "hcloader://inbox"]) == app_main.EXIT_OK
     assert calls == ["inbox"]
+
+
+# --------------------------------------------------------------------------- review v0.9.0 M1
+
+
+@pytest.fixture
+def no_actions(monkeypatch):
+    """Every action main() could take is replaced by a recorder; nothing real runs."""
+    calls = []
+    monkeypatch.setattr(app_main, "run_smoke", lambda *a, **k: calls.append(("smoke", a)) or 0)
+    monkeypatch.setattr("app.headless.run_watchlist", lambda *a, **k: calls.append(("wl", a)) or 0)
+    monkeypatch.setattr(app_main, "run_gui", lambda *a, **k: calls.append(("gui", a)) or 0)
+    monkeypatch.setattr(
+        "app.instance.request_activation",
+        lambda view=None, **k: calls.append(("activate", view)) or True,
+    )
+    monkeypatch.setattr(app_main.locks, "acquire_single_instance", lambda: None)
+    return calls
+
+
+@pytest.mark.parametrize(
+    ("url", "view"),
+    [
+        ("hcloader://open/inbox", "inbox"),
+        ("hcloader://open/downloads/", "downloads"),
+        ("HCLOADER://OPEN/Library", "library"),
+        ("hcloader://stats", "stats"),  # v0.9.0 toast form
+        ("hcloader://open/settings", None),
+        ("hcloader://open/../inbox", None),
+        ("hcloader://open/inbox?x=1", None),
+        ("hcloader://open/inbox#y", None),
+        ("hcloader://open/%69nbox", None),
+        ("hcloader://open/inbox --smoke", None),
+        ('hcloader://x" --smoke "https://attacker.example/a.mp3', None),
+        ("hcloader://x%22%20--smoke%20%22https://attacker.example/a.mp3", None),
+        ("hcloader://open/inbox\x00", None),
+        ("https://open/inbox", None),
+        ("hcloader:" + "/" * 70 + "inbox", None),
+        ("", None),
+        (None, None),
+    ],
+)
+def test_protocol_view_allow_list(url, view):
+    assert app_main.protocol_view(url) == view
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        # what Windows makes of an unencoded quote: extra arguments after the URL
+        ["--protocol", "hcloader://x", "--smoke", "https://attacker.example/a.mp3"],
+        ["--protocol", "hcloader://x", "--run-watchlist"],
+        ["--protocol", "hcloader://x", "--headless", "--run-watchlist"],
+        ["--protocol", "hcloader://open/inbox", "--smoke", "u"],
+        ["--smoke", "u", "--protocol", "hcloader://open/inbox"],
+        ["--run-watchlist", "--protocol=hcloader://open/inbox"],
+        ["--protocol"],
+        ["--protocol", "hcloader://open/inbox", "hcloader://open/stats"],
+        ["--protocol", 'hcloader://x" --smoke "https://attacker.example/a.mp3'],
+        ["--protocol", "hcloader://x%22%20--smoke%20%22https://attacker.example/a.mp3"],
+        ["--protocol", "--smoke"],
+        ["--protocol", "hcloader://open/settings"],
+    ],
+)
+def test_protocol_crafted_links_do_nothing(no_actions, argv):
+    assert app_main.main(argv) == app_main.EXIT_USAGE
+    assert no_actions == []
+
+
+def test_protocol_link_only_navigates(no_actions):
+    assert app_main.main(["--protocol", "hcloader://open/downloads"]) == app_main.EXIT_OK
+    assert no_actions == [("activate", "downloads")]
+
+
+def test_protocol_link_starts_gui_at_view(no_actions, monkeypatch):
+    class Inst:
+        def release(self):
+            pass
+
+    monkeypatch.setattr(app_main.locks, "acquire_single_instance", lambda: Inst())
+    monkeypatch.setattr(app_main.locks, "acquire_run_lock", lambda: None)
+    assert app_main.main(["--protocol", "hcloader://open/stats"]) == 0
+    assert no_actions == [("gui", ("stats",))]
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["--open", "hcloader://x", "--smoke", "u"],
+        ["--smoke", "u", "--open", "inbox"],
+        ["--open", "inbox", "--run-watchlist"],
+        ["--open", "inbox", "--headless", "--run-watchlist"],
+        ["--open", "inbox", "--headless"],
+    ],
+)
+def test_open_refuses_other_actions(no_actions, argv):
+    assert app_main.main(argv) == app_main.EXIT_USAGE
+    assert no_actions == []
+
+
+def test_parser_takes_no_abbreviations(no_actions):
+    with pytest.raises(SystemExit):
+        app_main.main(["--op", "inbox", "--smo", "u"])
+    assert no_actions == []
+
+
+def test_refresh_registration_rewrites_old_command(tmp_path, monkeypatch):
+    monkeypatch.setattr(notify, "ensure_registered", real_ensure_registered)
+    reg = FakeReg()
+    root = tmp_path / "HCLoader"
+    icon = root / "ui" / "img" / "hcloader.ico"
+    # nothing registered: nothing is created on start
+    assert notify.refresh_registration(root, icon, reg=reg) is False and reg.values == {}
+    old = f'"{notify.pythonw()}" -X utf8 -c "x" --open "%1"'
+    reg.values[(notify.PROTOCOL_COMMAND_KEY, "")] = old
+    assert notify.refresh_registration(root, icon, reg=reg) is True
+    assert reg.values[(notify.PROTOCOL_COMMAND_KEY, "")] == notify.protocol_command(root)
+    assert notify.refresh_registration(root, icon, reg=reg) is False  # up to date
+
+
+def test_unquotable_root_removes_old_command(tmp_path):
+    reg = FakeReg()
+    reg.values[(notify.PROTOCOL_COMMAND_KEY, "")] = 'x --open "%1"'
+    root = Path("C:/it's here")
+    assert real_ensure_registered(root, root / "i.ico", reg=reg) is False
+    assert (notify.PROTOCOL_COMMAND_KEY, "") not in reg.values
+    assert notify.protocol_command(Path("C:/100%")) is None
+
+
+def test_toast_drops_xml_control_characters():
+    toast = notify.build({**notify._empty(), "downloaded": 1, "titles": ["A\x01B\x0bC\x1f\r\nD"]})
+    xml = notify.toast_xml(toast)
+    assert not any(ord(c) < 32 for c in xml) and "A B C D" in xml
+    fail = notify.build({**notify._empty(), "failed": 1, "failed_titles": ["X\x00\nY\x7f"]})
+    assert "X Y" in fail.body and not any(ord(c) < 32 for c in notify.toast_xml(fail))
+
+
+def test_flush_runs_once_across_two_connections(tmp_path):
+    """m6: two processes (two connections) flush the same batch -> one toast."""
+    path = tmp_path / "n.db"
+    a, b = Database(path), Database(path)
+    try:
+        c = cfg()
+        notify.add(a, c, downloaded=2)
+        rec = Recorder()
+        r1 = notify.flush(a, c, rec, now=at(12))
+        r2 = notify.flush(b, c, rec, now=at(12))
+        assert r1["sent"] is True and r2 == {"sent": False, "reason": "empty"}
+        assert len(rec.shown) == 1
+    finally:
+        a.close()
+        b.close()

@@ -101,7 +101,8 @@
     "headless_needs_watchlist": "--headless prasa --run-watchlist.",
     "run_watchlist": "pārbaudīt vērojamos avotus (ar --headless)",
     "smoke": "veikt tieši vienu lejupielādi (tikai QA)",
-    "open": "atvērt skatu, piem., inbox (arī hcloader://inbox no paziņojuma)"
+    "open": "atvērt skatu, piem., inbox (arī hcloader://inbox no paziņojuma)",
+    "open_alone": "--open nevar apvienot ar --smoke, --headless vai --run-watchlist."
   },
   "collector": {
     "artist_required": "Trūkst DJ / izpildītāja",

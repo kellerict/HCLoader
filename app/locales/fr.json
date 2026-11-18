@@ -99,7 +99,8 @@
     "headless_needs_watchlist": "--headless nécessite --run-watchlist.",
     "run_watchlist": "vérifier la liste de suivi (avec --headless)",
     "smoke": "exécuter exactement un téléchargement (QA uniquement)",
-    "open": "ouvrir une vue, p. ex. inbox (aussi hcloader://inbox depuis une notification)"
+    "open": "ouvrir une vue, p. ex. inbox (aussi hcloader://inbox depuis une notification)",
+    "open_alone": "--open ne peut pas être combiné avec --smoke, --headless ou --run-watchlist."
   },
   "collector": {
     "artist_required": "DJ / artiste requis",

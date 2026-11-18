@@ -774,8 +774,9 @@ pywebview-Callback-Thread.
 fehlgeschlagen, Titel) und `watchlist_done.inbox`. `NotificationService` zeigt 15 s nach dem letzten Ereignis
 **eine** Benachrichtigung (`notify.flush`), frühestens 120 s nach der letzten; während der Ruhezeit bleibt der
 Stapel in `state.notify_pending` und der Status-Ticker (30 s) zeigt ihn danach. Der Headless-Lauf sammelt in
-denselben Stapel und zeigt ihn am Ende (`notify.notify_run`). Klick: Protokoll `hcloader://<view>` →
-`python -m app.main --open hcloader://<view>` → läuft die App, `show <token> <view>` an die laufende Instanz
+denselben Stapel und zeigt ihn am Ende (`notify.notify_run`). Klick: Protokoll `hcloader://open/<view>` →
+`pythonw -I -c "…" --protocol hcloader://open/<view>` (nur genau dieses eine Argument, Allow-List
+`inbox|downloads|library|stats`, sonst Abbruch ohne Aktion, siehe `docs/decisions.md`) → läuft die App, `show <token> <view>` an die laufende Instanz
 (`instance.ActivationServer(on_view=Api.open_view)`) → Event `navigate`; sonst normaler Start, und der erste
 `get_settings()` liefert `open_view` (kein `#view` in der URL: .NET `System.Uri` verliert es bei `file:`-URLs).
 
@@ -1032,7 +1033,7 @@ Status). Ergänzungen der Python-Seite:
 | `collector_rows` | `{edition_id, rows:[ChecklistRow], deleted:[id], reload, stats:ChecklistStats}` | Festival-Sammler: Zeilen geändert (Import, Bearbeiten, Haken, Bestätigen, Treffer des Suchauftrags, Status-Wechsel durch die Queue: `queued` → `downloaded`). `reload:true` (leere `rows`, keine `deleted`) = mehrere Zeilen geändert → `get_checklist` neu holen | 0.5.0 |
 | `collector_job` | `CollectorJob` + `{stats}` \| `{edition_id, state:"none", stats}` | Suchauftrag: Start (`pending`), Beginn (`running`), nach jeder Zeile, beim Warten (`note` = nächste Suche), Abbruch, Unterbrechung, Ende | 0.5.0 |
 | `collector_import` | `{phase, kind:"playlist", edition_id, entries, added, merged, unchecked, requests, cancelled, error}` | Playlist-Import: `phase` `start`, `progress` (nach jeder Seite), `done` oder `error` (`error` = übersetzter Text) | 0.5.0 |
-| `stats_sizes` | `{phase:"progress"\|"done", done, total, missing?}` | v0.9.0: fehlende Dateigrössen werden gemessen (nach `get_stats`); `progress` nach je 200 Dateien, danach lädt die UI die Statistik neu | 0.9.0 |
+| `stats_sizes` | `{phase:"progress"\|"done", done, total, missing?, offline?}` (`offline` = Laufwerk/Freigabe nicht erreichbar, bleibt ungemessen) | v0.9.0: fehlende Dateigrössen werden gemessen (nach `get_stats`); `progress` nach je 200 Dateien, danach lädt die UI die Statistik neu | 0.9.0 |
 | `media_scan` | `MediaScan` | v0.9.0: ein Plex-/Jellyfin-Scan wurde angefragt (nach Downloads oder `scan_media_server`); bei Fehler zusätzlich `toast` (warn) | 0.9.0 |
 | `navigate` | `{view}` | v0.9.0: zweiter Start mit `--open <view>` / Klick auf eine Windows-Benachrichtigung → die UI wechselt die Ansicht | 0.9.0 |
 | `playlists_synced` | `{synced, failed}` | gespeicherte Playlists mit «Aktuell halten» wurden neu geschrieben (nach Downloads mit `playlists.sync_after_download` oder per `sync_playlists`); nur gesendet, wenn mindestens eine geschrieben wurde oder fehlschlug. Die UI zeigt einen leisen Toast und lädt die Liste in den Einstellungen neu | 0.8.0 |

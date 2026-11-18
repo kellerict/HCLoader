@@ -5,7 +5,8 @@ scheduled headless run) and shown as ONE toast per batch - the GUI waits a short
 the last event (worker.NotificationService), downloads count once per queue run, two toasts
 are at least `MIN_GAP_S` apart, and during the quiet hours nothing is shown: the batch grows and
 becomes one summary afterwards. Clicking the toast opens the app at the matching view
-(protocol `hcloader://<view>`, registered per user in HKCU, see `ensure_registered`).
+(protocol `hcloader://open/<view>`, registered per user in HKCU, see `ensure_registered`; the
+link can only navigate, see app/main.protocol_view and docs/decisions.md).
 
 Sending (docs/decisions.md «Windows notifications»): no extra Python package is required -
 Windows PowerShell 5.1 (part of every Windows 10/11) shows the toast through the WinRT
@@ -20,10 +21,12 @@ import base64
 import json
 import logging
 import os
+import re
 import subprocess
 import sys
 import threading
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -43,6 +46,17 @@ MIN_GAP_S = 120  # two toasts at least this far apart (the batch keeps growing m
 MAX_TITLES = 3
 PS_TIMEOUT_S = 20
 _lock = threading.RLock()
+# XML 1.0 forbids these; a title from YouTube may contain them (review v0.9.0 m4)
+_XML_ILLEGAL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]")
+
+
+@contextmanager
+def _shared(db: Any) -> Iterator[None]:
+    """Process lock + one `BEGIN IMMEDIATE` transaction: the batch is shared by the GUI and a
+    scheduled headless run, so read-modify-write must be atomic across processes (m6)."""
+    txn = getattr(db, "transaction", None)
+    with _lock, txn(immediate=True) if txn is not None else nullcontext():
+        yield
 
 
 # --------------------------------------------------------------------------- quiet hours
@@ -114,7 +128,7 @@ def add(
     failed = int(failed) if cfg.downloads_failed else 0
     if not (new_sets > 0 or downloaded > 0 or failed > 0):
         return False
-    with _lock:
+    with _shared(db):
         data = pending(db)
         data["new_sets"] += max(0, new_sets)
         data["downloaded"] += max(0, downloaded)
@@ -138,7 +152,7 @@ class Toast:
 
 
 def _short(title: str, limit: int = 60) -> str:
-    title = " ".join(str(title).split())
+    title = " ".join(_XML_ILLEGAL.sub(" ", str(title)).split())
     return title if len(title) <= limit else title[: limit - 1] + "…"
 
 
@@ -171,11 +185,11 @@ def build(data: Mapping[str, Any]) -> Toast:
 
 
 def launch_uri(view: str) -> str:
-    return f"{PROTOCOL}://{view if view in VIEWS else 'inbox'}"
+    return f"{PROTOCOL}://open/{view if view in VIEWS else 'inbox'}"
 
 
 def toast_xml(toast: Toast) -> str:
-    """ToastGeneric XML; a click starts `hcloader://<view>` (protocol activation)."""
+    """ToastGeneric XML; a click starts `hcloader://open/<view>` (protocol activation)."""
     return (
         f'<toast launch={quoteattr(launch_uri(toast.view))} activationType="protocol">'
         '<visual><binding template="ToastGeneric">'
@@ -359,13 +373,23 @@ def pythonw() -> Path:
     return cand if cand.exists() else exe
 
 
+PROTOCOL_KEY = rf"Software\Classes\{PROTOCOL}"
+PROTOCOL_COMMAND_KEY = rf"{PROTOCOL_KEY}\shell\open\command"
+
+
 def protocol_command(root: Path, exe: Path | None = None) -> str | None:
-    """Command line Windows runs for `hcloader://<view>`; None if the path cannot be quoted."""
+    """Command line Windows runs for `hcloader://open/<view>`; None if a path cannot be quoted.
+
+    Review v0.9.0 M1: a dedicated entry `--protocol "%1"` as the LAST and only argument -
+    app/main.main() handles it before anything else and refuses any extra argument (a URL with
+    a quote that splits into `--smoke ...` does nothing). `-I` (isolated: no current directory,
+    no PYTHON* variables, no user site) because the caller's working directory is arbitrary
+    (m7); the app root is inserted explicitly."""
     exe = exe or pythonw()
-    if any(c in str(root) for c in "'\"") or '"' in str(exe):
+    if any(c in str(root) for c in "'\"%") or any(c in str(exe) for c in '"%'):
         return None
     code = f"import sys; sys.path.insert(0, r'{root}'); from app.main import main; sys.exit(main())"
-    return f'"{exe}" -X utf8 -c "{code}" --open "%1"'
+    return f'"{exe}" -X utf8 -I -c "{code}" --protocol "%1"'
 
 
 def _toast_logo(icon: Path) -> Path:
@@ -386,12 +410,12 @@ def ensure_registered(root: Path, icon: Path, *, reg: Any = None) -> bool:
     values = [
         (rf"Software\Classes\AppUserModelId\{APP_ID}", "DisplayName", "HCLoader"),
         (rf"Software\Classes\AppUserModelId\{APP_ID}", "IconUri", str(_toast_logo(icon))),
-        (rf"Software\Classes\{PROTOCOL}", "", "URL:HCLoader"),
-        (rf"Software\Classes\{PROTOCOL}", "URL Protocol", ""),
-        (rf"Software\Classes\{PROTOCOL}\DefaultIcon", "", f'"{icon}"'),
+        (PROTOCOL_KEY, "", "URL:HCLoader"),
+        (PROTOCOL_KEY, "URL Protocol", ""),
+        (rf"{PROTOCOL_KEY}\DefaultIcon", "", f'"{icon}"'),
     ]
     if cmd:
-        values.append((rf"Software\Classes\{PROTOCOL}\shell\open\command", "", cmd))
+        values.append((PROTOCOL_COMMAND_KEY, "", cmd))
     try:
         for path, name, value in values:
             with reg.CreateKeyEx(reg.HKEY_CURRENT_USER, path, 0, reg.KEY_READ | reg.KEY_WRITE) as k:
@@ -404,7 +428,36 @@ def ensure_registered(root: Path, icon: Path, *, reg: Any = None) -> bool:
     except OSError as exc:
         log.warning("Notification registration failed: %s", exc)
         return False
+    if cmd is None:
+        _remove_command(reg)  # never leave an older command line behind
     return cmd is not None
+
+
+def _remove_command(reg: Any) -> None:
+    try:
+        reg.DeleteKey(reg.HKEY_CURRENT_USER, PROTOCOL_COMMAND_KEY)
+    except OSError:
+        pass
+
+
+def refresh_registration(root: Path, icon: Path, *, reg: Any = None) -> bool:
+    """App start: if the `hcloader:` protocol is registered already (e.g. by a v0.9.0 dev build
+    with the old `--open "%1"` command), bring it to the current command. Registers nothing
+    new (that happens before the first toast). Returns True if the entry was rewritten."""
+    if reg is None:
+        if sys.platform != "win32":
+            return False
+        import winreg as reg  # type: ignore[no-redef]
+    try:
+        with reg.OpenKey(reg.HKEY_CURRENT_USER, PROTOCOL_COMMAND_KEY, 0, reg.KEY_READ) as k:
+            cur = reg.QueryValueEx(k, "")[0]
+    except OSError:
+        return False  # not registered: nothing to update
+    if cur == protocol_command(root):
+        return False
+    log.info("Updating the hcloader: protocol registration")
+    ensure_registered(root, icon, reg=reg)
+    return True
 
 
 # --------------------------------------------------------------------------- flush
@@ -430,7 +483,7 @@ def flush(
     empty, disabled (collected events dropped), quiet (kept for later), gap (kept, retry_in
     seconds), unavailable / error (dropped - logged, never retried in a loop)."""
     now = now or datetime.now().astimezone()
-    with _lock:
+    with _shared(db):
         data = pending(db)
         if not has_pending(data):
             return {"sent": False, "reason": "empty"}

@@ -100,7 +100,8 @@
     "headless_needs_watchlist": "--headless krever --run-watchlist.",
     "run_watchlist": "sjekk overvåkingen (med --headless)",
     "smoke": "kjør nøyaktig én nedlasting (bare QA)",
-    "open": "åpne en visning, f.eks. inbox (også hcloader://inbox fra et varsel)"
+    "open": "åpne en visning, f.eks. inbox (også hcloader://inbox fra et varsel)",
+    "open_alone": "--open kan ikke kombineres med --smoke, --headless eller --run-watchlist."
   },
   "collector": {
     "artist_required": "DJ / artist mangler",

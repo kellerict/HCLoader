@@ -99,7 +99,8 @@
     "headless_needs_watchlist": "--headless 需要配合 --run-watchlist。",
     "run_watchlist": "检查关注列表（配合 --headless）",
     "smoke": "只运行一次下载（仅用于 QA）",
-    "open": "打开某个视图，例如 inbox（通知中的 hcloader://inbox 也可以）"
+    "open": "打开某个视图，例如 inbox（通知中的 hcloader://inbox 也可以）",
+    "open_alone": "--open 不能与 --smoke、--headless 或 --run-watchlist 同时使用。"
   },
   "collector": {
     "artist_required": "缺少 DJ / 艺人",

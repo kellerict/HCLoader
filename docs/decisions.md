@@ -1637,3 +1637,21 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
   `CRED_TYPE_GENERIC`, `CRED_PERSIST_LOCAL_MACHINE`, Ziel `HCLoader/media_server/<type>`) statt DPAPI-Datei:
   der User sieht und löscht es in der Systemsteuerung, es landet nicht in Backups des Datenordners. Gespeichert
   erst nach erfolgreichem «Verbindung testen». Ausserhalb von Windows nur im Speicher (Tests).
+
+## 2026-11-18 – `hcloader:`-Link nur zur Navigation (Review v0.9.0 M1)
+
+- **Entscheid:** Der Protokoll-Eintrag ruft einen eigenen Einstieg auf:
+  `"<pythonw>" -X utf8 -I -c "…sys.path.insert(0, r'<App-Ordner>')…" --protocol "%1"`. `main()` prüft
+  `--protocol` **vor** jedem anderen Argument: erlaubt ist nur genau `["--protocol", <url>]`, die URL muss
+  `hcloader://open/<view>` (oder die v0.9.0-Form `hcloader://<view>`) mit `<view>` aus `inbox|downloads|library|stats`
+  sein (nur `A-Za-z:/`, max. 64 Zeichen, kein Prozent-Dekodieren). Sonst Ende mit `EXIT_USAGE`, ohne etwas zu tun.
+  Ein gültiger Link leitet die Ansicht an die laufende Instanz weiter oder startet die GUI dort – nie Smoke,
+  Watchlist, Headless oder Download, auch keine Update-Wiederherstellung. `--open` zusammen mit `--smoke`,
+  `--headless` oder `--run-watchlist` wird abgelehnt; der Parser erlaubt keine Abkürzungen mehr (`allow_abbrev=False`).
+  `-I` statt `-c` allein: das Arbeitsverzeichnis des Aufrufers kommt nicht auf `sys.path` (m7).
+  Beim GUI-Start schreibt `notify.refresh_registration` einen vorhandenen HKCU-Eintrag (z.B. `--open "%1"` aus
+  einem v0.9.0-Entwicklungsstand) auf den neuen Befehl um; neu registriert wird weiterhin erst vor dem ersten
+  Toast. Der Uninstaller löscht `HKCU\Software\Classes\hcloader` (`uninsdeletekey`).
+- **Grund:** `%1` ist eine fremde Zeichenkette. Ein Aufrufer, der Anführungszeichen nicht kodiert, könnte sonst
+  über `hcloader://x" --smoke "<url>` einen Download oder einen Watchlist-Lauf auslösen (Muster wie
+  CVE-2018-1000006). Der Schutz darf nicht vom Browser abhängen.

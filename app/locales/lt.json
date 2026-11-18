@@ -102,7 +102,8 @@
     "headless_needs_watchlist": "--headless reikalauja --run-watchlist.",
     "run_watchlist": "patikrinti stebimus šaltinius (su --headless)",
     "smoke": "atlikti lygiai vieną atsisiuntimą (tik QA)",
-    "open": "atidaryti rodinį, pvz., inbox (taip pat hcloader://inbox iš pranešimo)"
+    "open": "atidaryti rodinį, pvz., inbox (taip pat hcloader://inbox iš pranešimo)",
+    "open_alone": "--open negalima derinti su --smoke, --headless arba --run-watchlist."
   },
   "collector": {
     "artist_required": "Trūksta DJ / atlikėjo",

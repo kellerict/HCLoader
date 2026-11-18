@@ -100,7 +100,8 @@
     "headless_needs_watchlist": "--headless nõuab võtit --run-watchlist.",
     "run_watchlist": "kontrolli jälgitavaid allikaid (koos --headless)",
     "smoke": "tee täpselt üks allalaadimine (ainult QA)",
-    "open": "ava vaade, nt inbox (ka hcloader://inbox teavitusest)"
+    "open": "ava vaade, nt inbox (ka hcloader://inbox teavitusest)",
+    "open_alone": "--open ei saa kombineerida valikutega --smoke, --headless või --run-watchlist."
   },
   "collector": {
     "artist_required": "DJ / artist puudub",
