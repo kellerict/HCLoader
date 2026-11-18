@@ -254,6 +254,23 @@
      forget_playlist(id)                -> {ok} | {ok:false, error}   nur aus der Liste, die Datei bleibt
      sync_playlists(ids?)               -> {ok, synced, failed, paths}   jetzt neu schreiben (ohne ids: alle mit sync)
 
+   Statistik, Benachrichtigungen, Medienserver (v0.9.0; Vertrag + Datenformen: docs/bridge-api.md «Statistics,
+   notifications, media server»)
+     get_stats(opts?)                   -> {ok, range, totals, genres, festivals, years, djs, months, platforms, tracks,
+                                            watchlist, measuring} | {ok:false, error}   offline aus der DB;
+                                           opts {from?, to?} lokale Tage YYYY-MM-DD (inklusiv). Fehlende Dateigrössen
+                                           (Bibliotheken vor v0.9.0) werden einmal im Hintergrund gemessen -> "stats_sizes"
+     get_notification_status()          -> {ok, available, backend: "winrt"|"powershell"|"none", quiet_now, pending}
+     test_notification()                -> {ok, backend} | {ok:false, error}   zeigt sofort eine Test-Benachrichtigung
+     get_media_server_status()          -> {ok, type, has_secret:{plex, jellyfin}, persistent, last_scan|null, pending}
+     test_media_server(data)            -> {ok, name, version, libraries:[{id, name, type, paths, music}], stored, persistent}
+                                           | {ok:false, code, error}   data {type, url, secret?, verify_tls?} (Formularwerte,
+                                           nicht gespeichert); ein eingetippter secret wird nach Erfolg in der Windows-
+                                           Anmeldeinformationsverwaltung gespeichert, leer = gespeicherter
+     forget_media_server_secret(kind?)  -> {ok} | {ok:false, error}   kind "plex" | "jellyfin" (Standard: eingestellter)
+     scan_media_server()                -> {ok, server, files, requests, partial, at} | {ok:false, code, error}
+                                           ganze Bibliothek jetzt einlesen (gespeicherte Einstellungen); auch Event "media_scan"
+
    Festival-Sammler (v0.5.0; Vertrag, Datenformen, Events: docs/bridge-api.md «Festival collector»)
      get_collector_editions()           -> [CollectorEdition]   Ausgaben mit Checkliste (offline)
      open_collector_edition(data)       -> {ok, edition: CollectorEdition} | {ok:false, errors, error}
@@ -405,7 +422,8 @@
                      sie wieder geprüft wird (nur im Speicher der UI, Source kennt kein Fehlerfeld).
      backfill        Backfill | {source_id, state:"none"}   v0.4.0 «Alles einlesen»: Zustand/Fortschritt einer Quelle
                      (nach jeder Seite, bei Start, Pause, Abbruch, Ende). Die UI zeichnet die Zeile neu und meldet «fertig».
-     watchlist_done  {checked, found}                  Watchlist-Lauf beendet (auch bei Abbruch, z.B. Backoff)
+     watchlist_done  {checked, found, inbox}           Watchlist-Lauf beendet (auch bei Abbruch, z.B. Backoff);
+                     inbox (v0.9.0) = neu im Eingang
                      checked = geprüfte Quellen, found = neue Treffer insgesamt (Eingang + automatisch geladen).
                      Gilt für jeden Lauf (von Hand, In-App-Intervall); die UI gibt danach «Prüfen» wieder frei,
                      lädt Quellen und Eingang neu und zeigt eine Zusammenfassung als Toast.
@@ -426,6 +444,9 @@
      media_analysed  {id, ok, loudness?, peaks, tagged, error?}   v0.7.0 eine Datei analysiert (nach Download/Durchlauf)
      waveform        {id, ok, peaks?, duration?, loudness?, error?}   v0.7.0 angeforderte Wellenform ist fertig
      playlists_synced {synced, failed}                 v0.8.0 gespeicherte Playlists nach Downloads neu geschrieben
+     stats_sizes     {phase: "progress"|"done", done, total, missing?}   v0.9.0 Dateigrössen werden gemessen
+     media_scan      {ok, server, files, requests?, partial?, at, error?, code?}   v0.9.0 Plex/Jellyfin-Scan ausgelöst
+     navigate        {view}                            v0.9.0 zweiter Start mit --open / Klick auf Windows-Benachrichtigung
      toast           {msg, kind?}                      kind: "ok"|"info"|"warn"|"err"
 
    UI-seitig abonnieren:  HC.bridge.on('progress', fn)

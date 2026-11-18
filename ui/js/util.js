@@ -273,6 +273,10 @@
     dj: svg('<path d="M4 15v-3a8 8 0 0116 0v3"/><rect x="3" y="14" width="4" height="6" rx="1"/><rect x="17" y="14" width="4" height="6" rx="1"/>'),
     playlist: svg('<path d="M4 6h12M4 11h12M4 16h7"/><path d="M15 15l3 3 3-3"/><path d="M18 11v7"/>'),
     merge: svg('<path d="M6 4v5a6 6 0 006 6h0a6 6 0 016 6"/><path d="M18 4v5a6 6 0 01-3 5.2"/><path d="M3 7l3-3 3 3"/><path d="M15 7l3-3 3 3"/>'),
+    /* v0.9.0 Statistik, Benachrichtigungen, Medienserver */
+    chart: svg('<path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/>'),
+    bell: svg('<path d="M6 16V11a6 6 0 0112 0v5l2 2H4z"/><path d="M10 20a2 2 0 004 0"/>'),
+    server: svg('<rect x="3" y="4" width="18" height="7" rx="1"/><rect x="3" y="13" width="18" height="7" rx="1"/><path d="M7 7.5h.01M7 16.5h.01"/>'),
     mic: svg('<path d="M12 3a3 3 0 00-3 3v5a3 3 0 006 0V6a3 3 0 00-3-3z"/><path d="M5.5 11a6.5 6.5 0 0013 0"/><path d="M12 17.5V21"/>'),
   };
 

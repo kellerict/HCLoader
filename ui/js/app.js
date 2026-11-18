@@ -8,7 +8,7 @@
   const { $, $$, util, fx } = HC;
   const t = (k, v) => HC.t(k, v);
 
-  const VIEWS = ['discover', 'inbox', 'watchlist', 'downloads', 'library', 'log', 'settings'];
+  const VIEWS = ['discover', 'inbox', 'watchlist', 'downloads', 'library', 'stats', 'log', 'settings'];
   HC.views = HC.views || {};
   HC.settings = { values: null, defaults: null };
   HC.status = null;
@@ -143,7 +143,7 @@
       if (n && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); go(n.dataset.view); }
     });
     document.addEventListener('keydown', (e) => {
-      if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key >= '1' && e.key <= '7') { e.preventDefault(); go(VIEWS[+e.key - 1]); }
+      if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key >= '1' && e.key <= '8') { e.preventDefault(); go(VIEWS[+e.key - 1]); }
     });
     window.addEventListener('resize', moveIndicator);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(moveIndicator);
@@ -232,6 +232,8 @@
     B.on('done', (d) => HC.ui.toast(t('toast.done', { title: d.title })));
     B.on('failed', (d) => HC.ui.toast(t('toast.failed', { title: d.title, error: d.error }), 'err'));
     B.on('toast', (d) => HC.ui.toast(d.msg, d.kind));
+    /* v0.9.0: zweiter Start mit --open bzw. Klick auf eine Windows-Benachrichtigung */
+    B.on('navigate', (d) => { if (d && VIEWS.includes(d.view)) go(d.view); });
     /* Watchlist-Lauf: Fehler pro Quelle mitzählen, am Ende eine Zusammenfassung. */
     let wlErrors = 0;
     B.on('source', (d) => { if (!d.checking && d.error) wlErrors++; });

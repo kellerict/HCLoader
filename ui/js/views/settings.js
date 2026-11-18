@@ -28,12 +28,14 @@
      {h: key} = Zwischenüberschrift, {custom: name, arg} = Sonderblock
      Felder, die das Backend (noch) nicht kennt (kein Standardwert), werden nicht gezeigt.          */
   const SC_ON = (w) => !!(w.soundcloud && w.soundcloud.enabled);
+  const NT_ON = (w) => !!(w.notifications && w.notifications.enabled);
+  const MS_ON = (w) => !!(w.media_server && w.media_server.type !== 'off');
   const PL_IN = (w) => !w.player || w.player.mode !== 'external';
   const TABS = [
     { id: 'general', fields: [
       { k: 'general.language', type: 'select', options: ['auto', ...HC.i18n.SUPPORTED],
         optLabel: (v) => (v === 'auto' ? t('opt.general.language.auto') : HC.i18n.meta(v).name) },
-      { k: 'general.start_view', type: 'select', options: ['discover', 'inbox', 'watchlist', 'downloads', 'library', 'log'], optLabel: (v) => t('nav.' + v) },
+      { k: 'general.start_view', type: 'select', options: ['discover', 'inbox', 'watchlist', 'downloads', 'library', 'stats', 'log'], optLabel: (v) => t('nav.' + v) },
       { k: 'general.log_level', type: 'select', options: ['DEBUG', 'INFO', 'WARNING', 'ERROR'] },
       { k: 'general.confirm_delete', type: 'bool' },
     ] },
@@ -182,6 +184,30 @@
       { k: 'schedule.task_time', type: 'time' },
       { custom: 'task' },
     ] },
+    /* v0.9.0: Windows-Benachrichtigungen (gebündelt, Ruhezeit) */
+    { id: 'notifications', fields: [
+      { custom: 'notifyStatus' },
+      { k: 'notifications.enabled', type: 'bool' },
+      { h: 'set.h.notify_events' },
+      { k: 'notifications.new_sets', type: 'bool', enabled: NT_ON },
+      { k: 'notifications.downloads_done', type: 'bool', enabled: NT_ON },
+      { k: 'notifications.downloads_failed', type: 'bool', enabled: NT_ON },
+      { h: 'set.h.quiet' },
+      { k: 'notifications.quiet_hours', type: 'bool', enabled: NT_ON },
+      { k: 'notifications.quiet_from', type: 'time', enabled: (w) => NT_ON(w) && w.notifications.quiet_hours },
+      { k: 'notifications.quiet_to', type: 'time', enabled: (w) => NT_ON(w) && w.notifications.quiet_hours },
+    ] },
+    /* v0.9.0: Plex/Jellyfin – Bibliothek nach Downloads neu einlesen; Token nur in der Windows-Anmeldeinformationsverwaltung */
+    { id: 'mediaserver', fields: [
+      { custom: 'msStatus' },
+      { k: 'media_server.type', type: 'seg', options: ['off', 'plex', 'jellyfin'] },
+      { k: 'media_server.url', type: 'text', mono: true, wide: true, placeholder: 'set.media_server.url.ph', visible: MS_ON },
+      { custom: 'msConnect' },
+      { h: 'set.h.ms_paths' },
+      { k: 'media_server.server_root', type: 'text', mono: true, wide: true, placeholder: 'set.media_server.server_root.ph', enabled: MS_ON },
+      { k: 'media_server.delay_seconds', type: 'int', min: 10, max: 3600, unit: 'unit.s', enabled: MS_ON },
+      { k: 'media_server.verify_tls', type: 'bool', enabled: MS_ON },
+    ], keys: ['media_server.type', 'media_server.url', 'media_server.library', 'media_server.library_name', 'media_server.server_root', 'media_server.delay_seconds', 'media_server.verify_tls'] },
     { id: 'appearance', fields: [
       { k: 'appearance.reduce_effects', type: 'bool' },
       { k: 'appearance.scanlines', type: 'bool', enabled: (w) => !w.appearance.reduce_effects },
@@ -215,7 +241,7 @@
   let genreKeys = []; // stabile Schlüssel für die Genre-Zeilen (FLIP)
   let gk = 0;
   let plReload = null; // «Gespeicherte Playlists» neu laden (ein Listener aus init, Review m10)
-  const cache = { task: null, versions: null, blacklist: null, poTest: null, update: null, before: null, restart: false, backups: [], freshBackup: '', fest: null, assign: null, series: null, seriesHidden: false, analysis: null, anRun: null, playlists: null };
+  const cache = { notify: null, ms: null, msTest: null, msLibs: null, task: null, versions: null, blacklist: null, poTest: null, update: null, before: null, restart: false, backups: [], freshBackup: '', fest: null, assign: null, series: null, seriesHidden: false, analysis: null, anRun: null, playlists: null };
 
   const isDirtyKey = (k) => !eq(get(work, k), get(saved, k));
   const dirtyKeys = () => [...new Set(TABS.flatMap(tabKeys))].filter(isDirtyKey); // ein Feld kann in zwei Tabs stehen
@@ -417,6 +443,124 @@
   }
 
   const CUSTOM = {
+    /* v0.9.0: Windows-Benachrichtigungen – verfügbar? Test-Benachrichtigung */
+    notifyStatus(host) {
+      const paint = () => {
+        const s = cache.notify;
+        if (!s) { host.innerHTML = box('off', t('common.loading'), '&nbsp;', '', '', 'off'); return; }
+        const res = cache.notifyTest;
+        const note = res ? ui.notice(res.ok ? 'ok' : 'error', esc(res.ok ? t('set.notify.test_sent') : res.error || t('err.generic'))) : '';
+        host.innerHTML = s.available
+          ? box(work.notifications.enabled ? 'ok' : 'off', t(work.notifications.enabled ? 'set.notify.on' : 'set.notify.off'), esc(t('set.notify.detail', { backend: t('set.notify.backend_' + (s.backend === 'winrt' ? 'winrt' : 'powershell')) })),
+            `<button class="btn sm" data-ntest>${I.bell}${t('set.notify.test')}</button>`, note, work.notifications.enabled ? '' : 'off')
+          : box('warn', t('set.notify.unavailable'), esc(t('set.notify.unavailable_detail')), `<button class="btn sm" data-ntest>${I.bell}${t('set.notify.test')}</button>`, note, 'warn');
+      };
+      host._update = paint;
+      host.addEventListener('click', async (e) => {
+        const b = e.target.closest('[data-ntest]');
+        if (!b) return;
+        cache.notifyTest = null;
+        ui.busy(b, true, t('set.notify.testing'));
+        const r = await HC.bridge.safe('test_notification');
+        cache.notifyTest = r || { ok: false };
+        if (host.isConnected) paint();
+      });
+      paint();
+      HC.bridge.safe('get_notification_status').then((r) => { if (r) { cache.notify = r; if (host.isConnected) paint(); } });
+    },
+
+    /* v0.9.0: Medienserver – Zustand, letzter Scan, «Jetzt einlesen» */
+    msStatus(host) {
+      const load = async () => { const r = await HC.bridge.safe('get_media_server_status'); if (r) { cache.ms = r; if (host.isConnected) paint(); const c = $('[data-custom=msConnect]', el); if (c && c._paint) c._paint(); } };
+      const paint = () => {
+        const s = cache.ms, typ = get(saved, 'media_server.type');
+        if (!s) { host.innerHTML = box('off', t('common.loading'), '&nbsp;', '', '', 'off'); return; }
+        const dirty = ['media_server.type', 'media_server.url', 'media_server.library', 'media_server.server_root', 'media_server.verify_tls'].some(isDirtyKey);
+        if (typ === 'off') { host.innerHTML = box('off', t('set.ms.off'), esc(t('set.ms.off_detail')), '', dirty ? ui.notice('info', t('set.ms.unsaved')) : '', 'off'); return; }
+        const last = s.last_scan;
+        const lastTxt = last ? (last.ok ? t('set.ms.last_ok', { t: util.fmtWhen(last.at), n: util.fmtNum(last.files || 0) }) : t('set.ms.last_fail', { t: util.fmtWhen(last.at) })) : t('set.ms.never');
+        const lib = get(saved, 'media_server.library_name') || (get(saved, 'media_server.library') ? get(saved, 'media_server.library') : t('set.ms.all_libraries'));
+        const ok = s.has_secret[typ];
+        const detail = `${esc(t('opt.media_server.type.' + typ))} · <span class="mono">${esc(get(saved, 'media_server.url'))}</span> · ${esc(lib)}<br>${esc(lastTxt)}`;
+        const note = cache.msScan ? ui.notice(cache.msScan.ok ? 'ok' : 'error', esc(cache.msScan.ok ? t('set.ms.scan_sent') : cache.msScan.error || t('err.generic')))
+          : !ok ? ui.notice('warn', esc(t('set.ms.no_secret'))) : last && !last.ok ? ui.notice('error', esc(last.error || '')) : dirty ? ui.notice('info', t('set.ms.unsaved')) : '';
+        host.innerHTML = box(ok && (!last || last.ok) ? 'ok' : 'warn', t('set.ms.on', { server: t('opt.media_server.type.' + typ) }), detail,
+          `<button class="btn sm" data-msscan${ok ? '' : ' disabled'}>${I.refresh}${t('set.ms.scan_now')}</button>`, note, ok && (!last || last.ok) ? '' : 'warn');
+      };
+      host._paint = paint;
+      host._update = paint;
+      host._load = load;
+      host.addEventListener('click', async (e) => {
+        const b = e.target.closest('[data-msscan]');
+        if (!b || b.disabled) return;
+        cache.msScan = null;
+        ui.busy(b, true, t('set.ms.scanning'));
+        const r = await HC.bridge.safe('scan_media_server');
+        cache.msScan = r || { ok: false };
+        load();
+      });
+      cache.msScan = null;
+      paint();
+      load();
+    },
+
+    /* v0.9.0: Token/API-Schlüssel (nie in config.yaml), «Verbindung testen», Bibliothek wählen */
+    msConnect(host) {
+      const kind = () => work.media_server.type;
+      const paint = () => {
+        const k = kind();
+        host.hidden = k === 'off';
+        if (k === 'off') { host.innerHTML = ''; return; }
+        const has = !!(cache.ms && cache.ms.has_secret && cache.ms.has_secret[k]);
+        const typed = host._typed || '';
+        const res = cache.msTest && cache.msTest.type === k ? cache.msTest : null;
+        const libs = (cache.msLibs && cache.msLibs.type === k ? cache.msLibs.list : null);
+        const curId = work.media_server.library, curName = work.media_server.library_name;
+        const opts = [{ id: '', name: t('set.ms.all_libraries') }].concat(libs || (curId ? [{ id: curId, name: curName || curId }] : []));
+        const libSel = `<select class="select" id="ms-lib" ${libs || curId ? '' : 'disabled'}>${opts.map((l) => `<option value="${esc(l.id)}"${l.id === curId ? ' selected' : ''}>${esc(l.name)}${l.music === false ? ` (${esc(l.type || '–')})` : ''}</option>`).join('')}</select>`;
+        const chosen = libs ? libs.find((l) => l.id === curId) : null;
+        const pathsHint = chosen && chosen.paths && chosen.paths.length ? `<small class="mono muted ms-paths">${esc(t('set.ms.lib_paths', { p: chosen.paths.join(', ') }))}</small>` : '';
+        const note = res ? ui.notice(res.ok ? 'ok' : 'error', res.ok ? `<b>${esc(t('set.ms.test_ok', { name: res.name, v: res.version || '–' }))}</b> ${esc(t('set.ms.test_libs', { n: (res.libraries || []).length }))}${res.stored ? ` · ${esc(t('set.ms.stored'))}` : ''}` : esc(res.error || t('err.generic'))) : '';
+        host.innerHTML = `
+          ${row('set.ms.secret_' + k, `<div class="ms-secret"><input class="input mono" id="ms-secret" type="password" autocomplete="off" spellcheck="false" value="${esc(typed)}" placeholder="${esc(t(has ? 'set.ms.secret_kept' : 'set.ms.secret_ph'))}" aria-label="${esc(t('set.ms.secret_' + k + '.label'))}">
+            ${has ? `<span class="tag ok-tag mono" title="${esc(t('set.ms.stored_title'))}">${I.check}${esc(t('set.ms.stored_short'))}</span><button type="button" class="linkbtn" data-msforget>${esc(t('set.ms.forget'))}</button>` : ''}</div>`)}
+          ${row('set.ms.connect', `<button type="button" class="btn sm primary" data-mstest>${I.bolt}${t('set.ms.test')}</button>${note}`)}
+          ${row('set.ms.library', `${libSel}${pathsHint}`)}`;
+        const inp = $('#ms-secret', host);
+        inp.addEventListener('input', () => { host._typed = inp.value; });
+        $('#ms-lib', host).addEventListener('change', (e) => {
+          const id = e.target.value, l = opts.find((x) => x.id === id);
+          set(work, 'media_server.library', id);
+          set(work, 'media_server.library_name', id ? (l ? l.name : id) : '');
+          onChange('media_server.library');
+          paint();
+        });
+      };
+      host._paint = paint;
+      host._update = () => { if (host._kind !== kind()) { host._kind = kind(); paint(); } else host.hidden = kind() === 'off'; };
+      host._kind = kind();
+      host.addEventListener('click', async (e) => {
+        const tb = e.target.closest('[data-mstest]'), fb = e.target.closest('[data-msforget]');
+        if (tb) {
+          ui.busy(tb, true, t('set.ms.testing'));
+          const k = kind();
+          const r = await HC.bridge.safe('test_media_server', { type: k, url: work.media_server.url, secret: host._typed || '', verify_tls: work.media_server.verify_tls });
+          cache.msTest = Object.assign({ type: k }, r || { ok: false });
+          if (r && r.ok) {
+            cache.msLibs = { type: k, list: r.libraries || [] };
+            host._typed = '';
+            if (!work.media_server.library) { const first = (r.libraries || []).find((l) => l.music); if (first) { set(work, 'media_server.library', first.id); set(work, 'media_server.library_name', first.name); onChange('media_server.library'); } }
+            const st = $('[data-custom=msStatus]', el);
+            if (st && st._load) st._load();
+          }
+          if (host.isConnected) paint();
+        } else if (fb) {
+          const r = await HC.bridge.safe('forget_media_server_secret', kind());
+          if (r && r.ok) { cache.msTest = null; const st = $('[data-custom=msStatus]', el); if (st && st._load) st._load(); else paint(); ui.toast(t('set.ms.forgotten'), 'info'); }
+        }
+      });
+      paint();
+    },
     /* Kanal-Blacklist (liegt in der DB, nicht in config.yaml) */
     blacklist(host) {
       const paint = () => {

@@ -63,7 +63,7 @@ BROWSER_LOCALE = {
     "de-x-frk": "de-DE",
 }
 
-VIEWS = ["discover", "inbox", "watchlist", "downloads", "library", "log", "settings"]
+VIEWS = ["discover", "inbox", "watchlist", "downloads", "library", "stats", "log", "settings"]
 SETTINGS_TABS = [
     "general",
     "playback",
@@ -76,6 +76,8 @@ SETTINGS_TABS = [
     "soundcloud",
     "network",
     "schedule",
+    "notifications",
+    "mediaserver",
     "appearance",
     "maintenance",
 ]
@@ -690,6 +692,60 @@ class Shooter:
         page.keyboard.press("Escape")
         self.clear_toasts()
 
+    def stats_scenes(self) -> None:
+        """v0.9.0 statistics view (all time, 12 months, custom range without downloads, empty
+        library), notifications and media server settings (test result, stored token)."""
+        page = self.page
+        self.go("stats")
+        page.click('#st-preset [data-p="all"]')
+        page.wait_for_selector("#st-months .st-col")
+        self.settle()
+        self.shot("stats")
+        self.shot_scrolled("stats", "#st-scroll")
+        page.click('#st-preset [data-p="12m"]')
+        page.wait_for_function("HC.views.stats.state().loaded && HC.views.stats.state().range.preset === '12m'")
+        self.settle()
+        self.shot("stats-12m")
+        page.click('#st-preset [data-p="custom"]')
+        page.fill("#st-from", "2019-01-01")
+        page.fill("#st-to", "2019-12-31")
+        page.dispatch_event("#st-to", "change")
+        page.wait_for_selector("#st-zero")
+        self.settle()
+        self.shot("stats-range-empty")
+        page.click('#st-preset [data-p="all"]')
+        page.wait_for_selector("#st-months .st-col")
+        page.evaluate("HC.mock.demo.libraryEmpty()")
+        self.go("discover")
+        self.go("stats")
+        page.wait_for_selector("#st-empty")
+        self.settle()
+        self.shot("stats-empty")
+        page.evaluate("HC.mock.demo.libraryEmpty(false)")
+
+        self.go("settings")
+        self.tab("notifications")
+        page.click("[data-ntest]")
+        page.wait_for_selector("[data-custom=notifyStatus] .notice")
+        self.settle()
+        self.shot("settings-notifications-test")
+        self.tab("mediaserver")
+        page.click('.field[data-k="media_server.type"] [data-v="plex"]')
+        page.fill('.field[data-k="media_server.url"] [data-c]', "http://192.168.1.10:32400")
+        page.fill("#ms-secret", "xYz-plex-token")
+        page.click("[data-mstest]")
+        page.wait_for_selector("[data-custom=msConnect] .notice.ok")
+        self.settle()
+        self.shot("settings-mediaserver-test")
+        page.click("#btn-save")
+        page.wait_for_function("document.querySelector('#btn-save').disabled")
+        page.wait_for_selector("[data-custom=msStatus] [data-msscan]:not([disabled])")
+        page.click("[data-msscan]")
+        page.wait_for_selector("[data-custom=msStatus] .notice.ok")
+        self.settle()
+        self.shot("settings-mediaserver")
+        page.evaluate("HC.mock.api.reset_settings('media_server')")
+
     def djs_scenes(self) -> None:
         """v0.8.0 DJ pages + playlist export: DJ list, a DJ page (aliases, b2b, festivals, most
         played tracks), «Add to watchlist» confirmation, edit dialog, export dialog (also the
@@ -1011,6 +1067,7 @@ class Shooter:
         self.collector_scenes()
         self.tracks_scenes()
         self.djs_scenes()
+        self.stats_scenes()
 
         # m9: in pywebview gestartet, Backend antwortet nicht -> Fehlerzustand statt Mock
         page.clock.install(time=FIXED_NOW)

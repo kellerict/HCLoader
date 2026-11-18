@@ -15,7 +15,8 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "downloads": "Downloads",
     "library": "Library",
     "log": "Log",
-    "settings": "Settings"
+    "settings": "Settings",
+    "stats": "Statistics"
   },
   "navfoot": {
     "today": "TODAY",
@@ -628,7 +629,9 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "appearance": "Appearance",
     "maintenance": "Maintenance",
     "festivals": "Festivals & series",
-    "playback": "Playback"
+    "playback": "Playback",
+    "notifications": "Notifications",
+    "mediaserver": "Media server"
   },
   "tabs_hint": {
     "general": "Basic app behaviour.",
@@ -643,7 +646,9 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "appearance": "Look & feel. Changes are previewed immediately and only become permanent after saving.",
     "maintenance": "Versions, updates, database.",
     "festivals": "Recognizes festival or series, year, stage and set type from the stored titles – offline, without a single extra request.",
-    "playback": "Built-in player, loudness normalisation, remembered positions and the offline analysis of your files."
+    "playback": "Built-in player, loudness normalisation, remembered positions and the offline analysis of your files.",
+    "notifications": "Windows notifications for new sets in the inbox and finished or failed downloads – bundled into one message, never a flood. A click opens the app at the right view.",
+    "mediaserver": "After downloads, ask your Plex or Jellyfin server to scan its library – bundled, local network only. The token is stored in the Windows Credential Manager, never in config.yaml."
   },
   "set": {
     "default": "Default",
@@ -692,7 +697,10 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
       "loudness": "Loudness",
       "memory": "Memory & waveform",
       "analysis": "Analysis (offline, ffmpeg)",
-      "playlists": "Playlists (M3U8)"
+      "playlists": "Playlists (M3U8)",
+      "notify_events": "Notify me about",
+      "quiet": "Quiet hours",
+      "ms_paths": "Paths & timing"
     },
     "general": {
       "language": {
@@ -1286,6 +1294,114 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
       "sync_title": "Rewrite this playlist after downloads",
       "forget": "Remove from the list (the file stays)",
       "now": "Update now"
+    },
+    "notifications": {
+      "enabled": {
+        "label": "Windows notifications",
+        "help": "Show a notification in the Windows notification centre – also after a scheduled check while the app is closed."
+      },
+      "new_sets": {
+        "label": "New sets in the inbox",
+        "help": "A watchlist check (in the app or scheduled) found new sets."
+      },
+      "downloads_done": {
+        "label": "Downloads finished",
+        "help": "One message per download run with the number of sets and their titles."
+      },
+      "downloads_failed": {
+        "label": "Downloads failed",
+        "help": "One message per run if a download failed. Details stay under Downloads."
+      },
+      "quiet_hours": {
+        "label": "Quiet hours",
+        "help": "No notifications during this time. Whatever happened is shown afterwards as one summary."
+      },
+      "quiet_from": {
+        "label": "From",
+        "help": "Start of the quiet hours (24 h)."
+      },
+      "quiet_to": {
+        "label": "To",
+        "help": "End of the quiet hours. Earlier than the start = over midnight (e.g. 22:00–07:00)."
+      }
+    },
+    "notify": {
+      "on": "Notifications on",
+      "off": "Notifications off",
+      "detail": "Shown through {backend}. Several events in a short time become one notification.",
+      "backend_powershell": "Windows PowerShell (built into Windows)",
+      "backend_winrt": "the Windows notification API (pywinrt)",
+      "test": "Send test",
+      "testing": "Sending …",
+      "test_sent": "Test notification sent – look at the bottom right of the screen.",
+      "unavailable": "Windows notifications not available",
+      "unavailable_detail": "This system cannot show them (Windows PowerShell missing or blocked). Events are only written to the log."
+    },
+    "media_server": {
+      "type": {
+        "label": "Media server",
+        "help": "Which server should rescan its library after downloads. Off = HCLoader does not contact any media server."
+      },
+      "url": {
+        "label": "Server address",
+        "help": "Address in your home network, e.g. http://192.168.1.10:32400 (Plex) or http://nas:8096 (Jellyfin). Only this address is contacted.",
+        "ph": "http://192.168.1.10:32400"
+      },
+      "server_root": {
+        "label": "Folder on the server",
+        "help": "Where the server sees your target folder (NAS, Docker), e.g. /data/music/HCLoader. Empty = the same path as here. Needed to scan only the new folders.",
+        "ph": "same path as the target folder"
+      },
+      "delay_seconds": {
+        "label": "Wait before scanning",
+        "help": "After the last download, wait this long – several downloads then become one scan."
+      },
+      "verify_tls": {
+        "label": "Verify certificate",
+        "help": "For https:// addresses. Switch off only for a self-signed certificate in your home network."
+      }
+    },
+    "ms": {
+      "off": "No media server",
+      "off_detail": "Choose Plex or Jellyfin below to have its library rescanned after downloads.",
+      "unsaved": "Unsaved changes – the scan uses the saved settings.",
+      "on": "{server} is updated after downloads",
+      "last_ok": "Last scan {t} ({n} new files)",
+      "last_fail": "Last scan {t} failed",
+      "never": "No scan yet",
+      "all_libraries": "All libraries",
+      "no_secret": "No token / API key stored yet – enter it below and test the connection.",
+      "scan_now": "Scan now",
+      "scanning": "Scanning …",
+      "scan_sent": "Scan requested – the server reads the library in the background.",
+      "secret_plex": {
+        "label": "Plex token",
+        "help": "Your X-Plex-Token (Plex Web › any item › Get Info › View XML: “X-Plex-Token=” in the address). Stored in the Windows Credential Manager after a successful test – never in config.yaml or the log."
+      },
+      "secret_jellyfin": {
+        "label": "Jellyfin API key",
+        "help": "Dashboard › API Keys › “+”. Stored in the Windows Credential Manager after a successful test – never in config.yaml or the log."
+      },
+      "secret_ph": "paste here",
+      "secret_kept": "stored – leave empty to keep it",
+      "stored_short": "stored",
+      "stored_title": "Stored in the Windows Credential Manager",
+      "forget": "Remove",
+      "forgotten": "Token removed from the Windows Credential Manager",
+      "connect": {
+        "label": "Connection",
+        "help": "Checks the address and the token and loads the list of libraries. Two short requests to your server, nothing else."
+      },
+      "test": "Test connection",
+      "testing": "Testing …",
+      "test_ok": "Connected to {name} (version {v}).",
+      "test_libs": "{n} libraries found.",
+      "stored": "Token stored.",
+      "library": {
+        "label": "Library",
+        "help": "Which library to scan. “All libraries” scans everything (slower on big servers)."
+      },
+      "lib_paths": "Folders on the server: {p}"
     }
   },
   "opt": {
@@ -1328,6 +1444,13 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
         "chrome": "Chrome",
         "firefox": "Firefox",
         "brave": "Brave"
+      }
+    },
+    "media_server": {
+      "type": {
+        "off": "Off",
+        "plex": "Plex",
+        "jellyfin": "Jellyfin"
       }
     }
   },
@@ -1995,5 +2118,76 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
       "one": "{n} DJ",
       "other": "{n} DJs"
     }
+  },
+  "stats": {
+    "title": "Statistics",
+    "sub": "Your library in numbers – offline, from the database",
+    "range": "Period",
+    "p_all": "All time",
+    "p_12m": "12 months",
+    "p_30d": "30 days",
+    "p_year": "This year",
+    "p_custom": "Custom",
+    "from": "From",
+    "to": "To",
+    "n_sets": {
+      "one": "{n} set",
+      "other": "{n} sets"
+    },
+    "sets_word": {
+      "one": "set",
+      "other": "sets"
+    },
+    "k_sets": "Sets",
+    "k_hours": "Playing time",
+    "k_size": "On disk",
+    "k_avg": "Average set",
+    "of_library": "of {n} in the library",
+    "since": "since {d}",
+    "days_nonstop": "{n} days non-stop",
+    "last_dl": "last download {d}",
+    "avg_size": "{s} per set",
+    "sizes_missing": {
+      "one": "{n} file not measured yet",
+      "other": "{n} files not measured yet"
+    },
+    "measuring": "Measuring file sizes … {done} / {total}",
+    "h_months": "Downloads per month",
+    "h_years_dl": "Downloads per year",
+    "best_month": "Best: {m} ({n})",
+    "h_genres": "By genre",
+    "h_sources": "Sources",
+    "h_festivals": "Top festivals",
+    "editions": {
+      "one": "{n} edition",
+      "other": "{n} editions"
+    },
+    "festivals_other": "+ {n} sets from {f} other festivals",
+    "no_festivals": "No festival sets in this period – Settings › Festivals & series assigns them.",
+    "h_djs": "Top DJs",
+    "open_dj": "Open the DJ page of {name}",
+    "no_djs": "No DJs recognised in this period.",
+    "h_years": "By year of the set",
+    "year_unknown": "{n} without a known year",
+    "h_tracks": "Most played tracks",
+    "no_tracks": "No track appears in two sets yet – tracklists come from chapters and descriptions (Library › Tracks).",
+    "h_watchlist": "Watchlist activity",
+    "w_checks": "Checks",
+    "w_scheduled": "of them scheduled",
+    "w_found": "Found",
+    "w_inbox": "In the inbox",
+    "w_library": "In the library",
+    "w_source": "Source",
+    "w_found_n": "{n} found",
+    "w_checks_n": "{n} checks",
+    "w_last": "last check {t}",
+    "w_none_range": "No source found anything in this period.",
+    "w_no_sources": "No watchlist sources yet.",
+    "none": "Nothing in this period.",
+    "range_empty": "Nothing was downloaded in this period – choose a longer one.",
+    "error": "Statistics not available",
+    "empty_title": "No sets yet",
+    "empty_text": "As soon as the first sets are in your library, you will see here what you collect – genres, festivals, DJs, hours.",
+    "empty_go": "Discover sets"
   }
 });

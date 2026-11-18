@@ -70,6 +70,8 @@
     player: { mode: 'internal', normalize: true, target_lufs: -18, resume: 'ask', waveform: true },
     loudness: { analyse_after_download: true, write_tags: true, waveforms: true },
     playlists: { folder: '', relative_paths: true, sync_after_download: false },
+    notifications: { enabled: true, new_sets: true, downloads_done: true, downloads_failed: true, quiet_hours: false, quiet_from: '22:00', quiet_to: '07:00' },
+    media_server: { type: 'off', url: '', library: '', library_name: '', server_root: '', delay_seconds: 120, verify_tls: true },
     festivals: { detect: true, min_confidence: 0.65, year_from_upload_date: true, match_description: true, extra_stages: [], extra_set_types: [], collector_searches_per_hour: 10, collector_results_per_search: 10, collector_auto_confirm: 0.85 },
     schedule: { watchlist_interval_hours: 24, in_app_check: true, task_scheduler_enabled: false, task_time: '03:00', entries_per_source: 30 },
     watchlist: { backfill_max_entries: 2000, backfill_requests_per_hour: 120 },
@@ -99,7 +101,17 @@
   };
   const RULES = {
     'general.language': { oneOf: ['auto', ...HC.i18n.SUPPORTED] },
-    'general.start_view': { oneOf: ['discover', 'inbox', 'watchlist', 'downloads', 'library', 'log'] },
+    'general.start_view': { oneOf: ['discover', 'inbox', 'watchlist', 'downloads', 'library', 'stats', 'log'] },
+    'notifications.enabled': { bool: 1 },
+    'notifications.new_sets': { bool: 1 },
+    'notifications.downloads_done': { bool: 1 },
+    'notifications.downloads_failed': { bool: 1 },
+    'notifications.quiet_hours': { bool: 1 },
+    'notifications.quiet_from': { time: 1 },
+    'notifications.quiet_to': { time: 1 },
+    'media_server.type': { oneOf: ['off', 'plex', 'jellyfin'] },
+    'media_server.delay_seconds': { int: 1, min: 10, max: 3600 },
+    'media_server.verify_tls': { bool: 1 },
     'general.log_level': { oneOf: ['DEBUG', 'INFO', 'WARNING', 'ERROR'] },
     'general.confirm_delete': { bool: 1 },
     'search.results_count': { int: 1, min: 1, max: 100 },
@@ -244,6 +256,11 @@
       if (!/^#[0-9a-f]{6}$/i.test(g.color || '')) errors[`genres.items.${i}.color`] = 'Colour expected as #rrggbb.';
     });
     if (!seen.has('unsortiert')) errors['genres.items'] = 'The genre “Unsortiert” must exist.';
+    /* v0.9.0 Medienserver: Adresse nötig, sobald Plex/Jellyfin gewählt ist (wie core/config.MediaServerSettings) */
+    const ms = v.media_server || {};
+    const url = String(ms.url || '').trim();
+    if (ms.type && ms.type !== 'off' && !url) errors['media_server.url'] = 'Enter the server address (e.g. http://192.168.1.10:32400)';
+    else if (url && !/^https?:\/\/[^\s/?#@]+(:\d+)?(\/[^\s?#]*)?$/i.test(url)) errors['media_server.url'] = 'Invalid address – http:// or https:// with host and optional port, no user name, query or #';
     const fs = v.festivals || {};
     (Array.isArray(fs.extra_stages) ? fs.extra_stages : []).forEach((x) => { if (String(x).length > 40) errors['festivals.extra_stages'] = `Stage name too long: ${String(x).slice(0, 40)}`; });
     if (!Array.isArray(fs.extra_set_types)) errors['festivals.extra_set_types'] = 'List expected.';
@@ -1645,6 +1662,72 @@
   const plSaved = (p) => ({ id: p.id, name: p.name, path: p.path, kind: p.spec.kind, relative: p.relative, sync: p.sync, count: p.count, updated: p.updated, exists: PL_FILES.has(p.path) });
   const plSan = (n) => String(n || '').replace(/[:/\\|]/g, '-').replace(/"/g, "'").replace(/[<>?*]/g, '').replace(/\s+/g, ' ').trim().replace(/[. ]+$/, '');
 
+
+  /* ---------- v0.9.0 Statistik (Beispieldaten), Benachrichtigungen, Medienserver ---------- */
+  const notifyState = { available: true };
+  const msState = { secret: { plex: false, jellyfin: false }, last: null };
+  const STAT_MONTHS = 22;
+  const hfrac = (str) => { let h = 2166136261; for (const c of String(str)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; } return (h % 10007) / 10007; };
+  const monthKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+  function statMonths() {
+    const out = [], now = new Date();
+    for (let i = STAT_MONTHS - 1; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1), key = monthKey(d);
+      const k = STAT_MONTHS - 1 - i;
+      let n = Math.round(14 + k * 2.1 + hfrac(key) * 16 + (d.getMonth() === 11 ? 22 : 0) + (d.getMonth() === 6 || d.getMonth() === 7 ? 12 : 0));
+      if (i === 0) n = Math.round(n * Math.min(1, now.getDate() / 30));
+      const avg = 3900 + Math.round(hfrac(key + 's') * 1500);
+      out.push({ month: key, sets: n, seconds: n * avg, bytes: n * avg * 40000 });
+    }
+    return out;
+  }
+  const FEST = [['Defqon.1', 0.11, 9], ['Qlimax', 0.07, 11], ['Dominator', 0.06, 8], ['Thunderdome', 0.05, 7], ['Masters of Hardcore', 0.045, 9], ['Reverze', 0.04, 6], ['Hard Bass', 0.03, 5], ['Intents Festival', 0.028, 6], ['Decibel outdoor', 0.025, 7], ['Rebirth Festival', 0.02, 5], ['Supremacy', 0.018, 4], ['Ground Zero', 0.015, 4], ['Harmony of Hardcore', 0.012, 3]];
+  const DJS = [['Headhunterz', 'HE', 0.034], ['Angerfist', 'AN', 0.031], ['Sub Zero Project', 'SZ', 0.027], ['Miss K8', 'MK', 0.024], ['Sefa', 'SE', 0.021], ['D-Block & S-te-Fan', 'DS', 0.019], ['Warface', 'WA', 0.017], ['Dr. Peacock', 'DP', 0.015], ['Rooler', 'RO', 0.013], ['Mad Dog', 'MD', 0.012]];
+  const TRACKS = [['Angerfist', 'Raise & Revolt', '', 0.021], ['Headhunterz', 'Dragonborn', 'Part 2', 0.018], ['Sub Zero Project', 'The Project', '', 0.016], ['Sefa', 'Calling Out', '', 0.014], ['Miss K8', 'Mayhem', '', 0.013], ['Dr. Peacock', 'Trip to Ireland', '', 0.012], ['Warface', 'Rave Is My Life', 'Defqon.1 Edit', 0.011], ['D-Block & S-te-Fan', 'Feel Inside', '', 0.0105], ['Rooler', 'Dance with the Devil', '', 0.01], ['Mad Dog', 'Here We Go Again', '', 0.009]];
+  function mockStats(from, to) {
+    const empty = !LIBRARY.length;
+    const all = empty ? [] : statMonths();
+    const fm = from ? from.slice(0, 7) : null, tm = to ? to.slice(0, 7) : null;
+    let months = all.filter((m) => (!fm || m.month >= fm) && (!tm || m.month <= tm)).map((m) => Object.assign({}, m));
+    if (from && months.length && months[0].month === fm) { // erster Monat nur anteilig
+      const d = new Date(from), dim = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+      const f = Math.max(0, (dim - d.getDate() + 1) / dim);
+      const m0 = months[0];
+      if (months.length > 1 || !to) { m0.sets = Math.round(m0.sets * f); m0.seconds = Math.round(m0.seconds * f); m0.bytes = Math.round(m0.bytes * f); }
+    }
+    const sum = (k) => months.reduce((a, m) => a + m[k], 0);
+    const n = sum('sets'), sec = sum('seconds'), bytes = sum('bytes'), libN = all.reduce((a, m) => a + m.sets, 0);
+    const share = (f) => Math.round(n * f);
+    const genres = [['Hardstyle', 0.38], ['Hardcore', 0.33], ['Uptempo', 0.21], ['Unsortiert', 0.08]].map(([g, f]) => ({ name: g, sets: share(f), seconds: Math.round(sec * f), bytes: Math.round(bytes * f) }))
+      .map((g) => Object.assign(g, { color: (settings.genres.items.find((x) => x.name === g.name) || {}).color || null })).filter((g) => g.sets);
+    const fest = FEST.map(([name, f, ed]) => ({ key: name.toLowerCase().replace(/[^a-z0-9]/g, ''), name, sets: share(f), seconds: Math.round(sec * f), editions: Math.max(1, Math.min(ed, Math.round(ed * Math.min(1, n / 600)))) })).filter((x) => x.sets);
+    const yNow = new Date().getFullYear();
+    const years = [];
+    for (let y = 2011; y <= yNow; y++) { const w = Math.pow(1.22, y - 2011) * (0.7 + hfrac('y' + y) * 0.6); years.push([y, w]); }
+    const wsum = years.reduce((a, x) => a + x[1], 0);
+    const yrs = years.map(([y, w]) => ({ year: y, sets: Math.round((n * 0.97 * w) / wsum), seconds: Math.round((sec * 0.97 * w) / wsum) })).filter((y) => y.sets);
+    if (n) yrs.push({ year: null, sets: Math.round(n * 0.03), seconds: 0 });
+    const days = Math.max(1, months.length * 30);
+    const wl = months.map((m) => ({ month: m.month, checks: Math.round(30 * 1.4 + hfrac(m.month + 'c') * 6), found: Math.round(m.sets * 1.7 + hfrac(m.month + 'f') * 9) }));
+    const found = wl.reduce((a, m) => a + m.found, 0);
+    const src = SOURCES.filter((x) => x.enabled).map((x, i) => ({ id: x.id, name: x.name, type: x.type, platform: x.platform, found: Math.round(found * [0.24, 0.19, 0.15, 0.12, 0.09, 0.08, 0.07, 0.06][i % 8]), downloaded: 0, inbox: 0 }))
+      .map((x) => Object.assign(x, { downloaded: Math.round(x.found * 0.58), inbox: Math.round(x.found * 0.06) })).sort((a, b) => b.found - a.found);
+    const fItems = fest.slice(0, 10);
+    return {
+      range: { from: from || null, to: to || null },
+      totals: { sets: n, seconds: sec, bytes, sizes_missing: 0, avg_seconds: n ? Math.round(sec / n) : 0, first: months.length ? `${months[0].month}-03T19:12:00+00:00` : null, last: n ? isoAt(0, 6, 12) : null, library_sets: libN },
+      genres,
+      festivals: { items: fItems, other: fest.slice(10).reduce((a, x) => a + x.sets, 0), festivals: fest.length },
+      years: n ? yrs : [],
+      djs: DJS.map(([name, ini, f]) => ({ key: name.toLowerCase().replace(/[^a-z0-9]/g, ''), name, initials: ini, sets: share(f), seconds: Math.round(sec * f) })).filter((x) => x.sets),
+      months: n || from ? months.map((m) => ({ month: m.month, sets: m.sets, seconds: m.seconds, bytes: m.bytes })) : [],
+      platforms: n ? [{ platform: 'youtube', sets: n - share(0.14), seconds: Math.round(sec * 0.86), bytes: Math.round(bytes * 0.86) }, { platform: 'soundcloud', sets: share(0.14), seconds: Math.round(sec * 0.14), bytes: Math.round(bytes * 0.14) }] : [],
+      tracks: TRACKS.map(([artist, title, version, f]) => ({ key: `${artist}|${title}`.toLowerCase(), artist, title, version, sets: Math.round(n * f) })).filter((x) => x.sets >= 2),
+      watchlist: { checks: wl.reduce((a, m) => a + m.checks, 0), scheduled: Math.round(days * 0.95), found, downloaded: Math.round(found * 0.21), last: isoAt(0, 3, 0), months: wl, sources: empty ? [] : src.slice(0, 10), source_count: SOURCES.length, enabled_sources: SOURCES.filter((x) => x.enabled).length, inbox: 12 },
+      series_count: 0,
+    };
+  }
+
   const api = {
     /* Einstellungen */
     get_settings: () => later(30, () => ({ values: clone(settings), defaults: clone(DEFAULTS), language: resolvedLanguage() })),
@@ -2817,6 +2900,53 @@
       });
     },
 
+    /* v0.9.0 Statistik: deterministische Beispiel-Bibliothek (eigener Zufall, ändert keine anderen Mock-Daten) */
+    get_stats(opts) {
+      return later(60, () => {
+        const o = opts || {};
+        const bad = (x) => x != null && x !== '' && !/^\d{4}-\d{2}-\d{2}$/.test(x);
+        if (bad(o.from) || bad(o.to)) return { ok: false, error: 'Invalid date range (YYYY-MM-DD)' };
+        return Object.assign({ ok: true }, mockStats(o.from || null, o.to || null), { measuring: false });
+      });
+    },
+    get_notification_status: () => later(30, () => ({ ok: true, available: notifyState.available, backend: notifyState.available ? 'powershell' : 'none', quiet_now: false, pending: 0 })),
+    test_notification() {
+      return later(300, () => (notifyState.available ? { ok: true, backend: 'powershell' } : { ok: false, error: 'Windows notifications are not available on this system', backend: 'none' }));
+    },
+    get_media_server_status: () => later(30, () => ({ ok: true, type: settings.media_server.type, has_secret: clone(msState.secret), persistent: true, last_scan: clone(msState.last), pending: 0 })),
+    test_media_server(data) {
+      return later(400, () => {
+        const d = data || {};
+        if (!['plex', 'jellyfin'].includes(d.type)) return { ok: false, code: 'config', error: 'Choose Plex or Jellyfin and enter the server address' };
+        const url = String(d.url || '').trim();
+        if (!url) return { ok: false, code: 'config', error: 'Enter the server address (e.g. http://192.168.1.10:32400)' };
+        if (!d.secret && !msState.secret[d.type]) return { ok: false, code: 'no_secret', error: 'No token / API key stored – enter it and test the connection' };
+        if (/offline|unreachable/.test(url)) return { ok: false, code: 'unreachable', error: 'Server not reachable (Connection refused)' };
+        if (d.secret && /wrong|bad/.test(d.secret)) return { ok: false, code: 'auth', error: 'The server rejected the token / API key' };
+        const stored = !!d.secret;
+        if (stored) msState.secret[d.type] = true;
+        const libs = d.type === 'plex'
+          ? [{ id: '3', name: 'Hard Music', type: 'artist', paths: ['/data/music/HCLoader'], music: true }, { id: '4', name: 'DJ Sets', type: 'artist', paths: ['/data/sets'], music: true }, { id: '1', name: 'Movies', type: 'movie', paths: ['/data/movies'], music: false }]
+          : [{ id: 'f137a2dd21bbc1b99aa5c0f6bf02a805', name: 'Music', type: 'music', paths: ['/media/music'], music: true }, { id: '9d7ad6afe9afa2dab1a2f6e00ad28fa6', name: 'Shows', type: 'tvshows', paths: ['/media/tv'], music: false }];
+        return { ok: true, name: d.type === 'plex' ? 'Basement NAS' : 'jellyfin-nas', version: d.type === 'plex' ? '1.42.2.10156' : '10.11.3', libraries: libs, stored, persistent: true };
+      });
+    },
+    forget_media_server_secret(kind) {
+      return later(30, () => { const k = kind || settings.media_server.type; if (!['plex', 'jellyfin'].includes(k)) return { ok: false, error: 'Choose Plex or Jellyfin and enter the server address' }; msState.secret[k] = false; return { ok: true }; });
+    },
+    scan_media_server() {
+      return later(300, () => {
+        const m = settings.media_server;
+        let r;
+        if (m.type === 'off' || !m.url) r = { ok: false, code: 'config', error: 'Media server scan failed: Choose Plex or Jellyfin and enter the server address' };
+        else if (!msState.secret[m.type]) r = { ok: false, code: 'no_secret', error: 'Media server scan failed: No token / API key stored – enter it and test the connection' };
+        else r = { ok: true, server: m.type, files: 0, requests: 1, partial: false };
+        msState.last = Object.assign({ at: new Date().toISOString(), server: m.type, files: 0 }, r);
+        emit('media_scan', clone(msState.last));
+        return clone(msState.last);
+      });
+    },
+
     /* Protokoll */
     /* filters (optional, Backend): die UI ruft ohne Argument auf und filtert selbst. */
     get_log: () => later(30, () => ({ lines: clone(LOG), runs: clone(RUNS) })),
@@ -2867,6 +2997,9 @@
       taskMoved(on) { state.task.moved = on !== false; if (state.task.moved) { state.task.registered = true; settings.schedule.task_scheduler_enabled = true; } },
       /** Tracklisten noch nie eingelesen (on = false: wieder eingelesen); running = true: Einlesen läuft (Screenshots). */
       tracksFresh(on) { clearTimeout(tlState.timer); Object.assign(tlState, { lastPass: on === false ? isoAt(1, 9, 12) : null, running: false, cancel: false }); },
+      /** v0.9.0: Windows-Benachrichtigungen (nicht) verfügbar; Medienserver mit gespeichertem Token. */
+      notifyAvailable(on) { notifyState.available = on !== false; },
+      mediaServer(type, secret) { if (type) { settings.media_server = Object.assign(settings.media_server, { type, url: type === 'plex' ? 'http://192.168.1.10:32400' : 'http://nas:8096', library: type === 'plex' ? '3' : '', library_name: type === 'plex' ? 'Hard Music' : '', server_root: '/data/music/HCLoader' }); } msState.secret[type || 'plex'] = secret !== false; msState.last = { ok: true, at: isoAt(0, 6, 14), server: type || 'plex', files: 3, requests: 1, partial: true }; },
       /** Leere Bibliothek zeigen (on = false stellt sie wieder her). */
       libraryEmpty(on) {
         if (on === false) { if (libraryBackup) LIBRARY = libraryBackup; libraryBackup = null; return; }
