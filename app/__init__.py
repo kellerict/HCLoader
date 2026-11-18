@@ -5,4 +5,4 @@ reads it (`[tool.setuptools.dynamic]`), build_portable.ps1 and the self-update p
 release is the Git tag `v<__version__>` (docs/RELEASING.md).
 """
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"

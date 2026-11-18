@@ -10,9 +10,11 @@ appears after «Show all changes» (`docs/RELEASING.md`).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-18
+
 ### Highlights
 - Festival collector: a checklist of the expected sets of one festival edition, in the library (button «Collector», or «Collect this edition» in the festival view)
-- Fill it from the organiser's playlist, a pasted timetable (text or CSV), a shared timetable file or by hand
+- Fill it from the organiser's playlist, a pasted timetable (text or CSV, **beta** – check the preview before importing), a shared timetable file or by hand
 - Missing sets are found in your library first (free), then searched one by one – gently spread over the hour
 - Only ticked and confirmed sets are queued; downloads are tagged with edition, stage and set type from the checklist
 

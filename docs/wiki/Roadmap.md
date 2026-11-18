@@ -12,7 +12,7 @@ Progress per version is tracked in the [milestones](https://github.com/kellerict
 | **v0.2.0** | ✅&nbsp;Released | **Multilingual UI** – 19 languages: English (default), German (Swiss spelling), Chinese (Simplified), Hindi, Spanish, French, Bengali, Portuguese (Brazil), Russian, Indonesian, Dutch, Flemish (Belgium), Swedish, Norwegian (Bokmål), Finnish, Lithuanian, Latvian, Estonian and Fränggisch (fun dialect) |
 | **v0.3.0** | ✅&nbsp;Released | **Festivals & series** – recognise festival, year, stage and set type (Defqon.1, Qlimax, Dominator, …) as well as radio shows and podcasts; group the library by festival; album tag = edition for Plex/Jellyfin |
 | **v0.4.0** | ✅&nbsp;Released | **Read everything (once)** – fetch the complete back catalogue of a channel, playlist or artist into the inbox, gently and resumable |
-| **v0.5.0** | 🗓️&nbsp;Planned | **Festival collector** – collect all sets of one festival edition from the organiser playlist or a timetable, with a checklist to untick sets you do not want |
+| **v0.5.0** | ✅&nbsp;Released | **Festival collector** – collect all sets of one festival edition from the organiser playlist or a timetable, with a checklist to untick sets you do not want |
 | **v0.6.0** | 🗓️&nbsp;Planned | **Tracklist search** – tracklists from chapters and descriptions: «which sets play track X?» |
 | **v0.7.0** | 🗓️&nbsp;Planned | **Loudness normalisation** (ReplayGain / EBU R128) · player remembers the position, waveform with chapter marks, sleep timer |
 | **v0.8.0** | 🗓️&nbsp;Planned | **Playlist export** (M3U per festival, genre or DJ) · **DJ pages** with aliases |
