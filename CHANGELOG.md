@@ -30,7 +30,11 @@ appears after «Show all changes» (`docs/RELEASING.md`).
   locked by another program are re-tagged by the next pass without measuring again. ReplayGain tags of
   other programs are read as well.
 - Built-in player: loudness normalisation through Web Audio with a configurable target (default
-  −18 LUFS) and a true-peak limit; a small badge shows the gain in use.
+  −18 LUFS) and a true-peak limit; a small badge shows the gain in use. If the audio engine stays
+  silent (local file treated as cross-origin), the player switches to plain playback at the same
+  position within ~1.5 s – volume can then only be lowered, not boosted.
+- ReplayGain tags are never written into the set that is loaded in the player; they follow once it
+  is closed or another set plays. Tag writes go to a copy that atomically replaces the file.
 - Built-in player: waveform seek bar with chapter lines, tooltips, click and drag; falls back to the
   plain bar without ffmpeg or with the setting off; respects *Reduce effects*.
 - Player memory: the position of every set is remembered (not in the first/last 30 s); *Ask*,

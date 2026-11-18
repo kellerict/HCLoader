@@ -1508,3 +1508,25 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
 - **Schlaf-Timer ohne Einstellung:** Minuten laufen nach Uhr (auch in der Pause), «Ende des Sets» nach
   Medienzeit; die letzten 10 s werden über den Lautstärke-Gain ausgeblendet, danach Pause und Lautstärke
   wieder voll.
+
+## 2026-11-18 – Review v0.7.0: kein Tag-Schreiben unter dem Player, Web-Audio-Rückfall
+
+- **Entscheid (M1):** Die UI meldet das geladene Set (`set_now_playing`, auch pausiert). `analysis._write_tags`
+  schreibt nie in dessen Datei, sondern gibt «aufgeschoben» zurück (`tagged = 0`, kein Fehler);
+  `AnalysisQueue.set_playing` reiht das Tag-Schreiben ein, sobald ein anderes Set oder nichts gemeldet wird.
+  Jedes ReplayGain-Schreiben läuft über eine Kopie + `os.replace` (5 Versuche bei Freigabeverletzung, dann
+  ebenfalls aufgeschoben). **Grund:** mutagen verschiebt bei zu kleinem Padding (MP3) bzw. `moov` vorne (M4A)
+  die ganzen Audiodaten in place – der Player liest dann von falschen Offsets, ein Absturz hinterlässt eine
+  kaputte Datei. Aufschieben statt suspend/resume: kein hörbarer Aussetzer, und die Tags haben keine Eile.
+  Kosten der Kopie: einmal Dateigrösse an Plattenzugriff pro Datei, nur beim ersten Taggen.
+- **Entscheid (M2):** `webview.settings['ALLOW_FILE_URLS'] = True` wird in `main.py` ausdrücklich gesetzt
+  (pywebview hängt dann unter WebView2 `--allow-file-access-from-files` an). Zusätzlich ein Stille-Wächter im
+  Player: AnalyserNode an der Quelle; 1.5 s exakt 0 bei laufender, nicht stummer, fortschreitender Wiedergabe
+  → Graph verwerfen, neues Audio-Element an derselben Position, nur noch `audio.volume` (Anheben entfällt),
+  Toast. Einmal Signal gesehen = Graph für dieses Element bestätigt, kein weiterer Wächter. **Grund:** ein
+  «tainted» MediaElementSource liefert ohne Fehler nur Nullen und lässt sich nicht rückgängig machen; ohne
+  Rückfall bliebe der Player bis zum Neustart stumm. Restrisiko: ein Set, das mit > 1.5 s digitaler Stille
+  beginnt, löst beim ersten Abspielen der Sitzung den Rückfall aus (nur Anheben geht verloren).
+- **Kleinere Punkte:** Timeout und während des Starts verschwundene Datei gelten nicht mehr als dauerhafter
+  Fehler; ffmpeg wird auch bei einer Ausnahme in der Leseschleife beendet; verwaiste Wellenform-Dateien
+  räumt `analysis.prune_peaks` beim GUI-Start im Hintergrund weg.
