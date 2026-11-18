@@ -138,7 +138,8 @@ CORPUS = [
         [],
     ),
     (
-        "Zeit;Act;Bühne\n18:00-19:00;Sefa;RED\nbitte beachtet die Einlasszeiten\n19:00-20:00;Rooler;RED",
+        "Zeit;Act;Bühne\n18:00-19:00;Sefa;RED\nbitte beachtet die Einlasszeiten\n"
+        "19:00-20:00;Rooler;RED",
         [R("Sefa", "RED", N, "18:00", "19:00"), R("Rooler", "RED", N, "19:00", "20:00")],
         ["bitte beachtet die Einlasszeiten"],
     ),
