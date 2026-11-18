@@ -263,8 +263,10 @@ def test_iss_names_match_the_app():
 def test_iss_files_drop_marker_and_data():
     files = _section(_iss(), "Files")
     lines = [ln for ln in files.splitlines() if ln.startswith("Source:")]
-    assert len(lines) == 1
+    # the app files + the WebView2 bootstrapper (dontcopy, tests/test_webview2.py)
+    assert len(lines) == 2
     line = lines[0]
+    assert lines[1].startswith('Source: "{#WebView2Bootstrapper}"') and "dontcopy" in lines[1]
     assert 'Source: "{#SourceDir}\\*"' in line and 'DestDir: "{app}"' in line
     excludes = re.search(r'Excludes: "([^"]+)"', line).group(1).split(",")
     assert "\\portable.txt" in excludes and "\\data" in excludes and "\\data\\*" in excludes

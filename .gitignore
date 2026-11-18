@@ -53,3 +53,7 @@ docs/screenshots/*/
 /python/
 pytest-report.xml
 installer-defaults.json
+
+# Microsoft Edge WebView2 Evergreen Bootstrapper: downloaded and signature-checked by CI
+# (portable.yml) at build time, packed into the installer, never committed
+/installer/redist/

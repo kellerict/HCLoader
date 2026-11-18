@@ -89,6 +89,34 @@ jobs:
         timeout-minutes: 30
         run: .\scripts\build_portable.ps1 -Zip
 
+      - name: "Installer: fetch the WebView2 bootstrapper (Microsoft, signature checked)"
+        timeout-minutes: 5
+        run: |
+          # Evergreen Bootstrapper (~2 MB) from Microsoft's official link; packed into the installer,
+          # which runs it only when the WebView2 Runtime is missing. Never committed (.gitignore).
+          $dir = Join-Path $env:GITHUB_WORKSPACE 'installer\redist'
+          New-Item -ItemType Directory -Path $dir -Force | Out-Null
+          $exe = Join-Path $dir 'MicrosoftEdgeWebview2Setup.exe'
+          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+          $ProgressPreference = 'SilentlyContinue'   # PS 5.1: the progress bar slows downloads down
+          $url = 'https://go.microsoft.com/fwlink/p/?LinkId=2124703'
+          $ok = $false
+          foreach ($attempt in 1..2) {
+            try { Invoke-WebRequest -Uri $url -OutFile $exe -UseBasicParsing -MaximumRedirection 10 -TimeoutSec 120; $ok = $true; break }
+            catch { Write-Host "::warning::Download $attempt fehlgeschlagen: $_"; Start-Sleep -Seconds 10 }
+          }
+          if (-not $ok) { throw "WebView2-Bootstrapper nicht ladbar: $url" }
+          $size = (Get-Item $exe).Length
+          if ($size -lt 500KB -or $size -gt 20MB) { throw "WebView2-Bootstrapper: unerwartete Groesse $size Bytes" }
+          # only a file signed by Microsoft goes into the installer (Authenticode, chain valid)
+          $sig = Get-AuthenticodeSignature -FilePath $exe
+          $subject = "$($sig.SignerCertificate.Subject)"
+          Write-Host "Signatur: $($sig.Status) | $subject"
+          if ($sig.Status -ne 'Valid') { throw "WebView2-Bootstrapper: Signatur $($sig.Status) ($($sig.StatusMessage))" }
+          if ($subject -notmatch '(^|,\s*)O=Microsoft Corporation(,|$)') { throw "WebView2-Bootstrapper: nicht von Microsoft signiert: $subject" }
+          $info = (Get-Item $exe).VersionInfo
+          Write-Host "Bootstrapper: $($info.ProductName) $($info.FileVersion), $size Bytes, SHA256 $((Get-FileHash -Algorithm SHA256 -Path $exe).Hash)"
+
       - name: "Installer: compile (Inno Setup 6) from the portable ZIP"
         id: installer
         timeout-minutes: 25
@@ -327,6 +355,8 @@ jobs:
             Write-Host "installer-defaults.json: $(Get-Content -Raw -Path $Preset)"
             if (-not $pj.maintenance.check_app_updates_on_start -or -not $pj.maintenance.check_updates_on_start) { throw 'Update-Pruefung muss standardmaessig an sein' }
             if (-not (Test-Path $Lnk)) { throw "Startmenue-Verknuepfung fehlt: $Lnk" }
+            # the runner has the WebView2 Runtime: the bootstrapper must not run
+            if (-not (Select-String -Path (Join-Path $Tmp 'setup-1.log') -SimpleMatch -Pattern 'WebView2 present, skipped' -Quiet)) { throw 'Setup-Log: "WebView2 present, skipped" fehlt' }
             $sc = (New-Object -ComObject WScript.Shell).CreateShortcut($Lnk)
             Write-Host "Verknuepfung: $($sc.TargetPath) $($sc.Arguments) (in $($sc.WorkingDirectory))"
             if ($sc.TargetPath -ne (Join-Path $Dir 'python\pythonw.exe') -or $sc.Arguments -ne '-X utf8 -m app.main' -or $sc.WorkingDirectory -ne $Dir) { throw 'Startmenue-Verknuepfung zeigt falsch' }
@@ -379,7 +409,9 @@ jobs:
             New-Item -ItemType Directory -Path (Join-Path $Dir '_previous') -Force | Out-Null
             Set-Content -Path (Join-Path $Dir '_previous\marker.txt') -Value 'x'
             Set-Content -Path (Join-Path $Dir 'app\stale_module.py') -Value '# old'
-            Invoke-Setup (Join-Path $Tmp 'setup-2.log') @('/UPDATECHECK=0')
+            # /WEBVIEW2DRYRUN=1: runtime treated as missing, bootstrapper extracted but not started
+            Invoke-Setup (Join-Path $Tmp 'setup-2.log') @('/UPDATECHECK=0', '/WEBVIEW2DRYRUN=1')
+            if (-not (Select-String -Path (Join-Path $Tmp 'setup-2.log') -SimpleMatch -Pattern 'WebView2 dry run: bootstrapper extracted' -Quiet)) { throw 'Setup-Log: WebView2-Trockenlauf fehlt' }
             $pj = Get-Content -Raw -Path $Preset | ConvertFrom-Json
             if ($pj.maintenance.check_app_updates_on_start -or $pj.maintenance.check_updates_on_start) { throw '/UPDATECHECK=0 nicht in installer-defaults.json' }
             # the app applies it to a new config only (no config.yaml in the temp home)

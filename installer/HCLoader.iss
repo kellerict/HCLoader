@@ -15,6 +15,12 @@
 ;
 ;   MaxRelPath   longest relative path in SourceDir (scripts\portable_tools.py longest); the
 ;                installer refuses target folders where folder + 1 + MaxRelPath > 259 (MAX_PATH)
+;   WebView2Bootstrapper  Microsoft's Evergreen Bootstrapper MicrosoftEdgeWebview2Setup.exe
+;                (default installer\redist\, not in Git; portable.yml downloads it from Microsoft
+;                and checks its Authenticode signature). Packed, never installed: extracted to
+;                {tmp} and run only when the WebView2 Runtime is missing.
+;   Command line: /WEBVIEW2DRYRUN=1 treats the runtime as missing, extracts the bootstrapper and
+;                logs it without starting it (CI smoke of that path).
 ;
 ; Keep this file ASCII (ISCC reads files without BOM as ANSI).
 
@@ -33,6 +39,15 @@
 #ifndef MaxRelPath
   #define MaxRelPath "0"
 #endif
+#ifndef WebView2Bootstrapper
+  #define WebView2Bootstrapper AddBackslash(SourcePath) + "redist\MicrosoftEdgeWebview2Setup.exe"
+#endif
+#if !FileExists(WebView2Bootstrapper)
+  #error WebView2 bootstrapper missing: download MicrosoftEdgeWebview2Setup.exe (https://go.microsoft.com/fwlink/p/?LinkId=2124703) to installer\redist\ or pass /DWebView2Bootstrapper=<path> (see .github\workflows\portable.yml)
+#endif
+#define WebView2Setup "MicrosoftEdgeWebview2Setup.exe"
+; end-user download page of the Evergreen runtime (= app\core\webview2.py DOWNLOAD_URL)
+#define WebView2Url "https://developer.microsoft.com/microsoft-edge/webview2/consumer/"
 
 #define AppName "HCLoader"
 ; = app\main.py APP_USER_MODEL_ID (taskbar grouping, own icon)
@@ -125,6 +140,9 @@ de.PrivacyUpdateCheck=Beim Start nach Updates suchen (GitHub, PyPI)
 de.PrivacyLink=Datenschutzerklaerung (CODE_SIGNING.md)
 de.PrivacyExisting=HCLoader ist fuer diesen Benutzer bereits eingerichtet: die bestehende Einstellung bleibt unveraendert. Aendern unter Einstellungen > Wartung.
 
+; WebView2 Runtime step: texts in every installer language (UTF-8, so in an extra file)
+#include "webview2-messages.isi"
+
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
@@ -143,6 +161,9 @@ Type: filesandordirs; Name: "{app}\_previous-*"
 [Files]
 ; the portable build minus the portable marker and any user data of a test run
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Excludes: "\portable.txt,\data,\data\*,__pycache__,*.pyc"; Flags: ignoreversion recursesubdirs createallsubdirs
+; Microsoft's Evergreen Bootstrapper, unmodified and signed by Microsoft: only extracted to {tmp}
+; when needed (InstallWebView2), never copied to {app}
+Source: "{#WebView2Bootstrapper}"; DestName: "{#WebView2Setup}"; Flags: dontcopy
 
 [Icons]
 Name: "{autoprograms}\{#AppName}"; Filename: "{app}\python\pythonw.exe"; Parameters: "-X utf8 -m app.main"; WorkingDir: "{app}"; IconFilename: "{app}\ui\img\hcloader.ico"; Comment: "{cm:AppComment}"; AppUserModelID: "{#AppUserModelID}"
@@ -160,6 +181,8 @@ Type: filesandordirs; Name: "{app}"
 const
   MaxRelPath = {#MaxRelPath};
   MaxPathLen = 259;
+  // documented detection key of the Evergreen WebView2 Runtime (value pv)
+  WebView2Key = 'SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}';
 
 var
   PrivacyPage: TInputOptionWizardPage;
@@ -260,10 +283,105 @@ begin
     Log('Could not write {#InstallerDefaults}');
 end;
 
+// WebView2 Runtime, as Microsoft documents the detection: pv (REG_SZ) of the client key per
+// machine (64-bit Windows: WOW6432Node = HKLM32) or per user (HKCU); installed = not empty and
+// not 0.0.0.0. HKLM64 covers the key without WOW6432Node.
+function WebView2PvAt(const RootKey: Integer; const Where: String; var Version: String): Boolean;
+var
+  Value: String;
+begin
+  Result := False;
+  if RegQueryStringValue(RootKey, WebView2Key, 'pv', Value) then
+  begin
+    Value := Trim(Value);
+    Log('WebView2 ' + Where + ': pv=' + Value);
+    if (Value <> '') and (Value <> '0.0.0.0') then
+    begin
+      Version := Value;
+      Result := True;
+    end;
+  end;
+end;
+
+function FindWebView2(var Version: String): Boolean;
+begin
+  Result := WebView2PvAt(HKLM32, 'HKLM (WOW6432Node)', Version);
+  if not Result then
+    Result := WebView2PvAt(HKCU, 'HKCU', Version);
+  if (not Result) and IsWin64 then
+    Result := WebView2PvAt(HKLM64, 'HKLM', Version);
+end;
+
+// Installs the runtime with Microsoft's Evergreen Bootstrapper if it is missing. Without admin
+// rights (PrivilegesRequired=lowest) the bootstrapper installs per user; it downloads the runtime,
+// so it needs internet. A failure never aborts Setup: HCLoader is installed anyway, the user gets
+// a hint with the download page (suppressed in silent mode) and the app explains it again at
+// start (app\core\webview2.py).
+procedure InstallWebView2();
+var
+  Version, Setup, Failure: String;
+  ResultCode: Integer;
+  DryRun: Boolean;
+begin
+  DryRun := ExpandConstant('{param:WEBVIEW2DRYRUN|0}') = '1';
+  if DryRun then
+    Log('WebView2 dry run: treated as missing (/WEBVIEW2DRYRUN=1)')
+  else if FindWebView2(Version) then
+  begin
+    Log('WebView2 present, skipped (version ' + Version + ')');
+    Exit;
+  end
+  else
+    Log('WebView2 missing: running the Evergreen Bootstrapper');
+  WizardForm.StatusLabel.Caption := CustomMessage('WebView2Installing');
+  WizardForm.FilenameLabel.Caption := '';
+  Failure := '';
+  Setup := ExpandConstant('{tmp}\{#WebView2Setup}');
+  try
+    ExtractTemporaryFile('{#WebView2Setup}');
+  except
+    Failure := GetExceptionMessage;
+  end;
+  if (Failure = '') and not FileExists(Setup) then
+    Failure := Setup;
+  if (Failure = '') and DryRun then
+  begin
+    Log('WebView2 dry run: bootstrapper extracted to ' + Setup + ', not started');
+    Exit;
+  end;
+  if Failure = '' then
+  begin
+    WizardForm.ProgressGauge.Style := npbstMarquee;
+    try
+      if not Exec(Setup, '/silent /install', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+        Failure := SysErrorMessage(ResultCode)
+      else if ResultCode <> 0 then
+        Failure := Format('%d / 0x%.8x', [ResultCode, ResultCode]);
+    finally
+      WizardForm.ProgressGauge.Style := npbstNormal;
+    end;
+  end;
+  if Failure = '' then
+  begin
+    if FindWebView2(Version) then
+      Log('WebView2 installed (version ' + Version + ')')
+    else
+      Log('WebView2 bootstrapper finished (exit code 0), but no pv value found yet');
+  end
+  else
+  begin
+    Log('WebView2 install failed: ' + Failure);
+    SuppressibleMsgBox(FmtMessage(CustomMessage('WebView2Failed'), [Failure, '{#WebView2Url}']), mbInformation, MB_OK, IDOK);
+  end;
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then
+  begin
+    InstallWebView2();
     WriteInstallerDefaults();
+  end;
 end;
 
 function IsHCLoaderDir(const Dir: String): Boolean;

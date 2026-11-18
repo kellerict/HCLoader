@@ -10,5 +10,7 @@ docs/screenshots/** export-ignore
 docs/wiki/images/** export-ignore
 docs/icon-preview.png export-ignore
 
-# Inno Setup script: CRLF like the Windows starters (ISCC reads it as ANSI, keep it ASCII)
+# Inno Setup script: CRLF like the Windows starters (ISCC reads it as ANSI, keep it ASCII); the
+# included message file (*.isi) is UTF-8 with BOM
 installer/*.iss text eol=crlf
+installer/*.isi text eol=crlf
