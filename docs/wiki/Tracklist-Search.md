@@ -18,7 +18,7 @@ request goes to YouTube or SoundCloud.
 | Source | What is read |
 |---|---|
 | Chapters | the chapter list saved with the download (YouTube chapters, or timestamps from the description) |
-| Description | the saved description: timestamped lines (`00:00 Artist - Title`, `[12:34] …`, `(1:02:03) …`, `Artist - Title 3:20`), numbered lists (`1. Artist - Title [Label]`, `01) …`, `#3 …`) and plain lists below a "Tracklist:" heading |
+| Description | the saved description: timestamped lines (`00:00 Artist - Title`, `[12:34] …`, `(1:02:03) …`, `Artist - Title 3:20`), numbered lists (`1. Artist - Title [Label]`, `01) …`, `#3 …`, `Track 01 – …`, `Track 1: …`) and plain lists below a "Tracklist:" heading |
 | ID3 chapters | CHAP frames inside the MP3 (sets downloaded without metadata sidecar) |
 | CUE file | the `.cue` next to the audio file |
 
@@ -36,17 +36,19 @@ the artist.
 ## Reading the library
 
 New downloads get their tracklist right away. The first time you open **Tracks**, HCLoader reads
-the tracklists of your existing library once (progress bar, **Cancel**). Later, **Read again**
-rebuilds everything – useful after an update of the parser. The status line shows how many tracks
-in how many sets are searchable and when the library was last read.
+the tracklists of your existing library once (progress bar, **Cancel**). Later, **Read new** only
+reads sets that are new or changed since then (re-downloaded, metadata rewritten), and **Re-read
+all** rebuilds everything – useful after an update of the parser. Deleted sets drop out of the
+search and the most played list right away. The status line shows how many tracks in how many sets
+are searchable and when the library was last read.
 
 Sets downloaded before v0.6.0 only have the first 2000 characters of their description stored;
 a tracklist at the very end of a long description may be missing for them.
 
 ## Searching
 
-Type part of an artist or title – the words can be in any order (`zero melt` finds *Sub Zero
-Project x Devin Wild – Meltdown*). The result lists every set that contains a matching track,
+Type the start of artist or title words – the words can be in any order (`zero melt` finds *Sub
+Zero Project x Devin Wild – Meltdown*; `ragon` does not find *Dragonborn*). The result lists every set that contains a matching track,
 newest download first, with the matching words highlighted.
 
 - Click a **timestamp** to play the set from that point. With the built-in player the mix starts (or

@@ -546,14 +546,15 @@ den die UI übersetzt (UI-Schlüssel z.B. `fest.set_type.<code>`, Sache der UI-K
 Entscheide: `docs/decisions.md` «Tracklist search (v0.6.0)». Alles **offline**: Tracklisten kommen aus
 dem, was schon gespeichert ist oder auf der Platte liegt – nie aus dem Netz. Backend: `app/core/tracklist.py`
 (Parser, Normalisierung, Speichern, Suche), Tabellen `tracklists` + `tracks` (+ FTS5-Index `tracks_fts`,
-Migration 10). Nur Bibliothekseinträge (Status `done`) werden gefunden.
+Migration 10; Index `idx_tracks_key_video` für «Meistgespielt», Migration 11). Nur Bibliothekseinträge (Status `done`) werden gefunden.
 
 Quellen, in dieser Reihenfolge geprüft; die reichste gewinnt (Anzahl Tracks + Tracks mit Artist +
 Zeitstempel-Bonus, bei Gleichstand die frühere):
 
 1. `chapters` – Kapitel im Metadaten-Sidecar (yt-dlp-Kapitel oder beim Download aus der Beschreibung gelesen),
 2. `description` – Beschreibung im Sidecar: Zeilen mit Zeitstempel (`00:00`, `[12:34]`, `(1:02:03)`, auch
-   am Zeilenende), nummerierte Zeilen (`1.`, `01)`, `#3`, `4 -`) oder ein Block unter «Tracklist:»,
+   am Zeilenende), nummerierte Zeilen (`1.`, `01)`, `#3`, `4 -`, `Track 01 –`, `Track 1:`) oder ein Block
+   unter «Tracklist:»,
 3. `id3` – ID3-CHAP-Frames der MP3 (nur ohne Sidecar-Kapitel/-Beschreibung),
 4. `cue` – `.cue` neben der Audiodatei (Track-PERFORMER = Set-PERFORMER zählt nicht als Track-Artist).
 
@@ -569,10 +570,10 @@ ignoriert; mindestens zwei Tracks, höchstens 300 pro Set.
 | Methode | Parameter | Rückgabe |
 |---|---|---|
 | `search_tracks(query, opts?)` | `query`: Wörter aus Artist/Titel/Version, Reihenfolge egal, Präfix pro Wort, ohne Gross/Klein und Akzente (max. 200 Zeichen) | `{ok:true, query, engine:"fts5"\|"like", sets:[TrackSet], hits, truncated}` \| `{ok:false, error}` |
-| `get_tracklist(id)` | Video-ID; noch nie untersucht → wird sofort (offline) gelesen und gespeichert | `{ok:true, video_id, source, extracted, tracks:[Track]}` \| `{ok:false, error}` (unbekannte ID) |
-| `get_top_tracks(limit=20)` | 1–100 | `{ok:true, tracks:[{key, artist, title, version, sets}]}` – Tracks in den meisten Sets (mind. 2), häufigste Schreibweise |
+| `get_tracklist(id)` | Video-ID; noch nie untersucht → wird sofort (offline) gelesen und gespeichert (Zielordner nicht erreichbar → ohne Audio/CUE-Datei) | `{ok:true, video_id, source, extracted, tracks:[Track]}` \| `{ok:false, error}` (unbekannte ID; Datei unlesbar/beschädigt → übersetzte Meldung `tracklist.read_failed`, keine Exception) |
+| `get_top_tracks(limit=20)` | 1–100 | `{ok:true, tracks:[{key, artist, title, version, sets}]}` – Tracks in den meisten Sets (mind. 2), häufigste Schreibweise unter den Sets, die noch in der Bibliothek sind |
 | `get_tracklist_status()` | | `{total, scanned, sets, tracks, last_pass, engine, running}` |
-| `build_tracklists(opts?)` | `opts`: `{scope: "missing" (Standard: nur nie untersuchte) \| "all"}` | `{ok:true, started:true, scope}` \| `{ok:true, started:false, running:true}` \| `{ok:false, error}` (andere Wartung läuft) |
+| `build_tracklists(opts?)` | `opts`: `{scope: "new" (Standard: nie untersucht, seither neu geladen oder Sidecar geändert; Alias `"missing"`) \| "all" (alles neu)}` | `{ok:true, started:true, scope}` \| `{ok:true, started:false, running:true}` \| `{ok:false, error}` (andere Wartung läuft) |
 | `cancel_build_tracklists()` | | `{ok:true, running}` – der Durchlauf endet nach dem aktuellen Eintrag |
 
 **Datenformen**
@@ -583,13 +584,17 @@ ignoriert; mindestens zwei Tracks, höchstens 300 pro Set.
   hits:[Track], more}` – `artist` = Kanal; höchstens 12 Treffer pro Set (`more` = weitere), höchstens
   100 Sets, neueste Downloads zuerst; `truncated` = es gäbe mehr.
 - `source` (`get_tracklist`) = `chapters` \| `description` \| `id3` \| `cue` \| `none`.
-- `engine` = `fts5` (SQLite-Volltextindex) oder `like` (Fallback, wenn diese SQLite kein FTS5 kennt).
+- `engine` = `fts5` (SQLite-Volltextindex) oder `like` (Fallback, wenn diese SQLite kein FTS5 kennt;
+  geprüft beim Öffnen der DB). Beide liefern **dieselben Treffer**: jedes gefaltete Suchwort muss der
+  Anfang eines Worts im Track sein (`drag` findet «Dragonborn», `ragon` nicht).
 - «ID – ID» (Artist und Titel unbekannt) ist nie ein Suchtreffer und zählt nie für «Meistgespielt»;
   «Artist – ID» wird über den Artist gefunden.
 
 **Ablauf:** nach jedem Download liest `YtClient` die Trackliste aus Sidecar und Datei (nie fatal). Für
 die bestehende Bibliothek öffnet die UI beim **ersten** Öffnen der Ansicht «Tracks» einmal
-`build_tracklists({scope:"missing"})`; danach «Neu einlesen» = `scope:"all"`. Der Durchlauf läuft im
+`build_tracklists({scope:"new"})`; danach Knopf «Neue einlesen» = `scope:"new"` (nur neue/geänderte Sets)
+und «Alle neu einlesen» = `scope:"all"`. Jeder Durchlauf entfernt zuerst Tracklisten von Einträgen, die
+nicht mehr in der Bibliothek sind (Löschen räumt sie ohnehin sofort weg). Der Durchlauf läuft im
 Wartungs-Thread (Schlüssel `tracklists`, wie «Festivals zuordnen»); ist der Zielordner nicht erreichbar,
 werden Dateien darunter (ID3/CUE) übersprungen statt zu hängen.
 

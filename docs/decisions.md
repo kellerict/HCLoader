@@ -1433,3 +1433,26 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
   Datei im Standardplayer und nennt die Zeit im Toast (ein Sprung lässt sich dort nicht steuern).
 - **Nebenbei behoben:** `tagging.parse_timestamps` schnitt eine schliessende Klammer am Kapitelende ab
   («Title (X Remix» in Kapiteln, CUE und CHAP).
+
+## 2026-11-18 – Tracklist search: follow-ups to review/QA v0.6.0
+
+- **FTS5 beim Öffnen prüfen, nicht nur die Tabelle:** `db.ensure_tracks_fts` probt FTS5 bei jedem Start
+  (temporäre Tabelle). Index da, Modul fehlt → Sync-Trigger weg (sonst scheitert jedes Schreiben in
+  `tracks`, auch `ON DELETE CASCADE`), Suche per LIKE. Modul da, Index/Trigger fehlen → anlegen und aus
+  `tracks` neu füllen. **Grund:** dieselbe DB kann mit verschiedenen Python/SQLite-Builds geöffnet werden.
+- **Gleiche Treffer in beiden Engines:** LIKE sucht jetzt wie FTS5 nur am Wortanfang
+  (`' ' || search LIKE '% wort%'`, Text ist gefaltet mit einfachen Leerzeichen). Die UI markiert ebenfalls
+  nur Wortanfänge. Ein Test vergleicht beide Engines auf denselben Daten. **Grund:** ohne FTS5 gab es
+  sonst mehr (Teilwort-)Treffer als mit.
+- **Gelöschte Sets hinterlassen nichts:** `db.mark_removed` löscht Tracks und Tracklisten-Zeile mit;
+  jeder Einlese-Durchlauf räumt Altlasten (Status ≠ `done`) zuerst weg; die «Meistgespielt»-Schreibweise
+  zählt nur Sets mit Status `done`.
+- **«Meistgespielt» schneller:** Migration 11 ersetzt `idx_tracks_key` durch den abdeckenden Index
+  `(key, video_id)`. Gibt es keine Tracks ausserhalb der Bibliothek (Normalfall), zählt die Abfrage nur
+  über den Index ohne Join auf `videos` (Messung 150k Tracks: ~4× schneller); sonst die exakte Join-Abfrage.
+  Kein Cache und keine Zähltabelle. **Grund:** billig, immer korrekt, keine Invalidierung.
+- **Inkrementell einlesen:** Scope `new` (Standard, Alias `missing`) = nie untersucht, seither neu geladen
+  (`downloaded_at` > `extracted`) oder Sidecar jünger als `extracted` (nur lokale `stat`, keine
+  Zielordner-Zugriffe). Knopf «Neue einlesen», daneben «Alle neu einlesen» (`all`).
+- **Panel liest robust:** `get_tracklist` prüft vorher den Zielordner (wie der Durchlauf) und meldet
+  eine beschädigte Datei als übersetzte Meldung statt einer Exception.
