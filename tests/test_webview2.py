@@ -88,6 +88,7 @@ def test_preview_channel_counts_like_pywebview():
 
 def test_missing_only_on_windows(monkeypatch):
     empty = reader({})
+    monkeypatch.setattr(webview2.sys, "platform", "linux")
     assert webview2.missing(empty) is False  # Linux/macOS: no WebView2 involved
     assert empty.seen == []
     monkeypatch.setattr(webview2.sys, "platform", "win32")
