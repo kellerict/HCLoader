@@ -30,7 +30,7 @@ from types import ModuleType
 from typing import Any
 
 from . import artists, library, paths, playback, series
-from .config import UNSORTED, Settings
+from .config import UNSORTED, Settings, expand_path
 from .db import Database, now_iso
 from .filters import normalize
 from .i18n import tr
@@ -316,9 +316,7 @@ def export(
     o = opts or {}
     s = clean_spec(spec)
     folder = str(o.get("folder") or "").strip()
-    folder_path = (
-        Path(os.path.expandvars(folder)).expanduser() if folder else settings.playlist_dir_path()
-    )
+    folder_path = expand_path(folder) if folder else settings.playlist_dir_path()
     if not folder_path.is_absolute():
         raise PlaylistError(tr("playlist.folder_relative"))
     name = str(o.get("name") or "").strip() or default_name(db, settings, s)

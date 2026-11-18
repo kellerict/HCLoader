@@ -1711,6 +1711,7 @@ button.tk-time:hover,button.tk-time:focus-visible{border-color:var(--acid);backg
 .pl-folder .btn{flex:none;white-space:nowrap}
 .pl-f .seg{align-self:flex-start}
 .pl-help{font-size:12px;line-height:1.45;color:var(--dim)}
+.dj-merge-f{margin-top:14px}
 .pl-sync{flex-direction:row;flex-wrap:wrap;align-items:center;column-gap:12px}
 .pl-sync>span{flex:1 1 auto}
 .pl-sync .pl-help{flex-basis:100%}

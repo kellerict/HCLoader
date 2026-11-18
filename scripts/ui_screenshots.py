@@ -735,6 +735,8 @@ class Shooter:
         self.settle()
         self.shot("library-playlist-exists")
         page.keyboard.press("Escape")
+        page.click("[data-dj=list]")
+        page.wait_for_selector(".dj-card")
         page.click("[data-dj=back]")
         self.settle()
         self.clear_toasts()

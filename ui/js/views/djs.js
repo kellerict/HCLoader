@@ -248,10 +248,10 @@
       title: a ? t('djs.edit_title', { name: a.name }) : t('djs.add_title'),
       okLabel: t('common.save'),
       kind: 'dj-modal',
-      body: `<label class="pl-f"><span>${esc(t('djs.f_name'))}</span><input class="input" id="dj-f-name" maxlength="80" value="${esc(a ? a.name : '')}" spellcheck="false" autocomplete="off"></label>
+      body: `<div class="pl-dlg"><label class="pl-f"><span>${esc(t('djs.f_name'))}</span><input class="input" id="dj-f-name" maxlength="80" value="${esc(a ? a.name : '')}" spellcheck="false" autocomplete="off"></label>
         <div class="pl-f"><span>${esc(t('djs.f_aliases'))}</span><div id="dj-f-aliases"></div><small class="pl-help">${esc(t(a ? 'djs.f_aliases_help' : 'djs.f_act_help'))}</small></div>
         <label class="pl-f"><span>${esc(t('djs.f_channel'))}</span><input class="input mono" id="dj-f-channel" value="${esc((a && a.channel_url) || '')}" placeholder="https://www.youtube.com/@…" spellcheck="false" autocomplete="off"><small class="pl-help">${esc(t('djs.f_channel_help'))}</small></label>
-        <div id="dj-f-msg" aria-live="polite"></div>`,
+        <div id="dj-f-msg" aria-live="polite"></div></div>`,
       onOpen(back) { chips = ui.chips($('#dj-f-aliases', back), { list: a ? a.aliases : [], lower: false, commaSplits: false, placeholder: t('djs.f_alias_add') }); },
       async onOk(back) {
         const data = { name: $('#dj-f-name', back).value, aliases: chips.get(), channel_url: $('#dj-f-channel', back).value.trim() };
@@ -278,7 +278,7 @@
       title: t('djs.merge_title', { name: a.name }),
       okLabel: t('djs.merge_ok'),
       body: `<p>${esc(t('djs.merge_text', { name: a.name }))}</p>
-        <label class="pl-f"><span>${esc(t('djs.merge_into'))}</span><select class="select" id="dj-merge">${others.map((x) => `<option value="${esc(x.key)}">${esc(x.name)} · ${esc(nSets(x.sets))}</option>`).join('')}</select></label>`,
+        <label class="pl-f dj-merge-f"><span>${esc(t('djs.merge_into'))}</span><select class="select" id="dj-merge">${others.map((x) => `<option value="${esc(x.key)}">${esc(x.name)} · ${esc(nSets(x.sets))}</option>`).join('')}</select></label>`,
       onOk(back) { into = $('#dj-merge', back).value; return true; },
     });
     if (!yes || !into) return;
