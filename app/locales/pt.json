@@ -100,6 +100,33 @@
     "run_watchlist": "verificar a lista de monitoramento (com --headless)",
     "smoke": "executar exatamente um download (somente QA)"
   },
+  "collector": {
+    "artist_required": "Falta o DJ / artista",
+    "edition_invalid": "Escolha um festival e um ano",
+    "file_invalid": "Arquivo de horários inválido: {error}",
+    "file_series_unknown": "O arquivo de horários pertence a um festival desconhecido: {series}",
+    "file_unknown": "Arquivo de horários não encontrado",
+    "job_done": "Coletor de festival: {edition} – {searched} sets buscados, {hits} encontrados",
+    "job_failed": "Falha no coletor de festival: {error}",
+    "job_started": "Coletor de festival: {edition} – buscando os sets que faltam um por um",
+    "job_stopped": "Coletor de festival: {edition} parado – {note}",
+    "not_a_candidate": "Este vídeo não é um resultado para este set",
+    "note_backoff": "Backoff até {until} – continua mais tarde",
+    "note_error": "Erro: {error}",
+    "note_interrupted": "Interrompido – continua automaticamente",
+    "note_next": "Próxima busca às {time} (as buscas são distribuídas ao longo da hora)",
+    "playlist_done": "Coletor de festival: playlist de {edition} lida – {added} linhas novas, {merged} já listadas",
+    "playlist_failed": "Não foi possível ler a playlist: {error}",
+    "playlist_started": "Coletor de festival: lendo a playlist de {edition}",
+    "playlist_url_invalid": "Não é um link de playlist (playlist do YouTube ou set do SoundCloud)",
+    "retagged": "Coletor de festival: arquivos re-etiquetados: {n}",
+    "row_invalid": "Linha da lista inválida",
+    "row_unknown": "Linha da lista não encontrada",
+    "search_failed": "A busca por {artist} falhou: {error}",
+    "time_invalid": "Horário inválido (HH:MM)",
+    "too_many_rows": "No máximo {n} linhas por lista",
+    "year_required": "Ano ausente ou inválido"
+  },
   "common": {
     "error": "Erro",
     "unknown_error": "erro desconhecido"

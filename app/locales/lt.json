@@ -103,6 +103,33 @@
     "run_watchlist": "patikrinti stebimus šaltinius (su --headless)",
     "smoke": "atlikti lygiai vieną atsisiuntimą (tik QA)"
   },
+  "collector": {
+    "artist_required": "Trūksta DJ / atlikėjo",
+    "edition_invalid": "Pasirinkite festivalį ir metus",
+    "file_invalid": "Tvarkaraščio failas netinkamas: {error}",
+    "file_series_unknown": "Tvarkaraščio failas priklauso nežinomam festivaliui: {series}",
+    "file_unknown": "Tvarkaraščio failas nerastas",
+    "job_done": "Festivalių rinkėjas: {edition} – ieškota setų: {searched}, rasta: {hits}",
+    "job_failed": "Festivalių rinkėjo klaida: {error}",
+    "job_started": "Festivalių rinkėjas: {edition} – trūkstami setai ieškomi po vieną",
+    "job_stopped": "Festivalių rinkėjas: {edition} sustabdytas – {note}",
+    "not_a_candidate": "Šis vaizdo įrašas nėra šio seto atitikmuo",
+    "note_backoff": "Backoff iki {until} – tęsiama vėliau",
+    "note_error": "Klaida: {error}",
+    "note_interrupted": "Nutraukta – tęsiama automatiškai",
+    "note_next": "Kita paieška {time} (paieškos paskirstomos per valandą)",
+    "playlist_done": "Festivalių rinkėjas: {edition} grojaraštis perskaitytas – naujų eilučių: {added}, jau buvo: {merged}",
+    "playlist_failed": "Nepavyko perskaityti grojaraščio: {error}",
+    "playlist_started": "Festivalių rinkėjas: skaitomas {edition} grojaraštis",
+    "playlist_url_invalid": "Tai ne grojaraščio nuoroda (YouTube grojaraštis arba SoundCloud setas)",
+    "retagged": "Festivalių rinkėjas: iš naujo pažymėta failų: {n}",
+    "row_invalid": "Netinkama kontrolinio sąrašo eilutė",
+    "row_unknown": "Kontrolinio sąrašo eilutė nerasta",
+    "search_failed": "Paieška „{artist}“ nepavyko: {error}",
+    "time_invalid": "Netinkamas laikas (HH:MM)",
+    "too_many_rows": "Daugiausia {n} eilučių viename kontroliniame sąraše",
+    "year_required": "Metai nenurodyti arba netinkami"
+  },
   "common": {
     "error": "Klaida",
     "unknown_error": "nežinoma klaida"

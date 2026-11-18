@@ -103,6 +103,33 @@
     "run_watchlist": "Watchlist prüfn (mit --headless)",
     "smoke": "genau an Download ausführn (nur QA)"
   },
+  "collector": {
+    "artist_required": "Der DJ fehld fei",
+    "edition_invalid": "Festival und Joahr aussuchn",
+    "file_invalid": "Die Timetable-Dadei is hie: {error}",
+    "file_series_unknown": "Die Timetable-Dadei ghörd zu am Festival, des kanner kennd: {series}",
+    "file_unknown": "Timetable-Dadei net gfundn",
+    "job_done": "Festival-Sammler: {edition} – {searched} Sets gsuchd, {hits} gfundn",
+    "job_failed": "Festival-Sammler is hie: {error}",
+    "job_started": "Festival-Sammler: {edition} – die fehlendn Sets werdn anzeln gsuchd",
+    "job_stopped": "Festival-Sammler: {edition} ogheldn – {note}",
+    "not_a_candidate": "Des Video basst net zu dem Set",
+    "note_backoff": "Backoff bis {until} – gehd schbäder weider",
+    "note_error": "Fehler: {error}",
+    "note_interrupted": "Underbrochn – gehd vo allaa weider",
+    "note_next": "Nächsde Suche um {time} (die Suchn werdn über die Stund verdeild)",
+    "playlist_done": "Festival-Sammler: Playlist vo {edition} glesn – {added} neue Zeiln, {merged} worn scho do",
+    "playlist_failed": "Die Playlist hod mer net lesn kenna: {error}",
+    "playlist_started": "Festival-Sammler: Playlist vo {edition} werd glesn",
+    "playlist_url_invalid": "Des is ka Playlist-Link (YouTube-Playlist oder SoundCloud-Set)",
+    "retagged": "Festival-Sammler: Dadein nei gdaggd: {n}",
+    "row_invalid": "Die Checklistn-Zeil is hie",
+    "row_unknown": "Checklistn-Zeil net gfundn",
+    "search_failed": "Suche nach {artist} is hie: {error}",
+    "time_invalid": "Uhrzeid basst net (HH:MM)",
+    "too_many_rows": "Höchsdns {n} Zeiln pro Checklistn",
+    "year_required": "Joahr fehld oder basst net"
+  },
   "common": {
     "error": "Fehler",
     "unknown_error": "unbekannder Fehler"

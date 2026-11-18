@@ -101,6 +101,33 @@
     "run_watchlist": "Watchlist prüfen (mit --headless)",
     "smoke": "genau einen Download ausführen (nur QA)"
   },
+  "collector": {
+    "artist_required": "DJ / Artist fehlt",
+    "edition_invalid": "Festival und Jahr wählen",
+    "file_invalid": "Timetable-Datei ist ungültig: {error}",
+    "file_series_unknown": "Timetable-Datei gehört zu einem unbekannten Festival: {series}",
+    "file_unknown": "Timetable-Datei nicht gefunden",
+    "job_done": "Festival-Sammler: {edition} – {searched} Sets gesucht, {hits} gefunden",
+    "job_failed": "Festival-Sammler fehlgeschlagen: {error}",
+    "job_started": "Festival-Sammler: {edition} – fehlende Sets werden einzeln gesucht",
+    "job_stopped": "Festival-Sammler: {edition} angehalten – {note}",
+    "not_a_candidate": "Dieses Video ist kein Treffer für dieses Set",
+    "note_backoff": "Backoff bis {until} – geht später weiter",
+    "note_error": "Fehler: {error}",
+    "note_interrupted": "Unterbrochen – geht automatisch weiter",
+    "note_next": "Nächste Suche um {time} (Suchen werden über die Stunde verteilt)",
+    "playlist_done": "Festival-Sammler: Playlist von {edition} gelesen – {added} neue Zeilen, {merged} schon vorhanden",
+    "playlist_failed": "Playlist konnte nicht gelesen werden: {error}",
+    "playlist_started": "Festival-Sammler: Playlist von {edition} wird gelesen",
+    "playlist_url_invalid": "Kein Playlist-Link (YouTube-Playlist oder SoundCloud-Set)",
+    "retagged": "Festival-Sammler: Dateien neu getaggt: {n}",
+    "row_invalid": "Ungültige Checklisten-Zeile",
+    "row_unknown": "Checklisten-Zeile nicht gefunden",
+    "search_failed": "Suche nach {artist} fehlgeschlagen: {error}",
+    "time_invalid": "Ungültige Uhrzeit (HH:MM)",
+    "too_many_rows": "Höchstens {n} Zeilen pro Checkliste",
+    "year_required": "Jahr fehlt oder ist ungültig"
+  },
   "common": {
     "error": "Fehler",
     "unknown_error": "unbekannter Fehler"

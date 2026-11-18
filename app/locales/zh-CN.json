@@ -100,6 +100,33 @@
     "run_watchlist": "检查关注列表（配合 --headless）",
     "smoke": "只运行一次下载（仅用于 QA）"
   },
+  "collector": {
+    "artist_required": "缺少 DJ / 艺人",
+    "edition_invalid": "请选择一个音乐节和年份",
+    "file_invalid": "时间表文件无效：{error}",
+    "file_series_unknown": "时间表文件属于未知的音乐节：{series}",
+    "file_unknown": "未找到时间表文件",
+    "job_done": "音乐节收集器：{edition} – 已搜索 {searched} 个 Set，找到 {hits} 个",
+    "job_failed": "音乐节收集器失败：{error}",
+    "job_started": "音乐节收集器：{edition} – 正在逐个搜索缺少的 Set",
+    "job_stopped": "音乐节收集器：{edition} 已停止 – {note}",
+    "not_a_candidate": "此视频与该 Set 不匹配",
+    "note_backoff": "Backoff 至 {until} – 稍后继续",
+    "note_error": "错误：{error}",
+    "note_interrupted": "已中断 – 将自动继续",
+    "note_next": "下一次搜索时间 {time}（搜索在一小时内均匀分布）",
+    "playlist_done": "音乐节收集器：已读取 {edition} 的播放列表 – 新增 {added} 行，{merged} 行已存在",
+    "playlist_failed": "无法读取播放列表：{error}",
+    "playlist_started": "音乐节收集器：正在读取 {edition} 的播放列表",
+    "playlist_url_invalid": "不是播放列表链接（YouTube 播放列表或 SoundCloud Set）",
+    "retagged": "音乐节收集器：已重新写入标签的文件：{n}",
+    "row_invalid": "无效的清单行",
+    "row_unknown": "未找到清单行",
+    "search_failed": "搜索 {artist} 失败：{error}",
+    "time_invalid": "无效的时间（HH:MM）",
+    "too_many_rows": "每个清单最多 {n} 行",
+    "year_required": "年份缺失或无效"
+  },
   "common": {
     "error": "错误",
     "unknown_error": "未知错误"

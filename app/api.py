@@ -25,6 +25,7 @@ from typing import Any
 from .core import (
     backfill,
     binaries,
+    collector,
     config,
     discover,
     i18n,
@@ -33,6 +34,7 @@ from .core import (
     logview,
     maintenance,
     paths,
+    platforms,
     player,
     potoken,
     scheduler,
@@ -222,6 +224,16 @@ class Api:
         self._ticker: Ticker | None = None
         self._loaded_once = False
         self._fest_cancel = threading.Event()
+        # v0.5.0 «Festival collector»: matching jobs (one at a time, long: paced searches) and
+        # playlist imports (short) in their own threads; per-edition stop events
+        self._col_worker = Worker("hcloader-collector")
+        self._col_import_worker = Worker("hcloader-collector-import")
+        self._col_events: dict[int, threading.Event] = {}
+        self._col_stop = threading.Event()  # app exit
+        self._col_jobs = 0
+        self._col_current: int | None = None
+        self._col_timer: threading.Timer | None = None
+        self._bus.subscribe(self._on_collector_event)
 
     # ================================================================== lifecycle (internal)
 
@@ -275,6 +287,14 @@ class Api:
         self._bf_worker.stop(WATCHLIST_STOP_TIMEOUT_S)
         backfill.release_running(self._db, tr("backfill.note_interrupted"))
         self._fest_cancel.set()  # a running «Assign festivals» pass stops after the current row
+        self._col_stop.set()  # v0.5.0: collector job/import stop before their next request
+        if self._col_timer is not None:
+            self._col_timer.cancel()
+        for ev in list(self._col_events.values()):
+            ev.set()
+        self._col_worker.stop(WATCHLIST_STOP_TIMEOUT_S)
+        self._col_import_worker.stop(WATCHLIST_STOP_TIMEOUT_S)
+        collector.release_running(self._db, tr("collector.note_interrupted"))
         self._updater.stop()  # a running app-update download is aborted and discarded
         self._update_worker.stop()
         ended = self._queue.stop(queue_timeout)
@@ -301,6 +321,7 @@ class Api:
             self._startup_task_check()
             self._startup_app_update()
             self._startup_backfills()
+            self._startup_collector()
 
     def _on_run_finished(self, row: dict[str, Any]) -> None:
         """A run (watchlist, headless, manual queue) ended: event `run` for the log view."""
@@ -1335,6 +1356,380 @@ class Api:
         if any(r.found or r.added for r in results):
             self._push()  # inbox badge
         return {"ok": True, "ran": sum(1 for r in results if not r.skipped)}
+
+    # ================================================================== festival collector (v0.5.0)
+
+    def get_collector_editions(self) -> list[dict[str, Any]]:
+        """Editions with a checklist, with stats and matching job; offline."""
+        return collector.list_editions(self._db)
+
+    def open_collector_edition(self, data: dict[str, Any] | None) -> dict[str, Any]:
+        """Create (or open) the checklist of an edition: {edition_id} | {series_id, year,
+        variant?}."""
+        return self._col(
+            lambda: {"edition": collector.summary(self._db, collector.open_edition(self._db, data))}
+        )
+
+    def delete_checklist(self, edition_id: int) -> dict[str, Any]:
+        def run() -> dict[str, Any]:
+            eid = int(collector.require_edition(self._db, edition_id)["id"])
+            self._stop_matching(eid)
+            return {"deleted": collector.delete_checklist(self._db, eid)}
+
+        return self._col(run)
+
+    def get_checklist(self, edition_id: int) -> dict[str, Any]:
+        return self._col(lambda: collector.get_checklist(self._db, edition_id))
+
+    def parse_timetable(self, text: str) -> dict[str, Any]:
+        """Preview of a pasted timetable (nothing stored): {ok, rows, skipped, days, stages,
+        csv}."""
+        return {"ok": True, **collector.parse_text(self._db, self._cfg, str(text or ""))}
+
+    def import_timetable(self, edition_id: int, data: Any) -> dict[str, Any]:
+        """Pasted text or the edited preview rows -> checklist rows (+ free offline match)."""
+
+        def run() -> dict[str, Any]:
+            res = collector.import_timetable(self._db, self._cfg, edition_id, data)
+            self._emit_col_rows(int(edition_id), res["ids"])
+            return res
+
+        return self._col(run)
+
+    def get_timetable_files(self) -> list[dict[str, Any]]:
+        """Timetable files shipped with the app (app/data/timetables)."""
+        return collector.list_files(self._db)
+
+    def import_timetable_file(self, file: str) -> dict[str, Any]:
+        def run() -> dict[str, Any]:
+            res = collector.import_file(self._db, self._cfg, str(file or ""))
+            self._emit_col_rows(res["edition_id"], res["ids"])
+            return res
+
+        return self._col(run)
+
+    def import_checklist_playlist(self, edition_id: int, url: str) -> dict[str, Any]:
+        """Read the organiser playlist once (thread `hcloader-collector-import`, Throttle);
+        progress as `collector_import` events."""
+
+        def run() -> dict[str, Any]:
+            eid = int(collector.require_edition(self._db, edition_id)["id"])
+            norm = collector.check_playlist_url(url, self._cfg)
+            reason = self._collector_refusal(norm)
+            if reason:
+                return {"ok": False, "error": reason}
+            if self._col_import_worker.busy(f"import:{eid}"):
+                return {"started": False, "running": True}
+            self._col_import_worker.submit(f"import:{eid}", self._do_col_import, eid, norm)
+            return {"started": True, "url": norm}
+
+        return self._col(run)
+
+    def add_checklist_row(self, edition_id: int, data: dict[str, Any]) -> dict[str, Any]:
+        def run() -> dict[str, Any]:
+            rid = collector.add_row(self._db, edition_id, data)
+            eid = int(edition_id)
+            collector.match_offline(self._db, self._cfg, eid, [rid])
+            row = collector.get_rows(self._db, eid, [rid])
+            self._emit_col_rows(eid, [])
+            return {"row": row[0] if row else None}
+
+        return self._col(run)
+
+    def update_checklist_row(self, row_id: int, data: dict[str, Any]) -> dict[str, Any]:
+        def run() -> dict[str, Any]:
+            row = collector.update_row(self._db, row_id, data)
+            eid = int(row["edition_id"])
+            collector.match_offline(self._db, self._cfg, eid, [row["id"]])
+            retag = []
+            if row.get("video_id") and row.get("confirmed"):
+                fresh = collector.row_by_id(self._db, row["id"])
+                if fresh["status"] in ("queued", "downloaded") and collector.apply_row_values(
+                    self._db, fresh
+                ):
+                    if fresh["status"] == "downloaded":
+                        retag.append(fresh["video_id"])
+            self._submit_col_retag(eid, retag)
+            out = collector.get_rows(self._db, eid, [row["id"]])
+            self._emit_col_rows(eid, [])
+            return {"row": out[0] if out else None, "retag": len(retag)}
+
+        return self._col(run)
+
+    def delete_checklist_rows(self, row_ids: list[int]) -> dict[str, Any]:
+        def run() -> dict[str, Any]:
+            by_ed = collector.delete_rows(self._db, row_ids)
+            for eid, ids in by_ed.items():
+                self._emit_col_rows(eid, [], deleted=ids)
+            return {"deleted": sum(len(v) for v in by_ed.values())}
+
+        return self._col(run)
+
+    def set_checklist_checked(self, row_ids: list[int], checked: bool) -> dict[str, Any]:
+        return self._col_flag(row_ids, "checked", checked)
+
+    def set_checklist_ignored(self, row_ids: list[int], ignored: bool) -> dict[str, Any]:
+        return self._col_flag(row_ids, "ignored", ignored)
+
+    def confirm_checklist_match(
+        self, row_id: int, video_id: str | None = None, reject: bool = False
+    ) -> dict[str, Any]:
+        """Accept the match or a candidate (`video_id`), or drop it (`null`, `reject`: never
+        propose that video for the row again)."""
+
+        def run() -> dict[str, Any]:
+            row = collector.confirm_match(self._db, row_id, video_id, reject=bool(reject))
+            eid = int(row["edition_id"])
+            out = collector.get_rows(self._db, eid, [row["id"]])
+            self._emit_col_rows(eid, [])
+            return {"row": out[0] if out else None}
+
+        return self._col(run)
+
+    def estimate_checklist_matching(
+        self, edition_id: int, opts: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        """Requests/time of the matching job (no network; runs the free library match)."""
+        restart = bool((opts or {}).get("restart")) if isinstance(opts, dict) else False
+
+        def run() -> dict[str, Any]:
+            res = collector.estimate(
+                self._db, self._cfg, self._throttle, edition_id, restart=restart
+            )
+            if res.get("matched_offline"):
+                self._emit_col_rows(int(res["edition_id"]), [])
+            return res
+
+        return self._col(run)
+
+    def start_checklist_matching(
+        self, edition_id: int, opts: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        """Start/continue the matching job in thread `hcloader-collector`; progress as
+        `collector_job`, row changes as `collector_rows` events."""
+        restart = bool((opts or {}).get("restart")) if isinstance(opts, dict) else False
+
+        def run() -> dict[str, Any]:
+            eid = int(collector.require_edition(self._db, edition_id)["id"])
+            reason = self._collector_refusal(None)
+            if reason:
+                return {"ok": False, "error": reason}
+            job = collector.get_job(self._db, eid)
+            if job and job["state"] == "running" and self._col_current == eid:
+                return {"job": job}
+            collector.match_offline(self._db, self._cfg, eid)
+            job = collector.request_job(self._db, eid, restart=restart)
+            if not job or job["total"] <= job["done"]:
+                collector.update_job(self._db, eid, job_state="done", job_finished=_now_iso())
+                self._emit_col_job(eid)
+                self._emit_col_rows(eid, [])
+                return {"job": collector.get_job(self._db, eid), "nothing": True}
+            self._emit_col_job(eid)
+            self._submit_matching(eid)
+            return {"job": collector.get_job(self._db, eid)}
+
+        return self._col(run)
+
+    def cancel_checklist_matching(self, edition_id: int) -> dict[str, Any]:
+        def run() -> dict[str, Any]:
+            eid = int(collector.require_edition(self._db, edition_id)["id"])
+            self._stop_matching(eid)
+            self._emit_col_job(eid)
+            return {"job": collector.get_job(self._db, eid)}
+
+        return self._col(run)
+
+    def queue_checklist(self, edition_id: int, row_ids: list[int] | None = None) -> dict[str, Any]:
+        """Queue the checked + confirmed rows (all, or `row_ids`); normal sequential queue."""
+
+        def run() -> dict[str, Any]:
+            res = collector.queue_rows(self._db, edition_id, row_ids)
+            queued = self._queue.enqueue(res["video_ids"]) if res["video_ids"] else []
+            eid = int(edition_id)
+            self._submit_col_retag(eid, res["retag"])
+            self._emit_col_rows(eid, [])
+            self._push()
+            return {"queued": queued, "retag": len(res["retag"]), "skipped": res["skipped"]}
+
+        return self._col(run)
+
+    # -- collector helpers (internal)
+
+    def _col(self, fn: Callable[[], dict[str, Any]]) -> dict[str, Any]:
+        try:
+            res = fn()
+        except collector.CollectorError as exc:
+            return {"ok": False, "errors": exc.errors, "error": str(exc)}
+        return res if res.get("ok") is not None else {"ok": True, **res}
+
+    def _col_flag(self, row_ids: Any, flag: str, value: Any) -> dict[str, Any]:
+        by_ed = collector.set_flag(self._db, row_ids, flag, bool(value))
+        for eid, ids in by_ed.items():
+            self._emit_col_rows(eid, ids)
+        return {"ok": True, "changed": sum(len(v) for v in by_ed.values())}
+
+    def _collector_refusal(self, url: str | None) -> str | None:
+        if self._queue.restart_required:
+            return tr("api.restart_required")
+        if self._ytdlp_gate.updating:
+            return tr(_UPDATE_BUSY)
+        platform = (url and platforms.url_platform(url)) or "youtube"
+        until = self._throttle.platform(platform).backoff_until()
+        if until is not None:
+            return tr("api.watchlist_backoff", until=discover.format_until(until))
+        return None
+
+    def _emit_col_rows(self, eid: int, ids: list[int], *, deleted: list[int] | None = None) -> None:
+        """Event `collector_rows`: changed rows (empty `rows` + `reload`: fetch the checklist)."""
+        try:
+            rows = collector.get_rows(self._db, eid, ids) if ids else []
+            self._bus.emit(
+                "collector_rows",
+                {
+                    "edition_id": eid,
+                    "rows": rows,
+                    "deleted": list(deleted or []),
+                    "reload": not ids and not deleted,
+                    "stats": collector.stats(self._db, eid),
+                },
+            )
+        except Exception:
+            log.debug("collector_rows event failed", exc_info=True)
+
+    def _emit_col_job(self, eid: int) -> None:
+        job = collector.get_job(self._db, eid) or {"edition_id": eid, "state": "none"}
+        self._bus.emit("collector_job", {**job, "stats": collector.stats(self._db, eid)})
+
+    def _on_collector_event(self, event_type: str, data: Any) -> None:
+        """Downloads change row states (queued -> downloaded): `collector_rows` for them."""
+        if event_type not in ("video", "done", "failed") or not isinstance(data, dict):
+            return
+        vid = data.get("id")
+        if not vid:
+            return
+        for eid, ids in collector.rows_for_videos(self._db, [str(vid)]).items():
+            self._emit_col_rows(eid, ids)
+
+    def _col_event(self, eid: int) -> threading.Event:
+        ev = threading.Event()
+        if self._col_stop.is_set():
+            ev.set()
+        self._col_events[eid] = ev
+        return ev
+
+    def _stop_matching(self, eid: int) -> None:
+        collector.cancel_job(self._db, eid)
+        ev = self._col_events.get(eid)
+        if ev is not None:
+            ev.set()
+
+    def _submit_matching(self, eid: int) -> None:
+        self._col_jobs += 1  # own key: a restart right after a cancel must not be swallowed
+        self._col_worker.submit(f"match:{self._col_jobs}", self._do_matching, eid)
+
+    def _startup_collector(self) -> None:
+        if not collector.open_jobs(self._db):
+            return
+        timer = threading.Timer(BACKFILL_START_DELAY_S, self._resume_collector)
+        timer.daemon = True
+        self._col_timer = timer
+        timer.start()
+
+    def _resume_collector(self) -> None:
+        """Interrupted matching jobs (app exit, backoff) continue after the app start."""
+        if self._col_stop.is_set():
+            return
+        for eid in collector.open_jobs(self._db):
+            if self._collector_refusal(None) is None:
+                self._submit_matching(eid)
+
+    def _do_matching(self, eid: int) -> dict[str, Any]:
+        res = None
+        try:
+            with self._ytdlp_gate.search():  # no yt-dlp update meanwhile
+                client = self._client_factory()
+                try:
+                    self._col_current = eid
+                    res = collector.run_job(
+                        eid,
+                        client=client,
+                        db=self._db,
+                        settings=self._cfg,
+                        throttle=self._throttle,
+                        cancel=self._col_event(eid),
+                        on_progress=lambda job: self._bus.emit(
+                            "collector_job", {**job, "stats": collector.stats(self._db, eid)}
+                        ),
+                        on_rows=self._emit_col_rows,
+                    )
+                finally:
+                    self._col_current = None
+                    client.close()
+        except GateBusy:
+            self._bus.toast(tr(_UPDATE_BUSY), "warn")
+        except Exception as exc:
+            log.exception(tr("collector.job_failed", error=redact(exc)))
+            self._bus.toast(tr("collector.job_failed", error=redact(exc)), "err")
+        finally:
+            self._emit_col_job(eid)
+        self._push()
+        return {"ok": True, "state": res.state if res else None}
+
+    def _do_col_import(self, eid: int, url: str) -> dict[str, Any]:
+        res = None
+        try:
+            with self._ytdlp_gate.search():
+                client = self._client_factory()
+                try:
+                    res = collector.import_playlist(
+                        eid,
+                        url,
+                        client=client,
+                        db=self._db,
+                        settings=self._cfg,
+                        cancel=self._col_stop,
+                        on_progress=lambda d: self._bus.emit("collector_import", d),
+                    )
+                finally:
+                    client.close()
+        except GateBusy:
+            self._bus.emit(
+                "collector_import",
+                {
+                    "phase": "error",
+                    "kind": "playlist",
+                    "edition_id": eid,
+                    "error": tr(_UPDATE_BUSY),
+                },
+            )
+        except Exception as exc:
+            msg = tr("collector.playlist_failed", error=redact(exc))
+            log.exception(msg)
+            self._bus.emit(
+                "collector_import",
+                {"phase": "error", "kind": "playlist", "edition_id": eid, "error": msg},
+            )
+        if res is not None:
+            collector.match_offline(self._db, self._cfg, eid)
+        self._emit_col_rows(eid, [])
+        self._push()
+        return {"ok": res is not None and not res.error}
+
+    def _submit_col_retag(self, eid: int, video_ids: list[str]) -> None:
+        """Downloaded rows whose festival values changed: retag in the maintenance worker."""
+        if not video_ids:
+            return
+        ids = list(video_ids)
+
+        def job() -> dict[str, Any]:
+            done = 0
+            for vid in ids:
+                if self._do_retag(vid).get("ok"):
+                    done += 1
+            log_ok(log, tr("collector.retagged", n=done))
+            return {"ok": True, "retagged": done}
+
+        self._worker.submit(f"collector-retag:{eid}:{','.join(ids)}", job)
 
     # ================================================================== downloads
 

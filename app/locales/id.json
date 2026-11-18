@@ -100,6 +100,33 @@
     "run_watchlist": "periksa daftar pantau (dengan --headless)",
     "smoke": "jalankan tepat satu unduhan (hanya QA)"
   },
+  "collector": {
+    "artist_required": "DJ / artis wajib diisi",
+    "edition_invalid": "Pilih festival dan tahun",
+    "file_invalid": "Berkas jadwal tidak valid: {error}",
+    "file_series_unknown": "Berkas jadwal milik festival yang tidak dikenal: {series}",
+    "file_unknown": "Berkas jadwal tidak ditemukan",
+    "job_done": "Pengumpul festival: {edition} – {searched} set dicari, {hits} ditemukan",
+    "job_failed": "Pengumpul festival gagal: {error}",
+    "job_started": "Pengumpul festival: {edition} – set yang belum ada dicari satu per satu",
+    "job_stopped": "Pengumpul festival: {edition} dihentikan – {note}",
+    "not_a_candidate": "Video ini bukan hasil untuk set ini",
+    "note_backoff": "Backoff hingga {until} – dilanjutkan nanti",
+    "note_error": "Kesalahan: {error}",
+    "note_interrupted": "Terputus – dilanjutkan otomatis",
+    "note_next": "Pencarian berikutnya pukul {time} (pencarian disebar sepanjang jam)",
+    "playlist_done": "Pengumpul festival: playlist {edition} dibaca – {added} baris baru, {merged} sudah ada",
+    "playlist_failed": "Playlist tidak dapat dibaca: {error}",
+    "playlist_started": "Pengumpul festival: membaca playlist {edition}",
+    "playlist_url_invalid": "Bukan tautan playlist (playlist YouTube atau set SoundCloud)",
+    "retagged": "Pengumpul festival: berkas diberi tag ulang: {n}",
+    "row_invalid": "Baris daftar periksa tidak valid",
+    "row_unknown": "Baris daftar periksa tidak ditemukan",
+    "search_failed": "Pencarian {artist} gagal: {error}",
+    "time_invalid": "Waktu tidak valid (HH:MM)",
+    "too_many_rows": "Paling banyak {n} baris per daftar periksa",
+    "year_required": "Tahun tidak ada atau tidak valid"
+  },
   "common": {
     "error": "Galat",
     "unknown_error": "galat tidak diketahui"

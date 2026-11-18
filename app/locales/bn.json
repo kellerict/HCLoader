@@ -101,6 +101,33 @@
     "run_watchlist": "ওয়াচলিস্ট যাচাই করুন (--headless-এর সঙ্গে)",
     "smoke": "ঠিক একটি ডাউনলোড চালান (শুধু QA-র জন্য)"
   },
+  "collector": {
+    "artist_required": "DJ / শিল্পী প্রয়োজন",
+    "edition_invalid": "একটি ফেস্টিভ্যাল ও বছর বেছে নিন",
+    "file_invalid": "টাইমটেবিল ফাইলটি অবৈধ: {error}",
+    "file_series_unknown": "টাইমটেবিল ফাইলটি একটি অজানা ফেস্টিভ্যালের: {series}",
+    "file_unknown": "টাইমটেবিল ফাইল পাওয়া যায়নি",
+    "job_done": "ফেস্টিভ্যাল সংগ্রাহক: {edition} – {searched}টি সেট খোঁজা হয়েছে, {hits}টি পাওয়া গেছে",
+    "job_failed": "ফেস্টিভ্যাল সংগ্রাহক ব্যর্থ: {error}",
+    "job_started": "ফেস্টিভ্যাল সংগ্রাহক: {edition} – অনুপস্থিত সেটগুলো একে একে খোঁজা হচ্ছে",
+    "job_stopped": "ফেস্টিভ্যাল সংগ্রাহক: {edition} থেমেছে – {note}",
+    "not_a_candidate": "এই ভিডিওটি এই সেটের সাথে মেলে না",
+    "note_backoff": "{until} পর্যন্ত Backoff – পরে চলবে",
+    "note_error": "ত্রুটি: {error}",
+    "note_interrupted": "বাধাপ্রাপ্ত – স্বয়ংক্রিয়ভাবে চলবে",
+    "note_next": "পরবর্তী খোঁজ {time}-এ (খোঁজগুলো পুরো ঘণ্টায় ভাগ করা হয়)",
+    "playlist_done": "ফেস্টিভ্যাল সংগ্রাহক: {edition}-এর প্লেলিস্ট পড়া হয়েছে – {added}টি নতুন সারি, {merged}টি আগেই ছিল",
+    "playlist_failed": "প্লেলিস্ট পড়া যায়নি: {error}",
+    "playlist_started": "ফেস্টিভ্যাল সংগ্রাহক: {edition}-এর প্লেলিস্ট পড়া হচ্ছে",
+    "playlist_url_invalid": "এটি প্লেলিস্টের লিংক নয় (YouTube প্লেলিস্ট বা SoundCloud সেট)",
+    "retagged": "ফেস্টিভ্যাল সংগ্রাহক: আবার ট্যাগ করা ফাইল: {n}",
+    "row_invalid": "অবৈধ চেকলিস্ট সারি",
+    "row_unknown": "চেকলিস্ট সারি পাওয়া যায়নি",
+    "search_failed": "{artist}-এর খোঁজ ব্যর্থ: {error}",
+    "time_invalid": "অবৈধ সময় (HH:MM)",
+    "too_many_rows": "প্রতি চেকলিস্টে সর্বোচ্চ {n}টি সারি",
+    "year_required": "বছর নেই বা অবৈধ"
+  },
   "common": {
     "error": "ত্রুটি",
     "unknown_error": "অজানা ত্রুটি"

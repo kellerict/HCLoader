@@ -238,6 +238,21 @@ def _contains(tokens_text: str, phrase: str) -> bool:
     return _find(tokens_text, norm(phrase)) >= 0
 
 
+def contains(tokens_text: str, phrase: str) -> bool:
+    """`phrase` (any spelling) occurs as whole words in the normalised `tokens_text`."""
+    return _contains(tokens_text, phrase)
+
+
+def title_text(title: str | None) -> str:
+    """Normalised title with '19 / 2k19 expanded to 2019 (what the detection searches)."""
+    return norm(_expand_years(str(title or "")))
+
+
+def title_years(tokens_text: str) -> list[int]:
+    """Plausible years (own words) in a normalised title."""
+    return [y for _i, y in _years(tokens_text.split())]
+
+
 def _channel_match(channels: Iterable[str], channel: Mapping[str, Any]) -> bool:
     cid = str(channel.get("channel_id") or "").strip()
     cname = norm(channel.get("channel_name"))

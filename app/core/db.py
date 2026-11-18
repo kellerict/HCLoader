@@ -263,6 +263,74 @@ def _m8_backfill(conn: sqlite3.Connection) -> None:
     )
 
 
+def _m9_collector(conn: sqlite3.Connection) -> None:
+    """v0.5.0 «Festival collector» (docs/concepts/festivals.md, docs/decisions.md).
+
+    - `checklists`: one row per edition that has a checklist: the organiser playlist it was read
+      from (`playlist_url`) and the state of the matching job (`job_state` NULL = never run,
+      pending (wants to run / was interrupted), running, paused (3 errors in a row), done,
+      cancelled; `job_total`/`job_done` = rows to search / searched in this job, `job_searches`
+      = search requests, `job_hits` = rows that got a match, `job_failures` = errors in a row,
+      `job_note` = last interruption).
+    - `checklist_rows`: one expected set. `source` = where the row came from (playlist,
+      timetable, file, manual); `status` = missing, found, queued, downloaded, ignored (kept in
+      sync with the matched video, `ignored` = the user's flag); `video_id` + `confidence` =
+      best match, `candidates` = JSON [{id, confidence}] of the other hits, `rejected` = JSON
+      ids the user turned down (never proposed again); `confirmed` = the match is accepted
+      (by the user or automatically: organiser playlist, certain hit), `checked` = the user
+      wants it, `edited` = the user changed the row (manual values are authoritative),
+      `searched` = time of its last search in the matching job (resume cursor).
+    """
+    conn.execute(
+        """CREATE TABLE checklists(
+          edition_id INTEGER PRIMARY KEY REFERENCES editions(id) ON DELETE CASCADE,
+          playlist_url TEXT,
+          job_state TEXT CHECK(job_state IS NULL OR job_state IN
+            ('pending','running','paused','done','cancelled')),
+          job_total INTEGER NOT NULL DEFAULT 0,
+          job_done INTEGER NOT NULL DEFAULT 0,
+          job_searches INTEGER NOT NULL DEFAULT 0,
+          job_hits INTEGER NOT NULL DEFAULT 0,
+          job_failures INTEGER NOT NULL DEFAULT 0,
+          job_note TEXT,
+          job_started TEXT,
+          job_updated TEXT,
+          job_finished TEXT,
+          created TEXT,
+          updated TEXT
+        )"""
+    )
+    conn.execute(
+        """CREATE TABLE checklist_rows(
+          id INTEGER PRIMARY KEY,
+          edition_id INTEGER NOT NULL REFERENCES editions(id) ON DELETE CASCADE,
+          artist TEXT NOT NULL,
+          stage TEXT,
+          day TEXT,
+          start_time TEXT,
+          end_time TEXT,
+          set_type TEXT,
+          source TEXT NOT NULL CHECK(source IN ('playlist','timetable','file','manual')),
+          status TEXT NOT NULL DEFAULT 'missing'
+            CHECK(status IN ('missing','found','queued','downloaded','ignored')),
+          video_id TEXT REFERENCES videos(id) ON DELETE SET NULL,
+          confidence REAL,
+          candidates TEXT NOT NULL DEFAULT '[]',
+          rejected TEXT NOT NULL DEFAULT '[]',
+          confirmed INTEGER NOT NULL DEFAULT 0,
+          checked INTEGER NOT NULL DEFAULT 1,
+          ignored INTEGER NOT NULL DEFAULT 0,
+          edited INTEGER NOT NULL DEFAULT 0,
+          searched TEXT,
+          position INTEGER NOT NULL DEFAULT 0,
+          created TEXT,
+          updated TEXT
+        )"""
+    )
+    conn.execute("CREATE INDEX idx_checklist_rows_edition ON checklist_rows(edition_id, position)")
+    conn.execute("CREATE INDEX idx_checklist_rows_video ON checklist_rows(video_id)")
+
+
 # Append new steps at the end; never edit existing ones. Step i upgrades version i -> i+1.
 MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [
     _m1_initial,
@@ -273,6 +341,7 @@ MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [
     _m6_geo_blocked,
     _m7_festivals,
     _m8_backfill,
+    _m9_collector,
 ]
 # statuses a user may put into the download queue (enqueue / retry)
 ENQUEUEABLE = ("new", "inbox", "failed")

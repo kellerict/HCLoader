@@ -101,6 +101,33 @@
     "run_watchlist": "sjekk overvåkingen (med --headless)",
     "smoke": "kjør nøyaktig én nedlasting (bare QA)"
   },
+  "collector": {
+    "artist_required": "DJ / artist mangler",
+    "edition_invalid": "Velg en festival og et år",
+    "file_invalid": "Programfilen er ugyldig: {error}",
+    "file_series_unknown": "Programfilen hører til en ukjent festival: {series}",
+    "file_unknown": "Programfilen ble ikke funnet",
+    "job_done": "Festivalsamler: {edition} – {searched} sett søkt, {hits} funnet",
+    "job_failed": "Festivalsamleren mislyktes: {error}",
+    "job_started": "Festivalsamler: {edition} – manglende sett søkes ett om gangen",
+    "job_stopped": "Festivalsamler: {edition} stoppet – {note}",
+    "not_a_candidate": "Denne videoen er ikke et treff for dette settet",
+    "note_backoff": "Backoff til {until} – fortsetter senere",
+    "note_error": "Feil: {error}",
+    "note_interrupted": "Avbrutt – fortsetter automatisk",
+    "note_next": "Neste søk kl. {time} (søkene fordeles over timen)",
+    "playlist_done": "Festivalsamler: spillelisten for {edition} lest – {added} nye rader, {merged} fantes fra før",
+    "playlist_failed": "Spillelisten kunne ikke leses: {error}",
+    "playlist_started": "Festivalsamler: leser spillelisten for {edition}",
+    "playlist_url_invalid": "Ikke en spillelistelenke (YouTube-spilleliste eller SoundCloud-sett)",
+    "retagged": "Festivalsamler: filer tagget på nytt: {n}",
+    "row_invalid": "Ugyldig rad i sjekklisten",
+    "row_unknown": "Raden i sjekklisten ble ikke funnet",
+    "search_failed": "Søket etter {artist} mislyktes: {error}",
+    "time_invalid": "Ugyldig klokkeslett (HH:MM)",
+    "too_many_rows": "Maks {n} rader per sjekkliste",
+    "year_required": "År mangler eller er ugyldig"
+  },
   "common": {
     "error": "Feil",
     "unknown_error": "ukjent feil"

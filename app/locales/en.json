@@ -101,6 +101,33 @@
     "run_watchlist": "check the watchlist (with --headless)",
     "smoke": "run exactly one download (QA only)"
   },
+  "collector": {
+    "artist_required": "DJ / artist is required",
+    "edition_invalid": "Choose a festival and a year",
+    "file_invalid": "Timetable file is invalid: {error}",
+    "file_series_unknown": "Timetable file belongs to an unknown festival: {series}",
+    "file_unknown": "Timetable file not found",
+    "job_done": "Festival collector: {edition} – {searched} sets searched, {hits} found",
+    "job_failed": "Festival collector failed: {error}",
+    "job_started": "Festival collector: {edition} – searching the missing sets one by one",
+    "job_stopped": "Festival collector: {edition} stopped – {note}",
+    "not_a_candidate": "This video is not a hit for this set",
+    "note_backoff": "Backoff until {until} – continues later",
+    "note_error": "Error: {error}",
+    "note_interrupted": "Interrupted – continues automatically",
+    "note_next": "Next search at {time} (searches are spread over the hour)",
+    "playlist_done": "Festival collector: playlist of {edition} read – {added} new rows, {merged} already listed",
+    "playlist_failed": "Playlist could not be read: {error}",
+    "playlist_started": "Festival collector: reading the playlist of {edition}",
+    "playlist_url_invalid": "Not a playlist link (YouTube playlist or SoundCloud set)",
+    "retagged": "Festival collector: files re-tagged: {n}",
+    "row_invalid": "Invalid checklist row",
+    "row_unknown": "Checklist row not found",
+    "search_failed": "Search for {artist} failed: {error}",
+    "time_invalid": "Invalid time (HH:MM)",
+    "too_many_rows": "At most {n} rows per checklist",
+    "year_required": "Year missing or invalid"
+  },
   "common": {
     "error": "Error",
     "unknown_error": "unknown error"

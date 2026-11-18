@@ -101,6 +101,33 @@
     "run_watchlist": "kontrolli jälgitavaid allikaid (koos --headless)",
     "smoke": "tee täpselt üks allalaadimine (ainult QA)"
   },
+  "collector": {
+    "artist_required": "DJ / artist puudub",
+    "edition_invalid": "Vali festival ja aasta",
+    "file_invalid": "Ajakava fail on vigane: {error}",
+    "file_series_unknown": "Ajakava fail kuulub tundmatule festivalile: {series}",
+    "file_unknown": "Ajakava faili ei leitud",
+    "job_done": "Festivalikoguja: {edition} – otsiti {searched} setti, leiti {hits}",
+    "job_failed": "Festivalikoguja ebaõnnestus: {error}",
+    "job_started": "Festivalikoguja: {edition} – puuduvaid sette otsitakse ükshaaval",
+    "job_stopped": "Festivalikoguja: {edition} peatatud – {note}",
+    "not_a_candidate": "See video ei ole selle seti tabamus",
+    "note_backoff": "Backoff kuni {until} – jätkub hiljem",
+    "note_error": "Viga: {error}",
+    "note_interrupted": "Katkestatud – jätkub automaatselt",
+    "note_next": "Järgmine otsing kell {time} (otsingud jaotatakse tunni peale)",
+    "playlist_done": "Festivalikoguja: {edition} esitusloend loetud – {added} uut rida, {merged} oli juba olemas",
+    "playlist_failed": "Esitusloendit ei õnnestunud lugeda: {error}",
+    "playlist_started": "Festivalikoguja: loen {edition} esitusloendit",
+    "playlist_url_invalid": "Pole esitusloendi link (YouTube’i esitusloend või SoundCloudi set)",
+    "retagged": "Festivalikoguja: faile uuesti sildistatud: {n}",
+    "row_invalid": "Vigane kontrollnimekirja rida",
+    "row_unknown": "Kontrollnimekirja rida ei leitud",
+    "search_failed": "Otsing „{artist}“ ebaõnnestus: {error}",
+    "time_invalid": "Vigane kellaaeg (HH:MM)",
+    "too_many_rows": "Kõige rohkem {n} rida kontrollnimekirja kohta",
+    "year_required": "Aasta puudub või on vigane"
+  },
   "common": {
     "error": "Viga",
     "unknown_error": "tundmatu viga"

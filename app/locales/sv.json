@@ -101,6 +101,33 @@
     "run_watchlist": "kontrollera bevakningen (med --headless)",
     "smoke": "kör exakt en nedladdning (endast QA)"
   },
+  "collector": {
+    "artist_required": "DJ / artist saknas",
+    "edition_invalid": "Välj en festival och ett år",
+    "file_invalid": "Schemafilen är ogiltig: {error}",
+    "file_series_unknown": "Schemafilen hör till en okänd festival: {series}",
+    "file_unknown": "Schemafilen hittades inte",
+    "job_done": "Festivalsamlare: {edition} – {searched} set sökta, {hits} hittade",
+    "job_failed": "Festivalsamlaren misslyckades: {error}",
+    "job_started": "Festivalsamlare: {edition} – saknade set söks ett i taget",
+    "job_stopped": "Festivalsamlare: {edition} stoppad – {note}",
+    "not_a_candidate": "Den här videon är ingen träff för det här setet",
+    "note_backoff": "Backoff till {until} – fortsätter senare",
+    "note_error": "Fel: {error}",
+    "note_interrupted": "Avbruten – fortsätter automatiskt",
+    "note_next": "Nästa sökning kl. {time} (sökningarna sprids över timmen)",
+    "playlist_done": "Festivalsamlare: spellistan för {edition} läst – {added} nya rader, {merged} fanns redan",
+    "playlist_failed": "Spellistan kunde inte läsas: {error}",
+    "playlist_started": "Festivalsamlare: läser spellistan för {edition}",
+    "playlist_url_invalid": "Ingen spellistelänk (YouTube-spellista eller SoundCloud-set)",
+    "retagged": "Festivalsamlare: filer taggade om: {n}",
+    "row_invalid": "Ogiltig rad i checklistan",
+    "row_unknown": "Raden i checklistan hittades inte",
+    "search_failed": "Sökningen efter {artist} misslyckades: {error}",
+    "time_invalid": "Ogiltig tid (HH:MM)",
+    "too_many_rows": "Högst {n} rader per checklista",
+    "year_required": "År saknas eller är ogiltigt"
+  },
   "common": {
     "error": "Fel",
     "unknown_error": "okänt fel"

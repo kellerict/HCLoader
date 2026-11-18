@@ -100,6 +100,33 @@
     "run_watchlist": "vérifier la liste de suivi (avec --headless)",
     "smoke": "exécuter exactement un téléchargement (QA uniquement)"
   },
+  "collector": {
+    "artist_required": "DJ / artiste requis",
+    "edition_invalid": "Choisissez un festival et une année",
+    "file_invalid": "Fichier de programme invalide : {error}",
+    "file_series_unknown": "Le fichier de programme appartient à un festival inconnu : {series}",
+    "file_unknown": "Fichier de programme introuvable",
+    "job_done": "Collecteur de festival : {edition} – {searched} sets recherchés, {hits} trouvés",
+    "job_failed": "Échec du collecteur de festival : {error}",
+    "job_started": "Collecteur de festival : {edition} – recherche des sets manquants un par un",
+    "job_stopped": "Collecteur de festival : {edition} arrêté – {note}",
+    "not_a_candidate": "Cette vidéo ne correspond pas à ce set",
+    "note_backoff": "Backoff jusqu’à {until} – reprend plus tard",
+    "note_error": "Erreur : {error}",
+    "note_interrupted": "Interrompu – reprend automatiquement",
+    "note_next": "Prochaine recherche à {time} (les recherches sont réparties sur l’heure)",
+    "playlist_done": "Collecteur de festival : playlist de {edition} lue – {added} nouvelles lignes, {merged} déjà présentes",
+    "playlist_failed": "Impossible de lire la playlist : {error}",
+    "playlist_started": "Collecteur de festival : lecture de la playlist de {edition}",
+    "playlist_url_invalid": "Pas un lien de playlist (playlist YouTube ou set SoundCloud)",
+    "retagged": "Collecteur de festival : fichiers retagués : {n}",
+    "row_invalid": "Ligne de liste invalide",
+    "row_unknown": "Ligne de liste introuvable",
+    "search_failed": "La recherche de {artist} a échoué : {error}",
+    "time_invalid": "Heure invalide (HH:MM)",
+    "too_many_rows": "Au maximum {n} lignes par liste",
+    "year_required": "Année manquante ou invalide"
+  },
   "common": {
     "error": "Erreur",
     "unknown_error": "erreur inconnue"

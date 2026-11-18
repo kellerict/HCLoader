@@ -973,6 +973,24 @@ def test_every_method_json_serializable(env):
         "start_backfill": (999,),
         "pause_backfill": (999,),
         "cancel_backfill": (999,),
+        # v0.5.0 «Festival collector»: unknown edition/row -> {ok:false, errors, error}
+        "open_collector_edition": ({"series_id": 999, "year": 2024},),
+        "delete_checklist": (999,),
+        "get_checklist": (999,),
+        "parse_timetable": ("18:00 - 19:00 Headhunterz",),
+        "import_timetable": (999, "Headhunterz"),
+        "import_timetable_file": ("nope/2024.json",),
+        "import_checklist_playlist": (999, "https://www.youtube.com/playlist?list=PLx"),
+        "add_checklist_row": (999, {"artist": "X"}),
+        "update_checklist_row": (999, {"artist": "X"}),
+        "delete_checklist_rows": ([999],),
+        "set_checklist_checked": ([999], True),
+        "set_checklist_ignored": ([999], True),
+        "confirm_checklist_match": (999, None),
+        "estimate_checklist_matching": (999,),
+        "start_checklist_matching": (999,),
+        "cancel_checklist_matching": (999,),
+        "queue_checklist": (999,),
     }
     for name in sorted(_bridge_comment_methods()):
         res = getattr(a, name)(*args.get(name, ()))

@@ -101,6 +101,33 @@
     "run_watchlist": "tarkista seuranta (valitsimen --headless kanssa)",
     "smoke": "suorita täsmälleen yksi lataus (vain laadunvarmistus)"
   },
+  "collector": {
+    "artist_required": "DJ / artisti puuttuu",
+    "edition_invalid": "Valitse festivaali ja vuosi",
+    "file_invalid": "Aikataulutiedosto on virheellinen: {error}",
+    "file_series_unknown": "Aikataulutiedosto kuuluu tuntemattomaan festivaaliin: {series}",
+    "file_unknown": "Aikataulutiedostoa ei löytynyt",
+    "job_done": "Festivaalikeräin: {edition} – haettu {searched} settiä, löytyi {hits}",
+    "job_failed": "Festivaalikeräin epäonnistui: {error}",
+    "job_started": "Festivaalikeräin: {edition} – puuttuvia settejä haetaan yksi kerrallaan",
+    "job_stopped": "Festivaalikeräin: {edition} pysäytetty – {note}",
+    "not_a_candidate": "Tämä video ei ole osuma tähän settiin",
+    "note_backoff": "Backoff {until} asti – jatkuu myöhemmin",
+    "note_error": "Virhe: {error}",
+    "note_interrupted": "Keskeytetty – jatkuu automaattisesti",
+    "note_next": "Seuraava haku klo {time} (haut jaetaan tunnin ajalle)",
+    "playlist_done": "Festivaalikeräin: tapahtuman {edition} soittolista luettu – {added} uutta riviä, {merged} oli jo listalla",
+    "playlist_failed": "Soittolistaa ei voitu lukea: {error}",
+    "playlist_started": "Festivaalikeräin: luetaan tapahtuman {edition} soittolistaa",
+    "playlist_url_invalid": "Ei soittolistalinkki (YouTube-soittolista tai SoundCloud-setti)",
+    "retagged": "Festivaalikeräin: tiedostoja tagattu uudelleen: {n}",
+    "row_invalid": "Virheellinen tarkistuslistan rivi",
+    "row_unknown": "Tarkistuslistan riviä ei löytynyt",
+    "search_failed": "Haku {artist} epäonnistui: {error}",
+    "time_invalid": "Virheellinen aika (HH:MM)",
+    "too_many_rows": "Enintään {n} riviä tarkistuslistaa kohden",
+    "year_required": "Vuosi puuttuu tai on virheellinen"
+  },
   "common": {
     "error": "Virhe",
     "unknown_error": "tuntematon virhe"

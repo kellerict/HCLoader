@@ -101,6 +101,33 @@
     "run_watchlist": "de volglijst controleren (met --headless)",
     "smoke": "precies één download uitvoeren (alleen QA)"
   },
+  "collector": {
+    "artist_required": "DJ / artiest ontbreekt",
+    "edition_invalid": "Kies een festival en een jaar",
+    "file_invalid": "Timetable-bestand is ongeldig: {error}",
+    "file_series_unknown": "Timetable-bestand hoort bij een onbekend festival: {series}",
+    "file_unknown": "Timetable-bestand niet gevonden",
+    "job_done": "Festivalverzamelaar: {edition} – {searched} sets gezocht, {hits} gevonden",
+    "job_failed": "Festivalverzamelaar mislukt: {error}",
+    "job_started": "Festivalverzamelaar: {edition} – ontbrekende sets worden één voor één gezocht",
+    "job_stopped": "Festivalverzamelaar: {edition} gestopt – {note}",
+    "not_a_candidate": "Deze video is geen treffer voor deze set",
+    "note_backoff": "Backoff tot {until} – gaat later verder",
+    "note_error": "Fout: {error}",
+    "note_interrupted": "Onderbroken – gaat automatisch verder",
+    "note_next": "Volgende zoekopdracht om {time} (zoekopdrachten worden over het uur verdeeld)",
+    "playlist_done": "Festivalverzamelaar: playlist van {edition} gelezen – {added} nieuwe rijen, {merged} al aanwezig",
+    "playlist_failed": "Playlist kon niet worden gelezen: {error}",
+    "playlist_started": "Festivalverzamelaar: playlist van {edition} wordt gelezen",
+    "playlist_url_invalid": "Geen playlistlink (YouTube-playlist of SoundCloud-set)",
+    "retagged": "Festivalverzamelaar: bestanden opnieuw getagd: {n}",
+    "row_invalid": "Ongeldige rij in de checklist",
+    "row_unknown": "Rij in de checklist niet gevonden",
+    "search_failed": "Zoeken naar {artist} mislukt: {error}",
+    "time_invalid": "Ongeldige tijd (HH:MM)",
+    "too_many_rows": "Maximaal {n} rijen per checklist",
+    "year_required": "Jaar ontbreekt of is ongeldig"
+  },
   "common": {
     "error": "Fout",
     "unknown_error": "onbekende fout"

@@ -186,6 +186,12 @@ def _def_from_row(row: Mapping[str, Any]) -> fx.SeriesDef:
     )
 
 
+def series_def(db: Database, series_id: int) -> fx.SeriesDef | None:
+    """Definition of one series (also a disabled one; None if unknown or hidden)."""
+    row = db.query_one("SELECT * FROM series WHERE id=? AND hidden=0", (int(series_id),))
+    return _def_from_row(row) if row else None
+
+
 def catalog(db: Database, settings: Settings) -> fx.Catalog:
     """Detection catalog: enabled, visible series from the DB + built-in stages/set types/
     negative words + the user's extra stages and set-type keywords (settings)."""

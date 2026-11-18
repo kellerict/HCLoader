@@ -201,6 +201,33 @@
                                            Fortschritt: Event "festival_assign"
      cancel_assign_festivals()          -> {ok, running}
 
+   Festival-Sammler (v0.5.0; Vertrag, Datenformen, Events: docs/bridge-api.md «Festival collector»)
+     get_collector_editions()           -> [CollectorEdition]   Ausgaben mit Checkliste (offline)
+     open_collector_edition(data)       -> {ok, edition: CollectorEdition} | {ok:false, errors, error}
+                                           data {edition_id} | {series_id, year, variant?}
+     delete_checklist(edition_id)       -> {ok, deleted} | {ok:false, errors, error}   Videos/Dateien bleiben
+     get_checklist(edition_id)          -> {ok, edition: CollectorEdition, rows:[ChecklistRow]} | {ok:false, error}
+     parse_timetable(text)              -> {ok, rows:[TimetableRow], skipped:[Zeile], days, stages, csv}  Vorschau
+     import_timetable(edition_id, data) -> {ok, added, merged, invalid, skipped, ids, matched} | {ok:false, errors, error}
+                                           data = Text oder [TimetableRow] (bearbeitete Vorschau)
+     get_timetable_files()              -> [TimetableFile]   mitgelieferte Dateien (app/data/timetables)
+     import_timetable_file(file)        -> {ok, edition_id, added, merged, invalid, ids, matched} | {ok:false, errors, error}
+     import_checklist_playlist(edition_id, url) -> {ok, started, url} | {ok, started:false, running:true}
+                                           | {ok:false, error|errors}   Fortschritt: Event "collector_import"
+     add_checklist_row(edition_id, row) -> {ok, row: ChecklistRow} | {ok:false, errors, error}
+     update_checklist_row(id, row)      -> {ok, row: ChecklistRow, retag} | {ok:false, errors, error}
+     delete_checklist_rows(ids)         -> {ok, deleted}
+     set_checklist_checked(ids, checked)-> {ok, changed}      «Alle/keine» = alle ids
+     set_checklist_ignored(ids, ignored)-> {ok, changed}
+     confirm_checklist_match(id, video_id?, reject?) -> {ok, row} | {ok:false, errors, error}
+                                           video_id = Treffer/Kandidat bestätigen; null = Treffer verwerfen
+     estimate_checklist_matching(edition_id, opts?) -> {ok, edition_id, rows, requests, per_hour, seconds,
+                                           searches_left_hour, available_at, backoff_until, matched_offline, resume}
+     start_checklist_matching(edition_id, opts?) -> {ok, job: CollectorJob, nothing?} | {ok:false, error}
+                                           opts {restart?}; Fortschritt: Events "collector_job", "collector_rows"
+     cancel_checklist_matching(edition_id) -> {ok, job}
+     queue_checklist(edition_id, ids?)  -> {ok, queued:[video_id], retag, skipped:{unchecked, unconfirmed, missing, other}}
+
    Protokoll
      get_log(filters?)                  -> {lines:[LogLine], runs:[Run]}
                                            filters = {level?, levels?, search?, limit?, kind?, runs_limit?}.
@@ -332,6 +359,11 @@
      update          UpdateStatus                      Zustand des App-Updates hat sich geändert (Prüfung, Download, bereit …)
      update_progress {phase, pct, bytes, total}        Download/Vorbereitung (ca. 4×/s); phase: "download"|"verify"|"prepare";
                      pct null = Grösse unbekannt (GitHub liefert Quell-ZIPs ohne Länge)
+     collector_rows  {edition_id, rows:[ChecklistRow], deleted:[id], reload, stats}   v0.5.0 Checkliste geändert
+                     (reload:true = ganze Checkliste per get_checklist neu holen)
+     collector_job   CollectorJob + {stats} | {edition_id, state:"none", stats}   v0.5.0 Fortschritt der Suche
+     collector_import {phase, kind:"playlist", edition_id, entries, added, merged, unchecked, requests, cancelled, error}
+                     phase: "start"|"progress"|"done"|"error" (v0.5.0, Playlist des Veranstalters)
      festival_assign {phase, scope, done?, total?, assigned?, suggested?, none?, manual?, unchanged?, cancelled?}
                      phase: "start"|"progress"|"done"|"error" (v0.3.0, «Festivals zuordnen»)
      toast           {msg, kind?}                      kind: "ok"|"info"|"warn"|"err"

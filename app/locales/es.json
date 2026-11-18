@@ -100,6 +100,33 @@
     "run_watchlist": "revisar la lista de seguimiento (con --headless)",
     "smoke": "ejecutar exactamente una descarga (solo QA)"
   },
+  "collector": {
+    "artist_required": "Falta el DJ / artista",
+    "edition_invalid": "Elige un festival y un año",
+    "file_invalid": "El archivo de horarios no es válido: {error}",
+    "file_series_unknown": "El archivo de horarios pertenece a un festival desconocido: {series}",
+    "file_unknown": "Archivo de horarios no encontrado",
+    "job_done": "Recopilador de festivales: {edition} – {searched} sets buscados, {hits} encontrados",
+    "job_failed": "Error del recopilador de festivales: {error}",
+    "job_started": "Recopilador de festivales: {edition} – buscando los sets que faltan uno a uno",
+    "job_stopped": "Recopilador de festivales: {edition} detenido – {note}",
+    "not_a_candidate": "Este vídeo no es un resultado para este set",
+    "note_backoff": "Backoff hasta {until} – continúa más tarde",
+    "note_error": "Error: {error}",
+    "note_interrupted": "Interrumpido – continúa automáticamente",
+    "note_next": "Próxima búsqueda a las {time} (las búsquedas se reparten a lo largo de la hora)",
+    "playlist_done": "Recopilador de festivales: lista de {edition} leída – {added} filas nuevas, {merged} ya presentes",
+    "playlist_failed": "No se pudo leer la lista: {error}",
+    "playlist_started": "Recopilador de festivales: leyendo la lista de {edition}",
+    "playlist_url_invalid": "No es un enlace de lista (lista de YouTube o set de SoundCloud)",
+    "retagged": "Recopilador de festivales: archivos reetiquetados: {n}",
+    "row_invalid": "Fila de la lista no válida",
+    "row_unknown": "Fila de la lista no encontrada",
+    "search_failed": "La búsqueda de {artist} falló: {error}",
+    "time_invalid": "Hora no válida (HH:MM)",
+    "too_many_rows": "Como máximo {n} filas por lista",
+    "year_required": "Año ausente o no válido"
+  },
   "common": {
     "error": "Error",
     "unknown_error": "error desconocido"

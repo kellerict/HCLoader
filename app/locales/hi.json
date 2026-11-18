@@ -101,6 +101,33 @@
     "run_watchlist": "वॉचलिस्ट जाँचें (--headless के साथ)",
     "smoke": "ठीक एक डाउनलोड चलाएँ (केवल QA के लिए)"
   },
+  "collector": {
+    "artist_required": "DJ / कलाकार आवश्यक है",
+    "edition_invalid": "एक फ़ेस्टिवल और वर्ष चुनें",
+    "file_invalid": "टाइमटेबल फ़ाइल अमान्य है: {error}",
+    "file_series_unknown": "टाइमटेबल फ़ाइल किसी अज्ञात फ़ेस्टिवल की है: {series}",
+    "file_unknown": "टाइमटेबल फ़ाइल नहीं मिली",
+    "job_done": "फ़ेस्टिवल कलेक्टर: {edition} – {searched} सेट खोजे, {hits} मिले",
+    "job_failed": "फ़ेस्टिवल कलेक्टर विफल: {error}",
+    "job_started": "फ़ेस्टिवल कलेक्टर: {edition} – छूटे हुए सेट एक-एक करके खोजे जा रहे हैं",
+    "job_stopped": "फ़ेस्टिवल कलेक्टर: {edition} रुका – {note}",
+    "not_a_candidate": "यह वीडियो इस सेट से मेल नहीं खाता",
+    "note_backoff": "{until} तक Backoff – बाद में जारी रहेगा",
+    "note_error": "त्रुटि: {error}",
+    "note_interrupted": "बाधित – अपने-आप जारी रहेगा",
+    "note_next": "अगली खोज {time} पर (खोजें पूरे घंटे में बाँटी जाती हैं)",
+    "playlist_done": "फ़ेस्टिवल कलेक्टर: {edition} की प्लेलिस्ट पढ़ी गई – {added} नई पंक्तियाँ, {merged} पहले से थीं",
+    "playlist_failed": "प्लेलिस्ट नहीं पढ़ी जा सकी: {error}",
+    "playlist_started": "फ़ेस्टिवल कलेक्टर: {edition} की प्लेलिस्ट पढ़ी जा रही है",
+    "playlist_url_invalid": "यह प्लेलिस्ट लिंक नहीं है (YouTube प्लेलिस्ट या SoundCloud सेट)",
+    "retagged": "फ़ेस्टिवल कलेक्टर: फ़ाइलें फिर से टैग की गईं: {n}",
+    "row_invalid": "अमान्य चेकलिस्ट पंक्ति",
+    "row_unknown": "चेकलिस्ट पंक्ति नहीं मिली",
+    "search_failed": "{artist} की खोज विफल: {error}",
+    "time_invalid": "अमान्य समय (HH:MM)",
+    "too_many_rows": "प्रति चेकलिस्ट अधिकतम {n} पंक्तियाँ",
+    "year_required": "वर्ष नहीं है या अमान्य है"
+  },
   "common": {
     "error": "त्रुटि",
     "unknown_error": "अज्ञात त्रुटि"

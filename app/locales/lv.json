@@ -102,6 +102,33 @@
     "run_watchlist": "pārbaudīt vērojamos avotus (ar --headless)",
     "smoke": "veikt tieši vienu lejupielādi (tikai QA)"
   },
+  "collector": {
+    "artist_required": "Trūkst DJ / izpildītāja",
+    "edition_invalid": "Izvēlieties festivālu un gadu",
+    "file_invalid": "Laika plāna fails nav derīgs: {error}",
+    "file_series_unknown": "Laika plāna fails pieder nezināmam festivālam: {series}",
+    "file_unknown": "Laika plāna fails nav atrasts",
+    "job_done": "Festivālu vācējs: {edition} – meklēti seti: {searched}, atrasti: {hits}",
+    "job_failed": "Festivālu vācēja kļūda: {error}",
+    "job_started": "Festivālu vācējs: {edition} – trūkstošie seti tiek meklēti pa vienam",
+    "job_stopped": "Festivālu vācējs: {edition} apturēts – {note}",
+    "not_a_candidate": "Šis video neatbilst šim setam",
+    "note_backoff": "Backoff līdz {until} – turpināsies vēlāk",
+    "note_error": "Kļūda: {error}",
+    "note_interrupted": "Pārtraukts – turpināsies automātiski",
+    "note_next": "Nākamā meklēšana plkst. {time} (meklēšanas tiek sadalītas pa stundu)",
+    "playlist_done": "Festivālu vācējs: {edition} atskaņošanas saraksts nolasīts – jaunas rindas: {added}, jau bija: {merged}",
+    "playlist_failed": "Atskaņošanas sarakstu neizdevās nolasīt: {error}",
+    "playlist_started": "Festivālu vācējs: tiek lasīts {edition} atskaņošanas saraksts",
+    "playlist_url_invalid": "Tā nav atskaņošanas saraksta saite (YouTube saraksts vai SoundCloud sets)",
+    "retagged": "Festivālu vācējs: no jauna marķēti faili: {n}",
+    "row_invalid": "Nederīga kontrolsaraksta rinda",
+    "row_unknown": "Kontrolsaraksta rinda nav atrasta",
+    "search_failed": "Meklēšana „{artist}“ neizdevās: {error}",
+    "time_invalid": "Nederīgs laiks (HH:MM)",
+    "too_many_rows": "Ne vairāk kā {n} rindas vienā kontrolsarakstā",
+    "year_required": "Gads nav norādīts vai nav derīgs"
+  },
   "common": {
     "error": "Kļūda",
     "unknown_error": "nezināma kļūda"
