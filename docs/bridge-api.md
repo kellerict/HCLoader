@@ -696,9 +696,9 @@ Set (`role: "b2b"`). Identität = `key` (gefaltet, ohne Leerzeichen: «Sub-Zero 
 | `preview_playlist(spec)` | Spec (siehe unten) | `{ok:true, spec, name, folder, relative, count, missing, seconds, saved: SavedPlaylist\|null}` \| `{ok:false, error}` |
 | `export_playlist(spec, opts?)` | `{name, folder, relative, overwrite, sync}` | `{ok:true, path, count, skipped, absolute_fallback, relative, sync}` \| `{ok:false, exists:true, path}` (fragen, dann mit `overwrite:true`) \| `{ok:false, error}` |
 | `get_saved_playlists()` | | `{ok:true, playlists:[SavedPlaylist], sync_enabled}` |
-| `set_playlist_sync(id, sync)` | | `{ok:true}` \| `{ok:false, error}` |
-| `forget_playlist(id)` | | `{ok:true}` – nur aus der Liste; die Datei bleibt |
-| `sync_playlists(ids?)` | ohne `ids`: alle mit `sync` | `{ok:true, synced, failed, paths}` + Event `playlists_synced` |
+| `set_playlist_sync(id, sync)` | | `{ok:true}` \| `{ok:false, error}` (auch bei ungültiger Id) |
+| `forget_playlist(id)` | | `{ok:true}` – nur aus der Liste; die Datei bleibt \| `{ok:false, error}` (unbekannte/ungültige Id) |
+| `sync_playlists(ids?)` | ohne `ids`: alle mit `sync` | `{ok:true, synced, failed, gone, paths}` + Event `playlists_synced` \| `{ok:false, error}` (ungültige Id). `gone` = automatischer Sync fand die Datei nicht mehr (im Explorer gelöscht): sie wird nicht neu angelegt, «Aktuell halten» wird ausgeschaltet. Mit `ids` (ausdrücklich «Jetzt schreiben») wird auch eine fehlende Datei geschrieben |
 
 `ArtistSummary` = `{key, name, initials, aliases, spellings, channel_url, edited, hidden, sets, b2b, seconds,
 festivals, years:[YYYY], last ("YYYY-MM-DD"|null)}` – `festivals` = verschiedene Serien der Art «festival»,

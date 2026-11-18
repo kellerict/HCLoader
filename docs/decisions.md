@@ -1568,3 +1568,25 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
 - **«Alle abspielen»** ist eine Warteschlange nur im eingebauten Player (UI-Zustand, nicht persistiert): am
   Ende eines Sets folgt das nächste; ein von Hand gewähltes anderes Set beendet sie. Mit dem Standardplayer
   gibt es stattdessen den Hinweis bzw. die exportierte Playlist.
+
+## 2026-11-18 – Review v0.8.0: bekannte Namen zuerst, eine Cache-Version für den DJ-Index
+
+- **Bekannte Namen vor dem Zerlegen (M1):** `split_credit` ersetzt zuerst jede bekannte Schreibweise (Startliste
+  + eigene Artists/Aliasse, längster Treffer zuerst) durch einen Platzhalter; erst danach werden «feat./presents/
+  pres./w/» abgeschnitten und an «&/+/,/and» bzw. b2b/vs/x getrennt. Grund: eine eigene Angabe muss immer gewinnen
+  («Mark With a K»), und ein bekanntes Duo («D-Block & S-te-Fan») bleibt ein Act. «with» trennt nur noch vor «MC …»
+  (Feature, abgeschnitten) oder zwischen zwei bekannten Namen (b2b); ein MC neben einem DJ fällt weg, ein MC allein
+  («MC Nolz») bleibt.
+- **Eine Cache-Version per DB-Trigger (M2, Migration 14):** statt `invalidate()` in jedem Schreibpfad zählen
+  Trigger zwei Zähler in `state` hoch: `artists_rev_rows` (Bibliothekszeile mit Status done in einer vom Index
+  gelesenen Spalte geändert, Set gelöscht, bestätigte Sammler-Zeile geändert) und `artists_rev_names` (Tabellen
+  `artists`/`series`). Grund: Festival-Zuordnung, Sammler, Retag, Löschen, Merge/Split und ein Headless-Lauf in
+  einem anderen Prozess werden ohne Mitdenken erfasst; Download-Fortschritt (queued/downloading) zählt nicht.
+- **Inkrementeller Neuaufbau (m1):** ändern sich nur Zeilen, werden nur Sets mit geänderten Eingaben (Sammler-Credit,
+  Titel, Kanal, Ausgabe ja/nein) neu geparst; bei Änderung der Artists/Serien voller Neuaufbau. Dazu `norm()`
+  gecacht und ein Regex über alle Serien-Aliasse pro Katalog: 10 000 Sets ca. 1,3 s statt 3,8 s voll, ca. 0,07 s
+  nach einem Download.
+- **Gelöschte Playlists (m3):** der automatische Sync legt eine fehlende Datei nicht neu an, sondern schaltet
+  «Aktuell halten» aus (Liste zeigt «nicht mehr vorhanden»); «Jetzt schreiben» für diese Playlist schreibt sie
+  ausdrücklich wieder.
+
