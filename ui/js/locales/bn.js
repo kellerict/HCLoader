@@ -62,7 +62,8 @@ HC.i18n.register({"code": "bn", "name": "বাংলা", "dir": "ltr", "intl":
     "entries": "এন্ট্রি",
     "clock": "টা",
     "req_h": "অনু./ঘ",
-    "lufs": "LUFS"
+    "lufs": "LUFS",
+    "db": "dB"
   },
   "range": {
     "ge_sleep": "≥ সর্বনিম্ন",
@@ -535,6 +536,7 @@ HC.i18n.register({"code": "bn", "name": "বাংলা", "dir": "ltr", "intl":
     "external": "ডিফল্ট প্লেয়ারে খোলা হচ্ছে …",
     "norm_title": "লাউডনেস সমান করা হয়েছে: {lufs} LUFS → লক্ষ্য {target} LUFS ({gain})",
     "norm_capped": "শুধু কমানো হয়েছে – বাড়াতে অডিও ইঞ্জিন লাগে",
+    "norm_fallback": "লাউডনেস সমতা: অডিও ইঞ্জিন এখানে নীরব – এটি ছাড়াই চলছে (শুধু কমানো, বাড়ানো নয়)",
     "resume_q": "যেখানে থেমেছিলেন সেখান থেকে চালাবেন?",
     "resume_at": "{t}-এ",
     "resume": "চালিয়ে যান",

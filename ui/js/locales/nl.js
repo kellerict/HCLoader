@@ -62,7 +62,8 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "entries": "items",
     "clock": "uur",
     "req_h": "verz./u",
-    "lufs": "LUFS"
+    "lufs": "LUFS",
+    "db": "dB"
   },
   "range": {
     "ge_sleep": "≥ minimum",
@@ -535,6 +536,7 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "external": "Openen in standaardspeler …",
     "norm_title": "Luidheid gelijkgetrokken: {lufs} LUFS → doel {target} LUFS ({gain})",
     "norm_capped": "alleen verlaagd – versterken vereist de audio-engine",
+    "norm_fallback": "Normalisatie: de audio-engine blijft hier stil – afspelen zonder (alleen verlagen, niet versterken)",
     "resume_q": "Verder waar je gebleven was?",
     "resume_at": "bij {t}",
     "resume": "Hervatten",

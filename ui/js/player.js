@@ -11,6 +11,11 @@
    - Lautheit angleichen (player.normalize, player.target_lufs): Web Audio (Quelle → ReplayGain-Gain → Lautstärke-Gain),
      Verstärkung = Ziel − gemessene Lautheit, begrenzt durch den True Peak (kein Übersteuern; Peak unbekannt = nur
      absenken). Ohne laufenden AudioContext (keine Nutzergeste, Fehler) nur absenken über audio.volume.
+     Stille-Wächter (Review v0.7.0 M2): bleibt der Graph-Eingang (AnalyserNode) bei laufender, nicht stummer
+     Wiedergabe ~1.5 s exakt 0 (z.B. file:-Quelle als cross-origin «tainted»), wird der Graph verworfen und ein
+     neues Audio-Element an derselben Stelle übernimmt – Lautstärke dann über audio.volume (nur absenken).
+     Der Graph startet mit den Ziel-Gains (kein lauter Moment beim Aufbau).
+   - Geladenes Set ans Backend (set_now_playing): seine Datei wird nie getaggt (Review v0.7.0 M1).
    - Wellenform (player.waveform): Peaks aus get_media/get_waveform als Zeitleiste (2 Canvas: Grund + gespielter Teil,
      per clip-path), Kapitel als feine Linien; ohne Peaks der bisherige Balken.
    - Gedächtnis (player.resume ask|auto|off): Position alle 15 s, bei Pause/Sprung/Schliessen per save_position;
@@ -35,6 +40,8 @@
   const SLEEP_MIN = [15, 30, 45, 60];
   const AUTO_HINT_MS = 6000;
   const WAVE_BAR = 2, WAVE_GAP = 1;
+  const SILENT_MS = 1500; // so lange exakt 0 am Graph-Eingang bei laufender Wiedergabe = Graph liefert nichts
+  const WATCH_MS = 250;
 
   let el = null;
   let audio = null;
@@ -53,7 +60,9 @@
   const prefs = { volume: 0.8, muted: false };
   /* v0.7.0 */
   let graph = null; // {ctx, rg, vol} – Web Audio, sobald einmal erfolgreich aufgebaut (bleibt für das Element)
-  let graphBroken = false; // AudioContext nicht verfügbar/Fehler: nur noch audio.volume
+  let graphBroken = false; // AudioContext nicht verfügbar/Fehler/stumm: nur noch audio.volume
+  let watch = null; // Stille-Wächter {timer, t, ct, st:{silent, verified}}
+  let reportedId; // zuletzt an set_now_playing gemeldet (undefined = noch nie)
   let gainNow = 1; // angewandte Normalisierung (linear)
   let fade = 1; // Schlaf-Timer-Ausblendung 0..1
   let peaks = null; // Wellenform des geladenen Sets (0..255) oder null
@@ -98,7 +107,14 @@
     if (!HC.bridge.live && /^data:audio\//i.test(src)) return src;
     return null;
   }
-  const emit = () => HC.bridge.emit('player', { id: media ? media.id : null, playing: playing() });
+  function emit() {
+    const id = media ? media.id : null;
+    HC.bridge.emit('player', { id, playing: playing() });
+    if (id !== reportedId) { // Datei offen -> Backend schreibt keine Tags hinein (aufgeschoben)
+      reportedId = id;
+      HC.bridge.call('set_now_playing', id).catch(() => { /* egal */ });
+    }
+  }
   const plSet = () => (HC.settings && HC.settings.values && HC.settings.values.player) || {};
   const resumeMode = () => { const m = plSet().resume; return m === 'auto' || m === 'off' ? m : 'ask'; };
   const waveOn = () => plSet().waveform !== false;
@@ -137,19 +153,81 @@
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) { graphBroken = true; return; }
     let ctx = null;
+    const el0 = audio;
     try {
       ctx = new AC();
       if (ctx.state !== 'running') await Promise.race([ctx.resume(), new Promise((r) => setTimeout(r, 400))]);
-      if (ctx.state !== 'running') { ctx.close(); return; } // keine Nutzergeste: später nochmals
+      if (ctx.state !== 'running' || graph || graphBroken || el0 !== audio) { ctx.close(); return; } // keine Nutzergeste: später nochmals
+      /* Gains zuerst auf ihre Zielwerte, dann verbinden: kein kurzer Moment mit voller Lautstärke. */
+      const rg = ctx.createGain(), vol = ctx.createGain(), an = ctx.createAnalyser();
+      rg.gain.value = normGain();
+      vol.gain.value = (prefs.muted ? 0 : prefs.volume) * fade;
+      an.fftSize = 2048;
       const src = ctx.createMediaElementSource(audio);
-      const rg = ctx.createGain(), vol = ctx.createGain();
+      src.connect(an); // Wächter-Abgriff vor allen Gains (Lautstärke 0 ist keine Stille der Quelle)
       src.connect(rg).connect(vol).connect(ctx.destination);
-      graph = { ctx, rg, vol };
+      graph = { ctx, rg, vol, an, buf: new Float32Array(an.fftSize) };
     } catch (e) {
       graphBroken = true;
       if (ctx) { try { ctx.close(); } catch (err) { /* egal */ } }
     }
     applyOutput();
+    if (graph) startWatch();
+  }
+
+  /* ---------- Stille-Wächter (M2) ---------- */
+  /** Reine Entscheidung je Messung. st {silent (ms), verified}; s {rms, playing, muted, advanced}; dt (ms).
+      -> 'ok' (Signal gesehen: Graph funktioniert), 'wait' (noch offen) oder 'broken' (Graph liefert nur Nullen). */
+  function silenceVerdict(st, s, dt) {
+    if (st.verified) return 'ok';
+    if (s.rms > 0) { st.verified = true; st.silent = 0; return 'ok'; }
+    if (!s.playing || s.muted || !s.advanced) return 'wait'; // Pause, stumm, steht: sagt nichts aus
+    st.silent += Math.max(0, +dt || 0);
+    return st.silent >= SILENT_MS ? 'broken' : 'wait';
+  }
+  function rms(g) {
+    try {
+      g.an.getFloatTimeDomainData(g.buf);
+      let sum = 0;
+      for (let i = 0; i < g.buf.length; i++) sum += g.buf[i] * g.buf[i];
+      return Math.sqrt(sum / g.buf.length);
+    } catch (e) { return 1; } // nicht messbar: nicht verwerfen
+  }
+  function stopWatch() { if (watch) { clearInterval(watch.timer); watch = null; } }
+  function startWatch() {
+    if (!graph || graph.ok || watch) return; // einmal Signal gesehen = Graph funktioniert für dieses Element
+    watch = { t: performance.now(), ct: audio.currentTime || 0, st: { silent: 0, verified: false } };
+    watch.timer = setInterval(watchTick, WATCH_MS);
+  }
+  function watchTick() {
+    if (!graph || !watch || !audio) { stopWatch(); return; }
+    const now = performance.now(), ct = audio.currentTime || 0;
+    const v = silenceVerdict(watch.st, { rms: rms(graph), playing: playing(), muted: audio.muted, advanced: ct > watch.ct + 0.01 }, now - watch.t);
+    watch.t = now;
+    watch.ct = ct;
+    if (v === 'ok') { graph.ok = true; stopWatch(); }
+    else if (v === 'broken') dropGraph();
+  }
+  /** Graph liefert nur Nullen: verwerfen (nicht rückgängig zu machen -> neues Element an derselben Stelle). */
+  function dropGraph() {
+    stopWatch();
+    if (!graph) return;
+    const old = audio, src = old.getAttribute('src'), at = old.currentTime || 0, was = playing();
+    graphBroken = true;
+    try { graph.ctx.close(); } catch (e) { /* egal */ }
+    graph = null;
+    audio = makeAudio();
+    old.pause();
+    old.removeAttribute('src');
+    try { old.load(); } catch (e) { /* egal */ }
+    applyOutput();
+    if (src) {
+      pendingSeek = at > 0 ? at : null;
+      audio.src = src;
+      if (was) { const p = audio.play(); if (p && p.catch) p.catch(() => paintState()); } else audio.load();
+    }
+    paintState();
+    ui.toast(t('player.norm_fallback'), 'warn', 6000);
   }
   function paintNorm() {
     const n = el && $('#pl-norm', el);
@@ -158,7 +236,7 @@
     n.hidden = !on;
     if (!on) return;
     const db = 20 * Math.log10(gainNow), full = graph || gainNow <= 1;
-    n.textContent = `${db > 0.05 ? '+' : db < -0.05 ? '−' : '±'}${util.fmtDec(Math.abs(db), 1, true)} dB`;
+    n.textContent = `${db > 0.05 ? '+' : db < -0.05 ? '−' : '±'}${util.fmtDec(Math.abs(db), 1, true)} ${t('unit.db')}`;
     n.classList.toggle('capped', !full);
     n.title = t('player.norm_title', { lufs: util.fmtDec(+lo.lufs, 1, true), target: util.fmtDec(isFinite(+plSet().target_lufs) ? +plSet().target_lufs : -18, 1), gain: n.textContent }) + (full ? '' : ` · ${t('player.norm_capped')}`);
   }
@@ -422,6 +500,7 @@
   function start() {
     if (resumeBox && resumeBox.mode === 'ask') hideResume(); // ▶/Leertaste statt Antwort = von vorn
     ensureGraph();
+    if (graph) startWatch();
     const p = audio.play();
     if (p && p.catch) p.catch(() => paintState()); // z.B. Autoplay-Sperre: bleibt pausiert, ▶ startet
   }
@@ -447,6 +526,7 @@
   /** Audio-Element von der Datei lösen (gibt die Datei frei). */
   function unload() {
     cancelAnimationFrame(raf);
+    stopWatch();
     if (!audio) return;
     if (media && audio.getAttribute('src')) savePos(true);
     hideResume();
@@ -597,6 +677,30 @@
   }
 
   /* ---------- Aufbau ---------- */
+  /** Audio-Element mit allen Listenern; Ereignisse eines ersetzten Elements (dropGraph) werden ignoriert. */
+  function makeAudio() {
+    const a = new Audio();
+    a.preload = 'auto';
+    const on = (type, fn) => a.addEventListener(type, (e) => { if (a === audio) fn(e); });
+    on('play', () => { paintState(); emit(); });
+    on('pause', () => { paintState(); paint(); emit(); if (!audio.ended) savePos(true); });
+    on('ended', () => { paintState(); paint(); emit(); savePos(true); if (sleep && sleep.mode === 'end') { setSleep(null); ui.toast(t('player.sleep_done'), 'info'); } });
+    on('timeupdate', () => { paint(); if (playing() && Date.now() - lastSave > SAVE_EVERY_MS) savePos(false); });
+    on('seeked', () => { lastSec = -1; paint(); if (resumeBox && resumeBox.mode === 'auto' && Math.abs(audio.currentTime - resumeBox.at) > 2) hideResume(); });
+    on('loadedmetadata', () => {
+      if (pendingSeek != null) { const to = pendingSeek; pendingSeek = null; seek(to); }
+      $('#pl-seek', el).setAttribute('aria-valuemax', Math.floor(dur()));
+      $('#pl-rest', el).title = t('player.total', { t: util.fmtDur(dur()) });
+      paintChapters(); // Marker brauchen die echte Dauer
+    });
+    on('error', () => {
+      if (!media || !audio.getAttribute('src')) return;
+      ui.toast(t('player.err_play', { title: media.title || '' }), 'err');
+      close();
+    });
+    return a;
+  }
+
   function init(root) {
     if (el || !root) return;
     el = root;
@@ -643,24 +747,7 @@
         <button type="button" class="iconbtn" data-p="close" title="${esc(t('player.close'))}">${I.x}</button>
       </div>`;
 
-    audio = new Audio();
-    audio.preload = 'auto';
-    audio.addEventListener('play', () => { paintState(); emit(); });
-    audio.addEventListener('pause', () => { paintState(); paint(); emit(); if (!audio.ended) savePos(true); });
-    audio.addEventListener('ended', () => { paintState(); paint(); emit(); savePos(true); if (sleep && sleep.mode === 'end') { setSleep(null); ui.toast(t('player.sleep_done'), 'info'); } });
-    audio.addEventListener('timeupdate', () => { paint(); if (playing() && Date.now() - lastSave > SAVE_EVERY_MS) savePos(false); });
-    audio.addEventListener('seeked', () => { lastSec = -1; paint(); if (resumeBox && resumeBox.mode === 'auto' && Math.abs(audio.currentTime - resumeBox.at) > 2) hideResume(); });
-    audio.addEventListener('loadedmetadata', () => {
-      if (pendingSeek != null) { const to = pendingSeek; pendingSeek = null; seek(to); }
-      $('#pl-seek', el).setAttribute('aria-valuemax', Math.floor(dur()));
-      $('#pl-rest', el).title = t('player.total', { t: util.fmtDur(dur()) });
-      paintChapters(); // Marker brauchen die echte Dauer
-    });
-    audio.addEventListener('error', () => {
-      if (!media || !audio.getAttribute('src')) return;
-      ui.toast(t('player.err_play', { title: media.title || '' }), 'err');
-      close();
-    });
+    audio = makeAudio();
 
     el.addEventListener('click', (e) => {
       const r = e.target.closest('[data-r]');
@@ -772,7 +859,9 @@
     state: () => ({ id: media ? media.id : null, playing: playing() }),
     get audio() { return audio; },
     /** v0.7.0 (Diagnose/Tests): Ausgang und Zusatzzustand. */
-    output: () => ({ mode: graph ? 'webaudio' : 'volume', gain: gainNow, fade, volume: audio ? audio.volume : 1, peaks: peaks ? peaks.length : 0, sleep: sleep ? (sleep.mode === 'end' ? 'end' : sleep.minutes) : null, sleepLeft: sleep ? sleepLeft() : null, resume: resumeBox ? resumeBox.mode : null }),
+    output: () => ({ mode: graph ? 'webaudio' : 'volume', fallback: graphBroken, watching: !!watch, gain: gainNow, fade, volume: audio ? audio.volume : 1, peaks: peaks ? peaks.length : 0, sleep: sleep ? (sleep.mode === 'end' ? 'end' : sleep.minutes) : null, sleepLeft: sleep ? sleepLeft() : null, resume: resumeBox ? resumeBox.mode : null }),
     sleep: setSleep,
+    /** Review v0.7.0 M2 (Tests): reine Entscheidung des Stille-Wächters und Schwelle in ms. */
+    silenceVerdict, SILENT_MS,
   };
 })();

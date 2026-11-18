@@ -8,6 +8,7 @@ import os
 import sys
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
 
 from .core import binaries, config, i18n, locks, selfupdate, webview2
 from .core.db import Database, MigrationBackupError, SchemaTooNewError
@@ -152,6 +153,16 @@ def update_dir() -> Path:
     return config.app_home() / "update"
 
 
+def configure_webview(module: Any) -> None:
+    """Explicit pywebview settings instead of relying on defaults. ALLOW_FILE_URLS: the player
+    plays local files via file: URLs and routes them through Web Audio; on WebView2 pywebview
+    then adds `--allow-file-access-from-files` (otherwise the media element source may be
+    treated as cross-origin and output silence - the player falls back, see player.js)."""
+    settings = getattr(module, "settings", None)
+    if isinstance(settings, dict):
+        settings["ALLOW_FILE_URLS"] = True
+
+
 def run_gui() -> int:
     """GUI start with visible error reporting (log + MessageBox under pythonw)."""
     try:
@@ -200,6 +211,7 @@ def _run_gui() -> int:
     )
     api = Api()  # logs config warnings itself
     _set_app_user_model_id()
+    configure_webview(webview)
     window = webview.create_window(
         WINDOW_TITLE,
         url=ui_url(),

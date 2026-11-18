@@ -62,7 +62,8 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "entries": "kirjet",
     "clock": "kell",
     "req_h": "päring./h",
-    "lufs": "LUFS"
+    "lufs": "LUFS",
+    "db": "dB"
   },
   "range": {
     "ge_sleep": "≥ miinimum",
@@ -535,6 +536,7 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "external": "Avamine vaikimisi esitajas …",
     "norm_title": "Valjus ühtlustatud: {lufs} LUFS → siht {target} LUFS ({gain})",
     "norm_capped": "ainult vaigistatud – võimendamiseks on vaja helimootorit",
+    "norm_fallback": "Normaliseerimine: helimootor on siin vaikne – mängitakse ilma selleta (ainult vaiksemaks, mitte valjemaks)",
     "resume_q": "Kas jätkata sealt, kus pooleli jäi?",
     "resume_at": "kohal {t}",
     "resume": "Jätka",

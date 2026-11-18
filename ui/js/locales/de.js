@@ -62,7 +62,8 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "entries": "Einträge",
     "clock": "Uhr",
     "req_h": "Anfr./h",
-    "lufs": "LUFS"
+    "lufs": "LUFS",
+    "db": "dB"
   },
   "range": {
     "ge_sleep": "≥ Minimum",
@@ -535,6 +536,7 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "external": "Wird im Standardplayer geöffnet …",
     "norm_title": "Lautheit angeglichen: {lufs} LUFS → Ziel {target} LUFS ({gain})",
     "norm_capped": "nur abgesenkt – Anheben braucht die Audio-Engine",
+    "norm_fallback": "Lautheit angleichen: Die Audio-Engine bleibt hier stumm – Wiedergabe ohne sie (nur absenken, kein Anheben)",
     "resume_q": "Dort weiterhören, wo du aufgehört hast?",
     "resume_at": "bei {t}",
     "resume": "Fortsetzen",

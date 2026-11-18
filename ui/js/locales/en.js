@@ -62,7 +62,8 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "entries": "entries",
     "clock": "o’clock",
     "req_h": "req./h",
-    "lufs": "LUFS"
+    "lufs": "LUFS",
+    "db": "dB"
   },
   "range": {
     "ge_sleep": "≥ minimum",
@@ -535,6 +536,7 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "external": "Opening in the default player …",
     "norm_title": "Loudness normalised: {lufs} LUFS → target {target} LUFS ({gain})",
     "norm_capped": "only lowered – boosting needs the audio engine",
+    "norm_fallback": "Loudness normalisation: the audio engine stays silent here – playing without it (only lowering the volume, no boosting)",
     "resume_q": "Continue where you left off?",
     "resume_at": "at {t}",
     "resume": "Resume",

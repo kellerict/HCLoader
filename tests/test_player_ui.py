@@ -359,3 +359,118 @@ def test_playback_settings_tab_and_analysis_pass(page):
     inp.dispatch_event("change")
     page.click("#btn-save")
     page.wait_for_selector('.field[data-k="player.target_lufs"].has-error')
+
+
+# --------------------------------------------------------------------------- review v0.7.0 M1/M2
+
+SILENT_GRAPH_STUB = """
+window.__gains = [];
+window.__atSource = null;
+const AC = window.AudioContext;
+const cg = AC.prototype.createGain;
+AC.prototype.createGain = function () { const g = cg.call(this); window.__gains.push(g); return g; };
+const cms = AC.prototype.createMediaElementSource;
+AC.prototype.createMediaElementSource = function (el) {
+  window.__atSource = window.__gains.map((g) => g.gain.value);
+  return cms.call(this, el);
+};
+if (window.__silent) {
+  const ca = AC.prototype.createAnalyser;
+  AC.prototype.createAnalyser = function () {
+    const a = ca.call(this);
+    a.getFloatTimeDomainData = (buf) => buf.fill(0);  // tainted source: only zeros
+    return a;
+  };
+}
+true;
+"""
+
+
+def test_silence_verdict_decision_logic(page):
+    v = page.evaluate(
+        """() => {
+      const f = HC.player.silenceVerdict, L = HC.player.SILENT_MS, out = {};
+      const run = (samples) => { const st = { silent: 0, verified: false }; return samples.map(([s, dt]) => f(st, s, dt)); };
+      const play = { rms: 0, playing: true, muted: false, advanced: true };
+      out.limit = L;
+      out.silent = run([[play, 500], [play, 500], [play, 500]]);
+      out.signal = run([[play, 500], [{ ...play, rms: 0.01 }, 500], [play, 5000]]);
+      out.paused = run([[{ ...play, playing: false }, 5000], [{ ...play, muted: true }, 5000], [{ ...play, advanced: false }, 5000]]);
+      out.mixed = run([[play, 1000], [{ ...play, playing: false }, 9000], [play, 400], [play, 100]]);
+      return out;
+    }"""
+    )
+    assert v["limit"] == 1500
+    assert v["silent"] == ["wait", "wait", "broken"]
+    assert v["signal"] == ["wait", "ok", "ok"]  # once verified, never dropped
+    assert v["paused"] == ["wait", "wait", "wait"]  # pause/mute/stalled say nothing
+    assert v["mixed"] == ["wait", "wait", "wait", "broken"]  # only playing time counts
+
+
+def _graph_page(browser, silent):  # noqa: F811
+    context, p = _open(browser)
+    p.evaluate(f"window.__silent = {'true' if silent else 'false'}; true")
+    p.evaluate(SILENT_GRAPH_STUB)
+    return context, p
+
+
+def test_graph_starts_at_target_gain_and_stays_when_audio_flows(browser):  # noqa: F811
+    context, p = _graph_page(browser, silent=False)
+    try:
+        _library(p)
+        _play(p, "eEuph0ric26", freeze=False)
+        p.wait_for_function("HC.player.output().mode === 'webaudio'")
+        out = p.evaluate("HC.player.output()")
+        vol = p.evaluate("HC.player.audio.volume")
+        # m1: both gains already at their targets when the source is connected (no loud blip)
+        at = p.evaluate("window.__atSource")
+        assert at[0] == pytest.approx(out["gain"], rel=1e-5) and at[0] < 1
+        assert at[1] == pytest.approx(0.8, rel=1e-5) and vol == 1
+        p.wait_for_function("!HC.player.output().watching", timeout=5000)
+        assert p.evaluate("HC.player.output()")["fallback"] is False
+        assert p.evaluate("HC.player.output().mode") == "webaudio"
+    finally:
+        _close(context, p)
+
+
+def test_silent_graph_falls_back_to_plain_element(browser):  # noqa: F811
+    """M2: a graph that only outputs zeros is replaced by a new element at the same spot."""
+    context, p = _graph_page(browser, silent=True)
+    try:
+        _library(p)
+        _play(p, "eEuph0ric26", freeze=False)
+        p.wait_for_function("HC.player.output().mode === 'webaudio'")
+        p.evaluate("window.__first = HC.player.audio; true")
+        p.wait_for_function("HC.player.output().fallback === true", timeout=6000)
+        out = p.evaluate("HC.player.output()")
+        assert out["mode"] == "volume" and not out["watching"]
+        assert p.evaluate("HC.player.audio !== window.__first")
+        assert p.evaluate("!window.__first.getAttribute('src')")  # old element released
+        p.wait_for_function("HC.player.state().playing && HC.player.audio.currentTime > 0.5")
+        assert p.evaluate("HC.player.state().id") == "eEuph0ric26"
+        # volume mode only attenuates: element volume = volume x min(gain, 1) <= 1
+        assert p.evaluate("HC.player.audio.volume") == pytest.approx(
+            0.8 * min(out["gain"], 1), rel=1e-5
+        )
+        assert p.is_visible(".toast")
+        # pause/play on the new element still works; the graph is not built again
+        p.evaluate("HC.player.toggle()")
+        p.wait_for_function("!HC.player.state().playing")
+        p.evaluate("HC.player.toggle()")
+        p.wait_for_function("HC.player.state().playing")
+        assert p.evaluate("HC.player.output().mode") == "volume"
+    finally:
+        _close(context, p)
+
+
+def test_player_reports_the_loaded_set_to_the_backend(page):
+    """M1: the backend learns which file is open (no tag write into it)."""
+    page.evaluate(
+        "(() => { const o = HC.mock.api.set_now_playing; HC.mock.api.set_now_playing = (...a) => { window.__calls.push(['set_now_playing', ...a]); return o(...a); }; })()"
+    )
+    _library(page)
+    _play(page, "eEuph0ric26")
+    page.evaluate("HC.player.toggle()")  # pause: still loaded, nothing new reported
+    page.evaluate("HC.player.close()")
+    page.wait_for_function("window.__calls.filter(c => c[0] === 'set_now_playing').length >= 2")
+    assert _calls(page, "set_now_playing") == [["eEuph0ric26"], [None]]

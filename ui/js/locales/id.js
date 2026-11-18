@@ -61,7 +61,8 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "entries": "entri",
     "clock": "pukul",
     "req_h": "perm./jam",
-    "lufs": "LUFS"
+    "lufs": "LUFS",
+    "db": "dB"
   },
   "range": {
     "ge_sleep": "≥ minimum",
@@ -520,6 +521,7 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "external": "Membuka di pemutar bawaan …",
     "norm_title": "Kenyaringan disamakan: {lufs} LUFS → target {target} LUFS ({gain})",
     "norm_capped": "hanya diturunkan – menaikkan perlu mesin audio",
+    "norm_fallback": "Normalisasi: mesin audio diam di sini – diputar tanpanya (hanya menurunkan, tanpa menaikkan)",
     "resume_q": "Lanjutkan dari terakhir kali?",
     "resume_at": "di {t}",
     "resume": "Lanjutkan",

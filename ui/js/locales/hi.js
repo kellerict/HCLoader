@@ -62,7 +62,8 @@ HC.i18n.register({"code": "hi", "name": "हिन्दी", "dir": "ltr", "int
     "entries": "प्रविष्टियाँ",
     "clock": "बजे",
     "req_h": "अनु./घं",
-    "lufs": "LUFS"
+    "lufs": "LUFS",
+    "db": "dB"
   },
   "range": {
     "ge_sleep": "≥ न्यूनतम",
@@ -535,6 +536,7 @@ HC.i18n.register({"code": "hi", "name": "हिन्दी", "dir": "ltr", "int
     "external": "डिफ़ॉल्ट प्लेयर में खुल रहा है …",
     "norm_title": "लाउडनेस समान की गई: {lufs} LUFS → लक्ष्य {target} LUFS ({gain})",
     "norm_capped": "केवल घटाया गया – बढ़ाने के लिए ऑडियो इंजन चाहिए",
+    "norm_fallback": "लाउडनेस समायोजन: ऑडियो इंजन यहाँ मौन है – उसके बिना चल रहा है (केवल घटाना, बढ़ाना नहीं)",
     "resume_q": "जहाँ छोड़ा था वहीं से जारी रखें?",
     "resume_at": "{t} पर",
     "resume": "जारी रखें",

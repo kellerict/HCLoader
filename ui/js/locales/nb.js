@@ -62,7 +62,8 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "entries": "oppføringer",
     "clock": "24 t",
     "req_h": "foresp./t",
-    "lufs": "LUFS"
+    "lufs": "LUFS",
+    "db": "dB"
   },
   "range": {
     "ge_sleep": "≥ minimum",
@@ -535,6 +536,7 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "external": "Åpner i standardspilleren …",
     "norm_title": "Lydstyrke utjevnet: {lufs} LUFS → mål {target} LUFS ({gain})",
     "norm_capped": "bare senket – forsterkning krever lydmotoren",
+    "norm_fallback": "Normalisering: lydmotoren er stille her – spiller uten den (bare senke, ingen forsterkning)",
     "resume_q": "Fortsette der du slapp?",
     "resume_at": "ved {t}",
     "resume": "Fortsett",

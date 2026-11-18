@@ -64,7 +64,8 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "entries": "įrašų",
     "clock": "val.",
     "req_h": "užkl./val.",
-    "lufs": "LUFS"
+    "lufs": "LUFS",
+    "db": "dB"
   },
   "range": {
     "ge_sleep": "≥ minimumas",
@@ -565,6 +566,7 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "external": "Atidaroma numatytajame grotuve …",
     "norm_title": "Garsumas suvienodintas: {lufs} LUFS → tikslas {target} LUFS ({gain})",
     "norm_capped": "tik sumažinta – stiprinti reikia garso variklio",
+    "norm_fallback": "Normalizavimas: garso variklis čia tyli – grojama be jo (tik tildoma, nestiprinama)",
     "resume_q": "Tęsti nuo ten, kur baigėte?",
     "resume_at": "ties {t}",
     "resume": "Tęsti",

@@ -63,7 +63,8 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "entries": "ieraksti",
     "clock": "st.",
     "req_h": "piepr./h",
-    "lufs": "LUFS"
+    "lufs": "LUFS",
+    "db": "dB"
   },
   "range": {
     "ge_sleep": "≥ minimums",
@@ -550,6 +551,7 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "external": "Tiek atvērts noklusējuma atskaņotājā …",
     "norm_title": "Skaļums izlīdzināts: {lufs} LUFS → mērķis {target} LUFS ({gain})",
     "norm_capped": "tikai samazināts – pastiprināšanai vajag audio dzinēju",
+    "norm_fallback": "Normalizēšana: audio dzinējs šeit klusē – atskaņo bez tā (tikai klusināt, nepastiprināt)",
     "resume_q": "Turpināt no vietas, kur apstājāties?",
     "resume_at": "pie {t}",
     "resume": "Turpināt",

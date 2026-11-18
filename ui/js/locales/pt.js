@@ -62,7 +62,8 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "entries": "entradas",
     "clock": "h",
     "req_h": "req./h",
-    "lufs": "LUFS"
+    "lufs": "LUFS",
+    "db": "dB"
   },
   "range": {
     "ge_sleep": "≥ mínimo",
@@ -535,6 +536,7 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "external": "Abrindo no player padrão …",
     "norm_title": "Volume normalizado: {lufs} LUFS → alvo {target} LUFS ({gain})",
     "norm_capped": "apenas reduzido – aumentar exige o motor de áudio",
+    "norm_fallback": "Normalização: o motor de áudio fica mudo aqui – reprodução sem ele (só reduzir, sem amplificar)",
     "resume_q": "Continuar de onde você parou?",
     "resume_at": "em {t}",
     "resume": "Continuar",

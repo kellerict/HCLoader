@@ -62,7 +62,8 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
     "entries": "entrées",
     "clock": "h",
     "req_h": "req./h",
-    "lufs": "LUFS"
+    "lufs": "LUFS",
+    "db": "dB"
   },
   "range": {
     "ge_sleep": "≥ minimum",
@@ -535,6 +536,7 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
     "external": "Ouverture dans le lecteur par défaut …",
     "norm_title": "Volume harmonisé : {lufs} LUFS → cible {target} LUFS ({gain})",
     "norm_capped": "seulement abaissé – l’amplification nécessite le moteur audio",
+    "norm_fallback": "Normalisation : le moteur audio reste muet ici – lecture sans lui (baisse uniquement, pas d’amplification)",
     "resume_q": "Reprendre là où vous vous étiez arrêté ?",
     "resume_at": "à {t}",
     "resume": "Reprendre",

@@ -62,7 +62,8 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "entries": "poster",
     "clock": "24 h",
     "req_h": "förfr./h",
-    "lufs": "LUFS"
+    "lufs": "LUFS",
+    "db": "dB"
   },
   "range": {
     "ge_sleep": "≥ minimum",
@@ -535,6 +536,7 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "external": "Öppnar i standardspelaren …",
     "norm_title": "Ljudstyrka utjämnad: {lufs} LUFS → mål {target} LUFS ({gain})",
     "norm_capped": "endast sänkt – förstärkning kräver ljudmotorn",
+    "norm_fallback": "Normalisering: ljudmotorn är tyst här – spelar utan den (endast sänka, ingen förstärkning)",
     "resume_q": "Fortsätta där du slutade?",
     "resume_at": "vid {t}",
     "resume": "Fortsätt",

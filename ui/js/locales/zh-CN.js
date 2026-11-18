@@ -61,7 +61,8 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "entries": "条",
     "clock": "点",
     "req_h": "次/时",
-    "lufs": "LUFS"
+    "lufs": "LUFS",
+    "db": "dB"
   },
   "range": {
     "ge_sleep": "≥ 最小值",
@@ -520,6 +521,7 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "external": "正在用默认播放器打开…",
     "norm_title": "响度已均衡：{lufs} LUFS → 目标 {target} LUFS（{gain}）",
     "norm_capped": "仅降低 —— 提升需要音频引擎",
+    "norm_fallback": "响度均衡：音频引擎在此无声 —— 改为不使用它播放（只降低音量，不提升）",
     "resume_q": "要从上次停下的地方继续吗？",
     "resume_at": "于 {t}",
     "resume": "继续",

@@ -62,7 +62,8 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "entries": "merkintää",
     "clock": "24 h",
     "req_h": "pyynt./h",
-    "lufs": "LUFS"
+    "lufs": "LUFS",
+    "db": "dB"
   },
   "range": {
     "ge_sleep": "≥ vähimmäisarvo",
@@ -535,6 +536,7 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "external": "Avataan oletussoittimessa …",
     "norm_title": "Äänenvoimakkuus tasattu: {lufs} LUFS → tavoite {target} LUFS ({gain})",
     "norm_capped": "vain hiljennetty – vahvistus vaatii äänimoottorin",
+    "norm_fallback": "Normalisointi: äänimoottori on tässä mykkä – toistetaan ilman sitä (vain hiljennys, ei vahvistusta)",
     "resume_q": "Jatketaanko siitä, mihin jäit?",
     "resume_at": "kohdassa {t}",
     "resume": "Jatka",
