@@ -554,6 +554,7 @@
     "no_ffmpeg": "ffmpeg tidak ada – kenyaringan dan bentuk gelombang tidak dapat dianalisis (Pengaturan › Pemeliharaan)",
     "ffmpeg_failed": "ffmpeg tidak dapat menganalisis file: {error}",
     "tag_failed": "Tag ReplayGain tidak ditulis ({path}): {error} – dicoba lagi pada analisis berikutnya",
+    "tag_deferred": "Tag ReplayGain untuk {path} ditunda: file sedang digunakan – ditulis nanti",
     "no_peaks": "Bentuk gelombang untuk file ini tidak dapat dihitung",
     "item_failed": "Analisis {id} gagal: {error}",
     "pass_started": "Menganalisis kenyaringan dan bentuk gelombang (offline, satu file per waktu) …",

@@ -566,6 +566,7 @@
     "no_ffmpeg": "Trūkst ffmpeg – skaļumu un viļņformu nevar analizēt (Iestatījumi › Apkope)",
     "ffmpeg_failed": "ffmpeg nevarēja analizēt failu: {error}",
     "tag_failed": "ReplayGain birkas netika ierakstītas ({path}): {error} – mēģinās vēlreiz nākamajā analīzē",
+    "tag_deferred": "{path} ReplayGain birkas atliktas: fails tiek izmantots – tiks ierakstītas vēlāk",
     "no_peaks": "Šim failam nevarēja aprēķināt viļņformu",
     "item_failed": "{id} analīze neizdevās: {error}",
     "pass_started": "Analizē skaļumu un viļņformas (bezsaistē, pa vienam failam) …",

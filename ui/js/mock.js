@@ -1992,6 +1992,7 @@
       });
     },
     forget_position: (id) => later(10, () => { PB.delete(id); return { ok: true }; }),
+    set_now_playing: () => later(5, () => ({ ok: true })),
     get_continue_listening(limit) {
       return later(20, () => {
         if (!resumeOn()) return { ok: true, items: [] };

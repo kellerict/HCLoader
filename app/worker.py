@@ -1559,6 +1559,23 @@ class AnalysisQueue:
             self._cond.notify_all()
         self.start()
 
+    def set_playing(self, video_id: str | None) -> None:
+        """The player has `video_id` loaded (None = nothing). Its file is never tagged while
+        loaded (`analysis.in_use`); once released, a deferred tag write is queued."""
+        prev = analysis.set_in_use(video_id)
+        if prev and prev != (str(video_id) if video_id else None):
+            try:
+                row = analysis.get_row(self._db, prev) or {}
+            except Exception:
+                row = {}
+            settings = self._settings()
+            if (
+                settings.loudness.write_tags
+                and row.get("lufs") is not None
+                and not row.get("tagged")
+            ):
+                self.request(prev)
+
     def start_pass(self, scope: str = "new") -> bool:
         """False if a pass is already queued or running."""
         with self._cond:

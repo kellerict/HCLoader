@@ -560,6 +560,7 @@
     "no_ffmpeg": "ffmpeg puudub – valjust ja lainekuju ei saa analüüsida (Seaded › Hooldus)",
     "ffmpeg_failed": "ffmpeg ei suutnud faili analüüsida: {error}",
     "tag_failed": "ReplayGaini silte ei kirjutatud ({path}): {error} – proovitakse järgmisel analüüsil uuesti",
+    "tag_deferred": "Faili {path} ReplayGaini sildid edasi lükatud: fail on kasutusel – kirjutatakse hiljem",
     "no_peaks": "Selle faili lainekuju ei õnnestunud arvutada",
     "item_failed": "{id} analüüs ebaõnnestus: {error}",
     "pass_started": "Valjust ja lainekujusid analüüsitakse (võrguta, üks fail korraga) …",

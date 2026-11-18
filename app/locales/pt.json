@@ -559,6 +559,7 @@
     "no_ffmpeg": "O ffmpeg não está instalado – não é possível analisar volume e forma de onda (Configurações › Manutenção)",
     "ffmpeg_failed": "O ffmpeg não conseguiu analisar o arquivo: {error}",
     "tag_failed": "Tags ReplayGain não gravadas ({path}): {error} – nova tentativa na próxima análise",
+    "tag_deferred": "Tags ReplayGain de {path} adiadas: o ficheiro está em uso – serão escritas mais tarde",
     "no_peaks": "Não foi possível calcular a forma de onda deste arquivo",
     "item_failed": "A análise de {id} falhou: {error}",
     "pass_started": "Analisando volume e formas de onda (offline, um arquivo por vez) …",

@@ -554,6 +554,7 @@
     "no_ffmpeg": "缺少 ffmpeg —— 无法分析响度和波形（设置 › 维护）",
     "ffmpeg_failed": "ffmpeg 无法分析该文件：{error}",
     "tag_failed": "未写入 ReplayGain 标签（{path}）：{error} —— 将在下次分析时重试",
+    "tag_deferred": "{path} 的 ReplayGain 标签已推迟：文件正在使用中，稍后写入",
     "no_peaks": "无法为此文件计算波形",
     "item_failed": "{id} 分析失败：{error}",
     "pass_started": "正在分析响度和波形（离线，逐个文件）…",

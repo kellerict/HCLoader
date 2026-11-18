@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import shutil
 import subprocess
 import threading
@@ -26,6 +27,14 @@ from app.worker import AnalysisQueue
 from tests.audio_fixtures import make_m4a, make_mp3, make_opus, mp3_audio, mp4_mdat
 
 VID = "abc123XYZ_-"
+
+
+@pytest.fixture(autouse=True)
+def _nothing_in_the_player():
+    analysis.set_in_use(None)
+    yield
+    analysis.set_in_use(None)
+
 
 # real ffmpeg 6/7 stderr (shortened): frame lines would only appear at -v verbose, the
 # summary comes last; the filter instance name varies
@@ -172,6 +181,9 @@ class FakeProc:
 
     def wait(self, timeout=None):
         self.returncode = -9 if self.killed else self._rc
+        return self.returncode
+
+    def poll(self):
         return self.returncode
 
 
@@ -674,3 +686,168 @@ def test_analysis_queue_cancel_pass(db, settings, tmp_path):
         assert bus.of("media_analysed") == []
     finally:
         q.stop()
+
+
+# --------------------------------------------------------------------------- review v0.7.0
+
+
+def test_timeout_is_not_a_permanent_failure(tmp_path):
+    """m3: the hard timeout kills ffmpeg - that is not the file's fault."""
+    f = make_mp3(tmp_path / "x.mp3")
+    procs = []
+
+    def hang(cmd, **kw):
+        procs.append(FakeProc(b"", "killed\n", rc=1, hang=True))
+        return procs[-1]
+
+    with pytest.raises(analysis.AnalysisError) as e:
+        analysis.run_ffmpeg(f, exe="ffmpeg", popen=hang, timeout=0.2)
+    assert procs[0].killed and e.value.permanent is False
+
+
+def test_ffmpeg_error_on_present_file_is_permanent_vanished_file_is_not(tmp_path):
+    """m2: a file moved/deleted while ffmpeg starts is tried again later."""
+    f = make_mp3(tmp_path / "x.mp3")
+
+    def bad(cmd, **kw):
+        return FakeProc(b"", "Invalid data found when processing input\n", rc=1)
+
+    with pytest.raises(analysis.AnalysisError) as e:
+        analysis.run_ffmpeg(f, exe="ffmpeg", popen=bad)
+    assert e.value.permanent is True
+    with pytest.raises(analysis.AnalysisError) as e:
+        analysis.run_ffmpeg(tmp_path / "gone.mp3", exe="ffmpeg", popen=bad)
+    assert e.value.permanent is False
+
+
+def test_exception_in_read_loop_kills_ffmpeg(tmp_path):
+    """m4: the finally block never leaves ffmpeg running."""
+    procs = []
+
+    class Boom(io.BytesIO):
+        def read(self, n=-1):
+            raise ValueError("boom")
+
+    def popen(cmd, **kw):
+        p = FakeProc()
+        p.stdout = Boom()
+        procs.append(p)
+        return p
+
+    with pytest.raises(ValueError):
+        analysis.run_ffmpeg(tmp_path / "x.mp3", exe="ffmpeg", popen=popen)
+    assert procs[0].killed
+
+
+def test_playing_file_is_never_tagged_tag_write_deferred(db, settings, tmp_path):
+    """M1: the set loaded in the player is measured, but its tags wait until it is released."""
+    f = make_mp3(tmp_path / "music" / "set.mp3")
+    add_done(db, f)
+    before = f.read_bytes()
+    analysis.set_in_use(VID)
+    res = analysis.process(db, settings, VID, runner=fake_runner())
+    assert res["ok"] and res["tagged"] is False and res["tag_deferred"] is True
+    assert f.read_bytes() == before  # not one byte changed under the player
+    row = analysis.get_row(db, VID)
+    assert row["lufs"] == -7.9 and row["tagged"] == 0 and row["error"] is None
+    assert analysis.pending(db, settings) == [
+        (VID, {"loudness": False, "tags": True, "peaks": False})
+    ]
+    # lazy waveform on first play (get_waveform -> ensure_peaks) takes the same path
+    assert analysis.ensure_peaks(db, settings, VID, runner=fake_runner())["ok"]
+    assert f.read_bytes() == before
+    analysis.set_in_use("otherset0001")
+    res = analysis.process_pending(db, settings, VID, runner=fake_runner())
+    assert res["tagged"] is True and tagging.read_replaygain(f).gain == -10.1
+
+
+def test_analysis_queue_writes_deferred_tags_after_the_player_released_the_file(
+    db, settings, tmp_path
+):
+    f = make_mp3(tmp_path / "music" / "set.mp3")
+    add_done(db, f)
+    bus = Bus()
+    calls = []
+    q = AnalysisQueue(db, lambda: settings, bus, runner=fake_runner(calls=calls))
+    try:
+        q.set_playing(VID)
+        q.request_waveform(VID)
+        bus.wait_for(lambda k, d: k == "waveform")
+        assert analysis.get_row(db, VID)["tagged"] == 0
+        assert tagging.read_replaygain(f) is None
+        q.set_playing(VID)  # same set again (play/pause): nothing queued
+        q.set_playing(None)  # player closed -> deferred tag write, no new decode
+        bus.wait_for(lambda k, d: k == "media_analysed" and d.get("tagged"))
+        assert len(calls) == 1
+        assert analysis.get_row(db, VID)["tagged"] == 1
+        assert tagging.read_replaygain(f).gain == -10.1
+    finally:
+        q.stop()
+
+
+def test_atomic_tag_write_retries_sharing_violation_then_replaces(tmp_path):
+    f = make_mp3(tmp_path / "set.mp3")
+    fails = []
+
+    def flaky(src, dst):
+        if len(fails) < 2:
+            fails.append(1)
+            raise PermissionError(32, "being used by another process")
+        os.replace(src, dst)
+
+    rg = tagging.ReplayGain(-6.0, 0.9)
+    assert tagging.write_replaygain_atomic(f, rg, replace=flaky, sleep=lambda s: None)
+    assert len(fails) == 2 and tagging.read_replaygain(f) == rg
+    assert list(tmp_path.iterdir()) == [f]  # no temp copy left
+
+
+def test_atomic_tag_write_gives_up_on_busy_file_and_defers(db, settings, tmp_path, monkeypatch):
+    f = make_mp3(tmp_path / "music" / "set.mp3")
+    add_done(db, f)
+    before = f.read_bytes()
+
+    def busy(src, dst):
+        raise PermissionError(32, "being used by another process")
+
+    with pytest.raises(tagging.FileBusyError):
+        tagging.write_replaygain_atomic(
+            f, tagging.ReplayGain(-1.0, 1.0), replace=busy, sleep=lambda s: None
+        )
+    assert f.read_bytes() == before and sorted(f.parent.iterdir()) == [f]
+    monkeypatch.setattr(tagging, "REPLACE_DELAY_S", 0)
+    monkeypatch.setattr(os, "replace", busy)
+    monkeypatch.setattr(tagging.time, "sleep", lambda s: None)
+    res = analysis.process(db, settings, VID, peaks=False, runner=fake_runner())
+    monkeypatch.undo()
+    assert res["ok"] and res["tag_deferred"] and not res["tagged"]
+    assert analysis.get_row(db, VID)["error"] is None  # busy is not an error
+    assert f.read_bytes() == before
+
+
+def test_prune_peaks_removes_orphans_and_old_downloads(db, settings, tmp_path):
+    """m5: waveform cache files of removed items / older downloads are cleaned up."""
+    f = make_mp3(tmp_path / "music" / "set.mp3")
+    add_done(db, f, downloaded_at="2026-01-01T10:00:00+00:00")
+    add_done(db, make_mp3(tmp_path / "music" / "b.mp3"), vid="otherset0001")
+    analysis.process(db, settings, VID, runner=fake_runner())
+    analysis.process(db, settings, "otherset0001", runner=fake_runner())
+    analysis.save_peaks("removedset01", [1, 2], duration=1, stamp="x")
+    db.mark_removed("otherset0001")
+    assert analysis.prune_peaks(db) == 2
+    assert analysis.peaks_file(VID).exists()
+    assert not analysis.peaks_file("otherset0001").exists()
+    assert not analysis.peaks_file("removedset01").exists()
+    db.execute("UPDATE videos SET downloaded_at = '2099-01-01T00:00:00+00:00' WHERE id = ?", (VID,))
+    assert analysis.prune_peaks(db) == 1 and not analysis.peaks_file(VID).exists()
+
+
+def test_main_sets_allow_file_urls_explicitly():
+    """M2: file: media + Web Audio in WebView2 must not depend on a pywebview default."""
+    from types import SimpleNamespace
+
+    from app import main
+
+    fake = SimpleNamespace(settings={"ALLOW_FILE_URLS": False})
+    main.configure_webview(fake)
+    assert fake.settings["ALLOW_FILE_URLS"] is True
+    main.configure_webview(SimpleNamespace())  # older pywebview without settings: no error

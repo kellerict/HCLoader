@@ -560,6 +560,7 @@
     "no_ffmpeg": "ffmpeg fehlt – Lautheit und Wellenform können nicht analysiert werden (Einstellungen › Wartung)",
     "ffmpeg_failed": "ffmpeg konnte die Datei nicht analysieren: {error}",
     "tag_failed": "ReplayGain-Tags nicht geschrieben ({path}): {error} – neuer Versuch bei der nächsten Analyse",
+    "tag_deferred": "ReplayGain-Tags für {path} verschoben: Die Datei ist in Gebrauch – werden später geschrieben",
     "no_peaks": "Für diese Datei liess sich keine Wellenform berechnen",
     "item_failed": "Analyse von {id} fehlgeschlagen: {error}",
     "pass_started": "Lautheit und Wellenformen werden analysiert (offline, eine Datei nach der anderen) …",

@@ -560,6 +560,7 @@
     "no_ffmpeg": "ffmpeg mangler – lydstyrke og bølgeform kan ikke analyseres (Innstillinger › Vedlikehold)",
     "ffmpeg_failed": "ffmpeg kunne ikke analysere filen: {error}",
     "tag_failed": "ReplayGain-tagger ble ikke skrevet ({path}): {error} – prøves igjen ved neste analyse",
+    "tag_deferred": "ReplayGain-tagger for {path} utsatt: filen er i bruk – skrives senere",
     "no_peaks": "Kunne ikke beregne bølgeform for denne filen",
     "item_failed": "Analysen av {id} mislyktes: {error}",
     "pass_started": "Analyserer lydstyrke og bølgeformer (frakoblet, én fil om gangen) …",

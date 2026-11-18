@@ -11,9 +11,12 @@ from __future__ import annotations
 
 import base64
 import logging
+import os
 import re
+import shutil
 import subprocess
 import tempfile
+import time
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -551,7 +554,7 @@ def parse_peak(text: Any) -> float | None:
     return value if value >= 0 else None
 
 
-def write_replaygain(path: Path, rg: ReplayGain) -> bool:
+def write_replaygain(path: Path, rg: ReplayGain, *, kind: str | None = None) -> bool:
     """Write ReplayGain tags without touching the audio data (mutagen tag write only).
 
     MP3: ID3 TXXX:REPLAYGAIN_TRACK_GAIN / TXXX:REPLAYGAIN_TRACK_PEAK (other frames kept).
@@ -559,7 +562,7 @@ def write_replaygain(path: Path, rg: ReplayGain) -> bool:
     iTunes convention). Opus: R128_TRACK_GAIN (RFC 7845: Opus players ignore REPLAYGAIN_*;
     no peak tag exists for Opus). Returns False for other containers (nothing written)."""
     path = Path(path)
-    ext = path.suffix.lower()
+    ext = (kind or path.suffix).lower()
     if ext == ".mp3":
         try:
             tags = ID3(path)
@@ -602,6 +605,58 @@ def write_replaygain(path: Path, rg: ReplayGain) -> bool:
         audio.save()
         return True
     return False
+
+
+class FileBusyError(OSError):
+    """The file could not be replaced (Windows sharing violation: open in another program,
+    e.g. the player). Nothing was changed; the caller tries again later."""
+
+
+TMP_SUFFIX = ".hcltmp"
+REPLACE_RETRIES = 5
+REPLACE_DELAY_S = 0.2
+
+
+def write_replaygain_atomic(
+    path: Path,
+    rg: ReplayGain,
+    *,
+    retries: int = REPLACE_RETRIES,
+    delay: float = REPLACE_DELAY_S,
+    replace: Any = None,
+    sleep: Any = None,
+) -> bool:
+    """`write_replaygain` on a copy next to the file, then `os.replace` (atomic on the same
+    volume). mutagen may have to move the whole audio data (MP3 padding too small, M4A with
+    `moov` in front) - done in place that is neither atomic nor safe for a reader of the
+    file. A sharing violation on the replace is retried a few times, then `FileBusyError`
+    (original untouched, copy removed)."""
+    replace = replace or os.replace
+    sleep = sleep or time.sleep
+    path = Path(path)
+    ext = path.suffix.lower()
+    if ext not in (".mp3", ".m4a", ".mp4", ".opus"):
+        return False
+    tmp = path.with_name(path.name + TMP_SUFFIX)
+    try:
+        tmp.unlink(missing_ok=True)  # leftover of a crash
+        shutil.copy2(path, tmp)
+        if not write_replaygain(tmp, rg, kind=ext):
+            return False
+        for attempt in range(max(1, retries)):
+            try:
+                replace(tmp, path)
+                return True
+            except PermissionError as exc:  # WinError 5/32: open without FILE_SHARE_DELETE
+                if attempt + 1 >= max(1, retries):
+                    raise FileBusyError(str(exc)) from exc
+                sleep(delay * (attempt + 1))
+        return False  # pragma: no cover
+    finally:
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 def read_replaygain(path: Path) -> ReplayGain | None:

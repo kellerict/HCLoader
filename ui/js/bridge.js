@@ -218,6 +218,8 @@
                                            | {ok:false, status?:"unavailable", error}   pending: Event "waveform" folgt
      save_position(id, position, duration?) -> {ok, stored}   stored false = erste/letzte 30 s (Eintrag entfernt) oder resume off
      forget_position(id)                -> {ok}
+     set_now_playing(id|null)           -> {ok}   im Player geladenes Set (Datei offen): wird nie getaggt, aufgeschobene
+                                           ReplayGain-Tags folgen nach dem Freigeben (Review v0.7.0 M1)
      get_continue_listening(limit?)     -> {ok, items:[{id, position, duration, updated, title, artist, genre, platform}]}
      get_analysis_status()              -> {total, analysed, tagged, waveforms, failed, pending, last_pass, ffmpeg, running}
      analyse_library(opts?)             -> {ok, started, scope} | {ok, started:false, running:true} | {ok:false, error}

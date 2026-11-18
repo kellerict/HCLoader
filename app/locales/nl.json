@@ -560,6 +560,7 @@
     "no_ffmpeg": "ffmpeg ontbreekt – luidheid en golfvorm kunnen niet worden geanalyseerd (Instellingen › Onderhoud)",
     "ffmpeg_failed": "ffmpeg kon het bestand niet analyseren: {error}",
     "tag_failed": "ReplayGain-tags niet geschreven ({path}): {error} – nieuwe poging bij de volgende analyse",
+    "tag_deferred": "ReplayGain-tags voor {path} uitgesteld: het bestand is in gebruik – later geschreven",
     "no_peaks": "Voor dit bestand kon geen golfvorm worden berekend",
     "item_failed": "Analyse van {id} mislukt: {error}",
     "pass_started": "Luidheid en golfvormen worden geanalyseerd (offline, één bestand tegelijk) …",

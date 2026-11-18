@@ -2101,6 +2101,11 @@ class Api:
         if self._settings.loudness.analyse_after_download:
             for vid in ids:
                 self._analysis.request(vid)
+        threading.Thread(  # m5: orphaned waveform cache files (cheap, but off this thread)
+            target=lambda: _quiet(analysis.prune_peaks, self._db),
+            name="hcloader-peaks-prune",
+            daemon=True,
+        ).start()
 
     def get_waveform(self, video_id: str) -> dict[str, Any]:
         """Cached waveform of a library item, or {status: "pending"} and the computation is
@@ -2118,6 +2123,12 @@ class Api:
             return {"ok": False, "status": "unavailable", "error": tr("analysis.no_ffmpeg")}
         self._analysis.request_waveform(vid)
         return {"ok": True, "status": "pending"}
+
+    def set_now_playing(self, video_id: str | None = None) -> dict[str, Any]:
+        """The set loaded in the player (file open), None/"" = nothing. Its file is never
+        tagged meanwhile; deferred ReplayGain tags are written after it is released."""
+        self._analysis.set_playing(str(video_id) if video_id else None)
+        return {"ok": True}
 
     def save_position(self, video_id: str, position: Any, duration: Any = None) -> dict[str, Any]:
         """Remember where a set was left (not in the first/last 30 s; `player.resume` off:
@@ -2155,3 +2166,11 @@ class Api:
 
 def _now_iso() -> str:
     return datetime.now().astimezone().isoformat(timespec="seconds")
+
+
+def _quiet(fn: Callable[..., Any], *args: Any) -> Any:
+    try:
+        return fn(*args)
+    except Exception:
+        log.debug("Background task failed: %s", getattr(fn, "__name__", fn), exc_info=True)
+        return None

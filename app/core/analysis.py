@@ -4,8 +4,11 @@ ffmpeg's `ebur128` filter), ReplayGain 2.0 tags and a compact waveform (peaks) p
 Principles:
 - **Local only.** No network, nothing through the throttle; only ffmpeg on the local file.
 - **Never re-encode.** ffmpeg only decodes (output to a pipe / null muxer); the file is changed
-  by a mutagen tag write only (`tagging.write_replaygain`), under `library.FS_LOCK` so a
-  re-tag/move/delete of the same file never runs at the same time.
+  by a mutagen tag write only (`tagging.write_replaygain_atomic`: copy + `os.replace`), under
+  `library.FS_LOCK` so a re-tag/move/delete of the same file never runs at the same time.
+- **Never under the player.** The file loaded in the player (`set_in_use`) is never tagged:
+  the measurement is stored with `tagged=0`, the tag write follows once the player has
+  released the file (the worker queues it again, see `AnalysisQueue.set_playing`).
 - **One decode.** Loudness and peaks come from a single ffmpeg run: `ebur128` passes the audio
   through unchanged, the PCM (mono, 2 kHz, s16le) goes to stdout for the peaks, the summary
   of the filter goes to stderr.
@@ -50,6 +53,26 @@ PROGRESS_EVERY = 1
 K_LAST_PASS = "analysis.last_pass"
 K_SINCE = "analysis.since"  # first start with v0.7.0: downloads after it are analysed later
 _BELOW_NORMAL = getattr(subprocess, "BELOW_NORMAL_PRIORITY_CLASS", 0)
+
+
+# --------------------------------------------------------------------------- file in use
+
+_IN_USE_LOCK = threading.Lock()
+_in_use: str | None = None
+
+
+def set_in_use(video_id: str | None) -> str | None:
+    """The library item the player has loaded (its file is open), None = nothing. Returns the
+    id that was in use before (so the caller can queue a deferred tag write)."""
+    global _in_use
+    with _IN_USE_LOCK:
+        prev, _in_use = _in_use, (str(video_id) if video_id else None)
+    return prev
+
+
+def in_use(video_id: str) -> bool:
+    with _IN_USE_LOCK:
+        return _in_use is not None and _in_use == str(video_id)
 
 
 class AnalysisError(Exception):
@@ -243,6 +266,37 @@ def remove_peaks(video_id: str) -> None:
             pass
 
 
+def prune_peaks(db: Database) -> int:
+    """Delete cached waveforms whose item is no longer in the library (removed, file missing)
+    or that belong to an older download (`downloaded_at` differs). -> number deleted."""
+    try:
+        files = list(peaks_dir().glob("*.json"))
+    except OSError:
+        return 0
+    removed = 0
+    for f in files:
+        try:
+            data = json.loads(f.read_text(encoding="utf-8"))
+            vid = str(data.get("id") or "")
+        except (OSError, ValueError, AttributeError):
+            vid, data = "", {}
+        row = db.get_video(vid) if vid else None
+        stale = (
+            not row
+            or row.get("status") != "done"
+            or (data.get("downloaded_at") or "") != (row.get("downloaded_at") or "")
+        )
+        if stale:
+            try:
+                f.unlink(missing_ok=True)
+                removed += 1
+            except OSError:
+                pass
+    if removed:
+        log.info("Waveform cache: %d stale file(s) removed", removed)
+    return removed
+
+
 # --------------------------------------------------------------------------- ffmpeg run
 
 
@@ -317,7 +371,16 @@ def run_ffmpeg(
     t.start()
     acc = PeakAccumulator()
     res = RunResult()
-    killer = threading.Timer(timeout, proc.kill)
+    timed_out = threading.Event()
+
+    def on_timeout() -> None:
+        timed_out.set()
+        try:
+            proc.kill()
+        except OSError:
+            pass
+
+    killer = threading.Timer(timeout, on_timeout)
     killer.daemon = True
     killer.start()
     finished = threading.Event()
@@ -345,6 +408,12 @@ def run_ffmpeg(
     finally:
         finished.set()
         killer.cancel()
+        if proc.poll() is None:  # exception in the read loop: never leave ffmpeg running
+            try:
+                proc.kill()
+                proc.wait(5)
+            except (OSError, subprocess.TimeoutExpired):
+                pass
         t.join(5)
         for stream in (proc.stdout, proc.stderr):
             try:
@@ -356,7 +425,11 @@ def run_ffmpeg(
     err = b"".join(err_parts).decode("utf-8", "replace")
     if proc.returncode != 0:
         last = [ln for ln in err.strip().splitlines() if ln.strip()][-1:] or [str(proc.returncode)]
-        raise AnalysisError(tr("analysis.ffmpeg_failed", error=last[0][:300]))
+        msg = tr("analysis.ffmpeg_failed", error=last[0][:300])
+        # not the file's fault -> tried again by the next pass: hard timeout (busy machine),
+        # file moved/deleted (re-tag, delete) while ffmpeg was starting
+        transient = timed_out.is_set() or not Path(path).is_file()
+        raise AnalysisError(msg, permanent=not transient)
     if loudness:
         res.loudness = parse_ebur128(err)
     if peaks:
@@ -516,22 +589,33 @@ def process(
             "source": "analysis",
         }
         if settings.loudness.write_tags and not current.get("tagged"):
-            out["tagged"] = _write_tags(db, video_id, rg)
+            state = _write_tags(db, video_id, rg)
+            out["tagged"] = state is True
+            if state == "deferred":
+                out["tag_deferred"] = True
         else:
             out["tagged"] = bool(current.get("tagged"))
     return out
 
 
-def _write_tags(db: Database, video_id: str, rg: tagging.ReplayGain) -> bool:
+def _write_tags(db: Database, video_id: str, rg: tagging.ReplayGain) -> bool | str:
     """Tag write under the library file lock; the path is re-read inside the lock (a re-tag
-    may have moved the file while ffmpeg was decoding)."""
+    may have moved the file while ffmpeg was decoding). -> True, False (failed / not
+    taggable) or "deferred": the file is loaded in the player or held open by another
+    program - nothing written, `tagged` stays 0 and a later run writes the tags."""
     with library.FS_LOCK:
+        if in_use(video_id):
+            log.debug("ReplayGain tag write deferred (file in the player): %s", video_id)
+            return "deferred"
         row = db.get_video(video_id)
         path = Path(row["file_path"]) if row and row.get("file_path") else None
         if path is None or path.suffix.lower() not in TAGGABLE:
             return False
         try:
-            ok = tagging.write_replaygain(path, rg)
+            ok = tagging.write_replaygain_atomic(path, rg)
+        except tagging.FileBusyError:
+            log.info(tr("analysis.tag_deferred", path=path.name))
+            return "deferred"
         except Exception as exc:  # file in use (player), read-only, damaged tag block
             log.warning(tr("analysis.tag_failed", path=path.name, error=exc))
             _store(

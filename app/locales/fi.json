@@ -560,6 +560,7 @@
     "no_ffmpeg": "ffmpeg puuttuu – äänenvoimakkuutta ja aaltomuotoa ei voi analysoida (Asetukset › Ylläpito)",
     "ffmpeg_failed": "ffmpeg ei pystynyt analysoimaan tiedostoa: {error}",
     "tag_failed": "ReplayGain-tunnisteita ei kirjoitettu ({path}): {error} – yritetään uudelleen seuraavassa analyysissä",
+    "tag_deferred": "ReplayGain-tagit tiedostolle {path} lykätty: tiedosto on käytössä – kirjoitetaan myöhemmin",
     "no_peaks": "Tälle tiedostolle ei voitu laskea aaltomuotoa",
     "item_failed": "Kohteen {id} analyysi epäonnistui: {error}",
     "pass_started": "Analysoidaan äänenvoimakkuutta ja aaltomuotoja (offline, tiedosto kerrallaan) …",

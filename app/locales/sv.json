@@ -560,6 +560,7 @@
     "no_ffmpeg": "ffmpeg saknas – ljudstyrka och vågform kan inte analyseras (Inställningar › Underhåll)",
     "ffmpeg_failed": "ffmpeg kunde inte analysera filen: {error}",
     "tag_failed": "ReplayGain-taggar skrevs inte ({path}): {error} – nytt försök vid nästa analys",
+    "tag_deferred": "ReplayGain-taggar för {path} uppskjutna: filen används – skrivs senare",
     "no_peaks": "Ingen vågform kunde beräknas för den här filen",
     "item_failed": "Analysen av {id} misslyckades: {error}",
     "pass_started": "Analyserar ljudstyrka och vågformer (offline, en fil i taget) …",

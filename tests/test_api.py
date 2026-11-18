@@ -999,6 +999,7 @@ def test_every_method_json_serializable(env):
         "get_waveform": ("abcdefghijk",),
         "save_position": ("abcdefghijk", 120.0, 3600.0),
         "forget_position": ("abcdefghijk",),
+        "set_now_playing": ("abcdefghijk",),
     }
     for name in sorted(_bridge_comment_methods()):
         res = getattr(a, name)(*args.get(name, ()))

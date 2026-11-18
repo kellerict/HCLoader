@@ -572,6 +572,7 @@
     "no_ffmpeg": "Trūksta ffmpeg – garsumo ir bangos formos analizuoti negalima (Nustatymai › Priežiūra)",
     "ffmpeg_failed": "ffmpeg nepavyko išanalizuoti failo: {error}",
     "tag_failed": "ReplayGain žymos neįrašytos ({path}): {error} – bus bandoma per kitą analizę",
+    "tag_deferred": "{path} ReplayGain žymės atidėtos: failas naudojamas – bus įrašytos vėliau",
     "no_peaks": "Šiam failui nepavyko apskaičiuoti bangos formos",
     "item_failed": "Nepavyko išanalizuoti {id}: {error}",
     "pass_started": "Analizuojamas garsumas ir bangos formos (neprisijungus, po vieną failą) …",

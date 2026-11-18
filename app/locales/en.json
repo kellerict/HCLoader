@@ -560,6 +560,7 @@
     "no_ffmpeg": "ffmpeg is missing – loudness and waveform cannot be analysed (Settings › Maintenance)",
     "ffmpeg_failed": "ffmpeg could not analyse the file: {error}",
     "tag_failed": "ReplayGain tags not written ({path}): {error} – retried on the next analysis",
+    "tag_deferred": "ReplayGain tags for {path} postponed: the file is in use – written later",
     "no_peaks": "No waveform could be computed for this file",
     "item_failed": "Analysis of {id} failed: {error}",
     "pass_started": "Analysing loudness and waveforms (offline, one file at a time) …",
