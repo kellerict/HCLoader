@@ -201,6 +201,18 @@
                                            Fortschritt: Event "festival_assign"
      cancel_assign_festivals()          -> {ok, running}
 
+   Tracklist-Suche (v0.6.0, offline; Vertrag + Beispiele: docs/bridge-api.md «Tracklist search»)
+     search_tracks(query, opts?)        -> {ok, query, engine:"fts5"|"like", sets:[TrackSet], hits, truncated} | {ok:false, error}
+                                           TrackSet = {id, title, artist, duration, thumbnail, genre, platform, upload_date,
+                                           downloaded_at, hits:[Track], more}; neueste Downloads zuerst
+     get_tracklist(id)                  -> {ok, video_id, source, extracted, tracks:[Track]} | {ok:false, error}
+                                           Track = {position, start (s|null), artist, title, version, label, is_id}
+     get_top_tracks(limit?)             -> {ok, tracks:[{key, artist, title, version, sets}]}   «Meistgespielt» (>= 2 Sets)
+     get_tracklist_status()             -> {total, scanned, sets, tracks, last_pass, engine, running}
+     build_tracklists(opts?)            -> {ok, started, scope} | {ok:false, error}   opts {scope:"missing"|"all"};
+                                           Fortschritt: Event "tracklist_index"
+     cancel_build_tracklists()          -> {ok, running}
+
    Festival-Sammler (v0.5.0; Vertrag, Datenformen, Events: docs/bridge-api.md «Festival collector»)
      get_collector_editions()           -> [CollectorEdition]   Ausgaben mit Checkliste (offline)
      open_collector_edition(data)       -> {ok, edition: CollectorEdition} | {ok:false, errors, error}
@@ -366,6 +378,8 @@
                      phase: "start"|"progress"|"done"|"error" (v0.5.0, Playlist des Veranstalters)
      festival_assign {phase, scope, done?, total?, assigned?, suggested?, none?, manual?, unchanged?, cancelled?}
                      phase: "start"|"progress"|"done"|"error" (v0.3.0, «Festivals zuordnen»)
+     tracklist_index {phase, scope, done?, total?, sets?, tracks?, cancelled?, error?}
+                     phase: "start"|"progress"|"done"|"error" (v0.6.0, «Tracklisten einlesen»)
      toast           {msg, kind?}                      kind: "ok"|"info"|"warn"|"err"
 
    UI-seitig abonnieren:  HC.bridge.on('progress', fn)

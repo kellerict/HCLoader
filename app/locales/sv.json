@@ -229,6 +229,7 @@
     "po_test": "PO-Token-test",
     "retag": "Tagga om",
     "task_check": "Uppgiftskontroll",
+    "tracklists": "Läs in spellistor",
     "update": "Uppdatering",
     "update_check": "Uppdateringskontroll"
   },
@@ -440,6 +441,14 @@
     "limit_reached": "Gräns nådd: {what} ({count})",
     "limit_searches_hour": "sökningar per timme",
     "pause": "Paus mellan nedladdningar: {s} s"
+  },
+  "tracklist": {
+    "pass_started": "Läser in spellistor (offline) …",
+    "pass_done": "Spellistor inlästa: {n} kontrollerade, {sets} set med spellista, {tracks} låtar",
+    "pass_cancelled": "Inläsning av spellistor avbruten: {n} kontrollerade, {sets} set med spellista, {tracks} låtar",
+    "pass_failed": "Kunde inte läsa in spellistor: {error}",
+    "search_failed": "Låtsökningen misslyckades: {error}",
+    "unknown_item": "Det här setet finns inte i biblioteket"
   },
   "update": {
     "already_ready": "Uppdateringen är redan redo",

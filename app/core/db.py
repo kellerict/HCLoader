@@ -331,6 +331,76 @@ def _m9_collector(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX idx_checklist_rows_video ON checklist_rows(video_id)")
 
 
+def _m10_tracklists(conn: sqlite3.Connection) -> None:
+    """v0.6.0 «Tracklist search» (core/tracklist.py, docs/decisions.md).
+
+    - `tracklists`: one row per library item that was examined: where its tracklist came from
+      (`source` = chapters | description | id3 | cue | none), number of tracks, time of the
+      extraction. A row with `source = 'none'` means «looked, found nothing» (the «missing only»
+      pass skips it).
+    - `tracks`: one track of a set. `start` = seconds into the set (NULL = numbered list without
+      timestamps), `artist`/`title`/`version`/`label` = normalised display values, `raw` = the
+      line as found, `is_id` = unreleased/unknown track («ID - ID», «Artist - ID»), `key` =
+      folded artists|title|version for «most played» ('' = not counted), `search` = folded text.
+    - `tracks_fts`: FTS5 index over `tracks.search` (rowid = tracks.id), kept in sync by
+      triggers. Only created if this SQLite has FTS5; otherwise the search falls back to LIKE.
+    """
+    conn.execute(
+        """CREATE TABLE tracklists(
+          video_id TEXT PRIMARY KEY REFERENCES videos(id) ON DELETE CASCADE,
+          source TEXT NOT NULL CHECK(source IN ('chapters','description','id3','cue','none')),
+          count INTEGER NOT NULL DEFAULT 0,
+          extracted TEXT
+        )"""
+    )
+    conn.execute(
+        """CREATE TABLE tracks(
+          id INTEGER PRIMARY KEY,
+          video_id TEXT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+          position INTEGER NOT NULL,
+          start REAL,
+          artist TEXT NOT NULL DEFAULT '',
+          title TEXT NOT NULL DEFAULT '',
+          version TEXT NOT NULL DEFAULT '',
+          label TEXT NOT NULL DEFAULT '',
+          raw TEXT NOT NULL DEFAULT '',
+          is_id INTEGER NOT NULL DEFAULT 0,
+          key TEXT NOT NULL DEFAULT '',
+          search TEXT NOT NULL DEFAULT ''
+        )"""
+    )
+    conn.execute("CREATE INDEX idx_tracks_video ON tracks(video_id, position)")
+    conn.execute("CREATE INDEX idx_tracks_key ON tracks(key)")
+    if not fts5_available(conn):
+        return
+    conn.execute(
+        "CREATE VIRTUAL TABLE tracks_fts USING fts5("
+        "search, tokenize = 'unicode61 remove_diacritics 2')"
+    )
+    conn.execute(
+        "CREATE TRIGGER tracks_fts_ai AFTER INSERT ON tracks BEGIN "
+        "INSERT INTO tracks_fts(rowid, search) VALUES (new.id, new.search); END"
+    )
+    conn.execute(
+        "CREATE TRIGGER tracks_fts_ad AFTER DELETE ON tracks BEGIN "
+        "DELETE FROM tracks_fts WHERE rowid = old.id; END"
+    )
+    conn.execute(
+        "CREATE TRIGGER tracks_fts_au AFTER UPDATE OF search ON tracks BEGIN "
+        "UPDATE tracks_fts SET search = new.search WHERE rowid = new.id; END"
+    )
+
+
+def fts5_available(conn: sqlite3.Connection) -> bool:
+    """Does this SQLite build know FTS5? (Probed with a temporary table, nothing persists.)"""
+    try:
+        conn.execute("CREATE VIRTUAL TABLE temp.hc_fts5_probe USING fts5(x)")
+        conn.execute("DROP TABLE temp.hc_fts5_probe")
+        return True
+    except sqlite3.OperationalError:
+        return False
+
+
 # Append new steps at the end; never edit existing ones. Step i upgrades version i -> i+1.
 MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [
     _m1_initial,
@@ -342,6 +412,7 @@ MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [
     _m7_festivals,
     _m8_backfill,
     _m9_collector,
+    _m10_tracklists,
 ]
 # statuses a user may put into the download queue (enqueue / retry)
 ENQUEUEABLE = ("new", "inbox", "failed")

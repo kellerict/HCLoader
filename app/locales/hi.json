@@ -229,6 +229,7 @@
     "po_test": "PO-Token जाँच",
     "retag": "री-टैग",
     "task_check": "टास्क जाँच",
+    "tracklists": "ट्रैकलिस्ट पढ़ें",
     "update": "अपडेट",
     "update_check": "अपडेट जाँच"
   },
@@ -440,6 +441,14 @@
     "limit_reached": "सीमा पूरी: {what} ({count})",
     "limit_searches_hour": "प्रति घंटा खोजें",
     "pause": "डाउनलोड के बीच विराम: {s} सेकंड"
+  },
+  "tracklist": {
+    "pass_started": "ट्रैकलिस्ट पढ़ी जा रही हैं (ऑफ़लाइन) …",
+    "pass_done": "ट्रैकलिस्ट पढ़ी गईं: {n} जाँचे, {sets} सेट में ट्रैकलिस्ट, {tracks} ट्रैक",
+    "pass_cancelled": "ट्रैकलिस्ट पढ़ना रद्द: {n} जाँचे, {sets} सेट में ट्रैकलिस्ट, {tracks} ट्रैक",
+    "pass_failed": "ट्रैकलिस्ट पढ़ना विफल: {error}",
+    "search_failed": "ट्रैक खोज विफल: {error}",
+    "unknown_item": "यह सेट लाइब्रेरी में नहीं है"
   },
   "update": {
     "already_ready": "अपडेट पहले से तैयार है",

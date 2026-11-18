@@ -228,6 +228,7 @@
     "po_test": "PO-Token 测试",
     "retag": "重写标签",
     "task_check": "任务检查",
+    "tracklists": "读取曲目表",
     "update": "更新",
     "update_check": "更新检查"
   },
@@ -436,6 +437,14 @@
     "limit_reached": "已达上限：{what}（{count}）",
     "limit_searches_hour": "每小时搜索次数",
     "pause": "下载间隔暂停：{s} 秒"
+  },
+  "tracklist": {
+    "pass_started": "正在读取曲目表（离线）…",
+    "pass_done": "曲目表已读取：检查 {n} 个，{sets} 个混音含曲目表，共 {tracks} 首曲目",
+    "pass_cancelled": "读取曲目表已取消：检查 {n} 个，{sets} 个混音含曲目表，共 {tracks} 首曲目",
+    "pass_failed": "读取曲目表失败：{error}",
+    "search_failed": "曲目搜索失败：{error}",
+    "unknown_item": "该混音不在媒体库中"
   },
   "update": {
     "already_ready": "更新已就绪",

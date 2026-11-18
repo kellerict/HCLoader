@@ -980,6 +980,9 @@ def test_every_method_json_serializable(env):
         "parse_timetable": ("18:00 - 19:00 Headhunterz",),
         "import_timetable": (999, "Headhunterz"),
         "import_timetable_file": ("nope/2024.json",),
+        # v0.6.0 «Tracklist search»
+        "search_tracks": ("dragonborn",),
+        "get_tracklist": ("abcdefghijk",),
         "import_checklist_playlist": (999, "https://www.youtube.com/playlist?list=PLx"),
         "add_checklist_row": (999, {"artist": "X"}),
         "update_checklist_row": (999, {"artist": "X"}),

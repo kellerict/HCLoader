@@ -228,6 +228,7 @@
     "po_test": "Teste de PO-Token",
     "retag": "Reaplicação de tags",
     "task_check": "Verificação da tarefa",
+    "tracklists": "Ler tracklists",
     "update": "Atualização",
     "update_check": "Verificação de atualização"
   },
@@ -439,6 +440,14 @@
     "limit_reached": "Limite atingido: {what} ({count})",
     "limit_searches_hour": "buscas por hora",
     "pause": "Pausa entre downloads: {s} s"
+  },
+  "tracklist": {
+    "pass_started": "Lendo tracklists (offline) …",
+    "pass_done": "Tracklists lidas: {n} verificados, {sets} sets com tracklist, {tracks} faixas",
+    "pass_cancelled": "Leitura de tracklists cancelada: {n} verificados, {sets} sets com tracklist, {tracks} faixas",
+    "pass_failed": "Falha ao ler as tracklists: {error}",
+    "search_failed": "Falha na busca de faixas: {error}",
+    "unknown_item": "Este set não está na biblioteca"
   },
   "update": {
     "already_ready": "A atualização já está pronta",

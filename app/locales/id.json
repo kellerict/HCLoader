@@ -228,6 +228,7 @@
     "po_test": "Uji PO-Token",
     "retag": "Tandai ulang",
     "task_check": "Pemeriksaan tugas",
+    "tracklists": "Baca tracklist",
     "update": "Pembaruan",
     "update_check": "Pemeriksaan pembaruan"
   },
@@ -436,6 +437,14 @@
     "limit_reached": "Batas tercapai: {what} ({count})",
     "limit_searches_hour": "pencarian per jam",
     "pause": "Jeda antar unduhan: {s} dtk"
+  },
+  "tracklist": {
+    "pass_started": "Membaca tracklist (offline) …",
+    "pass_done": "Tracklist terbaca: {n} diperiksa, {sets} set dengan tracklist, {tracks} lagu",
+    "pass_cancelled": "Membaca tracklist dibatalkan: {n} diperiksa, {sets} set dengan tracklist, {tracks} lagu",
+    "pass_failed": "Gagal membaca tracklist: {error}",
+    "search_failed": "Pencarian lagu gagal: {error}",
+    "unknown_item": "Set ini tidak ada di pustaka"
   },
   "update": {
     "already_ready": "Pembaruan sudah siap",

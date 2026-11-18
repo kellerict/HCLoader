@@ -230,6 +230,7 @@
     "po_test": "PO-Token tests",
     "retag": "Atkārtota atzīmēšana",
     "task_check": "Uzdevuma pārbaude",
+    "tracklists": "Nolasīt dziesmu sarakstus",
     "update": "Atjaunināšana",
     "update_check": "Atjauninājumu pārbaude"
   },
@@ -444,6 +445,14 @@
     "limit_reached": "Sasniegts limits: {what} ({count})",
     "limit_searches_hour": "meklējumi stundā",
     "pause": "Pauze starp lejupielādēm: {s} s"
+  },
+  "tracklist": {
+    "pass_started": "Nolasa dziesmu sarakstus (bezsaistē) …",
+    "pass_done": "Dziesmu saraksti nolasīti: pārbaudīti {n}, seti ar sarakstu {sets}, dziesmas {tracks}",
+    "pass_cancelled": "Dziesmu sarakstu nolasīšana atcelta: pārbaudīti {n}, seti ar sarakstu {sets}, dziesmas {tracks}",
+    "pass_failed": "Neizdevās nolasīt dziesmu sarakstus: {error}",
+    "search_failed": "Dziesmu meklēšana neizdevās: {error}",
+    "unknown_item": "Šī seta nav bibliotēkā"
   },
   "update": {
     "already_ready": "Atjauninājums jau ir gatavs",

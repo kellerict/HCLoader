@@ -229,6 +229,7 @@
     "po_test": "PO-Token-test",
     "retag": "Opnieuw taggen",
     "task_check": "Taakcontrole",
+    "tracklists": "Tracklists inlezen",
     "update": "Update",
     "update_check": "Updatecontrole"
   },
@@ -440,6 +441,14 @@
     "limit_reached": "Limiet bereikt: {what} ({count})",
     "limit_searches_hour": "zoekopdrachten per uur",
     "pause": "Pauze tussen downloads: {s} s"
+  },
+  "tracklist": {
+    "pass_started": "Tracklists worden ingelezen (offline) …",
+    "pass_done": "Tracklists ingelezen: {n} gecontroleerd, {sets} sets met tracklist, {tracks} tracks",
+    "pass_cancelled": "Tracklists inlezen geannuleerd: {n} gecontroleerd, {sets} sets met tracklist, {tracks} tracks",
+    "pass_failed": "Tracklists inlezen mislukt: {error}",
+    "search_failed": "Tracks zoeken mislukt: {error}",
+    "unknown_item": "Deze set staat niet in de bibliotheek"
   },
   "update": {
     "already_ready": "De update is al gereed",

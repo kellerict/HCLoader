@@ -229,6 +229,7 @@
     "po_test": "PO-Token-Test",
     "retag": "Neu taggen",
     "task_check": "Aufgabenprüfung",
+    "tracklists": "Tracklisten einlesen",
     "update": "Update",
     "update_check": "Update-Prüfung"
   },
@@ -440,6 +441,14 @@
     "limit_reached": "Limit erreicht: {what} ({count})",
     "limit_searches_hour": "Suchen pro Stunde",
     "pause": "Pause zwischen Downloads: {s} s"
+  },
+  "tracklist": {
+    "pass_started": "Tracklisten werden eingelesen (offline) …",
+    "pass_done": "Tracklisten eingelesen: {n} geprüft, {sets} Sets mit Trackliste, {tracks} Tracks",
+    "pass_cancelled": "Tracklisten einlesen abgebrochen: {n} geprüft, {sets} Sets mit Trackliste, {tracks} Tracks",
+    "pass_failed": "Tracklisten einlesen fehlgeschlagen: {error}",
+    "search_failed": "Track-Suche fehlgeschlagen: {error}",
+    "unknown_item": "Dieses Set ist nicht in der Bibliothek"
   },
   "update": {
     "already_ready": "Das Update ist schon bereit",

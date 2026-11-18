@@ -41,6 +41,7 @@ from .core import (
     selfupdate,
     series,
     sidecar,
+    tracklist,
     watchlist,
 )
 from .core import status as status_mod
@@ -89,6 +90,7 @@ _JOB_LABELS = {
     "po_test": "job.po_test",
     "task_check": "job.task_check",
     "festivals": "job.festivals",
+    "tracklists": "job.tracklists",
 }
 _TASK_MOVED = "api.task_moved"
 _UPDATE_BUSY = "api.update_busy"
@@ -224,6 +226,7 @@ class Api:
         self._ticker: Ticker | None = None
         self._loaded_once = False
         self._fest_cancel = threading.Event()
+        self._tl_cancel = threading.Event()  # v0.6.0 tracklist pass
         # v0.5.0 «Festival collector»: matching jobs (one at a time, long: paced searches) and
         # playlist imports (short) in their own threads; per-edition stop events
         self._col_worker = Worker("hcloader-collector")
@@ -287,6 +290,7 @@ class Api:
         self._bf_worker.stop(WATCHLIST_STOP_TIMEOUT_S)
         backfill.release_running(self._db, tr("backfill.note_interrupted"))
         self._fest_cancel.set()  # a running «Assign festivals» pass stops after the current row
+        self._tl_cancel.set()  # v0.6.0: a running tracklist pass stops after the current item
         self._col_stop.set()  # v0.5.0: collector job/import stop before their next request
         if self._col_timer is not None:
             self._col_timer.cancel()
@@ -1985,6 +1989,80 @@ class Api:
         key = "festival.pass_cancelled" if res["cancelled"] else "festival.pass_done"
         log_ok(log, tr(key, n=res["done"], assigned=res["assigned"], suggested=res["suggested"]))
         self._bus.emit("festival_assign", {"phase": "done", "scope": scope, **res})
+        return res
+
+    # ================================================================== tracklist search (v0.6.0)
+
+    def search_tracks(self, query: str, opts: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Sets of the library whose tracklist contains `query` (artist and/or title words,
+        prefix match). Offline: SQLite FTS5 (LIKE fallback)."""
+        q = str(query or "").strip()[:200]
+        try:
+            return {"ok": True, **tracklist.search(self._db, q)}
+        except Exception as exc:  # e.g. a damaged FTS index: say so instead of a stack trace
+            log.exception(tr("tracklist.search_failed", error=exc))
+            return {"ok": False, "error": tr("tracklist.search_failed", error=exc)}
+
+    def get_tracklist(self, video_id: str) -> dict[str, Any]:
+        """Tracks of one set with timestamps; extracted on the spot if never examined."""
+        res = tracklist.get_tracklist(self._db, str(video_id))
+        if not res.get("ok"):
+            return {"ok": False, "error": tr(res.pop("error_key", "tracklist.unknown_item"))}
+        return res
+
+    def get_top_tracks(self, limit: int = 20) -> dict[str, Any]:
+        """«Most played»: tracks that appear in the most sets (at least two)."""
+        try:
+            n = int(limit)
+        except (TypeError, ValueError):
+            n = 20
+        return {"ok": True, "tracks": tracklist.top_tracks(self._db, n)}
+
+    def get_tracklist_status(self) -> dict[str, Any]:
+        st = tracklist.status(self._db)
+        st["running"] = self._worker.busy("tracklists")
+        return st
+
+    def build_tracklists(self, opts: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Offline pass over the library in the maintenance worker; progress via
+        `tracklist_index`. opts {scope: "missing" (default) | "all"}."""
+        o = opts if isinstance(opts, dict) else {}
+        scope = "all" if o.get("scope") == "all" else "missing"
+        if self._worker.busy("tracklists"):
+            return {"ok": True, "started": False, "running": True}
+        other = self._worker.other_job("tracklists")
+        if other is not None:
+            label = tr(_JOB_LABELS[other]) if other in _JOB_LABELS else tr("job.retag")
+            return {"ok": False, "error": tr("api.maintenance_busy", label=label)}
+        self._tl_cancel.clear()
+        self._worker.submit("tracklists", self._do_tracklists, scope)
+        return {"ok": True, "started": True, "scope": scope}
+
+    def cancel_build_tracklists(self) -> dict[str, Any]:
+        self._tl_cancel.set()
+        return {"ok": True, "running": self._worker.busy("tracklists")}
+
+    def _do_tracklists(self, scope: str) -> dict[str, Any]:
+        self._bus.emit("tracklist_index", {"phase": "start", "scope": scope})
+        log.info(tr("tracklist.pass_started"))
+
+        def progress(data: dict[str, Any]) -> None:
+            self._bus.emit("tracklist_index", {"phase": "progress", "scope": scope, **data})
+
+        try:
+            # a dead network share must not hang the pass: files below it are skipped
+            files_ok = library.target_reachable(self._cfg.target_dir_path())
+            res = tracklist.index_pass(
+                self._db, scope=scope, progress=progress, cancel=self._tl_cancel, files_ok=files_ok
+            )
+        except Exception as exc:
+            log.error(tr("tracklist.pass_failed", error=exc))
+            res = {"ok": False, "error": tr("tracklist.pass_failed", error=exc)}
+            self._bus.emit("tracklist_index", {"phase": "error", "scope": scope, **res})
+            return res
+        key = "tracklist.pass_cancelled" if res["cancelled"] else "tracklist.pass_done"
+        log_ok(log, tr(key, n=res["done"], sets=res["sets"], tracks=res["tracks"]))
+        self._bus.emit("tracklist_index", {"phase": "done", "scope": scope, **res})
         return res
 
 

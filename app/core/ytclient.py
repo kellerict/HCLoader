@@ -31,7 +31,7 @@ from urllib.parse import urlparse
 import yt_dlp
 from yt_dlp.utils import DownloadCancelled
 
-from . import binaries, config, paths, platforms, preflight, series, sidecar, tagging
+from . import binaries, config, paths, platforms, preflight, series, sidecar, tagging, tracklist
 from .config import UNSORTED, Settings
 from .db import Database
 from .filters import normalize
@@ -1285,16 +1285,16 @@ class YtClient:
             }
         )
         self.db.set_status(vid, "done", file_path=str(target))
-        sidecar.write(
-            vid,
-            sidecar.build(
-                {**meta, "url": url},
-                chapters=chapters,
-                description=description,
-                genre=genre,
-                source=platforms.label(platform),
-            ),
+        side = sidecar.build(
+            {**meta, "url": url},
+            chapters=chapters,
+            description=description,
+            genre=genre,
+            source=platforms.label(platform),
         )
+        sidecar.write(vid, side)
+        # v0.6.0: tracklist for «Tracklist search» from chapters/description (offline, never fatal)
+        tracklist.safe_refresh(self.db, vid, data=side, path=target)
         self._record_archive(vid)  # only after `done`: no crash window blocks a video forever
         log.info(tr("yt.downloaded", id=vid, path=target))
         return DownloadResult(vid, "done", target, title, cue_path=cue_path, info=meta)

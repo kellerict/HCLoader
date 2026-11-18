@@ -229,6 +229,7 @@
     "po_test": "PO-Tokeni test",
     "retag": "Uuesti sildistamine",
     "task_check": "Ülesande kontroll",
+    "tracklists": "Loe lugude nimekirjad",
     "update": "Uuendamine",
     "update_check": "Uuenduste kontroll"
   },
@@ -440,6 +441,14 @@
     "limit_reached": "Limiit täis: {what} ({count})",
     "limit_searches_hour": "otsinguid tunnis",
     "pause": "Paus allalaadimiste vahel: {s} s"
+  },
+  "tracklist": {
+    "pass_started": "Lugude nimekirjade lugemine (võrguühenduseta) …",
+    "pass_done": "Lugude nimekirjad loetud: {n} kontrollitud, {sets} setti nimekirjaga, {tracks} lugu",
+    "pass_cancelled": "Lugude nimekirjade lugemine katkestatud: {n} kontrollitud, {sets} setti nimekirjaga, {tracks} lugu",
+    "pass_failed": "Lugude nimekirjade lugemine ebaõnnestus: {error}",
+    "search_failed": "Loo otsing ebaõnnestus: {error}",
+    "unknown_item": "Seda setti pole teegis"
   },
   "update": {
     "already_ready": "Uuendus on juba valmis",

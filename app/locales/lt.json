@@ -231,6 +231,7 @@
     "po_test": "PO-Token bandymas",
     "retag": "Pažymėjimas iš naujo",
     "task_check": "Užduoties patikra",
+    "tracklists": "Nuskaityti takelių sąrašus",
     "update": "Naujinimas",
     "update_check": "Naujinimų patikra"
   },
@@ -448,6 +449,14 @@
     "limit_reached": "Pasiektas limitas: {what} ({count})",
     "limit_searches_hour": "paieškų per valandą",
     "pause": "Pauzė tarp atsisiuntimų: {s} s"
+  },
+  "tracklist": {
+    "pass_started": "Nuskaitomi takelių sąrašai (neprisijungus) …",
+    "pass_done": "Takelių sąrašai nuskaityti: patikrinta {n}, setų su sąrašu {sets}, takelių {tracks}",
+    "pass_cancelled": "Takelių sąrašų nuskaitymas nutrauktas: patikrinta {n}, setų su sąrašu {sets}, takelių {tracks}",
+    "pass_failed": "Nepavyko nuskaityti takelių sąrašų: {error}",
+    "search_failed": "Takelių paieška nepavyko: {error}",
+    "unknown_item": "Šio seto nėra bibliotekoje"
   },
   "update": {
     "already_ready": "Naujinimas jau paruoštas",

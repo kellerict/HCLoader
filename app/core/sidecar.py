@@ -27,7 +27,7 @@ from .tagging import Chapter
 log = logging.getLogger(__name__)
 
 SIDECAR_VERSION = 1
-DESCRIPTION_MAX = 2000
+DESCRIPTION_MAX = 5000  # v0.6.0: whole YouTube description (tracklists sit at the end)
 _ID_RE = re.compile(r"^(?:[0-9A-Za-z_-]{1,32}|sc:\d{1,20})$")
 
 

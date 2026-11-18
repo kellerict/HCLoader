@@ -229,6 +229,7 @@
     "po_test": "PO-Token-test",
     "retag": "Merk på nytt",
     "task_check": "Oppgavesjekk",
+    "tracklists": "Les inn sporlister",
     "update": "Oppdatering",
     "update_check": "Oppdateringssjekk"
   },
@@ -440,6 +441,14 @@
     "limit_reached": "Grense nådd: {what} ({count})",
     "limit_searches_hour": "søk per time",
     "pause": "Pause mellom nedlastinger: {s} s"
+  },
+  "tracklist": {
+    "pass_started": "Leser inn sporlister (frakoblet) …",
+    "pass_done": "Sporlister lest inn: {n} sjekket, {sets} sett med sporliste, {tracks} spor",
+    "pass_cancelled": "Innlesing av sporlister avbrutt: {n} sjekket, {sets} sett med sporliste, {tracks} spor",
+    "pass_failed": "Kunne ikke lese inn sporlister: {error}",
+    "search_failed": "Sporsøket mislyktes: {error}",
+    "unknown_item": "Dette settet er ikke i biblioteket"
   },
   "update": {
     "already_ready": "Oppdateringen er allerede klar",

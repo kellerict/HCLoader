@@ -229,6 +229,7 @@
     "po_test": "PO-Token-testi",
     "retag": "Uudelleenmerkintä",
     "task_check": "Tehtävän tarkistus",
+    "tracklists": "Lue kappalelistat",
     "update": "Päivitys",
     "update_check": "Päivityksen tarkistus"
   },
@@ -440,6 +441,14 @@
     "limit_reached": "Raja saavutettu: {what} ({count})",
     "limit_searches_hour": "hakuja tunnissa",
     "pause": "Tauko latausten välillä: {s} s"
+  },
+  "tracklist": {
+    "pass_started": "Luetaan kappalelistoja (offline) …",
+    "pass_done": "Kappalelistat luettu: {n} tarkistettu, {sets} settiä kappalelistalla, {tracks} kappaletta",
+    "pass_cancelled": "Kappalelistojen luku peruttu: {n} tarkistettu, {sets} settiä kappalelistalla, {tracks} kappaletta",
+    "pass_failed": "Kappalelistojen luku epäonnistui: {error}",
+    "search_failed": "Kappalehaku epäonnistui: {error}",
+    "unknown_item": "Tämä setti ei ole kirjastossa"
   },
   "update": {
     "already_ready": "Päivitys on jo valmis",

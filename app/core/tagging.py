@@ -64,6 +64,7 @@ _TS = r"(?:\d{1,2}:)?\d{1,2}:\d{2}"
 _LEAD_RE = re.compile(rf"^\s*[\[(]?\s*(?P<ts>{_TS})\s*[\])]?\s*(?P<rest>.*)$")
 _TRAIL_RE = re.compile(rf"^(?P<rest>.*?)\s*[\[(]?\s*(?P<ts>{_TS})\s*[\])]?\s*$")
 _SEP_STRIP = " \t-–—:.|>)]•*"
+_SEP_TRAIL = " \t-–—:|>•*"
 
 
 def parse_timestamp(text: str) -> int:
@@ -91,7 +92,8 @@ def parse_timestamps(description: str | None, duration: float | None = None) -> 
         if not m:
             continue
         start = parse_timestamp(m.group("ts"))
-        title = m.group("rest").strip(_SEP_STRIP).strip()
+        # v0.6.0: never strip a closing bracket at the end («Title (X Remix)» stays whole)
+        title = m.group("rest").strip().lstrip(_SEP_STRIP).rstrip(_SEP_TRAIL).strip()
         if start <= last or (duration and start >= duration):
             continue
         found.append(Chapter(float(start), title or f"Track {len(found) + 1:02d}"))
