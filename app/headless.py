@@ -497,6 +497,14 @@ def _run(
                 extra=f" · {'; '.join(notes)}" if notes else "",
             ),
         )
-        _after_run(
-            db, settings, new_sets=new_sets, session=session, done_ids=done_ids, **(extras or {})
-        )
+        try:
+            _after_run(
+                db,
+                settings,
+                new_sets=new_sets,
+                session=session,
+                done_ids=done_ids,
+                **(extras or {}),
+            )
+        except Exception:  # never change the run's outcome
+            log.debug("After-run notification/scan failed", exc_info=True)

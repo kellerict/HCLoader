@@ -368,6 +368,12 @@ def protocol_command(root: Path, exe: Path | None = None) -> str | None:
     return f'"{exe}" -X utf8 -c "{code}" --open "%1"'
 
 
+def _toast_logo(icon: Path) -> Path:
+    """The toast shows a PNG best; fall back to the ICO if the PNG is missing."""
+    png = icon.parent / "icon-192.png"
+    return png if png.exists() else icon
+
+
 def ensure_registered(root: Path, icon: Path, *, reg: Any = None) -> bool:
     """Per-user registration (HKCU, no admin): the AppUserModelID (name + icon in the toast)
     and the `hcloader:` protocol (click -> app at the view). Idempotent; removed by the
@@ -379,7 +385,7 @@ def ensure_registered(root: Path, icon: Path, *, reg: Any = None) -> bool:
     cmd = protocol_command(root)
     values = [
         (rf"Software\Classes\AppUserModelId\{APP_ID}", "DisplayName", "HCLoader"),
-        (rf"Software\Classes\AppUserModelId\{APP_ID}", "IconUri", str(icon)),
+        (rf"Software\Classes\AppUserModelId\{APP_ID}", "IconUri", str(_toast_logo(icon))),
         (rf"Software\Classes\{PROTOCOL}", "", "URL:HCLoader"),
         (rf"Software\Classes\{PROTOCOL}", "URL Protocol", ""),
         (rf"Software\Classes\{PROTOCOL}\DefaultIcon", "", f'"{icon}"'),
