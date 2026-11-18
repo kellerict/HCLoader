@@ -6,6 +6,8 @@
    Festivals & Serien (v0.3.0): Gruppierung «Festival» zeigt eine Kachel pro Serie -> Ausgaben als Jahres-Zeitleiste
    -> Sets nach Bühne. Gruppiert wird hier aus LibraryItem.festival (kein Roundtrip, Filter und Suche wirken weiter).
    Festival-Badge am Eintrag: Klick -> Formular (HC.fest.popover) -> set_festival + retag; Vorschläge mit «Übernehmen».
+   Festival-Sammler (v0.5.0): Unteransicht (views/collector.js, #library/collector[-<edition_id>]) – Knopf «Sammler»
+   im Kopf, «Diese Ausgabe sammeln» an der gewählten Ausgabe der Festival-Ansicht.
 
    Abspielen (Phase 8): ▶ nutzt die Einstellung player.mode – «internal» = Mini-Player (js/player.js),
    «external» = Standardplayer (play_external). Die jeweils andere Variante steht im Menü (⋯).
@@ -227,9 +229,12 @@
     if (!cur && nav.edition !== 'all') cur = eds.filter((e) => e.year).pop() || eds[eds.length - 1];
     const node = (id, on, big, n, sub, title) => `<button type="button" role="tab" data-edition="${esc(id)}" class="${on ? 'on' : ''}" aria-selected="${on}" title="${esc(title)}"><b>${esc(big)}</b>${sub ? `<em>${esc(sub)}</em>` : ''}<small>${n}</small></button>`;
     const line = `<div class="fest-line" role="tablist">${eds.length > 1 ? node('all', !cur, t('fest.all_years'), s.list.length, '', s.name) : ''}${eds.map((e) => node(e.id, cur === e, e.year || '–', e.list.length, e.variant, e.name)).join('')}</div>`;
+    /* Festival-Sammler: Checkliste der gewählten Ausgabe (nur mit Jahr – eine Ausgabe ohne Jahr hat keinen Timetable). */
+    const cs = cur && cur.year ? HC.collector.statsOf(cur.id) : null;
+    const collect = cur && cur.year ? `<button type="button" class="btn sm fh-collect" data-collect="${esc(cur.id)}" title="${esc(t('collector.collect_title', { name: cur.name }))}">${I.flag}${esc(cs ? t('collector.open_checklist', { n: cs.downloaded, total: cs.total }) : t('collector.collect'))}</button>` : '';
     return {
       list: cur ? cur.list : s.list,
-      head: `<div class="fest-head">${back}<span class="fh-name">${HC.fest.kindIcon(s.kind)}${esc(s.name)}</span><span class="mono">${groupMeta(s.list)}</span></div>${line}`,
+      head: `<div class="fest-head">${back}<span class="fh-name">${HC.fest.kindIcon(s.kind)}${esc(s.name)}</span><span class="mono">${groupMeta(s.list)}</span><span class="spacer"></span>${collect}</div>${line}`,
     };
   }
 
@@ -375,7 +380,7 @@
     box.innerHTML = targetDown ? ui.notice('warn', `<b>${esc(t('library.target_down', { path: targetDown }))}</b><br>${esc(t('library.target_down_hint'))}`) : '';
   }
   async function refresh(animate, flashId) {
-    const list = await HC.bridge.safe('get_library');
+    const [list] = await Promise.all([HC.bridge.safe('get_library'), HC.collector.preload()]);
     if (list) { items = list; loaded = true; }
     const st = list && items.some((l) => l.unknown) ? await HC.bridge.safe('get_library_status') : null;
     targetDown = st && st.target_ok === false ? st.target : null;
@@ -563,11 +568,14 @@
     const sel = (id, label, w) => `<select class="select" id="${id}" aria-label="${esc(t(label))}" title="${esc(t(label))}" style="width:${w}px"></select>`;
     el.innerHTML = `
       <div class="view-head"><h2 class="glitch" data-text="${t('library.title')}">${t('library.title')}</h2><span class="sub" id="lib-sub"></span>
-        <div class="actions" id="lib-tools">
-          <div class="search-wrap lib-search">${I.search}<input class="input" id="lib-q" placeholder="${esc(t('library.search'))}" spellcheck="false" autocomplete="off"></div>
-          <div class="seg icon" id="lib-view">
-            <button type="button" data-v="list" title="${esc(t('library.view_list'))}" aria-label="${esc(t('library.view_list'))}">${I.list}</button>
-            <button type="button" data-v="grid" title="${esc(t('library.view_grid'))}" aria-label="${esc(t('library.view_grid'))}">${I.grid}</button>
+        <div class="actions">
+          <button type="button" class="btn ghost lib-collector" id="lib-collector-btn" title="${esc(t('collector.open_title'))}">${I.flag}${esc(t('collector.nav'))}</button>
+          <div class="lib-tools" id="lib-tools">
+            <div class="search-wrap lib-search">${I.search}<input class="input" id="lib-q" placeholder="${esc(t('library.search'))}" spellcheck="false" autocomplete="off"></div>
+            <div class="seg icon" id="lib-view">
+              <button type="button" data-v="list" title="${esc(t('library.view_list'))}" aria-label="${esc(t('library.view_list'))}">${I.list}</button>
+              <button type="button" data-v="grid" title="${esc(t('library.view_grid'))}" aria-label="${esc(t('library.view_grid'))}">${I.grid}</button>
+            </div>
           </div>
         </div></div>
       <div id="lib-banner" hidden></div>
@@ -589,8 +597,28 @@
           <button type="button" class="chip warnchip" id="lib-missing" title="${esc(t('library.missing_chip_title'))}" hidden>${I.warn}<span></span></button>
         </div>
       </div>
-      <div class="scroll" id="lib-scroll"><div id="lib-body"></div></div>`;
+      <div class="scroll" id="lib-scroll"><div id="lib-body"></div></div>
+      <div class="collector" id="lib-collector" hidden></div>`;
     paintControls();
+    HC.collector.init($('#lib-collector', el), {
+      opened: () => el.classList.add('collecting'),
+      closed(silent) {
+        el.classList.remove('collecting');
+        try { history.replaceState(null, '', '#library'); } catch (e) { /* file:// – egal */ }
+        if (!silent) refresh(true);
+      },
+      /* «In der Bibliothek zeigen»: Festival-Ansicht dieser Ausgabe. */
+      showEdition(ed) {
+        prefs.group = 'festival';
+        nav.series = ed.series_id;
+        nav.edition = ed.edition_id;
+        savePrefs();
+        paintControls();
+        clearFilters();
+        refresh(true);
+      },
+    });
+    $('#lib-collector-btn', el).addEventListener('click', () => HC.app.go('library', 'collector'));
 
     if (window.IntersectionObserver) {
       moreObserver = new IntersectionObserver((entries) => {
@@ -632,6 +660,8 @@
     $('#lib-body', el).addEventListener('click', (e) => {
       if (e.target.closest('[data-more]')) { limit += PAGE; render(); return; }
       if (e.target.closest('[data-clear]')) { clearFilters(); return; }
+      const co = e.target.closest('[data-collect]');
+      if (co) { HC.collector.collect(+co.dataset.collect); return; }
       /* Festival-Ansicht: Kachel -> Serie, Zeitleiste -> Ausgabe, zurück -> Kacheln */
       const tile = e.target.closest('[data-series]'), ed = e.target.closest('[data-edition]');
       if (tile || ed || e.target.closest('[data-fest-back]')) {
@@ -672,7 +702,15 @@
 
   HC.views.library = {
     init,
-    show: (arg, changed) => refresh(changed),
-    reset() { items = []; loaded = false; targetDown = null; limit = PAGE; onlyMissing = false; busy.clear(); nav.series = nav.edition = null; },
+    /* arg «collector» / «collector-<edition_id>» öffnet den Festival-Sammler. Ohne arg bleibt eine offene Unteransicht
+       stehen, wenn man aus einer anderen Ansicht zurückkommt; ein Klick auf «Bibliothek» in der Bibliothek schliesst sie. */
+    show(arg, changed) {
+      const C = HC.collector;
+      if (/^collector(-\d+)?$/.test(arg || '')) return C.open(arg);
+      if (C.active() && changed) return C.resume();
+      if (C.active()) C.close(true);
+      return refresh(changed);
+    },
+    reset() { items = []; loaded = false; targetDown = null; limit = PAGE; onlyMissing = false; busy.clear(); nav.series = nav.edition = null; HC.collector.reset(); },
   };
 })();

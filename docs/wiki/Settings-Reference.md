@@ -99,6 +99,9 @@ that is already stored (title, channel, upload date, description).
 | `match_description` | `true` | | Also look for festival names in the stored description. |
 | `extra_stages` | (none) | list, 40 characters each | Stage names in addition to the built-in ones (RED, BLUE, BLACK, UV, YELLOW, INDIGO, MAGENTA, GOLD, SILVER, PURPLE, GREEN, ORANGE, WHITE, PINK, Mainstage). |
 | `extra_set_types` | (none) | list of term + set type | Own words that indicate a set type, checked before the built-in ones. Set types: live set, closing ceremony, opening, endshow, full show, warm-up, anthem, episode. |
+| `collector_searches_per_hour` | `10` | 1 to 200 | v0.5.0 [Festival collector](Festival-Collector): searches per hour for missing sets, spread evenly (10 = one every 6 minutes). Never more than `throttle.max_searches_per_hour`. |
+| `collector_results_per_search` | `10` | 1 to 50 | Results one search for a missing set looks at (one request per search). |
+| `collector_auto_confirm` | `0.85` | 0.5 to 1.0 | From this confidence a hit counts without your confirmation – only with DJ, festival and year in the title. |
 
 The tab also contains:
 

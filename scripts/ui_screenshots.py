@@ -477,6 +477,99 @@ class Shooter:
         page.evaluate("HC.views.settings.reset()")  # forget the simulated pass
         self.go("discover")
 
+    def collector_scenes(self) -> None:
+        """v0.5.0 «Festival collector»: overview, checklist (stats, sources, table, action bar),
+        filter, inline edit, timetable/playlist/files dialogs, estimate, running search."""
+        page = self.page
+        self.go("library")
+        page.click("#lib-collector-btn")
+        page.wait_for_selector(".co-card")
+        self.settle()
+        self.shot("library-collector")
+        page.click('.co-card:has(.ft-name:text-is("Defqon.1 2024")) [data-co="open"]')
+        page.wait_for_selector("#co-rows tr.co-row")
+        self.settle()
+        self.shot("library-collector-checklist")
+        self.shot_scrolled("library-collector-checklist", "#co-scroll")
+        page.click('.co-stat[data-status="missing"]')
+        self.settle()
+        self.shot("library-collector-filter")
+        page.click('.co-stat[data-status="missing"]')
+        page.click('#co-rows tr:has(b:text-is("Ran-D")) [data-co="edit"]')
+        page.wait_for_selector("tr.co-edit")
+        self.settle()
+        self.shot("library-collector-edit")
+        page.keyboard.press("Escape")
+        # paste a timetable: live preview of the parsed rows, skipped lines
+        page.click('.co-tools [data-co="paste"]')
+        page.wait_for_selector(".modal.co-tt")
+        self.settle()
+        self.shot("library-collector-timetable-empty")
+        page.fill(
+            ".co-tt textarea",
+            "Defqon.1 2024 timetable\n\nFriday - RED\n17:00 - 18:00 Sound Rush\n"
+            "18:00 - 19:00 Phuture Noize (Live)\n19:00 - 20:00 Brennan Heart\n\n"
+            "Saturday - BLUE\nAct of Rage | 19:00-20:00\nRooler | 20:00-21:00\n"
+            "22.00 - 23.00 D-Sturb b2b Act of Rage\n??:??\n\nSunday - BLACK\n"
+            "Partyraiser 21:00-22:00\nSefa 22:00-23:00 (Live)\n- The Endshow",
+        )
+        page.wait_for_selector(".co-tt-prev table")
+        self.settle()
+        self.shot("library-collector-timetable")
+        page.keyboard.press("Escape")
+        page.click('.co-tools [data-co="playlist"]')
+        page.wait_for_selector(".modal.co-dlg")
+        self.settle()
+        self.shot("library-collector-playlist")
+        page.keyboard.press("Escape")
+        # shipped timetables: none in v0.5.0 (format + how to contribute), then demo files
+        page.click('.co-tools [data-co="files"]')
+        page.wait_for_selector(".modal.co-files")
+        self.settle()
+        self.shot("library-collector-files-empty")
+        page.keyboard.press("Escape")
+        page.evaluate("HC.mock.demo.timetableFiles()")
+        page.click('.co-tools [data-co="files"]')
+        page.wait_for_selector(".co-file")
+        self.settle()
+        self.shot("library-collector-files")
+        page.keyboard.press("Escape")
+        page.evaluate("HC.mock.demo.timetableFiles(false)")
+        # find missing sets: estimate, then the paced search with progress
+        page.click('#co-bar [data-co="find"]')
+        page.wait_for_selector(".modal.co-est")
+        self.settle()
+        self.shot("library-collector-estimate")
+        page.keyboard.press("Escape")
+        page.evaluate(
+            "HC.mock.demo.collectorJob(HC.mock.demo.collectorEdition('defqon1', 2024),"
+            " {state: 'running', total: 4, done: 1, searches: 1, hits: 1,"
+            " note: 'Next search at 09:21'})"
+        )
+        self.settle(200)
+        self.shot("library-collector-searching")
+        page.evaluate(
+            "HC.mock.demo.collectorJob(HC.mock.demo.collectorEdition('defqon1', 2024),"
+            " {state: 'done', total: 4, done: 4, searches: 4, hits: 1})"
+        )
+        self.clear_toasts()
+        # a fresh checklist: empty state with the four sources
+        page.click('[data-co="back"]')
+        page.wait_for_selector("#co-new")
+        page.select_option("#co-series", label="Dominator")
+        page.fill("#co-year", "2025")
+        page.click('[data-co="create"]')
+        page.wait_for_selector(".co-empty-actions")
+        self.settle()
+        self.shot("library-collector-empty")
+        page.click(".co-head [data-co=menu]")
+        page.click('.menu [data-k="del"]')
+        page.click(".modal [data-act=ok]")
+        page.wait_for_selector("#co-new")
+        self.clear_toasts()
+        page.click('[data-co="back"]')
+        self.settle()
+
     def log_scenes(self) -> None:
         """Phase 5: Live-Log (Filter, Suche, Pause beim Hochscrollen), Lauf-Historie als Tabelle."""
         page = self.page
@@ -735,6 +828,7 @@ class Shooter:
         self.soundcloud_scenes()
         self.player_scenes()
         self.backfill_scenes()
+        self.collector_scenes()
 
         # m9: in pywebview gestartet, Backend antwortet nicht -> Fehlerzustand statt Mock
         page.clock.install(time=FIXED_NOW)

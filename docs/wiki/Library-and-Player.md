@@ -38,6 +38,10 @@ description, without any extra request.
 - Detections below the threshold are shown as **dashed suggestions** with a question mark; the check
   mark accepts them.
 
+To gather **all sets of one edition** with a checklist (timetable, missing sets, download), use the
+[Festival collector](Festival-Collector): button **Collector** in the header, or **Collect this
+edition** next to the selected year.
+
 The list of series, the threshold and the one-off pass over an existing library («Assign festivals
 now») are in Settings, tab *Festivals & series*; see [Settings reference](Settings-Reference).
 

@@ -11,13 +11,27 @@ appears after «Show all changes» (`docs/RELEASING.md`).
 ## [Unreleased]
 
 ### Highlights
-- Festival collector (backend): a checklist of the expected sets of one festival edition
+- Festival collector: a checklist of the expected sets of one festival edition, in the library (button «Collector», or «Collect this edition» in the festival view)
 - Fill it from the organiser's playlist, a pasted timetable (text or CSV), a shared timetable file or by hand
 - Missing sets are found in your library first (free), then searched one by one – gently spread over the hour
 - Only ticked and confirmed sets are queued; downloads are tagged with edition, stage and set type from the checklist
 
 ### Added
-- Festival collector backend (`app/core/collector.py`, `app/core/timetable.py`), UI follows: per
+- Festival collector UI (`ui/js/views/collector.js`, sub-view of the library, `#library/collector`):
+  overview of all checklists with «New checklist» (series + year + variant); per edition the status
+  tiles (found / queued / downloaded / missing / ignored, click = filter), filters by stage, day and
+  DJ, the table with checkbox, DJ, stage, day/time, set type, status and matched video (duration,
+  confidence), confirm / reject / «other hits» for uncertain matches, ignore, inline edit, «Add row»,
+  and a fixed action bar with «Select all / None», «Find missing sets» and «Download checked (n)».
+- Collector dialogs: organiser playlist (link, progress while it is read), «Paste timetable» with a
+  live preview of the parsed sets and the lines that were not understood, «Shipped timetables» (empty
+  state explains the format and how to contribute), estimate before the search (searches, duration,
+  free searches this hour) with progress, stop and resume.
+- Entry «Collect this edition» / «Checklist n / total» at the selected year of the festival view.
+- Settings tab «Festivals & series»: section «Festival collector» (searches per hour, results per
+  search, automatic confirmation threshold). UI texts in all languages.
+- Wiki page «Festival collector».
+- Festival collector backend (`app/core/collector.py`, `app/core/timetable.py`): per
   edition a checklist of sets (DJ/artist, stage, day, start/end, set type, source playlist / timetable /
   file / manual, status missing / found / queued / downloaded / ignored, match + confidence +
   candidates, confirmed and ticked flags).

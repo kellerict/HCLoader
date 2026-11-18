@@ -68,7 +68,7 @@
       backoff_initial_hours: 6, backoff_max_hours: 48,
     },
     player: { mode: 'internal' },
-    festivals: { detect: true, min_confidence: 0.65, year_from_upload_date: true, match_description: true, extra_stages: [], extra_set_types: [] },
+    festivals: { detect: true, min_confidence: 0.65, year_from_upload_date: true, match_description: true, extra_stages: [], extra_set_types: [], collector_searches_per_hour: 10, collector_results_per_search: 10, collector_auto_confirm: 0.85 },
     schedule: { watchlist_interval_hours: 24, in_app_check: true, task_scheduler_enabled: false, task_time: '03:00', entries_per_source: 30 },
     watchlist: { backfill_max_entries: 2000, backfill_requests_per_hour: 120 },
     appearance: { reduce_effects: false, scanlines: true, pulse_bpm: 200 },
@@ -129,6 +129,9 @@
     'festivals.year_from_upload_date': { bool: 1 },
     'festivals.match_description': { bool: 1 },
     'festivals.extra_stages': { list: 1 },
+    'festivals.collector_searches_per_hour': { int: 1, min: 1, max: 200 },
+    'festivals.collector_results_per_search': { int: 1, min: 1, max: 50 },
+    'festivals.collector_auto_confirm': { min: 0.5, max: 1 },
     'storage.title_cleanup_patterns': { list: 1, regex: 1 },
     'throttle.sleep_requests': { min: 0, max: 60 },
     'throttle.sleep_interval': { int: 1, min: 0, max: 3600 },
@@ -285,7 +288,8 @@
     4: [V('rAfterh0urs', 'Afterhours Hardcore Set – Recorded Live in Basel', 'rave', 92, 14, 1, 980, 'Hardcore'),
       V('rTekn0Raid4', 'Hardtekno Raid Vol. 4 – Liveset', 'rave', 54, 30, 0, 310, 'Unsortiert')],
   };
-  const byId = (id) => VIDEOS.find((v) => v.id === id);
+  const CVIDEOS = []; // v0.5.0 Festival-Sammler: gespeicherte Treffer der Checklisten (weder Suche noch Eingang)
+  const byId = (id) => VIDEOS.find((v) => v.id === id) || CVIDEOS.find((v) => v.id === id);
   const SEARCH_IDS = VIDEOS.filter((v) => v.id !== 'cGabb4Fail1').map((v) => v.id);
 
   /* ---------- SoundCloud (Phase 7a): IDs «sc:<zahl>», Thumbnails kämen von *.sndcdn.com ---------- */
@@ -679,6 +683,335 @@
     }));
   }
 
+  /* ---------- Festival-Sammler (v0.5.0, docs/bridge-api.md «Festival collector») ---------- */
+  /* Checkliste pro Ausgabe: edition_id -> {playlist_url, rows, job, created, updated}. Zeilen wie die Tabelle
+     checklist_rows; status/video/candidates/needs_confirmation leitet clRowView ab (wie collector.row_view). */
+  const CL = new Map();
+  let clRowSeq = 0, cvSeq = 0;
+  const clTimers = {};
+  let TT_FILES = []; // v0.5.0 liefert keine Timetable-Dateien aus (demo.timetableFiles() zeigt Beispiele)
+  const nowIso = () => new Date().toISOString();
+  function clVideo(id) {
+    const v = byId(id);
+    if (v) return v;
+    const l = libById(id);
+    return l ? { id: l.id, title: l.title, status: 'done', duration: l.duration, channel_name: l.artist, upload_date: l.upload_date, thumbnail: null, url: `https://www.youtube.com/watch?v=${l.id}`, platform: l.platform || 'youtube' } : null;
+  }
+  const clVideoView = (id) => {
+    const v = clVideo(id);
+    return v ? { id: v.id, title: v.title, status: v.status, duration: v.duration, channel_name: v.channel_name, upload_date: v.upload_date, thumbnail: v.thumbnail || null, url: v.url, platform: v.platform || 'youtube' } : null;
+  };
+  /** Ein gespeicherter Treffer (Status «new»), der noch nicht geladen ist – nie Eingang, nie Queue. */
+  function clNewVideo(title, min, o) {
+    const x = o || {};
+    const id = `qCl${String(++cvSeq).padStart(3, '0')}${foldName(title).slice(0, 5)}`;
+    const v = V(id, title, x.ch || 'qd', min, (cvSeq * 17) % 60, 1, 38000 + cvSeq * 3100, x.genre || 'Hardstyle', x.status || 'new');
+    v.upload_date = x.date || '2024-07-02';
+    CVIDEOS.push(v);
+    return id;
+  }
+  function clStatus(r) {
+    if (r.ignored) return 'ignored';
+    const v = r.video_id ? clVideo(r.video_id) : null;
+    if (!v) return 'missing';
+    if (v.status === 'queued' || v.status === 'downloading') return 'queued';
+    return v.status === 'done' ? 'downloaded' : 'found';
+  }
+  function clRowView(r) {
+    const o = clone(r);
+    delete o.rejected;
+    return Object.assign(o, {
+      status: clStatus(r), video: r.video_id ? clVideoView(r.video_id) : null,
+      candidates: r.candidates.map((c) => ({ confidence: c.confidence, video: clVideoView(c.id) || { id: c.id } })),
+      needs_confirmation: !!r.video_id && !r.confirmed && !r.ignored,
+    });
+  }
+  function clStats(eid) {
+    const s = { total: 0, missing: 0, found: 0, queued: 0, downloaded: 0, ignored: 0, checked: 0, to_confirm: 0, ready: 0, to_search: 0 };
+    const cl = CL.get(eid);
+    (cl ? cl.rows : []).forEach((r) => {
+      const st = clStatus(r);
+      s.total++;
+      s[st]++;
+      if (!r.checked || r.ignored) return;
+      s.checked++;
+      if (r.video_id && !r.confirmed) s.to_confirm++;
+      else if (st === 'found') s.ready++;
+      if (!r.video_id && !r.searched) s.to_search++;
+    });
+    return s;
+  }
+  const clEd = (eid) => EDITIONS.find((e) => e.id === +eid);
+  function clEdition(eid) {
+    const e = clEd(eid), cl = CL.get(+eid);
+    if (!e) return null;
+    const f = festivalOf(e);
+    return {
+      edition_id: e.id, series_id: f.series_id, series_key: f.series_key, series: f.series, kind: f.kind, year: e.event_year, variant: e.variant, edition: f.edition,
+      playlist_url: cl ? cl.playlist_url : null, stats: clStats(e.id), job: cl && cl.job ? clone(cl.job) : null,
+      library: LIBRARY.filter((l) => l.festival && l.festival.edition_id === e.id).length, created: cl ? cl.created : null, updated: cl ? cl.updated : null,
+    };
+  }
+  function clOpen(eid) {
+    if (!CL.has(eid)) CL.set(eid, { playlist_url: null, rows: [], job: null, created: nowIso(), updated: nowIso() });
+    return CL.get(eid);
+  }
+  function clAdd(eid, fields) {
+    const cl = CL.get(eid);
+    const r = Object.assign({
+      id: ++clRowSeq, edition_id: eid, artist: '', stage: null, day: null, start: null, end: null, set_type: null, source: 'manual',
+      video_id: null, confidence: null, candidates: [], rejected: [], confirmed: false, checked: true, ignored: false, edited: false, searched: null,
+      position: cl.rows.reduce((n, x) => Math.max(n, x.position), 0) + 1,
+    }, fields);
+    cl.rows.push(r);
+    return r;
+  }
+  const clRow = (id) => { for (const cl of CL.values()) { const r = cl.rows.find((x) => x.id === +id); if (r) return r; } return null; };
+  const clEmitRows = (eid, rows, deleted) => emit('collector_rows', { edition_id: eid, rows: (rows || []).map(clRowView), deleted: deleted || [], reload: !rows && !deleted, stats: clStats(eid) });
+  const clEmitJob = (eid) => { const cl = CL.get(eid); emit('collector_job', Object.assign(cl && cl.job ? clone(cl.job) : { edition_id: eid, state: 'none' }, { stats: clStats(eid) })); };
+  /* Die Download-Queue ändert den Status eines Videos (queued -> downloaded): betroffene Zeilen melden. */
+  function clVideoChanged(id) {
+    CL.forEach((cl, eid) => { const rows = cl.rows.filter((r) => r.video_id === id); if (rows.length) clEmitRows(eid, rows); });
+  }
+  /** Festival-Werte der Checkliste für ein frisch geladenes Video (manuell = massgebend). */
+  function clFestivalOf(id) {
+    for (const [eid, cl] of CL) {
+      const r = cl.rows.find((x) => x.video_id === id && x.confirmed);
+      if (r) return festivalOf(clEd(eid), { stage: r.stage, set_type: r.set_type, manual: true });
+    }
+    return null;
+  }
+  /** Gratis-Abgleich gegen die Bibliothek dieser Ausgabe (Artist im Titel). -> Anzahl neuer Treffer */
+  function clMatchOffline(eid, rows) {
+    const cl = CL.get(eid), taken = new Set(cl.rows.map((r) => r.video_id).filter(Boolean));
+    let n = 0;
+    (rows || cl.rows).forEach((r) => {
+      const key = foldName(r.artist);
+      if (r.video_id || r.ignored || !key) return;
+      const l = LIBRARY.find((x) => x.festival && x.festival.edition_id === eid && !taken.has(x.id) && foldName(x.title).includes(key));
+      if (!l) return;
+      Object.assign(r, { video_id: l.id, confidence: 0.95, confirmed: true });
+      taken.add(l.id);
+      n++;
+    });
+    return n;
+  }
+  const clKey = (r) => [r.artist, r.stage, r.day].map(foldName).join('|');
+  /** Zeilen eines Timetables/einer Playlist zusammenführen (gleiche Zeile nie doppelt). */
+  function clMerge(eid, list, source) {
+    const cl = CL.get(eid), out = { added: 0, merged: 0, invalid: 0, ids: [] };
+    const fresh = [];
+    list.forEach((x) => {
+      const artist = String((x && x.artist) || '').trim();
+      if (!artist) { out.invalid++; return; }
+      const row = { artist, stage: x.stage || null, day: x.day || null, start: x.start || null, end: x.end || null, set_type: x.set_type || null };
+      const same = cl.rows.find((r) => clKey(r) === clKey(row)) || cl.rows.find((r) => foldName(r.artist) === foldName(artist) && (!r.day || !row.day) && (!r.stage || !row.stage || foldName(r.stage) === foldName(row.stage)));
+      if (same) {
+        if (!same.edited) ['stage', 'day', 'start', 'end', 'set_type'].forEach((k) => { if (!same[k] && row[k]) same[k] = row[k]; });
+        if (x.video_id && !same.video_id) Object.assign(same, { video_id: x.video_id, confidence: 1, confirmed: true });
+        out.merged++;
+        out.ids.push(same.id);
+        return;
+      }
+      const r = clAdd(eid, Object.assign(row, { source }, x.video_id ? { video_id: x.video_id, confidence: 1, confirmed: true, checked: x.checked !== false } : {}));
+      fresh.push(r);
+      out.added++;
+      out.ids.push(r.id);
+    });
+    out.matched = clMatchOffline(eid, fresh);
+    cl.updated = nowIso();
+    return out;
+  }
+
+  /* Timetable-Parser (vereinfacht nach core/timetable.parse): Tag-/Bühnen-Überschriften, Zeitbereiche, Zellen mit |, CSV. */
+  const TT_RANGE = /(\d{1,2})[:.h](\d{2})\s*(?:-|–|—|to)\s*(\d{1,2})[:.h](\d{2})/i;
+  const TT_ONE = /(?:^|\s)(\d{1,2})[:.h](\d{2})(?=\s|$)/;
+  function clParse(text) {
+    const rows = [], skipped = [], seen = new Set();
+    const lines = String(text || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    const stageOf = (s) => STAGES.concat(settings.festivals.extra_stages || []).find((x) => x.toLowerCase() === String(s || '').trim().toLowerCase()) || null;
+    const hm = (h, m) => (+h < 24 && +m < 60 ? `${pad(+h)}:${m}` : null);
+    const tm = (s) => { const m = /^(\d{1,2})[:.h](\d{2})$/.exec(String(s || '').trim()); return m ? hm(m[1], m[2]) : null; };
+    const push = (r) => { const k = `${clKey(r)}|${r.start || ''}`; if (!seen.has(k) && rows.length < 2000) { seen.add(k); rows.push(r); } };
+    let day = null, stage = null, csv = false;
+    const head = lines.length ? lines[0].split(/[;,\t]/).map((c) => c.trim().toLowerCase()) : [];
+    if (head.length > 1 && head.some((c) => ['artist', 'dj', 'act', 'name'].includes(c))) {
+      csv = true;
+      const col = (names) => head.findIndex((c) => names.includes(c));
+      const ia = col(['artist', 'dj', 'act', 'name']), is = col(['stage', 'area']), idy = col(['day', 'date']), i0 = col(['start', 'from']), i1 = col(['end', 'to']), it = col(['type', 'set type']);
+      lines.slice(1).forEach((l) => {
+        const c = l.split(/[;,\t]/).map((x) => x.trim());
+        if (!c[ia]) { skipped.push(l); return; }
+        push({ artist: c[ia], stage: c[is] || null, day: c[idy] || null, start: tm(c[i0]), end: tm(c[i1]), set_type: SET_TYPES.some((x) => x.code === c[it]) ? c[it] : null });
+      });
+    } else {
+      lines.forEach((raw) => {
+        const l = raw.replace(/^[-*•·]\s+/, '');
+        const timed = TT_RANGE.test(l) || TT_ONE.test(l);
+        if (!timed && /timetable|line-?up|schedule/i.test(l)) return;
+        const bare = l.replace(/^#+\s*/, '').replace(/^=+\s*|\s*=+$/g, '').replace(/^\[(.+)\]$/, '$1').replace(/:$/, '').trim();
+        const dm = !timed && /^((?:mon|tues|wednes|thurs|fri|satur|sun)day|day\s*\d+)(?:\s*(?:-|–|—|,)\s*(.+))?$/i.exec(bare);
+        if (dm) {
+          day = dm[1].slice(0, 1).toUpperCase() + dm[1].slice(1).toLowerCase();
+          stage = dm[2] ? stageOf(dm[2]) : null;
+          if (dm[2] && !stage) day = `${day}, ${dm[2].trim()}`;
+          return;
+        }
+        const sm = !timed && /^(?:stage|area)\s*:?\s*(.+)$/i.exec(bare);
+        if (sm || (!timed && stageOf(bare))) { stage = sm ? stageOf(sm[1]) || sm[1].trim() : stageOf(bare); return; }
+        let start = null, end = null, st = stage, type = null;
+        const names = [];
+        l.split(/\s*[|\t]\s*/).filter(Boolean).forEach((cell, i, cells) => {
+          let rest = cell;
+          const m = TT_RANGE.exec(rest), one = m ? null : TT_ONE.exec(rest);
+          if (m) { start = hm(m[1], m[2]); end = hm(m[3], m[4]); rest = rest.replace(m[0], ' '); }
+          else if (one) { start = hm(one[1], one[2]); rest = rest.replace(one[0], ' '); }
+          rest = rest.replace(/\(\s*live\s*\)/i, () => { type = 'live_set'; return ''; });
+          rest = rest.replace(/(?:\(([^)]+)\)|@\s*(\S+))\s*$/, (all, a, b) => { const s = stageOf(a || b); if (s) { st = s; return ''; } return all; });
+          rest = rest.replace(/^[\s\-–—]+|[\s\-–—]+$/g, '').trim();
+          if (cells.length > 1 && stageOf(rest)) st = stageOf(rest);
+          else if (rest) names.push(rest);
+        });
+        if (!names.length || !/[\p{L}\p{N}]/u.test(names.join(''))) { skipped.push(raw); return; }
+        push({ artist: names.join(' '), stage: st, day, start, end, set_type: type });
+      });
+    }
+    const uniq = (k) => [...new Set(rows.map((r) => r[k]).filter(Boolean))];
+    return { ok: true, rows, skipped, days: uniq('day'), stages: uniq('stage'), csv };
+  }
+
+  /* Suchauftrag (wie collector.run_job, im Zeitraffer): eine Zeile pro Schritt, 2 von 3 mit Treffer. */
+  const clTodo = (cl, restart) => cl.rows.filter((r) => r.checked && !r.ignored && !r.video_id && (restart || !r.searched));
+  const clPerHour = () => Math.min(settings.festivals.collector_searches_per_hour, settings.throttle.max_searches_per_hour);
+  function clRun(eid) {
+    clearTimeout(clTimers[eid]);
+    const cl = CL.get(eid), job = cl && cl.job;
+    if (!job || !['pending', 'running'].includes(job.state)) return;
+    if (state.backoff.active) { Object.assign(job, { state: 'pending', note: `Backoff until ${hhmm(state.backoff.until)} – continues automatically`, updated: nowIso() }); clEmitJob(eid); return; }
+    const r = clTodo(cl, job.restart)[0];
+    if (!r || job.done >= job.total) {
+      Object.assign(job, { state: 'done', note: null, finished: nowIso(), updated: nowIso() });
+      pushLog('ok', `Festival collector: ${clEdition(eid).edition} – search finished, ${job.hits} of ${job.total} set(s) found`);
+      clEmitJob(eid);
+      return;
+    }
+    if (job.state === 'pending') pushLog('info', `Festival collector: ${clEdition(eid).edition} – searching ${job.total - job.done} missing set(s), ${clPerHour()} searches per hour`);
+    job.state = 'running';
+    job.note = null;
+    const ed = clEdition(eid), n = job.searches;
+    r.searched = nowIso();
+    state.counters.searches_hour++;
+    if (n % 3 !== 2) {
+      const sure = n % 3 === 0;
+      r.video_id = clNewVideo(sure ? `${r.artist} | ${ed.edition}${r.stage ? ` | ${r.stage}` : ''}` : `${r.artist} live @ ${ed.series} (full set)`, 57 + (n % 5), { ch: sure ? 'qd' : 'rave', date: `${ed.year}-07-03` });
+      Object.assign(r, { confidence: sure ? 0.95 : 0.66, confirmed: sure });
+      job.hits++;
+    }
+    job.done++;
+    job.searches++;
+    job.updated = nowIso();
+    if (job.done < job.total) job.note = `Next search at ${hhmm(Date.now() + 3600000 / clPerHour())}`;
+    clEmitRows(eid, [r]);
+    clEmitJob(eid);
+    pushStatus();
+    clTimers[eid] = setTimeout(() => clRun(eid), 900 * speed.factor);
+  }
+
+  /* Demo-Daten: Defqon.1 2024 (gemischte Zustände), Qlimax 2024 (Suche wartet), Decibel outdoor 2025 (frisch importiert).
+     Die Zeiten sind erfunden. Zustand: lib:<id> = geladen, found, queued, ask:<Sicherheit> = braucht Bestätigung,
+     searched = gesucht ohne Treffer, missing, ignored, off = Haken entfernt. */
+  (function seedCollector() {
+    const seed = (key, year, list, title) => {
+      const e = editionOf(seriesByKey(key).id, year, ''), cl = clOpen(e.id), name = festivalOf(e).edition;
+      list.forEach(([artist, stage, day, start, end, setType, source, st, min, extra]) => {
+        const r = clAdd(e.id, Object.assign({ artist, stage, day, start, end, set_type: setType, source }, extra));
+        const genre = stage === 'BLACK' ? 'Hardcore' : 'Hardstyle', own = title ? title(artist, stage, setType) : `${artist} | ${name}${stage ? ` | ${stage}` : ''}`;
+        if (st.startsWith('lib:')) Object.assign(r, { video_id: st.slice(4), confidence: 0.97, confirmed: true });
+        else if (st === 'found' || st === 'queued' || st === 'off') Object.assign(r, { video_id: clNewVideo(own, min, { genre, status: st === 'queued' ? 'queued' : 'new', date: `${year}-07-02` }), confidence: source === 'playlist' ? 1 : 0.93, confirmed: true, checked: st !== 'off' });
+        else if (st.startsWith('ask:')) {
+          const second = clNewVideo(`${artist} | ${seriesByKey(key).name} ${year - 1}${stage ? ` | ${stage}` : ''}`, min + 2, { genre, date: `${year - 1}-07-01` });
+          Object.assign(r, { video_id: clNewVideo(`${artist} LIVE @ ${seriesByKey(key).name} Weekend (full set)`, min, { genre, ch: 'rave', date: `${year}-07-09` }), confidence: +st.slice(4), candidates: [{ id: second, confidence: 0.52 }], searched: isoAt(1, 21, 30) });
+        } else if (st === 'searched') r.searched = isoAt(1, 21, 36);
+        else if (st === 'ignored') r.ignored = true;
+      });
+      return cl;
+    };
+    const dq = seed('defqon1', 2024, [
+      ['The Opening Ceremony', 'RED', 'Friday', '11:00', '11:30', 'opening', 'playlist', 'found', 28],
+      ['Sound Rush', 'RED', 'Friday', '17:00', '18:00', null, 'timetable', 'missing'],
+      ['D-Block & S-te-Fan', 'RED', 'Saturday', '19:00', '20:00', null, 'playlist', 'queued', 61],
+      ['Sub Zero Project', 'RED', 'Saturday', '20:00', '21:00', 'live_set', 'playlist', 'lib:qDq24RedSZP'],
+      ['Headhunterz', 'RED', 'Saturday', '21:00', '22:00', null, 'playlist', 'found', 60],
+      ['Saturday Endshow', 'RED', 'Saturday', '23:00', '23:30', 'endshow', 'playlist', 'lib:qDq24RedEnd'],
+      ['Ran-D', 'RED', 'Sunday', '19:00', '20:00', null, 'timetable', 'ask:0.72', 59],
+      ['The Closing Ceremony', 'RED', 'Sunday', '22:30', '23:00', 'closing_ceremony', 'playlist', 'lib:qDq24RedCls'],
+      ['Rooler', 'BLUE', 'Friday', '18:00', '19:00', null, 'timetable', 'searched'],
+      ['Vertile', 'BLUE', 'Saturday', '20:00', '21:00', null, 'playlist', 'lib:qDq24BluVer'],
+      ['Rebelion', 'BLUE', 'Saturday', '21:00', '22:00', null, 'playlist', 'lib:qDq24BluRwx'],
+      ['D-Sturb b2b Act of Rage', 'BLUE', 'Saturday', '22:00', '23:00', null, 'timetable', 'ask:0.64', 58],
+      ['Mutilator', 'BLUE', 'Sunday', '18:00', '19:00', null, 'playlist', 'queued', 57],
+      ['Warface', 'BLUE', 'Sunday', '20:00', '21:00', null, 'playlist', 'found', 60],
+      ['N-Vitral', 'BLACK', 'Friday', '19:00', '20:00', null, 'playlist', 'found', 59],
+      ['Dr. Peacock', 'BLACK', 'Saturday', '21:00', '22:00', null, 'playlist', 'lib:qDq24BlkDrS'],
+      ['Angerfist', 'BLACK', 'Saturday', '22:00', '23:00', null, 'playlist', 'lib:qDq24BlkAng'],
+      ['Partyraiser', 'BLACK', 'Saturday', '23:00', '00:00', null, 'timetable', 'missing'],
+      ['Miss K8', 'BLACK', 'Sunday', '20:00', '21:00', null, 'playlist', 'found', 61],
+      ['Sefa', 'BLACK', 'Sunday', '21:00', '22:00', 'live_set', 'timetable', 'missing'],
+      ['Demi Kanon', 'UV', 'Friday', '16:00', '17:00', null, 'timetable', 'ignored'],
+      ['Primeshock', 'UV', 'Saturday', '15:00', '16:00', null, 'playlist', 'off', 56],
+      ['Devin Wild', 'UV', 'Saturday', '18:00', '19:00', null, 'playlist', 'found', 60],
+      ['KELTEK', 'UV', 'Sunday', '17:00', '18:00', null, 'timetable', 'missing'],
+      ['POWER HOUR', null, 'Saturday', '12:00', '13:00', 'full_show', 'manual', 'lib:qDq24PwrHr1', 0, { edited: true }],
+      ['Official Aftermovie', null, null, null, null, null, 'playlist', 'off', 4],
+    ], (artist, stage, setType) => (setType && setType !== 'live_set' ? `Defqon.1 2024${stage ? ` | ${stage}` : ''} | ${artist}` : `${artist} | Defqon.1 2024${stage ? ` | ${stage}` : ''}`));
+    Object.assign(dq, { playlist_url: 'https://www.youtube.com/playlist?list=PLmockDefqon2024Livesets', created: isoAt(6, 20, 12), updated: isoAt(1, 21, 40) });
+    dq.job = { edition_id: dq.rows[0].edition_id, state: 'done', total: 3, done: 3, searches: 3, hits: 2, note: null, started: isoAt(1, 21, 24), updated: isoAt(1, 21, 36), finished: isoAt(1, 21, 36) };
+
+    const ql = seed('qlimax', 2024, [
+      ['Ncrypta', null, 'Saturday', '21:00', '22:00', null, 'timetable', 'found', 58],
+      ['Sound Rush', null, 'Saturday', '22:00', '23:00', null, 'timetable', 'found', 60],
+      ['D-Block & S-te-Fan', null, 'Saturday', '23:00', '00:00', null, 'timetable', 'searched'],
+      ['Sub Zero Project', null, 'Saturday', '00:00', '01:00', null, 'timetable', 'missing'],
+      ['Rebelion', null, 'Saturday', '01:00', '02:00', null, 'timetable', 'missing'],
+      ['Vertile', null, 'Saturday', '02:00', '03:00', null, 'timetable', 'missing'],
+      ['Warface', null, 'Saturday', '03:00', '04:00', null, 'timetable', 'missing'],
+      ['The Purge', null, 'Saturday', '04:00', '05:00', null, 'timetable', 'missing'],
+    ]);
+    const qid = ql.rows[0].edition_id;
+    clMatchOffline(qid);
+    ql.rows.slice(0, 3).forEach((r) => { r.searched = r.searched || isoAt(0, 7, 50); });
+    Object.assign(ql, { created: isoAt(0, 7, 30), updated: isoAt(0, 8, 2) });
+    ql.job = { edition_id: qid, state: 'pending', total: clTodo(ql).length + 3, done: 3, searches: 3, hits: 2, note: 'Next search at 09:20 – 10 searches per hour', started: isoAt(0, 7, 44), updated: isoAt(0, 8, 2), finished: null };
+
+    const db = seed('decibel', 2025, ['Act of Rage', 'Rooler', 'Vertile', 'Mutilator', 'Rebelion', 'Warface', 'D-Sturb', 'Sefa', 'Dr. Peacock', 'Angerfist', 'N-Vitral', 'Miss K8']
+      .map((a, i) => [a, i < 7 ? 'Mainstage' : 'BLACK', i % 2 ? 'Sunday' : 'Saturday', `${14 + (i % 8)}:00`, `${15 + (i % 8)}:00`, null, 'timetable', 'missing']));
+    Object.assign(db, { created: isoAt(0, 8, 5), updated: isoAt(0, 8, 5) });
+  })();
+
+  /** Eingaben einer Zeile prüfen (wie collector.clean_row). -> {values} | {errors} */
+  function clClean(data, partial) {
+    const d = data || {}, values = {}, errors = {};
+    const text = (k, max) => { if (k in d) values[k] = String(d[k] == null ? '' : d[k]).trim().slice(0, max) || null; };
+    if (!partial || 'artist' in d) { const a = String(d.artist == null ? '' : d.artist).trim().slice(0, 200); if (a) values.artist = a; else errors.artist = 'DJ / artist is required'; }
+    text('stage', 40);
+    text('day', 40);
+    ['start', 'end'].forEach((k) => {
+      if (!(k in d)) return;
+      const raw = String(d[k] == null ? '' : d[k]).trim(), m = /^(\d{1,2})[:.](\d{2})$/.exec(raw);
+      if (!raw) values[k] = null;
+      else if (m && +m[1] < 24 && +m[2] < 60) values[k] = `${pad(+m[1])}:${m[2]}`;
+      else errors[k] = `Invalid time: ${raw} (HH:MM)`;
+    });
+    if ('set_type' in d) { if (!d.set_type) values.set_type = null; else if (SET_TYPES.some((x) => x.code === d.set_type)) values.set_type = d.set_type; else errors.set_type = `Unknown set type: ${d.set_type}`; }
+    return Object.keys(errors).length ? { errors } : { values };
+  }
+  function clFlag(ids, flag, value) {
+    const hit = {};
+    (ids || []).forEach((id) => { const r = clRow(id); if (r && r[flag] !== !!value) { r[flag] = !!value; (hit[r.edition_id] = hit[r.edition_id] || []).push(r); } });
+    Object.entries(hit).forEach(([eid, rows]) => clEmitRows(+eid, rows));
+    return { ok: true, changed: Object.values(hit).reduce((n, l) => n + l.length, 0) };
+  }
+
   let libraryBackup = null;
   let targetDown = false; // demo.targetDown(): Zielordner nicht erreichbar
 
@@ -868,7 +1201,7 @@
       blocked_code: code, blocked_reason: msg, platform_blocked: per,
     };
   };
-  const setStatus = (v, st) => { v.status = st; emit('video', { id: v.id, status: st, genre: v.genre }); };
+  const setStatus = (v, st) => { v.status = st; emit('video', { id: v.id, status: st, genre: v.genre }); clVideoChanged(v.id); };
 
   /* ---------- Simulation von worker.py ---------- */
   const limitHit = (p) => cntOf(p || 'youtube').downloads_day >= thOf(p || 'youtube').max_downloads_per_day || cntOf(p || 'youtube').downloads_run >= thOf(p || 'youtube').max_downloads_per_run;
@@ -908,7 +1241,7 @@
       cntOf(plat).downloads_run++; cntOf(plat).downloads_day++;
       const artist = v.channel_name;
       LIBRARY.unshift({
-        festival: null, festival_suggestion: null,
+        festival: clFestivalOf(v.id), festival_suggestion: null,
         id: v.id, title: v.title, artist, channel_id: v.channel_id, genre: v.genre, duration: v.duration, upload_date: v.upload_date, year: +v.upload_date.slice(0, 4),
         downloaded_at: new Date().toISOString(),
         file_path: libPath(v.genre, artist, v.upload_date, v.title, v.id), size_mb: sizeOf(v.duration), missing: false, has_cue: true,
@@ -1751,6 +2084,220 @@
     },
     cancel_assign_festivals: () => later(20, () => { festState.cancel = true; return { ok: true, running: festState.running }; }),
 
+    /* Festival-Sammler (v0.5.0) */
+    get_collector_editions: () => later(40, () => [...CL.keys()].map(clEdition).sort((a, b) => (b.year || 0) - (a.year || 0) || a.edition.localeCompare(b.edition))),
+    open_collector_edition(data) {
+      return later(80, () => {
+        const d = data || {}, errors = {};
+        let e = null;
+        if (d.edition_id != null && d.edition_id !== '') {
+          e = clEd(d.edition_id);
+          if (!e) errors.edition_id = 'Unknown edition.';
+          else if (!e.event_year) errors.year = 'A year is required';
+        } else {
+          const s = seriesById(d.series_id), y = +d.year || 0;
+          if (!s || s.hidden) errors.series_id = 'Unknown series.';
+          if (!Number.isInteger(y) || y < 1985 || y > new Date().getFullYear() + 1) errors.year = 'A year is required';
+          if (!Object.keys(errors).length) e = editionOf(s.id, y, String(d.variant || '').trim());
+        }
+        if (Object.keys(errors).length) return { ok: false, errors, error: Object.values(errors)[0] };
+        clOpen(e.id);
+        return { ok: true, edition: clEdition(e.id) };
+      });
+    },
+    delete_checklist(eid) {
+      return later(60, () => {
+        clearTimeout(clTimers[eid]);
+        const deleted = CL.delete(+eid);
+        emit('collector_job', { edition_id: +eid, state: 'none', stats: clStats(+eid) });
+        return { ok: true, deleted };
+      });
+    },
+    get_checklist(eid) {
+      return later(50, () => {
+        if (!clEd(eid)) return { ok: false, errors: { edition_id: 'Unknown edition.' }, error: 'Unknown edition.' };
+        return { ok: true, edition: clEdition(+eid), rows: (CL.get(+eid) || { rows: [] }).rows.slice().sort((a, b) => a.position - b.position).map(clRowView) };
+      });
+    },
+    parse_timetable: (text) => later(50, () => clParse(text)),
+    import_timetable(eid, data) {
+      return later(120, () => {
+        if (!clEd(eid)) return { ok: false, errors: { edition_id: 'Unknown edition.' }, error: 'Unknown edition.' };
+        const parsed = Array.isArray(data) ? { rows: data, skipped: [] } : clParse(data);
+        clOpen(+eid);
+        const out = clMerge(+eid, parsed.rows, 'timetable');
+        pushLog('info', `Festival collector: ${clEdition(+eid).edition} – timetable imported, ${out.added} new row(s), ${out.merged} merged`);
+        clEmitRows(+eid);
+        return Object.assign({ ok: true, skipped: parsed.skipped }, out);
+      });
+    },
+    get_timetable_files: () => later(40, () => clone(TT_FILES)),
+    import_timetable_file(file) {
+      return later(140, () => {
+        const f = TT_FILES.find((x) => x.file === file);
+        if (!f || f.error || !f.series) { const msg = !f ? 'Timetable file not found' : f.error ? `Timetable file is invalid: ${f.error}` : 'The series of this file is unknown or hidden here'; return { ok: false, errors: { file: msg }, error: msg }; }
+        const e = editionOf(f.series_id, f.year, f.variant || '');
+        clOpen(e.id);
+        const pool = ['Sound Rush', 'Ran-D', 'Rooler', 'Partyraiser', 'Sefa', 'KELTEK', 'Phuture Noize', 'Aversion', 'Adaro', 'Frequencerz', 'B-Front', 'Radical Redemption', 'Deadly Guns', 'Unresolved'];
+        const stages = ['RED', 'BLUE', 'BLACK', 'UV'], days = ['Friday', 'Saturday', 'Sunday'];
+        const list = Array.from({ length: f.sets }, (_, i) => ({ artist: pool[i % pool.length] + (i >= pool.length ? ` (${Math.floor(i / pool.length) + 1})` : ''), stage: stages[i % 4], day: days[i % 3], start: `${pad(12 + (i % 10))}:00`, end: `${pad(13 + (i % 10))}:00`, set_type: null }));
+        const out = clMerge(e.id, list, 'file');
+        clEmitRows(e.id);
+        return Object.assign({ ok: true, edition_id: e.id, skipped: [] }, out);
+      });
+    },
+    import_checklist_playlist(eid, url) {
+      return later(120, () => {
+        const id = +eid, cl = CL.get(id);
+        if (!cl) return { ok: false, errors: { edition_id: 'Unknown edition.' }, error: 'Unknown edition.' };
+        const u = String(url || '').trim();
+        const yt = /^https:\/\/(?:www\.|music\.)?youtube\.com\/(?:playlist|watch)\?(?:.*&)?list=([\w-]+)/.exec(u), sc = /^https:\/\/soundcloud\.com\/[^/]+\/sets\/[^/?#]+/.exec(u);
+        if (!yt && !sc) { const msg = 'Not a playlist: paste the link of a YouTube playlist or a SoundCloud set'; return { ok: false, errors: { url: msg }, error: msg }; }
+        if (boOf(sc ? 'soundcloud' : 'youtube').active) return { ok: false, error: `Backoff active until ${hhmm(boOf(sc ? 'soundcloud' : 'youtube').until)} – no requests until then` };
+        if (cl.importing) return { ok: true, started: false, running: true };
+        cl.importing = true;
+        cl.playlist_url = yt ? `https://www.youtube.com/playlist?list=${yt[1]}` : sc[0];
+        const ed = clEdition(id), base = { kind: 'playlist', edition_id: id, entries: 0, added: 0, merged: 0, unchecked: 0, requests: 0, cancelled: false, error: null };
+        const names = [...new Set(cl.rows.filter((r) => !r.video_id).map((r) => r.artist).slice(0, 5).concat(['Phuture Noize', 'Aversion', 'Adaro', 'Official Trailer']))];
+        const step = (n) => {
+          if (!CL.has(id)) return;
+          if (n < 2) { emit('collector_import', Object.assign({}, base, { phase: 'progress', entries: (n + 1) * 100, requests: n + 1 })); cl.timer = setTimeout(() => step(n + 1), 500 * speed.factor); return; }
+          const list = names.map((artist) => {
+            const off = /trailer|aftermovie/i.test(artist), row = cl.rows.find((r) => foldName(r.artist) === foldName(artist));
+            return { artist, stage: off || row ? null : 'RED', checked: !off, video_id: clNewVideo(`${artist} | ${ed.edition}${row && row.stage ? ` | ${row.stage}` : ''}`, off ? 3 : 59, { date: `${ed.year}-07-04` }) };
+          });
+          const out = clMerge(id, list, 'playlist');
+          cl.importing = false;
+          pushLog('ok', `Festival collector: ${ed.edition} – playlist read, ${out.added} new row(s), ${out.merged} matched to existing rows`);
+          clEmitRows(id);
+          emit('collector_import', Object.assign({}, base, { phase: 'done', entries: 240 + list.length, added: out.added, merged: out.merged, unchecked: list.filter((x) => !x.checked).length, requests: 3 }));
+          pushStatus();
+        };
+        emit('collector_import', Object.assign({}, base, { phase: 'start' }));
+        cl.timer = setTimeout(() => step(0), 400 * speed.factor);
+        return { ok: true, started: true, url: cl.playlist_url };
+      });
+    },
+    add_checklist_row(eid, row) {
+      return later(60, () => {
+        const id = +eid;
+        if (!CL.has(id)) return { ok: false, errors: { edition_id: 'Unknown edition.' }, error: 'Unknown edition.' };
+        const c = clClean(row, false);
+        if (c.errors) return { ok: false, errors: c.errors, error: Object.values(c.errors)[0] };
+        const r = clAdd(id, Object.assign(c.values, { source: 'manual', checked: !row || row.checked !== false }));
+        clMatchOffline(id, [r]);
+        CL.get(id).updated = nowIso();
+        clEmitRows(id, [r]);
+        return { ok: true, row: clRowView(r) };
+      });
+    },
+    update_checklist_row(id, row) {
+      return later(60, () => {
+        const r = clRow(id);
+        if (!r) return { ok: false, errors: { id: 'Unknown row.' }, error: 'Unknown row.' };
+        const c = clClean(row, true);
+        if (c.errors) return { ok: false, errors: c.errors, error: Object.values(c.errors)[0] };
+        Object.assign(r, c.values, { edited: true });
+        const retag = r.confirmed && clStatus(r) === 'downloaded' ? 1 : 0;
+        clEmitRows(r.edition_id, [r]);
+        return { ok: true, row: clRowView(r), retag };
+      });
+    },
+    delete_checklist_rows(ids) {
+      return later(60, () => {
+        const gone = {};
+        (ids || []).forEach((id) => { const r = clRow(id); if (!r) return; const cl = CL.get(r.edition_id); cl.rows = cl.rows.filter((x) => x !== r); (gone[r.edition_id] = gone[r.edition_id] || []).push(r.id); });
+        Object.entries(gone).forEach(([eid, list]) => clEmitRows(+eid, [], list));
+        return { ok: true, deleted: Object.values(gone).reduce((n, l) => n + l.length, 0) };
+      });
+    },
+    set_checklist_checked: (ids, checked) => later(40, () => clFlag(ids, 'checked', checked)),
+    set_checklist_ignored: (ids, ignored) => later(40, () => clFlag(ids, 'ignored', ignored)),
+    confirm_checklist_match(id, videoId, reject) {
+      return later(60, () => {
+        const r = clRow(id);
+        if (!r) return { ok: false, errors: { id: 'Unknown row.' }, error: 'Unknown row.' };
+        if (videoId == null || videoId === '') {
+          if (reject && r.video_id && !r.rejected.includes(r.video_id)) r.rejected.push(r.video_id);
+          Object.assign(r, { video_id: null, confidence: null, confirmed: false, searched: null, candidates: r.candidates.filter((c) => !r.rejected.includes(c.id)) });
+        } else {
+          const cand = r.candidates.find((c) => c.id === videoId);
+          if (videoId !== r.video_id && !cand) { const msg = 'This video is not a candidate of the row'; return { ok: false, errors: { video_id: msg }, error: msg }; }
+          const rest = r.candidates.filter((c) => c.id !== videoId);
+          if (r.video_id && r.video_id !== videoId) rest.unshift({ id: r.video_id, confidence: r.confidence });
+          Object.assign(r, { video_id: videoId, confidence: cand ? cand.confidence : r.confidence, confirmed: true, candidates: rest.slice(0, 5) });
+        }
+        clEmitRows(r.edition_id, [r]);
+        return { ok: true, row: clRowView(r) };
+      });
+    },
+    estimate_checklist_matching(eid, opts) {
+      return later(60, () => {
+        const id = +eid, cl = CL.get(id);
+        if (!cl) return { ok: false, errors: { edition_id: 'Unknown edition.' }, error: 'Unknown edition.' };
+        const matched = clMatchOffline(id);
+        if (matched) clEmitRows(id);
+        const rows = clTodo(cl, opts && opts.restart).length, per = clPerHour();
+        return {
+          ok: true, edition_id: id, rows, requests: rows, per_hour: per, seconds: Math.round(Math.max(0, rows - 1) * (3600 / per)),
+          searches_left_hour: Math.max(0, settings.throttle.max_searches_per_hour - state.counters.searches_hour), available_at: null,
+          backoff_until: state.backoff.active ? state.backoff.until : null, matched_offline: matched,
+          resume: !!(cl.job && ['pending', 'running', 'paused', 'cancelled'].includes(cl.job.state)),
+        };
+      });
+    },
+    start_checklist_matching(eid, opts) {
+      return later(80, () => {
+        const id = +eid, cl = CL.get(id);
+        if (!cl) return { ok: false, error: 'Unknown edition.' };
+        if (state.backoff.active) return { ok: false, error: `Backoff active until ${hhmm(state.backoff.until)} – no search until then` };
+        if (state.restart) return { ok: false, error: 'yt-dlp was updated – restart HCLoader first' };
+        const restart = !!(opts && opts.restart) || !!(cl.job && cl.job.state === 'done' && !clTodo(cl).length);
+        const todo = clTodo(cl, restart).length, old = cl.job, cont = old && ['pending', 'running', 'paused', 'cancelled'].includes(old.state) && !restart;
+        if (!todo) return { ok: true, job: old ? clone(old) : { edition_id: id, state: 'done', total: 0, done: 0, searches: 0, hits: 0, note: null, started: nowIso(), updated: nowIso(), finished: nowIso() }, nothing: true };
+        if (restart) cl.rows.forEach((r) => { if (!r.video_id) r.searched = null; });
+        cl.job = cont ? Object.assign(old, { state: 'pending', note: null, total: old.done + todo, finished: null, updated: nowIso() })
+          : { edition_id: id, state: 'pending', total: todo, done: 0, searches: 0, hits: 0, note: null, started: nowIso(), updated: nowIso(), finished: null };
+        clEmitJob(id);
+        clTimers[id] = setTimeout(() => clRun(id), 500 * speed.factor);
+        return { ok: true, job: clone(cl.job) };
+      });
+    },
+    cancel_checklist_matching(eid) {
+      return later(40, () => {
+        const id = +eid, cl = CL.get(id);
+        if (!cl || !cl.job) return { ok: false, error: 'No search is running for this edition' };
+        clearTimeout(clTimers[id]);
+        if (['pending', 'running', 'paused'].includes(cl.job.state)) Object.assign(cl.job, { state: 'cancelled', note: null, updated: nowIso() });
+        clEmitJob(id);
+        return { ok: true, job: clone(cl.job) };
+      });
+    },
+    queue_checklist(eid, ids) {
+      return later(80, () => {
+        const id = +eid, cl = CL.get(id);
+        if (!cl) return { ok: false, errors: { edition_id: 'Unknown edition.' }, error: 'Unknown edition.' };
+        const queued = [], skipped = { unchecked: 0, unconfirmed: 0, missing: 0, other: 0 };
+        let retag = 0;
+        cl.rows.filter((r) => !ids || ids.includes(r.id)).forEach((r) => {
+          if (r.ignored || !r.checked) { skipped.unchecked++; return; }
+          const v = r.video_id ? clVideo(r.video_id) : null;
+          if (!v) { skipped.missing++; return; }
+          if (!r.confirmed) { skipped.unconfirmed++; return; }
+          if (v.status === 'done') { if (r.edited) retag++; return; }
+          if (!['new', 'inbox', 'failed'].includes(v.status)) { if (!['queued', 'downloading'].includes(v.status)) skipped.other++; return; }
+          const failedAt = state.queue.findIndex((q) => q.state === 'failed');
+          state.queue.splice(failedAt < 0 ? state.queue.length : failedAt, 0, { id: v.id, state: 'waiting', phase: 'waiting', pct: 0, speed: 0, eta: 0, error: null });
+          setStatus(v, 'queued');
+          queued.push(v.id);
+        });
+        if (queued.length) pushLog('info', `Festival collector: ${queued.length} set(s) of ${clEdition(id).edition} added to the queue`);
+        emit('queue', {});
+        pushStatus();
+        return { ok: true, queued, retag, skipped };
+      });
+    },
+
     /* Protokoll */
     /* filters (optional, Backend): die UI ruft ohne Argument auf und filtert selbst. */
     get_log: () => later(30, () => ({ lines: clone(LOG), runs: clone(RUNS) })),
@@ -1826,6 +2373,29 @@
         BACKFILLS[id] = Object.assign({ state: 'running', position: 0, total: ITEM_COUNT[id] == null ? null : ITEM_COUNT[id], added: 0, found: 0, requests: 0, note: null, started: now, updated: now, finished: null }, BACKFILLS[id] || {}, fields);
         bfEmit(id);
         if (run) bfTimers[id] = setTimeout(() => bfRun(id), 500 * speed.factor);
+      },
+      /** v0.5.0: mitgelieferte Timetable-Dateien zeigen (Beispiele; on = false: keine, wie ausgeliefert). */
+      timetableFiles(on) {
+        const f = (key, year, sets, extra) => {
+          const s = seriesByKey(key);
+          return Object.assign({ file: `${key}/${year}.json`, series_key: key, series_id: s ? s.id : null, series: s ? s.name : null, edition: s ? `${s.name} ${year}` : null, year, variant: '', source: `https://example.org/${key}/${year}/timetable`, updated: `${year}-06-20`, sets }, extra);
+        };
+        TT_FILES = on === false ? [] : [
+          f('defqon1', 2024, 38), f('qlimax', 2024, 9), f('dominator', 2025, 24),
+          f('ghostfest', 2025, 12),
+          { file: 'intents/2025.json', series_key: 'intents', series_id: seriesByKey('intents').id, series: 'Intents Festival', edition: null, error: '“sets” is empty' },
+        ];
+      },
+      /** v0.5.0: edition_id einer Demo-Checkliste, z.B. collectorEdition('defqon1', 2024). */
+      collectorEdition: (key, year) => editionOf(seriesByKey(key).id, year, '').id,
+      /** v0.5.0: Suchauftrag einer Checkliste setzen (Screenshots), z.B. collectorJob(id, {state: 'running', total: 6, done: 2});
+          run = true lässt die Simulation weiterlaufen. */
+      collectorJob(eid, fields, run) {
+        const cl = CL.get(eid);
+        clearTimeout(clTimers[eid]);
+        cl.job = Object.assign({ edition_id: eid, state: 'running', total: clTodo(cl).length, done: 0, searches: 0, hits: 0, note: null, started: nowIso(), updated: nowIso(), finished: null }, fields);
+        clEmitJob(eid);
+        if (run) clTimers[eid] = setTimeout(() => clRun(eid), 500 * speed.factor);
       },
       /** Die nächste Prüfung dieser Quelle schlägt mit der Meldung fehl. */
       sourceError(id, msg) { state.sourceErrors[id] = msg || 'Channel not found (HTTP 404)'; },
