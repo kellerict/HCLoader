@@ -170,3 +170,4 @@ Entscheide: docs/decisions.md «Festival-Sammler (v0.5.0)», Vertrag docs/bridge
 - 2026-11-18 – v0.3.0 und v0.4.0 veröffentlicht (automatisch). Installer-Smoke hing sporadisch (Runner wurde vermutlich vom Restart Manager getroffen) → eigener Job installer-smoke, /NOCLOSEAPPLICATIONS, Uninstall-Aufräumen max. 60 s. v0.5.0 Festival-Sammler: Backend fertig, UI läuft.
 - 2026-11-18 – Nacht: v0.3.0 und v0.4.0 veröffentlicht; v0.5.0 fertig, Release zurückgehalten (Parser-QA 4× knapp nicht bestanden) → Entscheid User.
 - 2026-11-18 – User-Entscheid A: v0.5.0 mit Text-Import als «Beta» veröffentlicht; Parser-Verbesserung in v0.5.x.
+- 2026-11-18 – SignPath-Antrag abgelehnt (zu wenig Reputation). Neuer Antrag, sobald Downloads/Stars/Erwähnungen vorhanden (ca. 3–6 Monate). Alternativen notiert: Certum Open-Source-Zertifikat, Azure Artifact Signing (Verfügbarkeit CH prüfen).

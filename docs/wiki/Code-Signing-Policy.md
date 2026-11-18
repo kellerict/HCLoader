@@ -1,6 +1,7 @@
-> **Status:** application for free open source code signing at the SignPath Foundation is being
-> prepared. Until it is approved, releases are **not signed** and Windows SmartScreen may warn
-> ("More info → Run anyway").
+> **Status:** releases are currently **not signed**. A first application at the SignPath Foundation
+> (November 2026) was declined because the project is still young; we will re-apply once HCLoader
+> has more users. Until then Windows SmartScreen may warn ("More info → Run anyway"). Verify
+> downloads with the `SHA256SUMS` file attached to every release.
 
 Once approved: free code signing provided by [SignPath.io](https://about.signpath.io/),
 certificate by [SignPath Foundation](https://signpath.org/).
