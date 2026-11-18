@@ -181,8 +181,20 @@ Type: filesandordirs; Name: "{app}"
 const
   MaxRelPath = {#MaxRelPath};
   MaxPathLen = 259;
-  // documented detection key of the Evergreen WebView2 Runtime (value pv)
-  WebView2Key = 'SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}';
+  // documented detection keys of the Evergreen WebView2 Runtime (value pv) and, like pywebview
+  // (platforms/winforms.py _is_chromium), of the Beta/Dev/Canary channels (app\core\webview2.py)
+  WebView2Clients = 'SOFTWARE\Microsoft\EdgeUpdate\Clients\';
+  WebView2Stable = '{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}';
+  WebView2Beta = '{2CD8A007-E189-409D-A2C8-9AF4EF3C72AA}';
+  WebView2Dev = '{0D50BFEC-CD6A-4F9A-964C-C7416E3ACB10}';
+  WebView2Canary = '{65C35B14-6C1D-4122-AC46-7148CC9D6497}';
+  // pywebview uses WebView2 from major version 86 (86.0.622.0, it compares the major part only)
+  WebView2MinMajor = 86;
+  // deadline for the Evergreen Bootstrapper (downloads ~150 MB through EdgeUpdate); then it is
+  // stopped and Setup goes on (review v0.5.1 M1)
+  WebView2TimeoutSec = 600;
+  // exit code of the bounded runner when the deadline hit (ERROR_TIMEOUT)
+  WebView2TimedOut = 1460;
 
 var
   PrivacyPage: TInputOptionWizardPage;
@@ -285,47 +297,106 @@ end;
 
 // WebView2 Runtime, as Microsoft documents the detection: pv (REG_SZ) of the client key per
 // machine (64-bit Windows: WOW6432Node = HKLM32) or per user (HKCU); installed = not empty and
-// not 0.0.0.0. HKLM64 covers the key without WOW6432Node.
-function WebView2PvAt(const RootKey: Integer; const Where: String; var Version: String): Boolean;
+// not 0.0.0.0. Aligned with pywebview, which decides Edge Chromium vs. MSHTML: major version >= 86
+// and the Beta/Dev/Canary channels count too. HKLM64 (key without WOW6432Node) is an extra hit
+// that pywebview does not read on x64; Microsoft writes per machine only to WOW6432Node, so it
+// only matters for odd setups (docs\decisions.md).
+function WebView2MajorOk(const Value: String): Boolean;
+var
+  P: Integer;
+begin
+  P := Pos('.', Value);
+  if P = 0 then
+    P := Length(Value) + 1;
+  Result := StrToIntDef(Copy(Value, 1, P - 1), -1) >= WebView2MinMajor;
+end;
+
+function WebView2PvAt(const RootKey: Integer; const Key, Where: String; var Version: String): Boolean;
 var
   Value: String;
 begin
   Result := False;
-  if RegQueryStringValue(RootKey, WebView2Key, 'pv', Value) then
+  if RegQueryStringValue(RootKey, Key, 'pv', Value) then
   begin
     Value := Trim(Value);
     Log('WebView2 ' + Where + ': pv=' + Value);
-    if (Value <> '') and (Value <> '0.0.0.0') then
+    if (Value <> '') and (Value <> '0.0.0.0') and WebView2MajorOk(Value) then
     begin
       Version := Value;
       Result := True;
-    end;
+    end
+    else if Value <> '' then
+      Log('WebView2 ' + Where + ': ignored (empty, 0.0.0.0 or older than major version ' +
+        IntToStr(WebView2MinMajor) + ')');
   end;
+end;
+
+function WebView2ClientFound(const ClientId, Channel: String; var Version: String): Boolean;
+var
+  Key: String;
+begin
+  Key := WebView2Clients + ClientId;
+  Result := WebView2PvAt(HKLM32, Key, Channel + ' HKLM (WOW6432Node)', Version);
+  if not Result then
+    Result := WebView2PvAt(HKCU, Key, Channel + ' HKCU', Version);
+  if (not Result) and IsWin64 then
+    Result := WebView2PvAt(HKLM64, Key, Channel + ' HKLM', Version);
 end;
 
 function FindWebView2(var Version: String): Boolean;
 begin
-  Result := WebView2PvAt(HKLM32, 'HKLM (WOW6432Node)', Version);
+  Result := WebView2ClientFound(WebView2Stable, 'stable', Version);
   if not Result then
-    Result := WebView2PvAt(HKCU, 'HKCU', Version);
-  if (not Result) and IsWin64 then
-    Result := WebView2PvAt(HKLM64, 'HKLM', Version);
+    Result := WebView2ClientFound(WebView2Beta, 'beta', Version);
+  if not Result then
+    Result := WebView2ClientFound(WebView2Dev, 'dev', Version);
+  if not Result then
+    Result := WebView2ClientFound(WebView2Canary, 'canary', Version);
+end;
+
+// Runs Exe with Params hidden and waits at most TimeoutSec. Exec itself waits without a limit, so
+// PowerShell bounds the wait (like CleanupBeforeUninstall): Start-Process + WaitForExit(ms); on
+// timeout the process tree is killed (taskkill /T /F, itself bounded to 30 s) and the exit code
+// is WebView2TimedOut. Exec keeps the wizard responsive (marquee) while it waits.
+function RunBounded(const Exe, Params: String; const TimeoutSec: Integer; var ResultCode: Integer): Boolean;
+var
+  Quoted, QuotedParams, Script: String;
+begin
+  Quoted := Exe;
+  StringChangeEx(Quoted, '''', '''''', True);
+  QuotedParams := Params;
+  StringChangeEx(QuotedParams, '''', '''''', True);
+  Script :=
+    '$p = Start-Process -FilePath ''' + Quoted + ''' -ArgumentList ''' + QuotedParams + ''' ' +
+    '-WindowStyle Hidden -PassThru -ErrorAction Stop; ' +
+    '$null = $p.Handle; ' +
+    'if ($p.WaitForExit(' + IntToStr(TimeoutSec * 1000) + ')) { exit $p.ExitCode }; ' +
+    '$k = Start-Process -FilePath taskkill.exe -ArgumentList (''/PID '' + $p.Id + '' /T /F'') ' +
+    '-WindowStyle Hidden -PassThru; ' +
+    'if ($k) { $null = $k.WaitForExit(30000) }; ' +
+    'exit ' + IntToStr(WebView2TimedOut);
+  Result := Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+    '-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "' + Script + '"',
+    '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
 end;
 
 // Installs the runtime with Microsoft's Evergreen Bootstrapper if it is missing. Without admin
 // rights (PrivilegesRequired=lowest) the bootstrapper installs per user; it downloads the runtime,
-// so it needs internet. A failure never aborts Setup: HCLoader is installed anyway, the user gets
-// a hint with the download page (suppressed in silent mode) and the app explains it again at
-// start (app\core\webview2.py).
+// so it needs internet. It runs with a deadline (WebView2TimeoutSec, review v0.5.1 M1). A failure
+// or timeout never aborts or blocks Setup: HCLoader is installed anyway, the log gets a line, the
+// user gets a hint with the download page - only in interactive mode: SuppressibleMsgBox is not
+// suppressed by /SILENT or /VERYSILENT (only by /SUPPRESSMSGBOXES), so silent installs only log
+// (review v0.5.1 M2). The app explains it again at start (app\core\webview2.py).
+// CI: /WEBVIEW2DRYRUN=1 extracts and does not start it; /WEBVIEW2DRYRUN=timeout extracts it and
+// runs a hanging stand-in (ping) with a 5 s deadline instead, to test the timeout path.
 procedure InstallWebView2();
 var
-  Version, Setup, Failure: String;
-  ResultCode: Integer;
-  DryRun: Boolean;
+  Version, Setup, Failure, Mode, Exe, Params: String;
+  ResultCode, TimeoutSec: Integer;
 begin
-  DryRun := ExpandConstant('{param:WEBVIEW2DRYRUN|0}') = '1';
-  if DryRun then
-    Log('WebView2 dry run: treated as missing (/WEBVIEW2DRYRUN=1)')
+  Mode := Lowercase(ExpandConstant('{param:WEBVIEW2DRYRUN|0}'));
+  if (Mode = '1') or (Mode = 'timeout') then
+    Log('WebView2 dry run: treated as missing (/WEBVIEW2DRYRUN=' + Mode + ')')
   else if FindWebView2(Version) then
   begin
     Log('WebView2 present, skipped (version ' + Version + ')');
@@ -333,10 +404,14 @@ begin
   end
   else
     Log('WebView2 missing: running the Evergreen Bootstrapper');
-  WizardForm.StatusLabel.Caption := CustomMessage('WebView2Installing');
+  TimeoutSec := WebView2TimeoutSec;
+  WizardForm.StatusLabel.Caption :=
+    FmtMessage(CustomMessage('WebView2Installing'), [IntToStr(WebView2TimeoutSec div 60)]);
   WizardForm.FilenameLabel.Caption := '';
   Failure := '';
   Setup := ExpandConstant('{tmp}\{#WebView2Setup}');
+  Exe := Setup;
+  Params := '/silent /install';
   try
     ExtractTemporaryFile('{#WebView2Setup}');
   except
@@ -344,17 +419,30 @@ begin
   end;
   if (Failure = '') and not FileExists(Setup) then
     Failure := Setup;
-  if (Failure = '') and DryRun then
+  if (Failure = '') and (Mode = '1') then
   begin
     Log('WebView2 dry run: bootstrapper extracted to ' + Setup + ', not started');
     Exit;
   end;
+  if (Failure = '') and (Mode = 'timeout') then
+  begin
+    Log('WebView2 dry run: bootstrapper extracted to ' + Setup + ', a hanging stand-in runs instead');
+    Exe := ExpandConstant('{sys}\PING.EXE');
+    Params := '-n 600 127.0.0.1';
+    TimeoutSec := 5;
+  end;
   if Failure = '' then
   begin
+    Log(Format('WebView2: starting %s %s (deadline %d s)', [Exe, Params, TimeoutSec]));
     WizardForm.ProgressGauge.Style := npbstMarquee;
     try
-      if not Exec(Setup, '/silent /install', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+      if not RunBounded(Exe, Params, TimeoutSec, ResultCode) then
         Failure := SysErrorMessage(ResultCode)
+      else if ResultCode = WebView2TimedOut then
+      begin
+        Log(Format('WebView2 install timed out after %d s, bootstrapper stopped', [TimeoutSec]));
+        Failure := Format('timeout after %d s', [TimeoutSec]);
+      end
       else if ResultCode <> 0 then
         Failure := Format('%d / 0x%.8x', [ResultCode, ResultCode]);
     finally
@@ -371,7 +459,10 @@ begin
   else
   begin
     Log('WebView2 install failed: ' + Failure);
-    SuppressibleMsgBox(FmtMessage(CustomMessage('WebView2Failed'), [Failure, '{#WebView2Url}']), mbInformation, MB_OK, IDOK);
+    if WizardSilent then
+      Log('WebView2: silent install, no message box (the app explains it at start)')
+    else
+      SuppressibleMsgBox(FmtMessage(CustomMessage('WebView2Failed'), [Failure, '{#WebView2Url}']), mbInformation, MB_OK, IDOK);
   end;
 end;
 
@@ -379,8 +470,10 @@ procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then
   begin
-    InstallWebView2();
+    // defaults first: a stopped or hanging bootstrapper step must not lose the privacy choice
+    // (review v0.5.1 L1)
     WriteInstallerDefaults();
+    InstallWebView2();
   end;
 end;
 

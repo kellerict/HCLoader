@@ -8,8 +8,10 @@ where to get it (app/main.py).
 Detection as documented by Microsoft ("Distribute your app and the WebView2 Runtime", Detect if a
 WebView2 Runtime is already installed): value `pv` (REG_SZ) of the EdgeUpdate client key, per
 machine (64-bit Windows: under WOW6432Node) or per user; installed = non-empty and not 0.0.0.0.
-pywebview also accepts the Beta/Dev/Canary channels, so they count here too. Registry reads only,
-no network, no subprocess.
+pywebview also accepts the Beta/Dev/Canary channels and needs major version >= 86, so the same
+applies here and in the installer. The per-machine key without WOW6432Node counts as an extra hit
+(pywebview does not read it on x64; Microsoft never writes it there per machine, see
+docs/decisions.md). Registry reads only, no network, no subprocess.
 """
 
 from __future__ import annotations
@@ -25,6 +27,9 @@ PREVIEW_CLIENT_IDS = (
     "{0D50BFEC-CD6A-4F9A-964C-C7416E3ACB10}",
     "{65C35B14-6C1D-4122-AC46-7148CC9D6497}",
 )
+# pywebview (platforms/winforms.py _is_chromium) uses WebView2 from 86.0.622.0 and compares only
+# the major part; installer/HCLoader.iss WebView2MinMajor uses the same rule
+MIN_MAJOR = 86
 # end-user download page of the Evergreen runtime (Microsoft)
 DOWNLOAD_URL = "https://developer.microsoft.com/microsoft-edge/webview2/consumer/"
 # escape hatch for setups the registry check cannot see (e.g. a Fixed Version runtime)
@@ -54,8 +59,13 @@ def _read_pv(root: str, subkey: str) -> str | None:
 
 
 def is_valid_version(pv: str | None) -> bool:
-    """Microsoft: missing, null, empty or 0.0.0.0 means not installed."""
-    return bool(pv and pv.strip() and pv.strip() != "0.0.0.0")
+    """Microsoft: missing, null, empty or 0.0.0.0 means not installed. Like pywebview, a runtime
+    older than major version MIN_MAJOR does not count either (pywebview would use MSHTML)."""
+    value = (pv or "").strip()
+    if not value or value == "0.0.0.0":
+        return False
+    major = value.split(".", 1)[0]
+    return major.isdigit() and int(major) >= MIN_MAJOR
 
 
 def installed_version(reader: Reader | None = None) -> str | None:

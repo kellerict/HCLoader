@@ -114,6 +114,19 @@ jobs:
           Write-Host "Signatur: $($sig.Status) | $subject"
           if ($sig.Status -ne 'Valid') { throw "WebView2-Bootstrapper: Signatur $($sig.Status) ($($sig.StatusMessage))" }
           if ($subject -notmatch '(^|,\s*)O=Microsoft Corporation(,|$)') { throw "WebView2-Bootstrapper: nicht von Microsoft signiert: $subject" }
+          # pin the chain to a Microsoft root (review v0.5.1 L4); the issuing CA changes over the
+          # years (Code Signing PCA 2010/2011/2024, ID Verified CS), the roots do not. Offline
+          # chain build (no revocation lookup): Get-AuthenticodeSignature has already checked trust.
+          $chain = New-Object System.Security.Cryptography.X509Certificates.X509Chain
+          $chain.ChainPolicy.RevocationMode = [System.Security.Cryptography.X509Certificates.X509RevocationMode]::NoCheck
+          $embedded = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2Collection
+          try { $embedded.Import($exe) } catch { Write-Host "::warning::Zertifikate der Signatur nicht lesbar: $_" }
+          $null = $chain.ChainPolicy.ExtraStore.AddRange($embedded)   # intermediates from the signature
+          $null = $chain.Build($sig.SignerCertificate)
+          $certs = @($chain.ChainElements | ForEach-Object { $_.Certificate })
+          $root = "$($certs[-1].Subject)"
+          Write-Host "Kette: $(($certs | ForEach-Object { $_.Subject -replace ',.*$', '' }) -join ' <- ')"
+          if ($certs.Count -lt 2 -or $root -notmatch '^CN=Microsoft (Root Certificate Authority 201[01]|Identity Verification Root Certificate Authority 2020),\s*O=Microsoft Corporation(,|$)') { throw "WebView2-Bootstrapper: Kette endet nicht bei einer Microsoft-Root: $root" }
           $info = (Get-Item $exe).VersionInfo
           Write-Host "Bootstrapper: $($info.ProductName) $($info.FileVersion), $size Bytes, SHA256 $((Get-FileHash -Algorithm SHA256 -Path $exe).Hash)"
 
@@ -401,7 +414,7 @@ jobs:
           }
 
       - name: "Smoke (f3): upgrade over the installation"
-        timeout-minutes: 6
+        timeout-minutes: 8
         run: |
           . (Join-Path $env:GITHUB_WORKSPACE '.github\scripts\installer_smoke.ps1')
           Invoke-SmokeStep 'upgrade' {
@@ -422,6 +435,14 @@ jobs:
             if (Test-Path (Join-Path $Dir 'app\stale_module.py')) { throw 'Upgrade: alte Programmdatei liegt noch da' }
             if (-not (Test-Path (Join-Path $Dir 'app\main.py'))) { throw 'Upgrade: app\main.py fehlt' }
             Invoke-Py 'import after upgrade' "import app.main; print('upgrade ok')" @() 120
+            # /WEBVIEW2DRYRUN=timeout without /SUPPRESSMSGBOXES: a hanging stand-in for the
+            # bootstrapper is stopped after its 5 s deadline, silent Setup shows no box and ends
+            $log3 = Join-Path $Tmp 'setup-3.log'
+            Invoke-Setup $log3 @('/UPDATECHECK=0', '/WEBVIEW2DRYRUN=timeout') -WithMsgBoxes
+            foreach ($want in @('WebView2 install timed out after 5 s', 'WebView2 install failed: timeout', 'WebView2: silent install, no message box')) {
+              if (-not (Select-String -Path $log3 -SimpleMatch -Pattern $want -Quiet)) { throw "Setup-Log: '$want' fehlt" }
+            }
+            if (Get-CimInstance -ClassName Win32_Process -Filter "Name = 'PING.EXE'" -OperationTimeoutSec 15 -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match '-n 600 127\.0\.0\.1' }) { throw 'WebView2-Timeout: Stellvertreter-Prozess laeuft noch' }
           }
 
       - name: "Smoke (f4): silent uninstall - folder and task gone, APPDATA kept"

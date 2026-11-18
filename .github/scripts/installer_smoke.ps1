@@ -112,10 +112,14 @@ function Invoke-Py([string]$What, [string]$Code, [string[]]$Extra = @(), [int]$S
   if ($rc -ne 0) { Show-Diag; throw "$($What): exit code $rc" }
 }
 
-function Invoke-Setup([string]$Log, [string[]]$Extra = @()) {
+# -WithMsgBoxes: without /SUPPRESSMSGBOXES (a message box in silent mode would then hang until the
+# bound of Invoke-Bounded - review v0.5.1 M2)
+function Invoke-Setup([string]$Log, [string[]]$Extra = @(), [switch]$WithMsgBoxes) {
   $exe = Find-Artifact 'HCLoader-Setup-*.exe'
   Stop-AppProcesses 'before setup' 0
-  $rc = Invoke-Bounded 'Setup' $exe (@('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/NOCLOSEAPPLICATIONS', '/CURRENTUSER', "/DIR=`"$Dir`"", "/LOG=`"$Log`"") + $Extra) 300 @($Log)
+  $flags = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/NOCLOSEAPPLICATIONS', '/CURRENTUSER', "/DIR=`"$Dir`"", "/LOG=`"$Log`"")
+  if ($WithMsgBoxes) { $flags = @($flags | Where-Object { $_ -ne '/SUPPRESSMSGBOXES' }) }
+  $rc = Invoke-Bounded 'Setup' $exe ($flags + $Extra) 300 @($Log)
   Show-Tail $Log 25
   if ($rc -ne 0) { Show-Diag @($Log); throw "Setup fehlgeschlagen (Exitcode $rc)" }
 }

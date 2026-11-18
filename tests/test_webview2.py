@@ -46,7 +46,16 @@ def test_documented_registry_locations():
 
 @pytest.mark.parametrize(
     ("pv", "ok"),
-    [(None, False), ("", False), ("  ", False), ("0.0.0.0", False), ("131.0.2903.70", True)],
+    [
+        (None, False),
+        ("", False),
+        ("  ", False),
+        ("0.0.0.0", False),
+        ("131.0.2903.70", True),
+        ("86.0.622.0", True),  # pywebview's minimum
+        ("85.0.564.70", False),  # pywebview would fall back to MSHTML
+        ("x.1.2.3", False),
+    ],
 )
 def test_valid_version(pv, ok):
     assert webview2.is_valid_version(pv) is ok
@@ -202,29 +211,76 @@ def test_iss_bundles_the_bootstrapper_only_for_extraction():
 
 def test_iss_detects_the_runtime_like_microsoft_documents_it():
     code = _code()
-    assert f"'SOFTWARE\\{RUNTIME_KEY}'" in code
+    assert "'SOFTWARE\\Microsoft\\EdgeUpdate\\Clients\\'" in code
     for root in ("HKLM32", "HKCU", "HKLM64"):
-        assert f"WebView2PvAt({root}," in code, root
+        assert f"WebView2PvAt({root}, Key," in code, root
     assert "'pv'" in code and "'0.0.0.0'" in code
     assert "Log('WebView2 present, skipped (version ' + Version + ')')" in code
 
 
+def test_iss_detection_matches_the_app_and_pywebview():
+    """Review v0.5.1 L2/L3: same channels and the same minimum version as app/core/webview2.py."""
+    code = _code()
+    ids = [webview2.RUNTIME_CLIENT_ID, *webview2.PREVIEW_CLIENT_IDS]
+    for name, client_id in zip(("Stable", "Beta", "Dev", "Canary"), ids, strict=True):
+        assert f"WebView2{name} = '{client_id}';" in code, name
+        assert f"WebView2ClientFound(WebView2{name}, '{name.lower()}', Version)" in code, name
+    assert f"WebView2MinMajor = {webview2.MIN_MAJOR};" in code
+    assert "WebView2MajorOk(Value)" in code
+
+
+def _proc(name: str) -> str:
+    match = re.search(rf"(procedure|function) {name}\b.*?\nend;", _code(), re.S)
+    assert match, name
+    return match.group(0)
+
+
 def test_iss_runs_the_bootstrapper_silently_and_never_aborts():
     code = _code()
-    assert "ExtractTemporaryFile('{#WebView2Setup}')" in code
-    assert "'/silent /install'" in code and "ewWaitUntilTerminated" in code
-    assert "WizardForm.StatusLabel.Caption := CustomMessage('WebView2Installing')" in code
-    # failure: a hint with the download page, suppressible for silent installs, and a log line
+    install = _proc("InstallWebView2")
+    assert "ExtractTemporaryFile('{#WebView2Setup}')" in install
+    assert "Params := '/silent /install';" in install
+    assert "CustomMessage('WebView2Installing'), [IntToStr(WebView2TimeoutSec div 60)]" in install
+    assert "WizardForm.StatusLabel.Caption :=" in install
+    # failure: a log line always, the hint box only in interactive mode (M2: SuppressibleMsgBox is
+    # not suppressed by /SILENT or /VERYSILENT, a box would block an unattended install)
+    assert "Log('WebView2 install failed: ' + Failure)" in install
     box = "SuppressibleMsgBox(FmtMessage(CustomMessage('WebView2Failed'), "
-    assert box + "[Failure, '{#WebView2Url}']), mbInformation, MB_OK, IDOK)" in code
-    assert "Log('WebView2 install failed: ' + Failure)" in code
-    # runs after the files are in place, before the installer defaults; no abort path
-    step = re.search(r"procedure CurStepChanged.*?\nend;", code, re.S).group(0)
-    assert step.index("InstallWebView2()") < step.index("WriteInstallerDefaults()")
-    assert "Abort" not in re.search(r"procedure InstallWebView2.*?\nend;", code, re.S).group(0)
-    # CI dry run: treat as missing, extract, do not start it
-    assert "{param:WEBVIEW2DRYRUN|0}" in code
-    assert "Log('WebView2 dry run: bootstrapper extracted to ' + Setup + ', not started')" in code
+    assert box + "[Failure, '{#WebView2Url}']), mbInformation, MB_OK, IDOK)" in install
+    guard = install.index("if WizardSilent then")
+    assert guard < install.index(box)
+    assert install.count("MsgBox(") == 1
+    assert "suppressed in silent mode" not in code
+    assert "Abort" not in install
+    # L1: the installer defaults are written before the bootstrapper step
+    step = _proc("CurStepChanged")
+    assert step.index("WriteInstallerDefaults()") < step.index("InstallWebView2()")
+    # CI dry runs: extract only, or a hanging stand-in with a short deadline
+    assert "{param:WEBVIEW2DRYRUN|0}" in install
+    dry = "Log('WebView2 dry run: bootstrapper extracted to ' + Setup + ', not started')"
+    assert dry in install
+    assert "(Mode = 'timeout')" in install and "TimeoutSec := 5;" in install
+
+
+def test_iss_bootstrapper_runs_with_a_deadline():
+    """Review v0.5.1 M1: no unbounded wait; on timeout the tree is killed and Setup goes on."""
+    code = _code()
+    assert "WebView2TimeoutSec = 600;" in code and "WebView2TimedOut = 1460;" in code
+    install = _proc("InstallWebView2")
+    # the bootstrapper is never started by an unbounded Exec
+    assert "Exec(" not in install
+    assert "RunBounded(Exe, Params, TimeoutSec, ResultCode)" in install
+    assert "ResultCode = WebView2TimedOut" in install
+    assert "Log(Format('WebView2 install timed out after %d s, bootstrapper stopped'" in install
+    runner = _proc("RunBounded")
+    assert "Start-Process -FilePath" in runner and "-PassThru" in runner
+    assert "$null = $p.Handle" in runner  # PS 5.1: keeps ExitCode readable
+    assert "$p.WaitForExit(' + IntToStr(TimeoutSec * 1000) + ')" in runner
+    assert "taskkill.exe" in runner and "/T /F" in runner and "$k.WaitForExit(30000)" in runner
+    assert "'exit ' + IntToStr(WebView2TimedOut)" in runner
+    # quotes in paths are escaped for the single-quoted PowerShell strings
+    assert runner.count("StringChangeEx(") == 2
+    assert '"' not in runner.split("Script :=", 1)[1].split("Result := Exec", 1)[0]
 
 
 def test_iss_webview2_texts_in_every_installer_language():
@@ -243,6 +299,10 @@ def test_iss_webview2_texts_in_every_installer_language():
             assert re.search(rf"^{lang}\.{name}=\S", text, re.M), (lang, name)
     for line in re.findall(r"^(?:\w+\.)?WebView2Failed=(.*)$", text, re.M):
         assert "%1" in line and "%2" in line, line
+    installing = re.findall(r"^(?:\w+\.)?WebView2Installing=(.*)$", text, re.M)
+    assert len(installing) == len(langs)
+    for line in installing:
+        assert "%1" in line and "%2" not in line, line  # %1 = deadline in minutes
     # sv only exists with Swedish.isl: the same guard as in [Languages]
     assert '#if FileExists(AddBackslash(CompilerPath) + "Languages/Swedish.isl")' in text
     assert "ß" not in text
@@ -265,6 +325,20 @@ def test_workflow_fetches_and_verifies_the_bootstrapper():
     assert "installer\\redist" in run and "MicrosoftEdgeWebview2Setup.exe" in run
     assert "Get-AuthenticodeSignature" in run and "-ne 'Valid'" in run
     assert "O=Microsoft Corporation" in run
+    # L4: chain pinned to a Microsoft root, intermediates from the signature itself
+    assert "X509Chain" in run and "ExtraStore.AddRange($embedded)" in run
+    assert "Microsoft (Root Certificate Authority 201[01]|" in run
     smoke = "\n".join(s.get("run", "") for s in data["jobs"]["installer-smoke"]["steps"])
     assert "WebView2 present, skipped" in smoke
     assert "'/WEBVIEW2DRYRUN=1'" in smoke and "WebView2 dry run: bootstrapper extracted" in smoke
+    # M1/M2: hanging bootstrapper stand-in, silent Setup without /SUPPRESSMSGBOXES must finish
+    assert "'/WEBVIEW2DRYRUN=timeout') -WithMsgBoxes" in smoke
+    for needle in (
+        "WebView2 install timed out after 5 s",
+        "WebView2: silent install, no message box",
+        "-n 600 127",
+    ):
+        assert needle in smoke, needle
+    helper = (ROOT / ".github" / "scripts" / "installer_smoke.ps1").read_text(encoding="ascii")
+    assert "[switch]$WithMsgBoxes" in helper
+    assert "Where-Object { $_ -ne '/SUPPRESSMSGBOXES' }" in helper
