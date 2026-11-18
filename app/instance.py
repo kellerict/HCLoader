@@ -3,13 +3,15 @@
 The running GUI listens on 127.0.0.1:<random port> and writes port + random token to
 `<app_home>/locks/activation.json`. A second process (which failed to get the single-instance
 lock) sends `show <token>` and exits. The token keeps other local processes from poking the
-window by guessing the port.
+window by guessing the port. v0.9.0: `show <token> <view>` (`--open inbox`, a click on a Windows
+notification) also switches the running window to that view.
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import re
 import secrets
 import socket
 import sys
@@ -22,6 +24,7 @@ from .core import config
 log = logging.getLogger(__name__)
 
 TIMEOUT_S = 2.0
+VIEW_RE = re.compile(r"^[a-z]{2,20}$")
 
 
 def activation_file() -> Path:
@@ -29,8 +32,15 @@ def activation_file() -> Path:
 
 
 class ActivationServer:
-    def __init__(self, on_show: Callable[[], None], *, path: Path | None = None) -> None:
+    def __init__(
+        self,
+        on_show: Callable[[], None],
+        *,
+        path: Path | None = None,
+        on_view: Callable[[str], None] | None = None,
+    ) -> None:
         self._on_show = on_show
+        self._on_view = on_view
         self._path = path or activation_file()
         self._token = secrets.token_hex(16)
         self._sock: socket.socket | None = None
@@ -75,7 +85,9 @@ class ActivationServer:
                     msg = conn.recv(256).decode("ascii", errors="replace").strip()
                 except OSError:
                     continue
-                if msg == f"show {self._token}":
+                parts = msg.split(" ")
+                view = parts[2] if len(parts) == 3 else ""
+                if len(parts) in (2, 3) and parts[0] == "show" and parts[1] == self._token:
                     try:
                         conn.sendall(b"ok")
                     except OSError:
@@ -84,6 +96,11 @@ class ActivationServer:
                         self._on_show()
                     except Exception:
                         log.debug("Window could not be brought to the front", exc_info=True)
+                    if view and VIEW_RE.match(view) and self._on_view is not None:
+                        try:
+                            self._on_view(view)
+                        except Exception:
+                            log.debug("View could not be opened", exc_info=True)
 
     def stop(self) -> None:
         self._stop.set()
@@ -114,8 +131,8 @@ def _allow_foreground() -> None:
         pass
 
 
-def request_activation(path: Path | None = None) -> bool:
-    """Ask the running instance to show its window. True if it acknowledged."""
+def request_activation(path: Path | None = None, view: str | None = None) -> bool:
+    """Ask the running instance to show its window (and `view`). True if it acknowledged."""
     path = path or activation_file()
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -125,7 +142,8 @@ def request_activation(path: Path | None = None) -> bool:
     _allow_foreground()
     try:
         with socket.create_connection(("127.0.0.1", port), timeout=TIMEOUT_S) as conn:
-            conn.sendall(f"show {token}".encode("ascii"))
+            suffix = f" {view}" if view and VIEW_RE.match(view) else ""
+            conn.sendall(f"show {token}{suffix}".encode("ascii"))
             return conn.recv(8) == b"ok"
     except OSError:
         return False

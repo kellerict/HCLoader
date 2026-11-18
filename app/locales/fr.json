@@ -98,7 +98,8 @@
     "headless": "exécuter sans interface graphique",
     "headless_needs_watchlist": "--headless nécessite --run-watchlist.",
     "run_watchlist": "vérifier la liste de suivi (avec --headless)",
-    "smoke": "exécuter exactement un téléchargement (QA uniquement)"
+    "smoke": "exécuter exactement un téléchargement (QA uniquement)",
+    "open": "ouvrir une vue, p. ex. inbox (aussi hcloader://inbox depuis une notification)"
   },
   "collector": {
     "artist_required": "DJ / artiste requis",
@@ -166,7 +167,9 @@
     "unreadable_rewrite": "Fichier de configuration illisible, il sera réécrit : {error}",
     "value_invalid": "Valeur non valide pour {section}.{field}, la valeur par défaut est utilisée",
     "year_missing": "Année manquante (obligatoire pour la période « année »)",
-    "year_range": "L’année doit être comprise entre {min} et {max}"
+    "year_range": "L’année doit être comprise entre {min} et {max}",
+    "media_url_missing": "Saisis l’adresse du serveur (p. ex. http://192.168.1.10:32400)",
+    "media_url_invalid": "Adresse invalide – http:// ou https:// avec hôte et port facultatif, sans nom d’utilisateur, requête ni #"
   },
   "db": {
     "migration_backup_failed": "Échec de la sauvegarde avant la migration de la base de données v{old} → v{new} ({error}). La migration n’a pas démarré, les données sont inchangées.",
@@ -606,5 +609,50 @@
     "unknown": "Playlist introuvable",
     "gone_unsynced": "La playlist {path} n’existe plus – elle n’est plus tenue à jour",
     "sync_crashed": "Les playlists n’ont pas pu être mises à jour : {error}"
+  },
+  "stats": {
+    "invalid_range": "Période invalide (AAAA-MM-JJ)"
+  },
+  "media": {
+    "err_auth": "Le serveur a refusé le jeton / la clé API",
+    "err_unreachable": "Serveur injoignable ({detail})",
+    "err_timeout": "Le serveur n’a pas répondu à temps",
+    "err_tls": "Problème de certificat HTTPS ({detail}) – pour un certificat auto-signé, désactive « Vérifier le certificat »",
+    "err_http": "Le serveur a répondu HTTP {detail}",
+    "err_bad_response": "Réponse inattendue – est-ce vraiment un serveur du type choisi ?",
+    "err_config": "Choisis Plex ou Jellyfin et saisis l’adresse du serveur",
+    "err_no_secret": "Aucun jeton / clé API enregistré – saisis-le et teste la connexion",
+    "scan_failed": "Échec de l’analyse du serveur multimédia : {error}",
+    "scan_done": "Serveur multimédia ({server}) : analyse de la bibliothèque demandée pour {n} nouveau(x) fichier(s)",
+    "test_ok": "Serveur multimédia connecté : {name} ({n} bibliothèques)",
+    "test_failed": "Échec du test du serveur multimédia : {error}",
+    "secret_failed": "Impossible d’enregistrer le jeton dans le Gestionnaire d’identification Windows",
+    "secret_unreadable": "Impossible de lire le jeton du serveur multimédia dans le Gestionnaire d’identification Windows"
+  },
+  "notify": {
+    "part_new": {
+      "one": "{n} nouveau set dans la boîte",
+      "other": "{n} nouveaux sets dans la boîte"
+    },
+    "part_done": {
+      "one": "{n} set téléchargé",
+      "other": "{n} sets téléchargés"
+    },
+    "part_failed": {
+      "one": "{n} téléchargement échoué",
+      "other": "{n} téléchargements échoués"
+    },
+    "new_body": "Trouvé par ta watchlist – clique pour ouvrir la boîte de réception.",
+    "done_body": "Clique pour ouvrir la bibliothèque.",
+    "failed_body": "Détails sous Téléchargements.",
+    "more": "+{n} autres",
+    "open_inbox": "Clique pour ouvrir la boîte de réception.",
+    "open_downloads": "Clique pour ouvrir les téléchargements.",
+    "test_title": "Les notifications HCLoader fonctionnent",
+    "test_body": "C’est ainsi que seront annoncés les nouveaux sets et les téléchargements terminés.",
+    "test_unavailable": "Les notifications Windows ne sont pas disponibles sur ce système",
+    "test_failed": "La notification de test n’a pas pu être affichée – voir le journal",
+    "log_unavailable": "Notification (non affichée, notifications Windows indisponibles) : {title}",
+    "log_failed": "Impossible d’afficher la notification Windows : {error}"
   }
 }

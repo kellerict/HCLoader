@@ -136,3 +136,14 @@ def german_messages(monkeypatch):
 
     monkeypatch.setattr(i18n, "_active", "de")
     monkeypatch.setattr(i18n, "set_language", lambda setting: i18n.resolve(setting))
+
+
+@pytest.fixture(autouse=True)
+def _no_os_notifications(monkeypatch):
+    """v0.9.0: never show a real Windows toast, never write HKCU or the Credential Manager in
+    tests (Windows CI runs the same code paths). Tests that check a backend inject their own."""
+    from app.core import credentials, notify
+
+    monkeypatch.setattr(notify, "_sender", notify.NullSender())
+    monkeypatch.setattr(notify, "ensure_registered", lambda *a, **k: False)
+    monkeypatch.setattr(credentials, "_default", credentials.MemoryStore())

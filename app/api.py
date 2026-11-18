@@ -11,6 +11,7 @@ marked with `@_internal` (pywebview skips `_serializable = False`). Contract: do
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 import sys
@@ -29,12 +30,15 @@ from .core import (
     binaries,
     collector,
     config,
+    credentials,
     discover,
     i18n,
     library,
     locks,
     logview,
     maintenance,
+    mediaserver,
+    notify,
     paths,
     platforms,
     playback,
@@ -45,6 +49,7 @@ from .core import (
     selfupdate,
     series,
     sidecar,
+    stats,
     tracklist,
     watchlist,
 )
@@ -62,6 +67,8 @@ from .worker import (
     EventBus,
     GateBusy,
     LogForwarder,
+    MediaScanQueue,
+    NotificationService,
     PotWatchdog,
     Ticker,
     WatchdogPotServer,
@@ -85,6 +92,11 @@ QUEUE_STOP_TIMEOUT_S = 60.0
 WATCHLIST_STOP_TIMEOUT_S = 10.0  # n5: a cancelled check ends after the current request
 # v0.4.0: open «Read everything (once)» backfills continue this long after the app start
 BACKFILL_START_DELAY_S = 90.0
+# v0.9.0: «Test connection» = 2 requests of at most mediaserver.TIMEOUT_S each (+ margin)
+MEDIA_TEST_TIMEOUT_S = 2 * mediaserver.TIMEOUT_S + 10
+MEDIA_SCAN_TIMEOUT_S = (mediaserver.PLEX_MAX_FOLDERS + 1) * mediaserver.TIMEOUT_S + 10
+NOTIFY_TEST_TIMEOUT_S = notify.PS_TIMEOUT_S + 10
+NAV_VIEWS = ("discover", "inbox", "watchlist", "downloads", "library", "stats", "log", "settings")
 # m2: at the first queue start in HTTP mode, wait this long for the PO-token watchdog
 POT_START_WAIT_S = 20.0
 # message keys (app/locales), translated when used
@@ -140,6 +152,10 @@ class Api:
         schedule_options: dict[str, Any] | None = None,
         configure_logging: bool = True,
         self_updater: selfupdate.SelfUpdater | None = None,
+        secret_store: credentials.SecretStore | None = None,
+        notify_sender: Callable[[], Any] | None = None,
+        media_transport: mediaserver.Transport | None = None,
+        notify_delay: float = 15.0,
     ) -> None:
         self._config_file = config_file or config.config_path()
         settings, warnings = config.load_with_warnings(self._config_file)
@@ -190,6 +206,7 @@ class Api:
             ),
             on_thread_start=self._cleanup_partials,  # n6: in the queue thread, before downloads
             on_done=self._after_download,  # v0.7.0: offline analysis of the new file
+            on_session_end=self._on_queue_session_end,  # v0.9.0: one notification per run
             **qopts,
         )
         # v0.7.0 loudness/waveform analysis: own low-priority thread, one file at a time
@@ -249,6 +266,27 @@ class Api:
         # their own thread; `_pl_dirty` makes a sync that is already running go once more
         self._pl_worker = Worker("hcloader-playlists")
         self._pl_dirty = threading.Event()
+        # v0.9.0 statistics (file sizes measured once in the background), notifications,
+        # Plex/Jellyfin scan (token in the Windows Credential Manager, never in config.yaml)
+        self._stats_worker = Worker("hcloader-stats")
+        self._sizes_cancel = threading.Event()
+        self._secrets: credentials.SecretStore = secret_store or credentials.default_store()
+        self._notifier = NotificationService(
+            self._db,
+            lambda: self._settings,
+            notify_sender or notify.default_sender,
+            delay=notify_delay,
+            registrar=self._register_notifications,
+        )
+        self._media_transport = media_transport or mediaserver.urllib_transport
+        self._media = MediaScanQueue(
+            self._db,
+            lambda: self._settings,
+            self._media_secret,
+            self._bus,
+            transport=self._media_transport,
+        )
+        self._ms_worker = Worker("hcloader-mediaserver")
 
     # ================================================================== lifecycle (internal)
 
@@ -270,7 +308,7 @@ class Api:
         self._watchdog.start()
         self._queue.start()
         self._wl_sched.start()
-        self._ticker = Ticker(STATUS_INTERVAL_S, self._push)
+        self._ticker = Ticker(STATUS_INTERVAL_S, self._tick)
         self._ticker.start()
         self._update_worker.start()
         self._analysis.start()
@@ -314,6 +352,11 @@ class Api:
         collector.release_running(self._db, tr("collector.note_interrupted"))
         self._analysis.stop()  # v0.7.0: a running ffmpeg analysis is killed (nothing written)
         self._pl_worker.stop()  # v0.8.0: a running playlist export finishes its file first
+        self._sizes_cancel.set()  # v0.9.0: size measuring stops after the current batch
+        self._stats_worker.stop()
+        self._notifier.stop()
+        self._media.stop()
+        self._ms_worker.stop()
         self._updater.stop()  # a running app-update download is aborted and discarded
         self._update_worker.stop()
         ended = self._queue.stop(queue_timeout)
@@ -358,6 +401,18 @@ class Api:
             for v in self._db.list_videos(status=("queued", "downloading", "failed"))
         }
         return maintenance.cleanup_stale_partials(paths.tmp_dir(self._cfg.target_dir_path()), keep)
+
+    def _tick(self) -> None:
+        """Status ticker: status bar + a notification batch that may be shown now (v0.9.0)."""
+        self._push()
+        self._notifier.tick()
+
+    @_internal
+    def open_view(self, view: str | None) -> None:
+        """A second start (`--open inbox`, toast click `hcloader://inbox`) asks the running
+        window to show a view: event `navigate` (v0.9.0)."""
+        if view in NAV_VIEWS:
+            self._bus.emit("navigate", {"view": view})
 
     def _push(self) -> None:
         """Send the current status to the status bar."""
@@ -1226,7 +1281,11 @@ class Api:
         if result.backoff:
             self._bus.toast(tr("watchlist.aborted", error=result.note), "warn")
         checked = result.checked + result.errors  # sources processed (checked or failed)
-        self._bus.emit("watchlist_done", {"checked": checked, "found": result.found})
+        self._bus.emit(
+            "watchlist_done", {"checked": checked, "found": result.found, "inbox": result.inbox}
+        )
+        if result.inbox:
+            self._notifier.note(new_sets=result.inbox)  # v0.9.0
         self._push()
         if not result.backoff and not result.cancelled:
             self._resume_backfills()  # v0.4.0: open backfills continue after a check
@@ -2098,6 +2157,16 @@ class Api:
             self._analysis.request(vid)
         if self._settings.playlists.sync_after_download:
             self._request_playlist_sync()
+        self._media.add(vid)  # v0.9.0: batched Plex/Jellyfin scan (no-op when off)
+
+    def _on_queue_session_end(self, session: dict[str, Any]) -> None:
+        """v0.9.0: one aggregated notification per queue run (done / failed)."""
+        self._notifier.note(
+            downloaded=session.get("downloaded") or 0,
+            failed=session.get("errors") or 0,
+            titles=session.get("titles") or [],
+            failed_titles=session.get("failed_titles") or [],
+        )
 
     def _startup_analysis(self) -> None:
         """Downloads since the first v0.7.0 start that were never analysed (e.g. by the
@@ -2360,6 +2429,170 @@ class Api:
                 return
         if res and (res["synced"] or res["failed"]):
             self._bus.emit("playlists_synced", {k: res[k] for k in ("synced", "failed")})
+
+    # ======================================================== statistics (v0.9.0)
+
+    def get_stats(self, opts: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Statistics view, offline from the DB: {ok, range, totals, genres, festivals, years,
+        djs, months, platforms, tracks, watchlist, measuring}. opts {from, to} (local dates
+        YYYY-MM-DD, inclusive, both optional). Unmeasured file sizes (libraries from before
+        v0.9.0) are measured once in the background -> events `stats_sizes`."""
+        o = opts if isinstance(opts, dict) else {}
+        try:
+            data = self._pl("stats", stats.compute, self._db, self._cfg, o)
+        except stats.RangeError:
+            return {"ok": False, "error": tr("stats.invalid_range")}
+        measuring = self._stats_worker.busy("sizes")
+        if data["totals"]["sizes_missing"] and not measuring:
+            self._sizes_cancel.clear()
+            self._stats_worker.submit("sizes", self._measure_sizes)
+            measuring = True
+        return {"ok": True, **data, "measuring": measuring}
+
+    def _measure_sizes(self) -> dict[str, int]:
+        def progress(done: int, total: int) -> None:
+            self._bus.emit("stats_sizes", {"phase": "progress", "done": done, "total": total})
+
+        res = stats.measure_sizes(self._db, cancel=self._sizes_cancel, progress=progress)
+        self._bus.emit("stats_sizes", {"phase": "done", **res})
+        return res
+
+    # ======================================================== notifications (v0.9.0)
+
+    def _register_notifications(self) -> bool:
+        return notify.ensure_registered(config.app_root(), notify.icon_file(config.app_root()))
+
+    def get_notification_status(self) -> dict[str, Any]:
+        """{ok, available, backend, quiet_now, pending}: can toasts be shown on this system?"""
+        sender = notify.default_sender()
+        data = notify.pending(self._db)
+        return {
+            "ok": True,
+            "available": bool(sender.available()),
+            "backend": sender.name,
+            "quiet_now": notify.in_quiet_hours(self._cfg.notifications),
+            "pending": data["new_sets"] + data["downloaded"] + data["failed"],
+        }
+
+    def test_notification(self) -> dict[str, Any]:
+        """Show a sample toast right away (ignores quiet hours and the on/off switches)."""
+
+        def run() -> dict[str, Any]:
+            sender = notify.default_sender()
+            if not sender.available():
+                return {"ok": False, "error": tr("notify.test_unavailable"), "backend": sender.name}
+            _quiet(self._register_notifications)
+            toast = notify.Toast(tr("notify.test_title"), tr("notify.test_body"), "inbox")
+            try:
+                sender.show(notify.toast_xml(toast))
+            except Exception as exc:
+                log.warning(tr("notify.log_failed", error=str(exc)[:200]))
+                return {"ok": False, "error": tr("notify.test_failed"), "backend": sender.name}
+            return {"ok": True, "backend": sender.name}
+
+        try:
+            return self._ms_worker.run("notify-test", run, timeout=NOTIFY_TEST_TIMEOUT_S)
+        except FutureTimeout:
+            return {"ok": False, "error": tr("notify.test_failed")}
+
+    # ======================================================== Plex / Jellyfin (v0.9.0)
+
+    def _media_secret(self, kind: str) -> str | None:
+        try:
+            return self._secrets.get(kind)
+        except credentials.CredentialError:
+            log.warning(tr("media.secret_unreadable"))
+            return None
+
+    def get_media_server_status(self) -> dict[str, Any]:
+        """{ok, type, has_secret: {plex, jellyfin}, persistent, last_scan, pending}."""
+        last = None
+        raw = self._db.get_state("media_scan_last")
+        if raw:
+            try:
+                last = json.loads(raw)
+            except ValueError:
+                last = None
+        return {
+            "ok": True,
+            "type": self._cfg.media_server.type,
+            "has_secret": {k: bool(self._media_secret(k)) for k in mediaserver.KINDS},
+            "persistent": bool(self._secrets.persistent),
+            "last_scan": last,
+            "pending": self._media.pending,
+        }
+
+    def test_media_server(self, data: dict[str, Any] | None = None) -> dict[str, Any]:
+        """«Test connection» with the values in the form (not saved yet): data {type, url,
+        secret?, verify_tls?}. `secret` empty = the stored one; a typed secret is stored in the
+        Windows Credential Manager once the server accepted it. -> {ok, name, version,
+        libraries: [{id, name, type, paths, music}], stored} | {ok: false, error, code}."""
+        d = data if isinstance(data, dict) else {}
+        kind = str(d.get("type") or "")
+        if kind not in mediaserver.KINDS:
+            return {"ok": False, "code": "config", "error": tr("media.err_config")}
+        parsed, errors = config.parse_settings(
+            {"media_server": {"type": kind, "url": d.get("url") or ""}}
+        )
+        if parsed is None:
+            msg = next(iter(errors.values()), tr("media.err_config"))
+            return {"ok": False, "code": "config", "error": msg, "errors": errors}
+        url = parsed.media_server.url
+        typed = d.get("secret")
+        secret = None
+        if typed not in (None, ""):
+            try:
+                secret = credentials.clean_secret(typed)
+            except credentials.CredentialError:
+                return {"ok": False, "code": "auth", "error": tr("media.err_auth")}
+        secret = secret or self._media_secret(kind)
+        if not secret:
+            return {"ok": False, "code": "no_secret", "error": tr("media.err_no_secret")}
+        verify = bool(d.get("verify_tls", True))
+
+        def run() -> dict[str, Any]:
+            try:
+                res = mediaserver.test_connection(
+                    kind, url, secret, verify_tls=verify, transport=self._media_transport
+                )
+            except mediaserver.MediaServerError as exc:
+                log.warning(tr("media.test_failed", error=exc.message()))
+                return {"ok": False, "code": exc.code, "error": exc.message()}
+            stored = False
+            if typed not in (None, ""):
+                try:
+                    self._secrets.set(kind, secret)
+                    stored = True
+                except credentials.CredentialError:
+                    log.warning(tr("media.secret_failed"))
+            log_ok(log, tr("media.test_ok", name=res["name"], n=len(res["libraries"])))
+            return {"ok": True, **res, "stored": stored, "persistent": self._secrets.persistent}
+
+        try:
+            return self._ms_worker.run(f"ms-test:{kind}", run, timeout=MEDIA_TEST_TIMEOUT_S)
+        except FutureTimeout:
+            return {"ok": False, "code": "timeout", "error": tr("media.err_timeout")}
+
+    def forget_media_server_secret(self, kind: str | None = None) -> dict[str, Any]:
+        """Remove the stored token/API key (`kind` plex | jellyfin; default: the configured)."""
+        k = str(kind or self._cfg.media_server.type)
+        if k not in mediaserver.KINDS:
+            return {"ok": False, "error": tr("media.err_config")}
+        try:
+            self._secrets.delete(k)
+        except credentials.CredentialError:
+            return {"ok": False, "error": tr("media.secret_failed")}
+        return {"ok": True}
+
+    def scan_media_server(self) -> dict[str, Any]:
+        """«Scan now»: full scan of the configured library (saved settings + stored secret).
+        -> {ok, server, requests, ...} | {ok: false, error, code}; also event `media_scan`."""
+        try:
+            return self._ms_worker.run(
+                "ms-scan", self._media.scan_now, timeout=MEDIA_SCAN_TIMEOUT_S
+            )
+        except FutureTimeout:
+            return {"ok": False, "code": "timeout", "error": tr("media.err_timeout")}
 
 
 def _int_or_none(value: Any) -> int | None:

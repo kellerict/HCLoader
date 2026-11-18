@@ -389,9 +389,10 @@ def test_migration_12_from_v060_keeps_data_and_adds_tables(tmp_path):
     try:
         assert d.schema_version() == len(dbmod.MIGRATIONS) >= 12
         conn = d._conn
-        assert [tuple(r) for r in conn.execute("SELECT * FROM videos").fetchall()] == [
-            tuple(r) for r in before
-        ]
+        # columns added later (v0.9.0 file_size) come at the end
+        assert [
+            tuple(r)[: len(before[0])] for r in conn.execute("SELECT * FROM videos").fetchall()
+        ] == [tuple(r) for r in before]
         assert d.get_state("k") == "v"
         tables = {r["name"] for r in d.query("SELECT name FROM sqlite_master WHERE type='table'")}
         assert {"audio_analysis", "playback"} <= tables

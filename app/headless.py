@@ -20,7 +20,7 @@ import sys
 from collections.abc import Callable
 from typing import Any
 
-from .core import backfill, config, i18n, locks, watchlist
+from .core import backfill, config, credentials, i18n, locks, mediaserver, notify, watchlist
 from .core.config import Settings
 from .core.db import Database, MigrationBackupError, SchemaTooNewError
 from .core.discover import format_until
@@ -28,7 +28,14 @@ from .core.i18n import tr
 from .core.logging_setup import console_logs_errors, setup_logging
 from .core.throttle import Throttle
 from .exitcodes import EXIT_BLOCKED, EXIT_BUSY, EXIT_FAILED, EXIT_OK
-from .worker import DownloadQueue, EventBus, PotWatchdog, WatchdogPotServer, local_preflight
+from .worker import (
+    DownloadQueue,
+    EventBus,
+    PotWatchdog,
+    WatchdogPotServer,
+    local_preflight,
+    run_scan,
+)
 
 log = logging.getLogger("hcloader.headless")
 
@@ -118,6 +125,9 @@ def run_watchlist(
     pot_wait: float = 20.0,
     gui_probe: Callable[[], bool] = gui_running,
     pot_ping: Callable[[int], bool] = pot_answers,
+    notify_sender: Any = None,
+    secret_store: Any = None,
+    media_transport: Any = None,
 ) -> int:
     """Run one headless watchlist cycle; returns the process exit code."""
     if settings is None:
@@ -175,6 +185,11 @@ def run_watchlist(
             pot_wait,
             backfill_lock,
             release_locks,
+            extras={
+                "notify_sender": notify_sender,
+                "secret_store": secret_store,
+                "media_transport": media_transport,
+            },
         )
     finally:
         if own_db:
@@ -189,6 +204,53 @@ def _sync_playlists(db: Any, settings: Any) -> None:
         playlists.sync_all(db, settings)
     except Exception as exc:
         log.warning(tr("playlist.sync_crashed", error=exc), exc_info=True)
+
+
+def _after_run(
+    db: Any,
+    settings: Settings,
+    *,
+    new_sets: int,
+    session: dict[str, Any],
+    done_ids: list[str],
+    notify_sender: Any = None,
+    secret_store: Any = None,
+    media_transport: Any = None,
+) -> None:
+    """v0.9.0: Plex/Jellyfin scan of this run's downloads (one batch, bounded) and one
+    aggregated Windows notification. Never raises (the run's outcome is already recorded)."""
+    files = [
+        str(row["file_path"])
+        for row in (db.get_video(v) for v in done_ids)
+        if row and row.get("file_path")
+    ]
+    if files and settings.media_server.type != "off" and settings.media_server.url:
+        store = secret_store or credentials.default_store()
+
+        def secret(kind: str) -> str | None:
+            try:
+                return store.get(kind)
+            except credentials.CredentialError:
+                return None
+
+        run_scan(
+            db,
+            settings,
+            secret,
+            files,
+            transport=media_transport or mediaserver.urllib_transport,
+        )
+    notify.notify_run(
+        db,
+        settings,
+        config.app_root(),
+        sender=notify_sender,
+        new_sets=new_sets,
+        downloaded=session.get("downloaded") or 0,
+        failed=session.get("errors") or 0,
+        titles=session.get("titles") or [],
+        failed_titles=session.get("failed_titles") or [],
+    )
 
 
 def _shared_pot(
@@ -276,6 +338,7 @@ def _run(
     pot_wait: float,
     backfill_lock: Callable[[], Any] = locks.acquire_backfill_lock,
     release_locks: Callable[[], None] | None = None,
+    extras: dict[str, Any] | None = None,
 ) -> int:
     # we hold the run lock: rows left in 'downloading' by a crash are not in use by anyone
     n = db.reset_interrupted_downloads()
@@ -289,6 +352,9 @@ def _run(
     code = EXIT_OK
     watchdog = watchdog or PotWatchdog(lambda: settings)
     client: Any = None
+    new_sets = 0  # v0.9.0: notification + media server scan after the run
+    session: dict[str, Any] = {}
+    done_ids: list[str] = []
     try:
         # 7a: blocked only if every platform with an enabled source is in backoff
         until = watchlist.blocked_until(db, throttle, settings)
@@ -320,6 +386,7 @@ def _run(
             preflight=lambda wait, stop: local_preflight(settings, watchdog, wait=wait, stop=stop),
             record_run=False,
             pot_wait=pot_wait,
+            on_done=done_ids.append,
         )
         throttle.start_run()
         client = factory()
@@ -332,6 +399,7 @@ def _run(
             run_kind=None,
         )
         found, errors = res.found, res.errors
+        new_sets = res.inbox
         if res.note:
             notes.append(res.note)
         # Review v0.2.0 m2: dedup via a flag, never via the (translated) note text
@@ -428,4 +496,7 @@ def _run(
                 errors=errors,
                 extra=f" · {'; '.join(notes)}" if notes else "",
             ),
+        )
+        _after_run(
+            db, settings, new_sets=new_sets, session=session, done_ids=done_ids, **(extras or {})
         )

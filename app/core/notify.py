@@ -155,17 +155,17 @@ def build(data: Mapping[str, Any]) -> Toast:
     view = "inbox" if n_new else "downloads" if n_fail else "library"
     if len(parts) == 1:
         if n_new:
-            return Toast(tr("notify.new_title", n=n_new), tr("notify.new_body"), view)
+            return Toast(tr("notify.part_new", n=n_new), tr("notify.new_body"), view)
         if n_done:
             titles = [_short(t) for t in data["titles"]]
             more = n_done - len(titles)
             body = " · ".join(titles) if titles else tr("notify.done_body")
             if titles and more > 0:
                 body += " " + tr("notify.more", n=more)
-            return Toast(tr("notify.done_title", n=n_done), body, view)
+            return Toast(tr("notify.part_done", n=n_done), body, view)
         titles = [_short(t) for t in data["failed_titles"]]
         body = (" · ".join(titles) + " – " if titles else "") + tr("notify.failed_body")
-        return Toast(tr("notify.failed_title", n=n_fail), body, view)
+        return Toast(tr("notify.part_failed", n=n_fail), body, view)
     body = tr("notify.open_inbox") if n_new else tr("notify.open_downloads")
     return Toast(" · ".join(parts), body, view)
 
@@ -323,6 +323,34 @@ def default_sender() -> Sender:
 
 
 # --------------------------------------------------------------------------- registration
+
+
+def icon_file(root: Path) -> Path:
+    """The app icon (= app/main.icon_path) for the toast and the protocol entry."""
+    return root / "ui" / "img" / "hcloader.ico"
+
+
+def notify_run(
+    db: Any,
+    settings: Any,
+    root: Path,
+    *,
+    sender: Sender | None = None,
+    **counts: Any,
+) -> dict[str, Any]:
+    """Headless run (scheduled task): collect this run's events and show the batch right away
+    (quiet hours / gap: it stays for the GUI or the next run). Never raises."""
+    try:
+        cfg = settings.notifications
+        add(db, cfg, **counts)
+        if not has_pending(pending(db)):
+            return {"sent": False, "reason": "empty"}
+        if cfg.enabled:
+            ensure_registered(root, icon_file(root))
+        return flush(db, cfg, sender or default_sender())
+    except Exception:
+        log.debug("Notification after the run failed", exc_info=True)
+        return {"sent": False, "reason": "error"}
 
 
 def pythonw() -> Path:

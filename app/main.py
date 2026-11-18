@@ -28,7 +28,23 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--smoke", metavar="URL", help=tr("cli.smoke"))
     p.add_argument("--headless", action="store_true", help=tr("cli.headless"))
     p.add_argument("--run-watchlist", action="store_true", help=tr("cli.run_watchlist"))
+    # v0.9.0: open a view (a click on a Windows notification starts `--open hcloader://inbox`)
+    p.add_argument("--open", metavar="VIEW", default=None, help=tr("cli.open"))
     return p
+
+
+OPEN_VIEWS = ("discover", "inbox", "watchlist", "downloads", "library", "stats", "log", "settings")
+
+
+def view_arg(value: str | None) -> str | None:
+    """`inbox`, `hcloader://inbox` or `hcloader:inbox/` -> "inbox"; anything else -> None."""
+    if not value:
+        return None
+    v = value.strip().lower()
+    if v.startswith("hcloader:"):
+        v = v[len("hcloader:") :]
+    v = v.strip("/")
+    return v if v in OPEN_VIEWS else None
 
 
 def _reset_interrupted(db: Database) -> None:
@@ -58,10 +74,10 @@ USER_AGENT = (
 )
 
 
-def ui_url() -> str:
-    """`ui/index.html` as plain file URL (no query, see USER_AGENT)."""
+def ui_url(view: str | None = None) -> str:
+    """`ui/index.html` as plain file URL (no query, see USER_AGENT); `#<view>` = start view."""
     index = Path(__file__).resolve().parents[1] / "ui" / "index.html"
-    return index.as_uri()
+    return index.as_uri() + (f"#{view}" if view in OPEN_VIEWS else "")
 
 
 def icon_path() -> Path:
@@ -163,10 +179,10 @@ def configure_webview(module: Any) -> None:
         settings["ALLOW_FILE_URLS"] = True
 
 
-def run_gui() -> int:
+def run_gui(view: str | None = None) -> int:
     """GUI start with visible error reporting (log + MessageBox under pythonw)."""
     try:
-        return _run_gui()
+        return _run_gui(view) if view else _run_gui()
     except (SchemaTooNewError, MigrationBackupError) as exc:
         log.error(tr("main.database_error", error=exc))
         show_fatal(db_error_message(exc))
@@ -177,7 +193,7 @@ def run_gui() -> int:
         return EXIT_FAILED
 
 
-def _run_gui() -> int:
+def _run_gui(view: str | None = None) -> int:
     """pywebview window with the js_api bridge (app/api.py) and background services."""
     from .core import portable
 
@@ -214,7 +230,7 @@ def _run_gui() -> int:
     configure_webview(webview)
     window = webview.create_window(
         WINDOW_TITLE,
-        url=ui_url(),
+        url=ui_url(view),
         js_api=api,
         width=WINDOW_SIZE[0],
         height=WINDOW_SIZE[1],
@@ -222,7 +238,7 @@ def _run_gui() -> int:
         background_color=WINDOW_BG,
     )
     api.attach_window(window)
-    activation = ActivationServer(lambda: _bring_to_front(window))
+    activation = ActivationServer(lambda: _bring_to_front(window), on_view=api.open_view)
     activation.start()
     api.start()
     try:
@@ -371,7 +387,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     if instance is None:
         from .instance import request_activation
 
-        if not request_activation():
+        view = view_arg(args.open)
+        acked = request_activation(view=view) if view else request_activation()
+        if not acked:
             print(tr("main.already_running"), file=sys.stderr)
         return EXIT_OK
     try:
@@ -386,7 +404,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 return EXIT_FAILED
             finally:
                 run_lock.release()
-        return run_gui()
+        view = view_arg(args.open)
+        return run_gui(view) if view else run_gui()
     finally:
         instance.release()
 

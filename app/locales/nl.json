@@ -99,7 +99,8 @@
     "headless": "zonder GUI uitvoeren",
     "headless_needs_watchlist": "--headless vereist --run-watchlist.",
     "run_watchlist": "de volglijst controleren (met --headless)",
-    "smoke": "precies één download uitvoeren (alleen QA)"
+    "smoke": "precies één download uitvoeren (alleen QA)",
+    "open": "een weergave openen, bv. inbox (ook hcloader://inbox vanuit een melding)"
   },
   "collector": {
     "artist_required": "DJ / artiest ontbreekt",
@@ -167,7 +168,9 @@
     "unreadable_rewrite": "Configuratiebestand onleesbaar, het wordt opnieuw geschreven: {error}",
     "value_invalid": "Ongeldige waarde voor {section}.{field}, de standaardwaarde wordt gebruikt",
     "year_missing": "Jaar ontbreekt (vereist voor de periode 'year')",
-    "year_range": "Jaar moet tussen {min} en {max} liggen"
+    "year_range": "Jaar moet tussen {min} en {max} liggen",
+    "media_url_missing": "Voer het adres van de server in (bv. http://192.168.1.10:32400)",
+    "media_url_invalid": "Ongeldig adres – http:// of https:// met host en optionele poort, zonder gebruikersnaam, query of #"
   },
   "db": {
     "migration_backup_failed": "Back-up vóór de databasemigratie v{old} → v{new} mislukt ({error}). De migratie is niet gestart, de gegevens zijn ongewijzigd.",
@@ -607,5 +610,50 @@
     "unknown": "Playlist niet gevonden",
     "gone_unsynced": "Playlist {path} bestaat niet meer – wordt niet meer bijgewerkt",
     "sync_crashed": "Playlists konden niet worden bijgewerkt: {error}"
+  },
+  "stats": {
+    "invalid_range": "Ongeldige periode (JJJJ-MM-DD)"
+  },
+  "media": {
+    "err_auth": "De server heeft de token / API-sleutel geweigerd",
+    "err_unreachable": "Server niet bereikbaar ({detail})",
+    "err_timeout": "De server antwoordde niet op tijd",
+    "err_tls": "Probleem met het HTTPS-certificaat ({detail}) – zet bij een zelfondertekend certificaat “Certificaat controleren” uit",
+    "err_http": "De server antwoordde met HTTP {detail}",
+    "err_bad_response": "Onverwacht antwoord – is dit echt een server van het gekozen type?",
+    "err_config": "Kies Plex of Jellyfin en voer het adres van de server in",
+    "err_no_secret": "Geen token / API-sleutel opgeslagen – voer hem in en test de verbinding",
+    "scan_failed": "Scan van de mediaserver mislukt: {error}",
+    "scan_done": "Mediaserver ({server}): bibliotheekscan aangevraagd voor {n} nieuw(e) bestand(en)",
+    "test_ok": "Mediaserver verbonden: {name} ({n} bibliotheken)",
+    "test_failed": "Test van de mediaserver mislukt: {error}",
+    "secret_failed": "De token kon niet in Windows Referentiebeheer worden opgeslagen",
+    "secret_unreadable": "De token van de mediaserver kon niet uit Windows Referentiebeheer worden gelezen"
+  },
+  "notify": {
+    "part_new": {
+      "one": "{n} nieuwe set in de inbox",
+      "other": "{n} nieuwe sets in de inbox"
+    },
+    "part_done": {
+      "one": "{n} set gedownload",
+      "other": "{n} sets gedownload"
+    },
+    "part_failed": {
+      "one": "{n} download mislukt",
+      "other": "{n} downloads mislukt"
+    },
+    "new_body": "Gevonden door je watchlist – klik om de inbox te openen.",
+    "done_body": "Klik om de bibliotheek te openen.",
+    "failed_body": "Details onder Downloads.",
+    "more": "+{n} meer",
+    "open_inbox": "Klik om de inbox te openen.",
+    "open_downloads": "Klik om de downloads te openen.",
+    "test_title": "HCLoader-meldingen werken",
+    "test_body": "Zo worden nieuwe sets en voltooide downloads gemeld.",
+    "test_unavailable": "Windows-meldingen zijn op dit systeem niet beschikbaar",
+    "test_failed": "De testmelding kon niet worden getoond – zie het logboek",
+    "log_unavailable": "Melding (niet getoond, geen Windows-meldingen beschikbaar): {title}",
+    "log_failed": "Windows-melding kon niet worden getoond: {error}"
   }
 }

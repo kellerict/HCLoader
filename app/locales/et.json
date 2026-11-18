@@ -99,7 +99,8 @@
     "headless": "käivita ilma graafilise liideseta",
     "headless_needs_watchlist": "--headless nõuab võtit --run-watchlist.",
     "run_watchlist": "kontrolli jälgitavaid allikaid (koos --headless)",
-    "smoke": "tee täpselt üks allalaadimine (ainult QA)"
+    "smoke": "tee täpselt üks allalaadimine (ainult QA)",
+    "open": "ava vaade, nt inbox (ka hcloader://inbox teavitusest)"
   },
   "collector": {
     "artist_required": "DJ / artist puudub",
@@ -167,7 +168,9 @@
     "unreadable_rewrite": "Konfiguratsioonifaili ei saa lugeda, see kirjutatakse üle: {error}",
     "value_invalid": "Vigane väärtus {section}.{field}, kasutatakse vaikeväärtust",
     "year_missing": "Aasta puudub (nõutav perioodi „aasta” jaoks)",
-    "year_range": "Aasta peab olema vahemikus {min}–{max}"
+    "year_range": "Aasta peab olema vahemikus {min}–{max}",
+    "media_url_missing": "Sisesta serveri aadress (nt http://192.168.1.10:32400)",
+    "media_url_invalid": "Vigane aadress – http:// või https:// koos hosti ja valikulise pordiga, ilma kasutajanime, päringu ja #-ta"
   },
   "db": {
     "migration_backup_failed": "Varukoopia enne andmebaasi migreerimist v{old} → v{new} ebaõnnestus ({error}). Migreerimist ei alustatud, andmed on muutmata.",
@@ -607,5 +610,50 @@
     "unknown": "Esitusloendit ei leitud",
     "gone_unsynced": "Esitusloendit {path} enam ei ole – seda ei hoita enam ajakohasena",
     "sync_crashed": "Esitusloendeid ei saanud uuendada: {error}"
+  },
+  "stats": {
+    "invalid_range": "Vigane ajavahemik (AAAA-KK-PP)"
+  },
+  "media": {
+    "err_auth": "Server lükkas loa / API-võtme tagasi",
+    "err_unreachable": "Server ei ole kättesaadav ({detail})",
+    "err_timeout": "Server ei vastanud õigeks ajaks",
+    "err_tls": "HTTPS-sertifikaadi probleem ({detail}) – iseallkirjastatud sertifikaadi puhul lülita „Kontrolli sertifikaati“ välja",
+    "err_http": "Server vastas HTTP {detail}",
+    "err_bad_response": "Ootamatu vastus – kas see on tõesti valitud tüüpi server?",
+    "err_config": "Vali Plex või Jellyfin ja sisesta serveri aadress",
+    "err_no_secret": "Luba / API-võtit pole salvestatud – sisesta see ja testi ühendust",
+    "scan_failed": "Meediaserveri skannimine ebaõnnestus: {error}",
+    "scan_done": "Meediaserver ({server}): teegi skannimine taotletud, uusi faile: {n}",
+    "test_ok": "Meediaserver ühendatud: {name} ({n} teeki)",
+    "test_failed": "Meediaserveri test ebaõnnestus: {error}",
+    "secret_failed": "Luba ei õnnestunud Windowsi mandaadihaldurisse salvestada",
+    "secret_unreadable": "Meediaserveri luba ei õnnestunud Windowsi mandaadihaldurist lugeda"
+  },
+  "notify": {
+    "part_new": {
+      "one": "{n} uus sett postkastis",
+      "other": "{n} uut setti postkastis"
+    },
+    "part_done": {
+      "one": "{n} sett alla laaditud",
+      "other": "{n} setti alla laaditud"
+    },
+    "part_failed": {
+      "one": "{n} allalaadimine ebaõnnestus",
+      "other": "{n} allalaadimist ebaõnnestus"
+    },
+    "new_body": "Leitud sinu jälgimisloendist – klõpsa postkasti avamiseks.",
+    "done_body": "Klõpsa teegi avamiseks.",
+    "failed_body": "Üksikasjad jaotises Allalaadimised.",
+    "more": "+{n} veel",
+    "open_inbox": "Klõpsa postkasti avamiseks.",
+    "open_downloads": "Klõpsa allalaadimiste avamiseks.",
+    "test_title": "HCLoaderi teavitused töötavad",
+    "test_body": "Nii antakse teada uutest settidest ja lõpetatud allalaadimistest.",
+    "test_unavailable": "Windowsi teavitused pole selles süsteemis saadaval",
+    "test_failed": "Testteavitust ei õnnestunud näidata – vaata logi",
+    "log_unavailable": "Teavitus (ei näidatud, Windowsi teavitused pole saadaval): {title}",
+    "log_failed": "Windowsi teavitust ei õnnestunud näidata: {error}"
   }
 }

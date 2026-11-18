@@ -99,7 +99,8 @@
     "headless": "kör utan GUI",
     "headless_needs_watchlist": "--headless kräver --run-watchlist.",
     "run_watchlist": "kontrollera bevakningen (med --headless)",
-    "smoke": "kör exakt en nedladdning (endast QA)"
+    "smoke": "kör exakt en nedladdning (endast QA)",
+    "open": "öppna en vy, t.ex. inbox (även hcloader://inbox från en avisering)"
   },
   "collector": {
     "artist_required": "DJ / artist saknas",
@@ -167,7 +168,9 @@
     "unreadable_rewrite": "Konfigurationsfilen är oläsbar och skrivs om: {error}",
     "value_invalid": "Ogiltigt värde för {section}.{field}, standardvärdet används",
     "year_missing": "År saknas (krävs för perioden ’year’)",
-    "year_range": "Året måste vara mellan {min} och {max}"
+    "year_range": "Året måste vara mellan {min} och {max}",
+    "media_url_missing": "Ange serverns adress (t.ex. http://192.168.1.10:32400)",
+    "media_url_invalid": "Ogiltig adress – http:// eller https:// med värd och valfri port, utan användarnamn, query eller #"
   },
   "db": {
     "migration_backup_failed": "Säkerhetskopian före databasmigreringen v{old} → v{new} misslyckades ({error}). Migreringen startades inte, data är oförändrade.",
@@ -607,5 +610,50 @@
     "unknown": "Spellistan hittades inte",
     "gone_unsynced": "Spellistan {path} finns inte längre – den hålls inte längre uppdaterad",
     "sync_crashed": "Spellistorna kunde inte uppdateras: {error}"
+  },
+  "stats": {
+    "invalid_range": "Ogiltigt datumintervall (ÅÅÅÅ-MM-DD)"
+  },
+  "media": {
+    "err_auth": "Servern avvisade token / API-nyckeln",
+    "err_unreachable": "Servern går inte att nå ({detail})",
+    "err_timeout": "Servern svarade inte i tid",
+    "err_tls": "Problem med HTTPS-certifikatet ({detail}) – stäng av ”Kontrollera certifikat” för ett självsignerat certifikat",
+    "err_http": "Servern svarade med HTTP {detail}",
+    "err_bad_response": "Oväntat svar – är detta verkligen en server av vald typ?",
+    "err_config": "Välj Plex eller Jellyfin och ange serverns adress",
+    "err_no_secret": "Ingen token / API-nyckel sparad – ange den och testa anslutningen",
+    "scan_failed": "Mediaserverns skanning misslyckades: {error}",
+    "scan_done": "Mediaserver ({server}): biblioteksskanning begärd för {n} ny(a) fil(er)",
+    "test_ok": "Mediaserver ansluten: {name} ({n} bibliotek)",
+    "test_failed": "Test av mediaservern misslyckades: {error}",
+    "secret_failed": "Token kunde inte sparas i Windows Autentiseringshanteraren",
+    "secret_unreadable": "Mediaserverns token kunde inte läsas från Windows Autentiseringshanteraren"
+  },
+  "notify": {
+    "part_new": {
+      "one": "{n} nytt set i inkorgen",
+      "other": "{n} nya set i inkorgen"
+    },
+    "part_done": {
+      "one": "{n} set nedladdat",
+      "other": "{n} set nedladdade"
+    },
+    "part_failed": {
+      "one": "{n} nedladdning misslyckades",
+      "other": "{n} nedladdningar misslyckades"
+    },
+    "new_body": "Hittat av din bevakningslista – klicka för att öppna inkorgen.",
+    "done_body": "Klicka för att öppna biblioteket.",
+    "failed_body": "Detaljer under Nedladdningar.",
+    "more": "+{n} till",
+    "open_inbox": "Klicka för att öppna inkorgen.",
+    "open_downloads": "Klicka för att öppna nedladdningarna.",
+    "test_title": "HCLoader-aviseringar fungerar",
+    "test_body": "Så här meddelas nya set och klara nedladdningar.",
+    "test_unavailable": "Windows-aviseringar är inte tillgängliga på det här systemet",
+    "test_failed": "Testaviseringen kunde inte visas – se loggen",
+    "log_unavailable": "Avisering (visades inte, inga Windows-aviseringar tillgängliga): {title}",
+    "log_failed": "Windows-aviseringen kunde inte visas: {error}"
   }
 }

@@ -100,7 +100,8 @@
     "headless": "palaist bez GUI",
     "headless_needs_watchlist": "--headless prasa --run-watchlist.",
     "run_watchlist": "pārbaudīt vērojamos avotus (ar --headless)",
-    "smoke": "veikt tieši vienu lejupielādi (tikai QA)"
+    "smoke": "veikt tieši vienu lejupielādi (tikai QA)",
+    "open": "atvērt skatu, piem., inbox (arī hcloader://inbox no paziņojuma)"
   },
   "collector": {
     "artist_required": "Trūkst DJ / izpildītāja",
@@ -168,7 +169,9 @@
     "unreadable_rewrite": "Konfigurācijas failu nevar nolasīt, tas tiks pārrakstīts: {error}",
     "value_invalid": "Nederīga vērtība {section}.{field}, tiek izmantota noklusējuma vērtība",
     "year_missing": "Trūkst gada (nepieciešams periodam “gads”)",
-    "year_range": "Gadam jābūt starp {min} un {max}"
+    "year_range": "Gadam jābūt starp {min} un {max}",
+    "media_url_missing": "Ievadiet servera adresi (piem., http://192.168.1.10:32400)",
+    "media_url_invalid": "Nederīga adrese – http:// vai https:// ar resursdatoru un neobligātu portu, bez lietotājvārda, vaicājuma vai #"
   },
   "db": {
     "migration_backup_failed": "Dublējums pirms datubāzes migrācijas v{old} → v{new} neizdevās ({error}). Migrācija netika sākta, dati nav mainīti.",
@@ -615,5 +618,53 @@
     "unknown": "Atskaņošanas saraksts nav atrasts",
     "gone_unsynced": "Atskaņošanas saraksts {path} vairs nepastāv – tas vairs netiek atjaunināts",
     "sync_crashed": "Atskaņošanas sarakstus neizdevās atjaunināt: {error}"
+  },
+  "stats": {
+    "invalid_range": "Nederīgs periods (GGGG-MM-DD)"
+  },
+  "media": {
+    "err_auth": "Serveris noraidīja pilnvaru / API atslēgu",
+    "err_unreachable": "Serveris nav sasniedzams ({detail})",
+    "err_timeout": "Serveris laikus neatbildēja",
+    "err_tls": "HTTPS sertifikāta problēma ({detail}) – pašparakstītam sertifikātam izslēdziet “Pārbaudīt sertifikātu”",
+    "err_http": "Serveris atbildēja ar HTTP {detail}",
+    "err_bad_response": "Negaidīta atbilde – vai tas tiešām ir izvēlētā tipa serveris?",
+    "err_config": "Izvēlieties Plex vai Jellyfin un ievadiet servera adresi",
+    "err_no_secret": "Nav saglabāta pilnvara / API atslēga – ievadiet to un pārbaudiet savienojumu",
+    "scan_failed": "Multivides servera skenēšana neizdevās: {error}",
+    "scan_done": "Multivides serveris ({server}): pieprasīta bibliotēkas skenēšana, jauni faili: {n}",
+    "test_ok": "Multivides serveris savienots: {name} (bibliotēkas: {n})",
+    "test_failed": "Multivides servera pārbaude neizdevās: {error}",
+    "secret_failed": "Pilnvaru neizdevās saglabāt Windows akreditācijas datu pārvaldniekā",
+    "secret_unreadable": "Multivides servera pilnvaru neizdevās nolasīt no Windows akreditācijas datu pārvaldnieka"
+  },
+  "notify": {
+    "part_new": {
+      "zero": "{n} jaunu setu iesūtnē",
+      "one": "{n} jauns sets iesūtnē",
+      "other": "{n} jauni seti iesūtnē"
+    },
+    "part_done": {
+      "zero": "Lejupielādēti {n} seti",
+      "one": "Lejupielādēts {n} sets",
+      "other": "Lejupielādēti {n} seti"
+    },
+    "part_failed": {
+      "zero": "{n} lejupielādes neizdevās",
+      "one": "{n} lejupielāde neizdevās",
+      "other": "{n} lejupielādes neizdevās"
+    },
+    "new_body": "Atrasts jūsu novērošanas sarakstā – noklikšķiniet, lai atvērtu iesūtni.",
+    "done_body": "Noklikšķiniet, lai atvērtu bibliotēku.",
+    "failed_body": "Sīkāk sadaļā Lejupielādes.",
+    "more": "vēl +{n}",
+    "open_inbox": "Noklikšķiniet, lai atvērtu iesūtni.",
+    "open_downloads": "Noklikšķiniet, lai atvērtu lejupielādes.",
+    "test_title": "HCLoader paziņojumi darbojas",
+    "test_body": "Tā tiks paziņots par jauniem setiem un pabeigtām lejupielādēm.",
+    "test_unavailable": "Šajā sistēmā Windows paziņojumi nav pieejami",
+    "test_failed": "Testa paziņojumu neizdevās parādīt – skatiet žurnālu",
+    "log_unavailable": "Paziņojums (nav parādīts, Windows paziņojumi nav pieejami): {title}",
+    "log_failed": "Windows paziņojumu neizdevās parādīt: {error}"
   }
 }

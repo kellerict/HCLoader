@@ -99,7 +99,8 @@
     "headless": "suorita ilman graafista käyttöliittymää",
     "headless_needs_watchlist": "--headless vaatii valitsimen --run-watchlist.",
     "run_watchlist": "tarkista seuranta (valitsimen --headless kanssa)",
-    "smoke": "suorita täsmälleen yksi lataus (vain laadunvarmistus)"
+    "smoke": "suorita täsmälleen yksi lataus (vain laadunvarmistus)",
+    "open": "avaa näkymä, esim. inbox (myös hcloader://inbox ilmoituksesta)"
   },
   "collector": {
     "artist_required": "DJ / artisti puuttuu",
@@ -167,7 +168,9 @@
     "unreadable_rewrite": "Asetustiedosto on lukukelvoton ja kirjoitetaan uudelleen: {error}",
     "value_invalid": "Virheellinen arvo kohteelle {section}.{field}, käytetään oletusarvoa",
     "year_missing": "Vuosi puuttuu (vaaditaan ajanjaksolle ’year’)",
-    "year_range": "Vuoden on oltava välillä {min}–{max}"
+    "year_range": "Vuoden on oltava välillä {min}–{max}",
+    "media_url_missing": "Anna palvelimen osoite (esim. http://192.168.1.10:32400)",
+    "media_url_invalid": "Virheellinen osoite – http:// tai https:// sekä isäntä ja valinnainen portti, ilman käyttäjänimeä, kyselyä tai #-merkkiä"
   },
   "db": {
     "migration_backup_failed": "Varmuuskopio ennen tietokannan migraatiota v{old} → v{new} epäonnistui ({error}). Migraatiota ei aloitettu, tiedot ovat ennallaan.",
@@ -607,5 +610,50 @@
     "unknown": "Soittolistaa ei löydy",
     "gone_unsynced": "Soittolistaa {path} ei ole enää – sitä ei enää pidetä ajan tasalla",
     "sync_crashed": "Soittolistoja ei voitu päivittää: {error}"
+  },
+  "stats": {
+    "invalid_range": "Virheellinen aikaväli (VVVV-KK-PP)"
+  },
+  "media": {
+    "err_auth": "Palvelin hylkäsi tunnuksen / API-avaimen",
+    "err_unreachable": "Palvelimeen ei saada yhteyttä ({detail})",
+    "err_timeout": "Palvelin ei vastannut ajoissa",
+    "err_tls": "HTTPS-varmenteessa on ongelma ({detail}) – itse allekirjoitetulla varmenteella poista ”Tarkista varmenne” käytöstä",
+    "err_http": "Palvelin vastasi HTTP {detail}",
+    "err_bad_response": "Odottamaton vastaus – onko tämä varmasti valitun tyypin palvelin?",
+    "err_config": "Valitse Plex tai Jellyfin ja anna palvelimen osoite",
+    "err_no_secret": "Tunnusta / API-avainta ei ole tallennettu – anna se ja testaa yhteys",
+    "scan_failed": "Mediapalvelimen skannaus epäonnistui: {error}",
+    "scan_done": "Mediapalvelin ({server}): kirjaston skannausta pyydetty, uusia tiedostoja {n}",
+    "test_ok": "Mediapalvelin yhdistetty: {name} ({n} kirjastoa)",
+    "test_failed": "Mediapalvelimen testi epäonnistui: {error}",
+    "secret_failed": "Tunnusta ei voitu tallentaa Windowsin tunnistetietojen hallintaan",
+    "secret_unreadable": "Mediapalvelimen tunnusta ei voitu lukea Windowsin tunnistetietojen hallinnasta"
+  },
+  "notify": {
+    "part_new": {
+      "one": "{n} uusi setti saapuneissa",
+      "other": "{n} uutta settiä saapuneissa"
+    },
+    "part_done": {
+      "one": "{n} setti ladattu",
+      "other": "{n} settiä ladattu"
+    },
+    "part_failed": {
+      "one": "{n} lataus epäonnistui",
+      "other": "{n} latausta epäonnistui"
+    },
+    "new_body": "Seurantalistasi löysi – avaa saapuneet napsauttamalla.",
+    "done_body": "Avaa kirjasto napsauttamalla.",
+    "failed_body": "Tiedot kohdassa Lataukset.",
+    "more": "+{n} muuta",
+    "open_inbox": "Avaa saapuneet napsauttamalla.",
+    "open_downloads": "Avaa lataukset napsauttamalla.",
+    "test_title": "HCLoaderin ilmoitukset toimivat",
+    "test_body": "Näin uusista seteistä ja valmiista latauksista ilmoitetaan.",
+    "test_unavailable": "Windows-ilmoitukset eivät ole käytettävissä tässä järjestelmässä",
+    "test_failed": "Testi-ilmoitusta ei voitu näyttää – katso loki",
+    "log_unavailable": "Ilmoitus (ei näytetty, Windows-ilmoituksia ei ole käytettävissä): {title}",
+    "log_failed": "Windows-ilmoitusta ei voitu näyttää: {error}"
   }
 }

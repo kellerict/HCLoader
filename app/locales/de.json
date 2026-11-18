@@ -99,7 +99,8 @@
     "headless": "ohne GUI laufen",
     "headless_needs_watchlist": "--headless braucht --run-watchlist.",
     "run_watchlist": "Watchlist prüfen (mit --headless)",
-    "smoke": "genau einen Download ausführen (nur QA)"
+    "smoke": "genau einen Download ausführen (nur QA)",
+    "open": "eine Ansicht öffnen, z.B. inbox (auch hcloader://inbox aus einer Benachrichtigung)"
   },
   "collector": {
     "artist_required": "DJ / Artist fehlt",
@@ -167,7 +168,9 @@
     "unreadable_rewrite": "Konfigurationsdatei unlesbar, wird neu geschrieben: {error}",
     "value_invalid": "Ungültiger Wert für {section}.{field}, Standard wird verwendet",
     "year_missing": "Jahr fehlt (Pflicht beim Zeitraum 'Jahr')",
-    "year_range": "Jahr muss zwischen {min} und {max} liegen"
+    "year_range": "Jahr muss zwischen {min} und {max} liegen",
+    "media_url_missing": "Adresse des Servers eingeben (z.B. http://192.168.1.10:32400)",
+    "media_url_invalid": "Ungültige Adresse – http:// oder https:// mit Host und optionalem Port, ohne Benutzername, Query oder #"
   },
   "db": {
     "migration_backup_failed": "Sicherung vor der Datenbank-Migration v{old} → v{new} fehlgeschlagen ({error}). Die Migration wurde nicht gestartet, die Daten sind unverändert.",
@@ -607,5 +610,50 @@
     "unknown": "Playlist nicht gefunden",
     "gone_unsynced": "Playlist {path} gibt es nicht mehr – sie wird nicht mehr aktuell gehalten",
     "sync_crashed": "Playlists konnten nicht aktualisiert werden: {error}"
+  },
+  "stats": {
+    "invalid_range": "Ungültiger Zeitraum (JJJJ-MM-TT)"
+  },
+  "media": {
+    "err_auth": "Der Server hat das Token / den API-Schlüssel abgelehnt",
+    "err_unreachable": "Server nicht erreichbar ({detail})",
+    "err_timeout": "Der Server hat nicht rechtzeitig geantwortet",
+    "err_tls": "Problem mit dem HTTPS-Zertifikat ({detail}) – bei einem selbst signierten Zertifikat «Zertifikat prüfen» ausschalten",
+    "err_http": "Der Server hat mit HTTP {detail} geantwortet",
+    "err_bad_response": "Unerwartete Antwort – ist das wirklich ein Server des gewählten Typs?",
+    "err_config": "Plex oder Jellyfin wählen und die Adresse des Servers eingeben",
+    "err_no_secret": "Kein Token / API-Schlüssel gespeichert – eingeben und Verbindung testen",
+    "scan_failed": "Scan des Medienservers fehlgeschlagen: {error}",
+    "scan_done": "Medienserver ({server}): Bibliothek wird neu eingelesen ({n} neue Datei(en))",
+    "test_ok": "Medienserver verbunden: {name} ({n} Bibliotheken)",
+    "test_failed": "Test des Medienservers fehlgeschlagen: {error}",
+    "secret_failed": "Das Token konnte nicht in der Windows-Anmeldeinformationsverwaltung gespeichert werden",
+    "secret_unreadable": "Das Token des Medienservers konnte nicht aus der Windows-Anmeldeinformationsverwaltung gelesen werden"
+  },
+  "notify": {
+    "part_new": {
+      "one": "{n} neues Set im Eingang",
+      "other": "{n} neue Sets im Eingang"
+    },
+    "part_done": {
+      "one": "{n} Set geladen",
+      "other": "{n} Sets geladen"
+    },
+    "part_failed": {
+      "one": "{n} Download fehlgeschlagen",
+      "other": "{n} Downloads fehlgeschlagen"
+    },
+    "new_body": "Von deiner Watchlist gefunden – Klick öffnet den Eingang.",
+    "done_body": "Klick öffnet die Bibliothek.",
+    "failed_body": "Details unter Downloads.",
+    "more": "+{n} weitere",
+    "open_inbox": "Klick öffnet den Eingang.",
+    "open_downloads": "Klick öffnet die Downloads.",
+    "test_title": "HCLoader-Benachrichtigungen funktionieren",
+    "test_body": "So werden neue Sets und fertige Downloads gemeldet.",
+    "test_unavailable": "Windows-Benachrichtigungen sind auf diesem System nicht verfügbar",
+    "test_failed": "Die Test-Benachrichtigung konnte nicht angezeigt werden – siehe Protokoll",
+    "log_unavailable": "Benachrichtigung (nicht angezeigt, keine Windows-Benachrichtigungen verfügbar): {title}",
+    "log_failed": "Windows-Benachrichtigung konnte nicht angezeigt werden: {error}"
   }
 }

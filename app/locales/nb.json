@@ -99,7 +99,8 @@
     "headless": "kjør uten GUI",
     "headless_needs_watchlist": "--headless krever --run-watchlist.",
     "run_watchlist": "sjekk overvåkingen (med --headless)",
-    "smoke": "kjør nøyaktig én nedlasting (bare QA)"
+    "smoke": "kjør nøyaktig én nedlasting (bare QA)",
+    "open": "åpne en visning, f.eks. inbox (også hcloader://inbox fra et varsel)"
   },
   "collector": {
     "artist_required": "DJ / artist mangler",
@@ -167,7 +168,9 @@
     "unreadable_rewrite": "Konfigurasjonsfilen er uleselig og skrives på nytt: {error}",
     "value_invalid": "Ugyldig verdi for {section}.{field}, standardverdien brukes",
     "year_missing": "År mangler (kreves for perioden 'year')",
-    "year_range": "Året må være mellom {min} og {max}"
+    "year_range": "Året må være mellom {min} og {max}",
+    "media_url_missing": "Skriv inn serveradressen (f.eks. http://192.168.1.10:32400)",
+    "media_url_invalid": "Ugyldig adresse – http:// eller https:// med vert og valgfri port, uten brukernavn, query eller #"
   },
   "db": {
     "migration_backup_failed": "Sikkerhetskopien før databasemigreringen v{old} → v{new} mislyktes ({error}). Migreringen ble ikke startet, dataene er uendret.",
@@ -607,5 +610,50 @@
     "unknown": "Fant ikke spillelisten",
     "gone_unsynced": "Spillelisten {path} finnes ikke lenger – den holdes ikke lenger oppdatert",
     "sync_crashed": "Spillelistene kunne ikke oppdateres: {error}"
+  },
+  "stats": {
+    "invalid_range": "Ugyldig periode (ÅÅÅÅ-MM-DD)"
+  },
+  "media": {
+    "err_auth": "Serveren avviste tokenet / API-nøkkelen",
+    "err_unreachable": "Serveren kan ikke nås ({detail})",
+    "err_timeout": "Serveren svarte ikke i tide",
+    "err_tls": "Problem med HTTPS-sertifikatet ({detail}) – slå av «Kontroller sertifikat» for et selvsignert sertifikat",
+    "err_http": "Serveren svarte med HTTP {detail}",
+    "err_bad_response": "Uventet svar – er dette virkelig en server av valgt type?",
+    "err_config": "Velg Plex eller Jellyfin og skriv inn serveradressen",
+    "err_no_secret": "Ingen token / API-nøkkel lagret – skriv den inn og test tilkoblingen",
+    "scan_failed": "Skanning av medieserveren mislyktes: {error}",
+    "scan_done": "Medieserver ({server}): bibliotekskanning bedt om for {n} ny(e) fil(er)",
+    "test_ok": "Medieserver tilkoblet: {name} ({n} bibliotek)",
+    "test_failed": "Test av medieserveren mislyktes: {error}",
+    "secret_failed": "Tokenet kunne ikke lagres i Windows Legitimasjonsbehandling",
+    "secret_unreadable": "Medieserverens token kunne ikke leses fra Windows Legitimasjonsbehandling"
+  },
+  "notify": {
+    "part_new": {
+      "one": "{n} nytt sett i innboksen",
+      "other": "{n} nye sett i innboksen"
+    },
+    "part_done": {
+      "one": "{n} sett lastet ned",
+      "other": "{n} sett lastet ned"
+    },
+    "part_failed": {
+      "one": "{n} nedlasting mislyktes",
+      "other": "{n} nedlastinger mislyktes"
+    },
+    "new_body": "Funnet av overvåkingslisten din – klikk for å åpne innboksen.",
+    "done_body": "Klikk for å åpne biblioteket.",
+    "failed_body": "Detaljer under Nedlastinger.",
+    "more": "+{n} til",
+    "open_inbox": "Klikk for å åpne innboksen.",
+    "open_downloads": "Klikk for å åpne nedlastingene.",
+    "test_title": "HCLoader-varsler fungerer",
+    "test_body": "Slik varsles nye sett og ferdige nedlastinger.",
+    "test_unavailable": "Windows-varsler er ikke tilgjengelige på dette systemet",
+    "test_failed": "Testvarselet kunne ikke vises – se loggen",
+    "log_unavailable": "Varsel (ikke vist, ingen Windows-varsler tilgjengelig): {title}",
+    "log_failed": "Windows-varselet kunne ikke vises: {error}"
   }
 }

@@ -4,7 +4,7 @@
 general:
   # Sprache der Oberfläche: auto (Windows-Sprache), en, de, zh-CN, hi, es, fr, bn, pt, ru, id, nl, nl-BE (Vlaams), sv, nb, fi, lt, lv, et, de-x-frk (Fränggisch)
   language: en
-  # Startansicht: discover, inbox, watchlist, downloads, library, log
+  # Startansicht: discover, inbox, watchlist, downloads, library, stats, log
   start_view: discover
   # Log-Stufe: DEBUG, INFO, WARNING, ERROR
   log_level: INFO
@@ -298,3 +298,37 @@ playlists:
   relative_paths: true
   # Gespeicherte Playlists mit «Aktuell halten» nach jedem Download neu schreiben
   sync_after_download: false
+
+# --- Benachrichtigungen ---
+notifications:
+  # Windows-Benachrichtigungen anzeigen (gebündelt, Klick öffnet die App)
+  enabled: true
+  # Benachrichtigen, wenn eine Watchlist-Prüfung neue Sets in den Eingang legt (App oder geplante Aufgabe)
+  new_sets: true
+  # Benachrichtigen, wenn Downloads fertig sind (eine Meldung pro Lauf)
+  downloads_done: true
+  # Benachrichtigen, wenn Downloads fehlschlagen
+  downloads_failed: true
+  # Ruhezeit: keine Benachrichtigungen; danach eine Zusammenfassung
+  quiet_hours: false
+  # Beginn der Ruhezeit (HH:MM)
+  quiet_from: 22:00
+  # Ende der Ruhezeit (HH:MM); kleiner als der Beginn = über Mitternacht
+  quiet_to: 07:00
+
+# --- Medienserver (Plex/Jellyfin) ---
+media_server:
+  # Bibliothek nach Downloads neu einlesen lassen: off, plex, jellyfin (Token/API-Key liegt in der Windows-Anmeldeinformationsverwaltung, nie hier)
+  type: off
+  # Adresse des Servers, z.B. http://192.168.1.10:32400 (Plex) oder http://nas:8096 (Jellyfin)
+  url: ''
+  # Plex-Bibliotheks-ID bzw. Jellyfin-Bibliotheks-ID; leer = alle Bibliotheken
+  library: ''
+  # Name der gewählten Bibliothek (nur Anzeige)
+  library_name: ''
+  # Zielordner aus Sicht des Servers (NAS/Docker, z.B. /data/music/HCLoader); leer = gleicher Pfad
+  server_root: ''
+  # Wartezeit nach dem letzten Download, bevor der Scan ausgelöst wird (10-3600 s, bündelt mehrere Downloads)
+  delay_seconds: 120
+  # HTTPS-Zertifikat prüfen (aus nur für selbst signierte Zertifikate im Heimnetz)
+  verify_tls: true

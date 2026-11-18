@@ -99,7 +99,8 @@
     "headless": "run without GUI",
     "headless_needs_watchlist": "--headless needs --run-watchlist.",
     "run_watchlist": "check the watchlist (with --headless)",
-    "smoke": "run exactly one download (QA only)"
+    "smoke": "run exactly one download (QA only)",
+    "open": "open a view, e.g. inbox (also hcloader://inbox from a notification)"
   },
   "collector": {
     "artist_required": "DJ / artist is required",
@@ -167,7 +168,9 @@
     "unreadable_rewrite": "Configuration file unreadable, it will be rewritten: {error}",
     "value_invalid": "Invalid value for {section}.{field}, the default is used",
     "year_missing": "Year missing (required for the period 'year')",
-    "year_range": "Year must be between {min} and {max}"
+    "year_range": "Year must be between {min} and {max}",
+    "media_url_missing": "Enter the server address (e.g. http://192.168.1.10:32400)",
+    "media_url_invalid": "Invalid address – http:// or https:// with host and optional port, no user name, query or #"
   },
   "db": {
     "migration_backup_failed": "Backup before the database migration v{old} → v{new} failed ({error}). The migration was not started, the data is unchanged.",
@@ -607,5 +610,50 @@
     "unknown": "Playlist not found",
     "gone_unsynced": "Playlist {path} no longer exists – it is no longer kept up to date",
     "sync_crashed": "Playlists could not be updated: {error}"
+  },
+  "stats": {
+    "invalid_range": "Invalid date range (YYYY-MM-DD)"
+  },
+  "media": {
+    "err_auth": "The server rejected the token / API key",
+    "err_unreachable": "Server not reachable ({detail})",
+    "err_timeout": "The server did not answer in time",
+    "err_tls": "HTTPS certificate problem ({detail}) – for a self-signed certificate switch off “Verify certificate”",
+    "err_http": "The server answered with HTTP {detail}",
+    "err_bad_response": "Unexpected answer – is this really a server of the chosen type?",
+    "err_config": "Choose Plex or Jellyfin and enter the server address",
+    "err_no_secret": "No token / API key stored – enter it and test the connection",
+    "scan_failed": "Media server scan failed: {error}",
+    "scan_done": "Media server ({server}): library scan requested for {n} new file(s)",
+    "test_ok": "Media server connected: {name} ({n} libraries)",
+    "test_failed": "Media server test failed: {error}",
+    "secret_failed": "The token could not be stored in the Windows Credential Manager",
+    "secret_unreadable": "The media server token could not be read from the Windows Credential Manager"
+  },
+  "notify": {
+    "part_new": {
+      "one": "{n} new set in the inbox",
+      "other": "{n} new sets in the inbox"
+    },
+    "part_done": {
+      "one": "{n} set downloaded",
+      "other": "{n} sets downloaded"
+    },
+    "part_failed": {
+      "one": "{n} download failed",
+      "other": "{n} downloads failed"
+    },
+    "new_body": "Found by your watchlist – click to open the inbox.",
+    "done_body": "Click to open the library.",
+    "failed_body": "Details under Downloads.",
+    "more": "+{n} more",
+    "open_inbox": "Click to open the inbox.",
+    "open_downloads": "Click to open the downloads.",
+    "test_title": "HCLoader notifications work",
+    "test_body": "This is how new sets and finished downloads will be announced.",
+    "test_unavailable": "Windows notifications are not available on this system",
+    "test_failed": "The test notification could not be shown – see the log",
+    "log_unavailable": "Notification (not shown, no Windows notifications available): {title}",
+    "log_failed": "Windows notification could not be shown: {error}"
   }
 }

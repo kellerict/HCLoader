@@ -98,7 +98,8 @@
     "headless": "ejecutar sin interfaz gráfica",
     "headless_needs_watchlist": "--headless requiere --run-watchlist.",
     "run_watchlist": "revisar la lista de seguimiento (con --headless)",
-    "smoke": "ejecutar exactamente una descarga (solo QA)"
+    "smoke": "ejecutar exactamente una descarga (solo QA)",
+    "open": "abrir una vista, p. ej. inbox (también hcloader://inbox desde una notificación)"
   },
   "collector": {
     "artist_required": "Falta el DJ / artista",
@@ -166,7 +167,9 @@
     "unreadable_rewrite": "Archivo de configuración ilegible, se reescribirá: {error}",
     "value_invalid": "Valor no válido para {section}.{field}, se usa el predeterminado",
     "year_missing": "Falta el año (obligatorio para el periodo «año»)",
-    "year_range": "El año debe estar entre {min} y {max}"
+    "year_range": "El año debe estar entre {min} y {max}",
+    "media_url_missing": "Introduce la dirección del servidor (p. ej. http://192.168.1.10:32400)",
+    "media_url_invalid": "Dirección no válida – http:// o https:// con host y puerto opcional, sin usuario, consulta ni #"
   },
   "db": {
     "migration_backup_failed": "Falló la copia de seguridad antes de la migración de la base de datos v{old} → v{new} ({error}). La migración no se inició, los datos no han cambiado.",
@@ -606,5 +609,50 @@
     "unknown": "Playlist no encontrada",
     "gone_unsynced": "La playlist {path} ya no existe – ya no se mantiene actualizada",
     "sync_crashed": "No se pudieron actualizar las playlists: {error}"
+  },
+  "stats": {
+    "invalid_range": "Rango de fechas no válido (AAAA-MM-DD)"
+  },
+  "media": {
+    "err_auth": "El servidor rechazó el token / la clave API",
+    "err_unreachable": "Servidor no accesible ({detail})",
+    "err_timeout": "El servidor no respondió a tiempo",
+    "err_tls": "Problema con el certificado HTTPS ({detail}) – con un certificado autofirmado desactiva «Verificar certificado»",
+    "err_http": "El servidor respondió con HTTP {detail}",
+    "err_bad_response": "Respuesta inesperada – ¿es realmente un servidor del tipo elegido?",
+    "err_config": "Elige Plex o Jellyfin e introduce la dirección del servidor",
+    "err_no_secret": "No hay token / clave API guardado – introdúcelo y prueba la conexión",
+    "scan_failed": "Falló el escaneo del servidor multimedia: {error}",
+    "scan_done": "Servidor multimedia ({server}): escaneo de la biblioteca solicitado para {n} archivo(s) nuevo(s)",
+    "test_ok": "Servidor multimedia conectado: {name} ({n} bibliotecas)",
+    "test_failed": "Falló la prueba del servidor multimedia: {error}",
+    "secret_failed": "No se pudo guardar el token en el Administrador de credenciales de Windows",
+    "secret_unreadable": "No se pudo leer el token del servidor multimedia del Administrador de credenciales de Windows"
+  },
+  "notify": {
+    "part_new": {
+      "one": "{n} set nuevo en la bandeja",
+      "other": "{n} sets nuevos en la bandeja"
+    },
+    "part_done": {
+      "one": "{n} set descargado",
+      "other": "{n} sets descargados"
+    },
+    "part_failed": {
+      "one": "{n} descarga fallida",
+      "other": "{n} descargas fallidas"
+    },
+    "new_body": "Encontrado por tu watchlist – haz clic para abrir la bandeja.",
+    "done_body": "Haz clic para abrir la biblioteca.",
+    "failed_body": "Detalles en Descargas.",
+    "more": "+{n} más",
+    "open_inbox": "Haz clic para abrir la bandeja.",
+    "open_downloads": "Haz clic para abrir las descargas.",
+    "test_title": "Las notificaciones de HCLoader funcionan",
+    "test_body": "Así se anunciarán los sets nuevos y las descargas terminadas.",
+    "test_unavailable": "Las notificaciones de Windows no están disponibles en este sistema",
+    "test_failed": "No se pudo mostrar la notificación de prueba – revisa el registro",
+    "log_unavailable": "Notificación (no mostrada, sin notificaciones de Windows): {title}",
+    "log_failed": "No se pudo mostrar la notificación de Windows: {error}"
   }
 }

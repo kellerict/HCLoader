@@ -1462,7 +1462,7 @@ def test_check_sources_runs_job_with_events_and_inbox(env):
     src = [e for e in env.window.events_of("source") if e["id"] == sid]
     assert [e["checking"] for e in src] == [True, False] and src[1]["new_count"] == 1
     assert src[1]["last_checked"]
-    assert env.window.events_of("watchlist_done")[-1] == {"checked": 1, "found": 1}
+    assert env.window.events_of("watchlist_done")[-1] == {"checked": 1, "found": 1, "inbox": 1}
     assert [v["id"] for v in a.get_inbox()] == ["newvideo001"]
     assert a.get_status()["inbox_count"] == 1
     assert a._db.list_runs()[0]["kind"] == "watchlist"
@@ -1613,7 +1613,7 @@ def test_search_then_channel_to_watchlist_first_check_finds_older_videos(env):
     assert src["max_entries"] is None
     assert a.check_sources([src["id"]])["started"] == 1
     _wait_watchlist_done(a, env.window)
-    assert env.window.events_of("watchlist_done")[-1] == {"checked": 1, "found": 3}
+    assert env.window.events_of("watchlist_done")[-1] == {"checked": 1, "found": 3, "inbox": 4}
     inbox = {v["id"] for v in a._db.list_videos(status="inbox", source_id=src["id"])}
     assert inbox == {"newest00001", "searched001", "older000001", "older000002"}
     assert a.get_sources()[0]["new_count"] == 4

@@ -98,7 +98,8 @@
     "headless": "无界面运行",
     "headless_needs_watchlist": "--headless 需要配合 --run-watchlist。",
     "run_watchlist": "检查关注列表（配合 --headless）",
-    "smoke": "只运行一次下载（仅用于 QA）"
+    "smoke": "只运行一次下载（仅用于 QA）",
+    "open": "打开某个视图，例如 inbox（通知中的 hcloader://inbox 也可以）"
   },
   "collector": {
     "artist_required": "缺少 DJ / 艺人",
@@ -166,7 +167,9 @@
     "unreadable_rewrite": "配置文件无法读取，将被重写：{error}",
     "value_invalid": "{section}.{field} 的值无效，使用默认值",
     "year_missing": "缺少年份（时间段“年份”必填）",
-    "year_range": "年份必须在 {min} 到 {max} 之间"
+    "year_range": "年份必须在 {min} 到 {max} 之间",
+    "media_url_missing": "请输入服务器地址（例如 http://192.168.1.10:32400）",
+    "media_url_invalid": "地址无效 – 需要 http:// 或 https://、主机名和可选端口，不能包含用户名、查询参数或 #"
   },
   "db": {
     "migration_backup_failed": "数据库迁移 v{old} → v{new} 前的备份失败（{error}）。迁移未开始，数据保持不变。",
@@ -599,5 +602,47 @@
     "unknown": "未找到播放列表",
     "gone_unsynced": "播放列表 {path} 已不存在 – 不再自动更新",
     "sync_crashed": "无法更新播放列表：{error}"
+  },
+  "stats": {
+    "invalid_range": "日期范围无效（YYYY-MM-DD）"
+  },
+  "media": {
+    "err_auth": "服务器拒绝了令牌 / API 密钥",
+    "err_unreachable": "无法连接服务器（{detail}）",
+    "err_timeout": "服务器未及时响应",
+    "err_tls": "HTTPS 证书问题（{detail}）– 如为自签名证书，请关闭“验证证书”",
+    "err_http": "服务器返回 HTTP {detail}",
+    "err_bad_response": "响应异常 – 这真的是所选类型的服务器吗？",
+    "err_config": "请选择 Plex 或 Jellyfin 并输入服务器地址",
+    "err_no_secret": "未保存令牌 / API 密钥 – 请输入并测试连接",
+    "scan_failed": "媒体服务器扫描失败：{error}",
+    "scan_done": "媒体服务器（{server}）：已请求扫描媒体库（{n} 个新文件）",
+    "test_ok": "媒体服务器已连接：{name}（{n} 个媒体库）",
+    "test_failed": "媒体服务器测试失败：{error}",
+    "secret_failed": "无法将令牌保存到 Windows 凭据管理器",
+    "secret_unreadable": "无法从 Windows 凭据管理器读取媒体服务器令牌"
+  },
+  "notify": {
+    "part_new": {
+      "other": "收件箱中有 {n} 个新混音"
+    },
+    "part_done": {
+      "other": "已下载 {n} 个混音"
+    },
+    "part_failed": {
+      "other": "{n} 个下载失败"
+    },
+    "new_body": "由监视列表发现 – 点击打开收件箱。",
+    "done_body": "点击打开媒体库。",
+    "failed_body": "详情见“下载”。",
+    "more": "另有 {n} 个",
+    "open_inbox": "点击打开收件箱。",
+    "open_downloads": "点击打开下载。",
+    "test_title": "HCLoader 通知工作正常",
+    "test_body": "新混音和完成的下载将以这种方式通知你。",
+    "test_unavailable": "此系统不支持 Windows 通知",
+    "test_failed": "无法显示测试通知 – 请查看日志",
+    "log_unavailable": "通知（未显示，Windows 通知不可用）：{title}",
+    "log_failed": "无法显示 Windows 通知：{error}"
   }
 }

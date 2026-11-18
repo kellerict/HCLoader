@@ -101,7 +101,8 @@
     "headless": "paleisti be grafinės sąsajos",
     "headless_needs_watchlist": "--headless reikalauja --run-watchlist.",
     "run_watchlist": "patikrinti stebimus šaltinius (su --headless)",
-    "smoke": "atlikti lygiai vieną atsisiuntimą (tik QA)"
+    "smoke": "atlikti lygiai vieną atsisiuntimą (tik QA)",
+    "open": "atidaryti rodinį, pvz., inbox (taip pat hcloader://inbox iš pranešimo)"
   },
   "collector": {
     "artist_required": "Trūksta DJ / atlikėjo",
@@ -169,7 +170,9 @@
     "unreadable_rewrite": "Konfigūracijos failo perskaityti nepavyksta, jis bus perrašytas: {error}",
     "value_invalid": "Neteisinga reikšmė {section}.{field}, naudojama numatytoji",
     "year_missing": "Trūksta metų (reikalinga laikotarpiui „metai“)",
-    "year_range": "Metai turi būti tarp {min} ir {max}"
+    "year_range": "Metai turi būti tarp {min} ir {max}",
+    "media_url_missing": "Įveskite serverio adresą (pvz., http://192.168.1.10:32400)",
+    "media_url_invalid": "Netinkamas adresas – http:// arba https:// su serveriu ir nebūtinu prievadu, be vartotojo vardo, užklausos ar #"
   },
   "db": {
     "migration_backup_failed": "Atsarginė kopija prieš duomenų bazės migraciją v{old} → v{new} nepavyko ({error}). Migracija nepradėta, duomenys nepakitę.",
@@ -623,5 +626,56 @@
     "unknown": "Grojaraštis nerastas",
     "gone_unsynced": "Grojaraščio {path} nebėra – jis nebebus atnaujinamas",
     "sync_crashed": "Nepavyko atnaujinti grojaraščių: {error}"
+  },
+  "stats": {
+    "invalid_range": "Netinkamas laikotarpis (MMMM-MM-DD)"
+  },
+  "media": {
+    "err_auth": "Serveris atmetė prieigos raktą / API raktą",
+    "err_unreachable": "Serveris nepasiekiamas ({detail})",
+    "err_timeout": "Serveris laiku neatsakė",
+    "err_tls": "HTTPS sertifikato problema ({detail}) – jei sertifikatas pasirašytas savarankiškai, išjunkite „Tikrinti sertifikatą“",
+    "err_http": "Serveris atsakė HTTP {detail}",
+    "err_bad_response": "Netikėtas atsakymas – ar tai tikrai pasirinkto tipo serveris?",
+    "err_config": "Pasirinkite Plex arba Jellyfin ir įveskite serverio adresą",
+    "err_no_secret": "Neišsaugotas joks prieigos raktas / API raktas – įveskite ir patikrinkite ryšį",
+    "scan_failed": "Medijos serverio skenavimas nepavyko: {error}",
+    "scan_done": "Medijos serveris ({server}): paprašyta nuskaityti biblioteką, naujų failų: {n}",
+    "test_ok": "Medijos serveris prijungtas: {name} (bibliotekų: {n})",
+    "test_failed": "Medijos serverio patikra nepavyko: {error}",
+    "secret_failed": "Prieigos rakto nepavyko išsaugoti Windows kredencialų tvarkytuve",
+    "secret_unreadable": "Medijos serverio prieigos rakto nepavyko nuskaityti iš Windows kredencialų tvarkytuvo"
+  },
+  "notify": {
+    "part_new": {
+      "one": "{n} naujas setas gautuosiuose",
+      "few": "{n} nauji setai gautuosiuose",
+      "many": "{n} naujo seto gautuosiuose",
+      "other": "{n} naujų setų gautuosiuose"
+    },
+    "part_done": {
+      "one": "Atsisiųstas {n} setas",
+      "few": "Atsisiųsti {n} setai",
+      "many": "Atsisiųsta {n} seto",
+      "other": "Atsisiųsta {n} setų"
+    },
+    "part_failed": {
+      "one": "{n} atsisiuntimas nepavyko",
+      "few": "{n} atsisiuntimai nepavyko",
+      "many": "{n} atsisiuntimo nepavyko",
+      "other": "{n} atsisiuntimų nepavyko"
+    },
+    "new_body": "Rado jūsų stebimų sąrašas – spustelėkite, kad atidarytumėte gautuosius.",
+    "done_body": "Spustelėkite, kad atidarytumėte biblioteką.",
+    "failed_body": "Išsamiau – skiltyje Atsisiuntimai.",
+    "more": "dar +{n}",
+    "open_inbox": "Spustelėkite, kad atidarytumėte gautuosius.",
+    "open_downloads": "Spustelėkite, kad atidarytumėte atsisiuntimus.",
+    "test_title": "HCLoader pranešimai veikia",
+    "test_body": "Taip bus pranešama apie naujus setus ir baigtus atsisiuntimus.",
+    "test_unavailable": "Šioje sistemoje Windows pranešimai nepasiekiami",
+    "test_failed": "Bandomojo pranešimo parodyti nepavyko – žr. žurnalą",
+    "log_unavailable": "Pranešimas (neparodytas, Windows pranešimai nepasiekiami): {title}",
+    "log_failed": "Windows pranešimo parodyti nepavyko: {error}"
   }
 }

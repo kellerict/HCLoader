@@ -98,7 +98,8 @@
     "headless": "jalankan tanpa GUI",
     "headless_needs_watchlist": "--headless memerlukan --run-watchlist.",
     "run_watchlist": "periksa daftar pantau (dengan --headless)",
-    "smoke": "jalankan tepat satu unduhan (hanya QA)"
+    "smoke": "jalankan tepat satu unduhan (hanya QA)",
+    "open": "buka tampilan, mis. inbox (juga hcloader://inbox dari notifikasi)"
   },
   "collector": {
     "artist_required": "DJ / artis wajib diisi",
@@ -166,7 +167,9 @@
     "unreadable_rewrite": "File konfigurasi tidak terbaca, akan ditulis ulang: {error}",
     "value_invalid": "Nilai tidak valid untuk {section}.{field}, memakai bawaan",
     "year_missing": "Tahun tidak ada (wajib untuk periode 'year')",
-    "year_range": "Tahun harus antara {min} dan {max}"
+    "year_range": "Tahun harus antara {min} dan {max}",
+    "media_url_missing": "Masukkan alamat server (mis. http://192.168.1.10:32400)",
+    "media_url_invalid": "Alamat tidak valid – http:// atau https:// dengan host dan port opsional, tanpa nama pengguna, query, atau #"
   },
   "db": {
     "migration_backup_failed": "Cadangan sebelum migrasi basis data v{old} → v{new} gagal ({error}). Migrasi tidak dimulai, data tidak berubah.",
@@ -599,5 +602,47 @@
     "unknown": "Playlist tidak ditemukan",
     "gone_unsynced": "Playlist {path} sudah tidak ada – tidak lagi diperbarui",
     "sync_crashed": "Playlist tidak dapat diperbarui: {error}"
+  },
+  "stats": {
+    "invalid_range": "Rentang tanggal tidak valid (YYYY-MM-DD)"
+  },
+  "media": {
+    "err_auth": "Server menolak token / kunci API",
+    "err_unreachable": "Server tidak dapat dijangkau ({detail})",
+    "err_timeout": "Server tidak menjawab tepat waktu",
+    "err_tls": "Masalah sertifikat HTTPS ({detail}) – untuk sertifikat self-signed, matikan “Periksa sertifikat”",
+    "err_http": "Server menjawab dengan HTTP {detail}",
+    "err_bad_response": "Jawaban tak terduga – apakah ini benar-benar server dengan jenis yang dipilih?",
+    "err_config": "Pilih Plex atau Jellyfin dan masukkan alamat server",
+    "err_no_secret": "Belum ada token / kunci API tersimpan – masukkan lalu uji koneksi",
+    "scan_failed": "Pemindaian server media gagal: {error}",
+    "scan_done": "Server media ({server}): pemindaian perpustakaan diminta untuk {n} file baru",
+    "test_ok": "Server media terhubung: {name} ({n} perpustakaan)",
+    "test_failed": "Uji server media gagal: {error}",
+    "secret_failed": "Token tidak dapat disimpan di Windows Credential Manager",
+    "secret_unreadable": "Token server media tidak dapat dibaca dari Windows Credential Manager"
+  },
+  "notify": {
+    "part_new": {
+      "other": "{n} set baru di kotak masuk"
+    },
+    "part_done": {
+      "other": "{n} set diunduh"
+    },
+    "part_failed": {
+      "other": "{n} unduhan gagal"
+    },
+    "new_body": "Ditemukan oleh watchlist Anda – klik untuk membuka kotak masuk.",
+    "done_body": "Klik untuk membuka perpustakaan.",
+    "failed_body": "Detail di Unduhan.",
+    "more": "+{n} lainnya",
+    "open_inbox": "Klik untuk membuka kotak masuk.",
+    "open_downloads": "Klik untuk membuka unduhan.",
+    "test_title": "Notifikasi HCLoader berfungsi",
+    "test_body": "Begini set baru dan unduhan yang selesai akan diberitahukan.",
+    "test_unavailable": "Notifikasi Windows tidak tersedia di sistem ini",
+    "test_failed": "Notifikasi uji tidak dapat ditampilkan – lihat log",
+    "log_unavailable": "Notifikasi (tidak ditampilkan, notifikasi Windows tidak tersedia): {title}",
+    "log_failed": "Notifikasi Windows tidak dapat ditampilkan: {error}"
   }
 }
