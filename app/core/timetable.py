@@ -120,30 +120,83 @@ _MONTHS = (
     "septembre oct october oktober octobre octubre nov november novembre dec december dezember "
     "december décembre diciembre"
 ).split()
-_DATEISH = re.compile(r"^[\d\s./,\-–]*$")
+
+
+_MONTH_SET = frozenset(_MONTHS)
+_DATE_RE = re.compile(
+    r"^(?:(?P<d>\d{1,2})(?P<sep>[./-])(?P<m>\d{1,2})(?:(?P=sep)(?P<y>\d{2}|\d{4}))?(?P<dot>\.)?"
+    r"|(?P<iy>\d{4})-(?P<im>\d{1,2})-(?P<id>\d{1,2}))$"
+)
+_ORDINAL_RE = re.compile(r"^(\d{1,2})(?:st|nd|rd|th|e|er|de|ste|\.)?$", re.I)
+_DAY_TOKEN_SPLIT = re.compile(r"[\s,()\[\]|–—]+")
+_DAY_FILLER = frozenset(("den", "the", "of", "le", "el", "de", "on", "-", "/", "&"))
+_DAY_N_WORDS = frozenset(("day", "tag", "dag", "jour", "dia", "día", "päivä"))
+
+
+def _date_token(tok: str, *, weekday: bool) -> bool:
+    """«12.07.», «12/07», «12.7.2025», «2025-07-12» with a valid day and month. A bare «12.07»
+    (could be a time) only counts next to a weekday."""
+    m = _DATE_RE.match(tok)
+    if not m:
+        return False
+    if m.group("iy"):
+        d, mo = int(m.group("id")), int(m.group("im"))
+    else:
+        d, mo = int(m.group("d")), int(m.group("m"))
+        strong = m.group("sep") != "." or m.group("y") or m.group("dot")
+        if not strong and not weekday:
+            return False
+    return 1 <= d <= 31 and 1 <= mo <= 12
 
 
 def _day_heading(text: str) -> str | None:
-    """The day label when `text` is a day heading («Saturday», «Samstag, 28.06.», «Day 2»)."""
+    """The day label when `text` is a day heading: a weekday and/or a date and nothing else
+    («Saturday», «Samstag, 12.07.», «Sa. 12.7.2025», «12/07 – Saturday», «Saturday 12 July»,
+    «Sunday, July 13th», «Day 2 – Saturday», «12.07.2025»)."""
     clean = text.strip().strip(":").strip()
     if not clean or len(clean) > MAX_DAY:
         return None
     if _DAY_N_RE.match(clean):
         return clean
-    words = re.split(r"[\s,.:/]+", clean.casefold())
-    words = [w for w in words if w]
-    if not words or words[0] not in _DAY_WORDS:
+    tokens = [t.strip(":") for t in _DAY_TOKEN_SPLIT.split(clean)]
+    tokens = [t for t in tokens if t]
+    if not tokens:
         return None
-    if len(words) == 1:
-        # very short forms ("do", "so", "za") only as a whole heading line (always the case here)
+    folded = [t.casefold() for t in tokens]
+    has_weekday = any(f.rstrip(".") in _DAY_WORDS for f in folded)
+    weekdays = day_n = dates = months = numbers = 0
+    i = 0
+    while i < len(tokens):
+        f = folded[i]
+        word = f.rstrip(".")
+        if word in _DAY_WORDS:
+            weekdays += 1
+        elif word in _DAY_N_WORDS and i + 1 < len(tokens) and tokens[i + 1].isdigit():
+            day_n += 1
+            i += 1
+        elif word in _MONTH_SET:
+            months += 1
+        elif _date_token(f, weekday=has_weekday):
+            dates += 1
+        elif re.fullmatch(r"(?:19|20)\d{2}", f):
+            pass  # a year
+        elif _ORDINAL_RE.match(f) and 1 <= int(_ORDINAL_RE.match(f).group(1)) <= 31:
+            numbers += 1
+        elif f not in _DAY_FILLER:
+            return None
+        i += 1
+    if weekdays > 1 or day_n > 1 or dates > 1 or months > 1:
+        return None
+    if weekdays or day_n:
+        if numbers and not months and not dates and weekdays and not day_n:
+            # «Sa 12»: a short weekday with a bare number is no heading; «Saturday 12» is
+            first = next(f for f in folded if f.rstrip(".") in _DAY_WORDS).rstrip(".")
+            if first not in _LONG_DAY_WORDS:
+                return None
         return clean
-    rest = clean[len(clean.split()[0]) :]  # any whitespace, also tabs
-    rest_words = [w for w in words[1:] if w not in _MONTHS and not w.isdigit()]
-    if rest_words and not _DATEISH.match(rest):
-        return None
-    if words[0] not in _LONG_DAY_WORDS and len(words) > 1 and not any(c.isdigit() for c in rest):
-        return None
-    return clean
+    if dates or (months and numbers):
+        return clean  # a date alone («12.07.2025», «12 July»)
+    return None
 
 
 _DAY_LEAD = re.compile(r"^([^\W\d_]{2,12})\.?(?: ?[|,:/\-–—])? ?(?=\d)")
@@ -188,8 +241,35 @@ def _combined_heading(text: str, names: dict[str, str]) -> tuple[str, str] | Non
 
 # --------------------------------------------------------------------------- stages
 
-_STAGE_WORDS = ("stage", "bühne", "buhne", "area", "arena", "tent", "hall", "floor", "podium")
+_STAGE_WORDS = frozenset(
+    "stage bühne buhne buehne area arena tent hall floor podium room zone dome hangar garden "
+    "terrace theatre theater circus temple cathedral mainstage".split()
+)
+_STAGE_SUFFIXES = ("stage", "floor", "podium", "bühne", "buhne", "arena")
+# colour names of festival stages (Defqon.1, Qlimax, Decibel ...): a line with only a colour is
+# a stage heading even without a catalog
+_COLOURS = frozenset(
+    "red blue black uv yellow indigo magenta gold silver purple green orange white pink grey "
+    "gray violet brown".split()
+)
 _STAGE_PREFIX = re.compile(r"^(?:stage|bühne|buhne|area|podium)\s*[:\-–]\s*(.+)$", re.I)
+
+
+def _stage_word(word: str) -> bool:
+    """«stage», «arena», «mainstage», «hoofdpodium», «dancefloor»."""
+    return word in _STAGE_WORDS or (len(word) > 5 and word.endswith(_STAGE_SUFFIXES))
+
+
+def _has_stage_word(text: str) -> bool:
+    return any(_stage_word(w) for w in fx.norm(text).split())
+
+
+def _colour_label(text: str) -> bool:
+    """«RED», «Black», «UV stage»: only a colour name (and the word stage)."""
+    words = fx.norm(text).split()
+    if words and words[-1] in ("stage", "area"):
+        words = words[:-1]
+    return len(words) == 1 and words[0] in _COLOURS
 
 
 def _stage_names(stages: Sequence[fx.StageDef]) -> dict[str, str]:
@@ -240,7 +320,7 @@ def _stage_label(text: str, names: dict[str, str], *, loose: bool = False) -> st
     words = fx.norm(text).split()
     if not 0 < len(words) <= 6:
         return None
-    if any(w in _STAGE_WORDS for w in words) or _caps_label(text) or (loose and len(words) <= 3):
+    if _has_stage_word(text) or _caps_label(text) or (loose and len(words) <= 3):
         return _clean_stage(text) or None
     return None
 
@@ -265,8 +345,9 @@ def _stage_heading(
         or re.match(r"^\s*\[.+\]\s*$", raw) is not None
     )
     words = fx.norm(text).split()
-    has_word = any(w in _STAGE_WORDS for w in words)
-    if has_word and len(words) <= 6:
+    if _colour_label(text):
+        return _clean_stage(text)
+    if _has_stage_word(text) and len(words) <= 6:
         return _clean_stage(text)
     if marked and 0 < len(words) <= 6:
         return _clean_stage(text)
@@ -306,7 +387,7 @@ def _split_artist(
         if known and stage is None:
             stage = known
             return " "
-        if any(w in _STAGE_WORDS for w in fx.norm(inner).split()) and stage is None:
+        if _has_stage_word(inner) and stage is None:
             stage = _clean_stage(inner)
             return " "
         code = _set_type(inner, set_types)
@@ -599,7 +680,7 @@ def _parse_cells(
         if not artist:
             artist = cell
             texts.append(cell)
-        elif stage is None and any(w in _STAGE_WORDS for w in fx.norm(cell).split()):
+        elif stage is None and _has_stage_word(cell):
             stage = _clean_stage(cell)
         else:
             texts.append(cell)
