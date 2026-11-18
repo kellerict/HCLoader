@@ -1783,5 +1783,80 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "q_missing": "be atitikmens: {n}",
     "q_other": "negalima atsisiųsti: {n}",
     "q_retag": "žymės atnaujintos: {n}"
+  },
+  "tracks": {
+    "nav": "Takeliai",
+    "open_title": "Kuriuose setuose skamba takelis? Ieškoti bibliotekos takelių sąrašuose",
+    "title": "Takeliai",
+    "sub": "Kuriuose setuose skamba šis takelis?",
+    "back": "Atgal į biblioteką",
+    "search": "Atlikėjas arba pavadinimas, pvz., Dragonborn",
+    "n_tracks": {
+      "one": "{n} takelis",
+      "few": "{n} takeliai",
+      "many": "{n} takelio",
+      "other": "{n} takelių"
+    },
+    "n_sets": {
+      "one": "{n} setas",
+      "few": "{n} setai",
+      "many": "{n} seto",
+      "other": "{n} setų"
+    },
+    "status": "{tracks}: {sets}",
+    "status_last": "Nuskaityta:",
+    "scan": "Nuskaityti takelių sąrašus",
+    "scan_title": "Nuskaityti visų setų takelių sąrašus (neprisijungus: skyriai, aprašymai, CUE failai)",
+    "rescan": "Nuskaityti iš naujo",
+    "running": "Nuskaitomi takelių sąrašai … {done} / {total}",
+    "engine_like": "Paprasta paieška: šiame SQLite nėra viso teksto indekso",
+    "top_title": "Dažniausiai grojami takeliai",
+    "top_sub": "daugiausia setų",
+    "top_sets": {
+      "one": "{n} sete",
+      "few": "{n} setuose",
+      "many": "{n} seto",
+      "other": "{n} setų"
+    },
+    "top_find": "Rodyti setus su šiuo takeliu",
+    "top_empty": "Dar nė vienas takelis nepasitaiko daugiau nei viename sete.",
+    "results": {
+      "one": "{n} setas su „{q}“",
+      "few": "{n} setai su „{q}“",
+      "many": "{n} seto su „{q}“",
+      "other": "{n} setų su „{q}“"
+    },
+    "truncated": "pirmieji {n} – patikslinkite paiešką",
+    "more_hits": {
+      "one": "+ dar {n} atitikmuo",
+      "few": "+ dar {n} atitikmenys",
+      "many": "+ dar {n} atitikmens",
+      "other": "+ dar {n} atitikmenų"
+    },
+    "no_results_title": "Joks setas negroja „{q}“",
+    "no_results_text": "Pabandykite dalį atlikėjo ar pavadinimo. Randami tik setai su takelių sąrašu (skyriai, aprašymas, CUE failas).",
+    "empty_title": "Takelių sąrašų dar nėra",
+    "empty_text": "HCLoader skaito takelių sąrašus iš jūsų setų skyrių, aprašymų ir CUE failų – neprisijungus, neklausdamas YouTube.",
+    "empty_none_title": "Nė vienas jūsų setas neturi takelių sąrašo",
+    "empty_none_text": "Takelių sąrašai gaunami iš skyrių, aprašymų su laiko žymomis ir CUE failų. Setų be jų ieškoti negalima.",
+    "library_empty": "Pirmiausia atsisiųskite kelis setus – jų takelių sąrašai atsiras čia.",
+    "jump": "Groti nuo {time}",
+    "jump_external": "Atidaryta numatytajame grotuve – ten pereikite prie {time}",
+    "no_time": "Takelių sąraše nėra laiko žymos",
+    "tracklist": "Takelių sąrašas",
+    "tracklist_title": "Rodyti visą šio seto takelių sąrašą",
+    "panel_source": "Šaltinis: {source}",
+    "source_chapters": "skyriai",
+    "source_description": "aprašymas",
+    "source_id3": "ID3 skyriai",
+    "source_cue": "CUE failas",
+    "source_none": "nėra",
+    "panel_empty": "Šis setas neturi takelių sąrašo",
+    "panel_empty_hint": "Nerasta nei skyrių, nei aprašymo su takelių sąrašu, nei CUE failo.",
+    "close": "Uždaryti",
+    "id_track": "Neišleistas arba neatpažintas takelis (ID)",
+    "play_set": "Groti setą nuo pradžios",
+    "toast_done": "Takelių sąrašai nuskaityti: {sets}, {tracks}",
+    "toast_cancelled": "Takelių sąrašų nuskaitymas nutrauktas"
   }
 });

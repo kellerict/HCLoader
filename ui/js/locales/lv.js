@@ -1749,5 +1749,75 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "q_missing": "bez rezultāta: {n}",
     "q_other": "nevar lejupielādēt: {n}",
     "q_retag": "tagi atjaunināti: {n}"
+  },
+  "tracks": {
+    "nav": "Dziesmas",
+    "open_title": "Kuros setos skan dziesma? Meklēt bibliotēkas dziesmu sarakstos",
+    "title": "Dziesmas",
+    "sub": "Kuros setos skan šī dziesma?",
+    "back": "Atpakaļ uz bibliotēku",
+    "search": "Izpildītājs vai nosaukums, piem., Dragonborn",
+    "n_tracks": {
+      "zero": "{n} dziesmu",
+      "one": "{n} dziesma",
+      "other": "{n} dziesmas"
+    },
+    "n_sets": {
+      "zero": "{n} setu",
+      "one": "{n} sets",
+      "other": "{n} seti"
+    },
+    "status": "{tracks}: {sets}",
+    "status_last": "Nolasīts:",
+    "scan": "Nolasīt dziesmu sarakstus",
+    "scan_title": "Nolasīt visu setu dziesmu sarakstus (bezsaistē: nodaļas, apraksti, CUE faili)",
+    "rescan": "Nolasīt vēlreiz",
+    "running": "Nolasa dziesmu sarakstus … {done} / {total}",
+    "engine_like": "Vienkārša meklēšana: šim SQLite nav pilnteksta indeksa",
+    "top_title": "Biežāk atskaņotās dziesmas",
+    "top_sub": "visvairāk setos",
+    "top_sets": {
+      "zero": "{n} setos",
+      "one": "{n} setā",
+      "other": "{n} setos"
+    },
+    "top_find": "Rādīt setus ar šo dziesmu",
+    "top_empty": "Neviena dziesma vēl nav vairāk nekā vienā setā.",
+    "results": {
+      "zero": "{n} setu ar “{q}”",
+      "one": "{n} sets ar “{q}”",
+      "other": "{n} seti ar “{q}”"
+    },
+    "truncated": "pirmie {n} – precizējiet meklēšanu",
+    "more_hits": {
+      "zero": "+ vēl {n} atbilstību",
+      "one": "+ vēl {n} atbilstība",
+      "other": "+ vēl {n} atbilstības"
+    },
+    "no_results_title": "Neviens sets neatskaņo “{q}”",
+    "no_results_text": "Mēģiniet daļu no izpildītāja vai nosaukuma. Atrod tikai setus ar dziesmu sarakstu (nodaļas, apraksts, CUE fails).",
+    "empty_title": "Vēl nav dziesmu sarakstu",
+    "empty_text": "HCLoader nolasa dziesmu sarakstus no jūsu setu nodaļām, aprakstiem un CUE failiem – bezsaistē, nejautājot YouTube.",
+    "empty_none_title": "Nevienam jūsu setam nav dziesmu saraksta",
+    "empty_none_text": "Dziesmu saraksti rodas no nodaļām, aprakstiem ar laika zīmēm un CUE failiem. Setos bez tiem meklēt nevar.",
+    "library_empty": "Vispirms lejupielādējiet dažus setus – to dziesmu saraksti parādīsies šeit.",
+    "jump": "Atskaņot no {time}",
+    "jump_external": "Atvērts noklusējuma atskaņotājā – tur pārejiet uz {time}",
+    "no_time": "Dziesmu sarakstā nav laika zīmes",
+    "tracklist": "Dziesmu saraksts",
+    "tracklist_title": "Rādīt visu šī seta dziesmu sarakstu",
+    "panel_source": "Avots: {source}",
+    "source_chapters": "nodaļas",
+    "source_description": "apraksts",
+    "source_id3": "ID3 nodaļas",
+    "source_cue": "CUE fails",
+    "source_none": "nav",
+    "panel_empty": "Šim setam nav dziesmu saraksta",
+    "panel_empty_hint": "Netika atrastas ne nodaļas, ne apraksts ar dziesmu sarakstu, ne CUE fails.",
+    "close": "Aizvērt",
+    "id_track": "Neizdota vai neatpazīta dziesma (ID)",
+    "play_set": "Atskaņot setu no sākuma",
+    "toast_done": "Dziesmu saraksti nolasīti: {sets}, {tracks}",
+    "toast_cancelled": "Dziesmu sarakstu nolasīšana atcelta"
   }
 });

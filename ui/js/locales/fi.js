@@ -1715,5 +1715,70 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "q_missing": "ilman osumaa: {n}",
     "q_other": "ei ladattavissa: {n}",
     "q_retag": "tagit päivitetty: {n}"
+  },
+  "tracks": {
+    "nav": "Kappaleet",
+    "open_title": "Missä seteissä kappale soi? Hae kirjaston kappalelistoista",
+    "title": "Kappaleet",
+    "sub": "Missä seteissä tämä kappale soi?",
+    "back": "Takaisin kirjastoon",
+    "search": "Artisti tai nimi, esim. Dragonborn",
+    "n_tracks": {
+      "one": "{n} kappale",
+      "other": "{n} kappaletta"
+    },
+    "n_sets": {
+      "one": "{n} setti",
+      "other": "{n} settiä"
+    },
+    "status": "{tracks}, {sets}",
+    "status_last": "Luettu:",
+    "scan": "Lue kappalelistat",
+    "scan_title": "Lue kaikkien settien kappalelistat (offline: kappalemerkit, kuvaukset, CUE-tiedostot)",
+    "rescan": "Lue uudelleen",
+    "running": "Luetaan kappalelistoja … {done} / {total}",
+    "engine_like": "Yksinkertainen haku: tässä SQLitessä ei ole kokotekstihakemistoa",
+    "top_title": "Soitetuimmat kappaleet",
+    "top_sub": "useimmissa seteissä",
+    "top_sets": {
+      "one": "{n} setti",
+      "other": "{n} settiä"
+    },
+    "top_find": "Näytä setit, joissa tämä kappale on",
+    "top_empty": "Mikään kappale ei vielä esiinny useammassa kuin yhdessä setissä.",
+    "results": {
+      "one": "{n} setti: ”{q}”",
+      "other": "{n} settiä: ”{q}”"
+    },
+    "truncated": "ensimmäiset {n} – tarkenna hakua",
+    "more_hits": {
+      "one": "+ {n} osuma lisää",
+      "other": "+ {n} osumaa lisää"
+    },
+    "no_results_title": "Mikään setti ei soita ”{q}”",
+    "no_results_text": "Kokeile osaa artistista tai nimestä. Vain setit, joilla on kappalelista (kappalemerkit, kuvaus, CUE-tiedosto), löytyvät.",
+    "empty_title": "Ei vielä kappalelistoja",
+    "empty_text": "HCLoader lukee kappalelistat settiesi kappalemerkeistä, kuvauksista ja CUE-tiedostoista – offline, kysymättä YouTubelta.",
+    "empty_none_title": "Yhdelläkään setilläsi ei ole kappalelistaa",
+    "empty_none_text": "Kappalelistat tulevat kappalemerkeistä, aikaleimallisista kuvauksista ja CUE-tiedostoista. Ilman niitä settejä ei voi hakea.",
+    "library_empty": "Lataa ensin muutama setti – niiden kappalelistat näkyvät täällä.",
+    "jump": "Toista kohdasta {time}",
+    "jump_external": "Avattu oletussoittimessa – siirry siellä kohtaan {time}",
+    "no_time": "Kappalelistassa ei ole aikaleimaa",
+    "tracklist": "Kappalelista",
+    "tracklist_title": "Näytä tämän setin koko kappalelista",
+    "panel_source": "Lähde: {source}",
+    "source_chapters": "kappalemerkit",
+    "source_description": "kuvaus",
+    "source_id3": "ID3-kappalemerkit",
+    "source_cue": "CUE-tiedosto",
+    "source_none": "ei mitään",
+    "panel_empty": "Tällä setillä ei ole kappalelistaa",
+    "panel_empty_hint": "Kappalemerkkejä, kappalelistallista kuvausta tai CUE-tiedostoa ei löytynyt.",
+    "close": "Sulje",
+    "id_track": "Julkaisematon tai tunnistamaton kappale (ID)",
+    "play_set": "Toista setti alusta",
+    "toast_done": "Kappalelistat luettu: {sets}, {tracks}",
+    "toast_cancelled": "Kappalelistojen luku peruttu"
   }
 });

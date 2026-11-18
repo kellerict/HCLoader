@@ -1715,5 +1715,70 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "q_missing": "sem resultado: {n}",
     "q_other": "não baixáveis: {n}",
     "q_retag": "retagueados: {n}"
+  },
+  "tracks": {
+    "nav": "Faixas",
+    "open_title": "Quais sets tocam uma faixa? Buscar nas tracklists da biblioteca",
+    "title": "Faixas",
+    "sub": "Quais sets tocam esta faixa?",
+    "back": "Voltar à biblioteca",
+    "search": "Artista ou título, ex.: Dragonborn",
+    "n_tracks": {
+      "one": "{n} faixa",
+      "other": "{n} faixas"
+    },
+    "n_sets": {
+      "one": "{n} set",
+      "other": "{n} sets"
+    },
+    "status": "{tracks} em {sets}",
+    "status_last": "Lido:",
+    "scan": "Ler tracklists",
+    "scan_title": "Ler as tracklists de todos os sets (offline: capítulos, descrições, arquivos CUE)",
+    "rescan": "Ler de novo",
+    "running": "Lendo tracklists … {done} / {total}",
+    "engine_like": "Busca simples: este SQLite não tem índice de texto completo",
+    "top_title": "Faixas mais tocadas",
+    "top_sub": "em mais sets",
+    "top_sets": {
+      "one": "{n} set",
+      "other": "{n} sets"
+    },
+    "top_find": "Mostrar os sets com esta faixa",
+    "top_empty": "Nenhuma faixa aparece ainda em mais de um set.",
+    "results": {
+      "one": "{n} set com “{q}”",
+      "other": "{n} sets com “{q}”"
+    },
+    "truncated": "os primeiros {n} – refine a busca",
+    "more_hits": {
+      "one": "+ {n} resultado",
+      "other": "+ {n} resultados"
+    },
+    "no_results_title": "Nenhum set toca “{q}”",
+    "no_results_text": "Tente parte do artista ou do título. Só são encontrados sets com tracklist (capítulos, descrição, arquivo CUE).",
+    "empty_title": "Ainda sem tracklists",
+    "empty_text": "O HCLoader lê tracklists dos capítulos, descrições e arquivos CUE dos seus sets – offline, sem consultar o YouTube.",
+    "empty_none_title": "Nenhum dos seus sets tem tracklist",
+    "empty_none_text": "As tracklists vêm de capítulos, descrições com marcação de tempo e arquivos CUE. Sets sem elas não podem ser buscados.",
+    "library_empty": "Baixe alguns sets primeiro – as tracklists aparecem aqui.",
+    "jump": "Tocar a partir de {time}",
+    "jump_external": "Aberto no player padrão – vá até {time} lá",
+    "no_time": "Sem marcação de tempo na tracklist",
+    "tracklist": "Tracklist",
+    "tracklist_title": "Mostrar a tracklist inteira deste set",
+    "panel_source": "Fonte: {source}",
+    "source_chapters": "capítulos",
+    "source_description": "descrição",
+    "source_id3": "capítulos ID3",
+    "source_cue": "arquivo CUE",
+    "source_none": "nenhuma",
+    "panel_empty": "Este set não tem tracklist",
+    "panel_empty_hint": "Não foram encontrados capítulos, descrição com tracklist nem arquivo CUE.",
+    "close": "Fechar",
+    "id_track": "Faixa inédita ou não identificada (ID)",
+    "play_set": "Tocar o set desde o início",
+    "toast_done": "Tracklists lidas: {sets}, {tracks}",
+    "toast_cancelled": "Leitura de tracklists cancelada"
   }
 });

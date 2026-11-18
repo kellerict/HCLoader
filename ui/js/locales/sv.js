@@ -1715,5 +1715,70 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "q_missing": "utan träff: {n}",
     "q_other": "kan inte laddas: {n}",
     "q_retag": "omtaggade: {n}"
+  },
+  "tracks": {
+    "nav": "Låtar",
+    "open_title": "Vilka set spelar en låt? Sök i bibliotekets spellistor",
+    "title": "Låtar",
+    "sub": "Vilka set spelar den här låten?",
+    "back": "Tillbaka till biblioteket",
+    "search": "Artist eller titel, t.ex. Dragonborn",
+    "n_tracks": {
+      "one": "{n} låt",
+      "other": "{n} låtar"
+    },
+    "n_sets": {
+      "one": "{n} set",
+      "other": "{n} set"
+    },
+    "status": "{tracks} i {sets}",
+    "status_last": "Inläst:",
+    "scan": "Läs in spellistor",
+    "scan_title": "Läs in spellistorna för alla set (offline: kapitel, beskrivningar, CUE-filer)",
+    "rescan": "Läs in igen",
+    "running": "Läser in spellistor … {done} / {total}",
+    "engine_like": "Enkel sökning: den här SQLite saknar fulltextindex",
+    "top_title": "Mest spelade låtar",
+    "top_sub": "i flest set",
+    "top_sets": {
+      "one": "{n} set",
+      "other": "{n} set"
+    },
+    "top_find": "Visa set med den här låten",
+    "top_empty": "Ingen låt finns ännu i mer än ett set.",
+    "results": {
+      "one": "{n} set med ”{q}”",
+      "other": "{n} set med ”{q}”"
+    },
+    "truncated": "de första {n} – förfina sökningen",
+    "more_hits": {
+      "one": "+ {n} träff till",
+      "other": "+ {n} träffar till"
+    },
+    "no_results_title": "Inget set spelar ”{q}”",
+    "no_results_text": "Prova en del av artisten eller titeln. Bara set med spellista (kapitel, beskrivning, CUE-fil) hittas.",
+    "empty_title": "Inga spellistor än",
+    "empty_text": "HCLoader läser spellistor ur kapitel, beskrivningar och CUE-filer i dina set – offline, utan att fråga YouTube.",
+    "empty_none_title": "Inget av dina set har en spellista",
+    "empty_none_text": "Spellistor kommer från kapitel, beskrivningar med tidsstämplar och CUE-filer. Set utan dem går inte att söka i.",
+    "library_empty": "Ladda ner några set först – deras spellistor visas här.",
+    "jump": "Spela från {time}",
+    "jump_external": "Öppnat i standardspelaren – hoppa till {time} där",
+    "no_time": "Ingen tidsstämpel i spellistan",
+    "tracklist": "Spellista",
+    "tracklist_title": "Visa hela spellistan för det här setet",
+    "panel_source": "Källa: {source}",
+    "source_chapters": "kapitel",
+    "source_description": "beskrivning",
+    "source_id3": "ID3-kapitel",
+    "source_cue": "CUE-fil",
+    "source_none": "ingen",
+    "panel_empty": "Det här setet har ingen spellista",
+    "panel_empty_hint": "Varken kapitel, en beskrivning med spellista eller en CUE-fil hittades.",
+    "close": "Stäng",
+    "id_track": "Outgiven eller oidentifierad låt (ID)",
+    "play_set": "Spela setet från början",
+    "toast_done": "Spellistor inlästa: {sets}, {tracks}",
+    "toast_cancelled": "Inläsning av spellistor avbruten"
   }
 });

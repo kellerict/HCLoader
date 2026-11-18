@@ -1715,5 +1715,70 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "q_missing": "vasteta: {n}",
     "q_other": "ei saa laadida: {n}",
     "q_retag": "sildid uuendatud: {n}"
+  },
+  "tracks": {
+    "nav": "Lood",
+    "open_title": "Millistes settides lugu mängib? Otsi teegi lugude nimekirjadest",
+    "title": "Lood",
+    "sub": "Millistes settides see lugu mängib?",
+    "back": "Tagasi teeki",
+    "search": "Esitaja või pealkiri, nt Dragonborn",
+    "n_tracks": {
+      "one": "{n} lugu",
+      "other": "{n} lugu"
+    },
+    "n_sets": {
+      "one": "{n} sett",
+      "other": "{n} setti"
+    },
+    "status": "{tracks}, {sets}",
+    "status_last": "Loetud:",
+    "scan": "Loe lugude nimekirjad",
+    "scan_title": "Loe kõigi settide lugude nimekirjad (võrguühenduseta: peatükid, kirjeldused, CUE-failid)",
+    "rescan": "Loe uuesti",
+    "running": "Lugude nimekirjade lugemine … {done} / {total}",
+    "engine_like": "Lihtne otsing: selles SQLite'is pole täistekstiindeksit",
+    "top_title": "Enim mängitud lood",
+    "top_sub": "kõige rohkemates settides",
+    "top_sets": {
+      "one": "{n} setis",
+      "other": "{n} setis"
+    },
+    "top_find": "Näita selle looga sette",
+    "top_empty": "Ükski lugu ei esine veel rohkem kui ühes setis.",
+    "results": {
+      "one": "{n} sett: „{q}“",
+      "other": "{n} setti: „{q}“"
+    },
+    "truncated": "esimesed {n} – täpsusta otsingut",
+    "more_hits": {
+      "one": "+ veel {n} vaste",
+      "other": "+ veel {n} vastet"
+    },
+    "no_results_title": "Ükski sett ei mängi „{q}“",
+    "no_results_text": "Proovi osa esitajast või pealkirjast. Leitakse ainult lugude nimekirjaga sette (peatükid, kirjeldus, CUE-fail).",
+    "empty_title": "Lugude nimekirju veel pole",
+    "empty_text": "HCLoader loeb lugude nimekirjad sinu settide peatükkidest, kirjeldustest ja CUE-failidest – võrguühenduseta, YouTube'ilt küsimata.",
+    "empty_none_title": "Ühelgi sinu setil pole lugude nimekirja",
+    "empty_none_text": "Lugude nimekirjad tulevad peatükkidest, ajatemplitega kirjeldustest ja CUE-failidest. Ilma nendeta sette otsida ei saa.",
+    "library_empty": "Laadi kõigepealt mõni sett alla – nende lugude nimekirjad ilmuvad siia.",
+    "jump": "Mängi alates {time}",
+    "jump_external": "Avatud vaikemängijas – hüppa seal kohale {time}",
+    "no_time": "Lugude nimekirjas pole ajatemplit",
+    "tracklist": "Lugude nimekiri",
+    "tracklist_title": "Näita selle seti kogu lugude nimekirja",
+    "panel_source": "Allikas: {source}",
+    "source_chapters": "peatükid",
+    "source_description": "kirjeldus",
+    "source_id3": "ID3 peatükid",
+    "source_cue": "CUE-fail",
+    "source_none": "puudub",
+    "panel_empty": "Sellel setil pole lugude nimekirja",
+    "panel_empty_hint": "Ei leitud peatükke, lugude nimekirjaga kirjeldust ega CUE-faili.",
+    "close": "Sulge",
+    "id_track": "Avaldamata või tuvastamata lugu (ID)",
+    "play_set": "Mängi sett algusest",
+    "toast_done": "Lugude nimekirjad loetud: {sets}, {tracks}",
+    "toast_cancelled": "Lugude nimekirjade lugemine katkestatud"
   }
 });

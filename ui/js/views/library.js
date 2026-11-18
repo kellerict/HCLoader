@@ -411,6 +411,7 @@
     const internal = playerMode() === 'internal', working = busy.has(l.id);
     ui.menu(anchor, [
       { label: t(internal ? 'library.play_external' : 'library.play_internal'), icon: internal ? I.external : I.play, key: 'play-alt', disabled: !!l.missing, onClick: () => play(l, !internal) },
+      { label: t('tracks.tracklist'), icon: I.list, key: 'tracklist', onClick: () => HC.tracks.panel(l) },
       'sep',
       { label: t('fest.p_title'), icon: I.flag, key: 'fest', disabled: working, onClick: () => festMenu(l, anchor) },
       { label: t('library.retag_short'), icon: I.tag, key: 'retag', disabled: !!(l.missing || l.unknown || working), onClick: () => retag(l) },
@@ -569,6 +570,7 @@
     el.innerHTML = `
       <div class="view-head"><h2 class="glitch" data-text="${t('library.title')}">${t('library.title')}</h2><span class="sub" id="lib-sub"></span>
         <div class="actions">
+          <button type="button" class="btn ghost lib-tracks" id="lib-tracks-btn" title="${esc(t('tracks.open_title'))}">${I.list}${esc(t('tracks.nav'))}</button>
           <button type="button" class="btn ghost lib-collector" id="lib-collector-btn" title="${esc(t('collector.open_title'))}">${I.flag}${esc(t('collector.nav'))}</button>
           <div class="lib-tools" id="lib-tools">
             <div class="search-wrap lib-search">${I.search}<input class="input" id="lib-q" placeholder="${esc(t('library.search'))}" spellcheck="false" autocomplete="off"></div>
@@ -598,7 +600,8 @@
         </div>
       </div>
       <div class="scroll" id="lib-scroll"><div id="lib-body"></div></div>
-      <div class="collector" id="lib-collector" hidden></div>`;
+      <div class="collector" id="lib-collector" hidden></div>
+      <div class="tracks" id="lib-tracks" hidden></div>`;
     paintControls();
     HC.collector.init($('#lib-collector', el), {
       opened: () => el.classList.add('collecting'),
@@ -619,6 +622,16 @@
       },
     });
     $('#lib-collector-btn', el).addEventListener('click', () => HC.app.go('library', 'collector'));
+    /* Tracklist-Suche (v0.6.0): Unteransicht #library/tracks (views/tracks.js) */
+    HC.tracks.init($('#lib-tracks', el), {
+      opened: () => el.classList.add('tracking'),
+      closed(silent) {
+        el.classList.remove('tracking');
+        try { history.replaceState(null, '', '#library'); } catch (e) { /* file:// – egal */ }
+        if (!silent) refresh(true);
+      },
+    });
+    $('#lib-tracks-btn', el).addEventListener('click', () => HC.app.go('library', 'tracks'));
 
     if (window.IntersectionObserver) {
       moreObserver = new IntersectionObserver((entries) => {
@@ -705,12 +718,15 @@
     /* arg «collector» / «collector-<edition_id>» öffnet den Festival-Sammler. Ohne arg bleibt eine offene Unteransicht
        stehen, wenn man aus einer anderen Ansicht zurückkommt; ein Klick auf «Bibliothek» in der Bibliothek schliesst sie. */
     show(arg, changed) {
-      const C = HC.collector;
+      const C = HC.collector, T = HC.tracks;
+      if (arg === 'tracks') { if (C.active()) C.close(true); return T.open(); }
+      if (T.active() && changed && !arg) return T.open();
+      if (T.active()) T.close(true);
       if (/^collector(-\d+)?$/.test(arg || '')) return C.open(arg);
       if (C.active() && changed) return C.resume();
       if (C.active()) C.close(true);
       return refresh(changed);
     },
-    reset() { items = []; loaded = false; targetDown = null; limit = PAGE; onlyMissing = false; busy.clear(); nav.series = nav.edition = null; HC.collector.reset(); },
+    reset() { items = []; loaded = false; targetDown = null; limit = PAGE; onlyMissing = false; busy.clear(); nav.series = nav.edition = null; HC.collector.reset(); HC.tracks.reset(); },
   };
 })();

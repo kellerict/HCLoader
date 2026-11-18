@@ -1681,5 +1681,65 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "q_missing": "没有结果：{n}",
     "q_other": "无法下载：{n}",
     "q_retag": "已重写标签：{n}"
+  },
+  "tracks": {
+    "nav": "曲目",
+    "open_title": "哪些混音播放了某首曲目？搜索媒体库的曲目表",
+    "title": "曲目",
+    "sub": "哪些混音播放了这首曲目？",
+    "back": "返回媒体库",
+    "search": "艺人或曲名，例如 Dragonborn",
+    "n_tracks": {
+      "other": "{n} 首曲目"
+    },
+    "n_sets": {
+      "other": "{n} 个混音"
+    },
+    "status": "{sets}中的 {tracks}",
+    "status_last": "已读取：",
+    "scan": "读取曲目表",
+    "scan_title": "读取所有混音的曲目表（离线：章节、简介、CUE 文件）",
+    "rescan": "重新读取",
+    "running": "正在读取曲目表 … {done} / {total}",
+    "engine_like": "简单搜索：此 SQLite 没有全文索引",
+    "top_title": "播放最多的曲目",
+    "top_sub": "出现在最多混音中",
+    "top_sets": {
+      "other": "{n} 个混音"
+    },
+    "top_find": "显示包含此曲目的混音",
+    "top_empty": "还没有曲目出现在多个混音中。",
+    "results": {
+      "other": "{n} 个混音包含“{q}”"
+    },
+    "truncated": "前 {n} 个 – 请细化搜索",
+    "more_hits": {
+      "other": "+ 另外 {n} 条结果"
+    },
+    "no_results_title": "没有混音播放“{q}”",
+    "no_results_text": "请尝试艺人或曲名的一部分。只能找到带曲目表（章节、简介、CUE 文件）的混音。",
+    "empty_title": "还没有曲目表",
+    "empty_text": "HCLoader 从混音的章节、简介和 CUE 文件读取曲目表 – 离线进行，不访问 YouTube。",
+    "empty_none_title": "你的混音都没有曲目表",
+    "empty_none_text": "曲目表来自章节、带时间戳的简介和 CUE 文件。没有这些的混音无法搜索。",
+    "library_empty": "请先下载一些混音 – 它们的曲目表会显示在这里。",
+    "jump": "从 {time} 开始播放",
+    "jump_external": "已在默认播放器中打开 – 请在那里跳到 {time}",
+    "no_time": "曲目表中没有时间戳",
+    "tracklist": "曲目表",
+    "tracklist_title": "显示此混音的完整曲目表",
+    "panel_source": "来源：{source}",
+    "source_chapters": "章节",
+    "source_description": "简介",
+    "source_id3": "ID3 章节",
+    "source_cue": "CUE 文件",
+    "source_none": "无",
+    "panel_empty": "此混音没有曲目表",
+    "panel_empty_hint": "未找到章节、带曲目表的简介或 CUE 文件。",
+    "close": "关闭",
+    "id_track": "未发行或未识别的曲目（ID）",
+    "play_set": "从头播放混音",
+    "toast_done": "曲目表已读取：{sets}，{tracks}",
+    "toast_cancelled": "读取曲目表已取消"
   }
 });

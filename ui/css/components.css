@@ -1485,3 +1485,77 @@ tr.co-edit:hover td{background:var(--panel)}
 @media (max-width:1180px){.co-stats{grid-template-columns:repeat(6,minmax(0,1fr))}.co-table .c-chk{width:36px}.co-table .c-stage{width:80px}.co-table .c-day{width:100px}.co-table .c-status{width:106px}.co-table .c-match{width:29%}.co-table .c-act{width:104px}.co-table th,.co-table td{padding-left:9px;padding-right:9px}.co-match{flex-wrap:wrap;gap:4px 10px}.co-mt{flex-basis:100%}.co-actionbar{flex-wrap:wrap;row-gap:8px;gap:10px}.co-actionbar .btn{padding:6px 11px}.co-steps{grid-template-columns:1fr}.co-tt-grid{grid-template-columns:1fr}.co-tt-in textarea,.co-tt-prev{height:170px}}
 /* narrow windows (1000 px, long ru/de labels): the DJ column keeps room, names wrap to two lines */
 @media (max-width:1080px){.co-table .c-stage{width:72px}.co-table .c-day{width:88px}.co-table .c-status{width:96px}.co-table .c-match{width:24%}.co-table .c-act{width:96px}.co-dj b{white-space:normal;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.25}}
+
+/* ---------- Tracklist-Suche (v0.6.0): Unteransicht der Bibliothek + Panel «Trackliste» ---------- */
+#v-library.tracking>:not(.tracks){display:none}
+.tracks{flex:1;min-height:0;display:flex;flex-direction:column}
+.tr-top{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding:14px 28px;border-bottom:1px solid var(--line);flex:none}
+.tr-search{flex:1 1 380px;max-width:640px}
+.tr-search .input{font-size:16px;padding-top:12px;padding-bottom:12px}
+.tr-status{flex:1 1 300px;display:flex;align-items:center;justify-content:flex-end;gap:12px;min-width:0;font:12px var(--f-mono);color:var(--muted)}
+.tr-line{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap;justify-content:flex-end}
+.tr-line b{color:var(--text);font-weight:600}
+.tr-line .sep,.tr-set-t .sep{color:var(--dim)}
+.tr-like svg{width:14px;height:14px;stroke:var(--warn);fill:none;stroke-width:2;vertical-align:-2px}
+.tr-prog{display:flex;align-items:center;gap:12px;flex:1;min-width:0;max-width:560px}
+.tr-prog .progress{flex:1;min-width:80px}
+.tr-label svg{width:16px;height:16px;stroke:var(--accent);fill:none;stroke-width:2;flex:none}
+.tr-label .mono{order:2;font:12px var(--f-mono);letter-spacing:0;text-transform:none;color:var(--dim)}
+.tr-hint{color:var(--muted);font-size:13px}
+.tr-empty p{max-width:520px;margin:0 auto 16px;line-height:1.55}
+mark{background:var(--accent-soft);color:var(--accent-hi);border-radius:2px;padding:0 1px}
+
+/* Treffer: eine Karte pro Set */
+.tr-sets{display:flex;flex-direction:column;gap:12px}
+.tr-set{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:var(--radius);padding:12px 14px 10px;transition:border-color var(--t-med)}
+.tr-set:hover{border-color:var(--line-2);border-left-color:var(--accent-hi)}
+.tr-set-h{display:flex;align-items:center;gap:12px;min-width:0}
+.tr-set-h .mini{width:64px;flex:none;border-radius:var(--radius-sm)}
+.tr-set-h .mini .wave{padding:0 4px;gap:1px}
+.tr-set-t{flex:1;min-width:0}
+.tr-set-t b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14.5px}
+.tr-set-t small{display:flex;align-items:center;gap:6px;color:var(--muted);font:11.5px var(--f-mono);min-width:0;white-space:nowrap;overflow:hidden}
+.tr-set-a{display:flex;align-items:center;gap:8px;flex:none}
+.tr-hits{list-style:none;margin:10px 0 0;padding:8px 0 0 76px;border-top:1px dashed var(--line);display:flex;flex-direction:column;gap:4px}
+.tr-hits li,.tl-row{display:flex;align-items:center;gap:10px;min-width:0;font-size:13.5px}
+.tr-hits li.is-id,.tl-row.is-id{opacity:.55}
+.tr-more{padding-left:2px}
+.tl-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+.tk-artist{font-weight:600}
+.tk-dash,.tk-ver,.tk-label{color:var(--muted)}
+.tk-label{font:11.5px var(--f-mono)}
+.tk-id{font:11.5px var(--f-mono);color:var(--dim);letter-spacing:.5px}
+.tk-time{flex:none;display:inline-flex;align-items:center;gap:5px;min-width:84px;justify-content:flex-end;padding:3px 8px;border:1px solid var(--line-2);border-radius:var(--radius-sm);
+  background:var(--panel-2);font:600 12px var(--f-mono);color:var(--acid);font-variant-numeric:tabular-nums;transition:background var(--t-fast),border-color var(--t-fast),color var(--t-fast)}
+.tk-time svg{width:10px;height:10px;fill:currentColor;stroke:none;opacity:.7}
+button.tk-time:hover,button.tk-time:focus-visible{border-color:var(--acid);background:rgba(200,255,0,.08);color:#e4ff7a;outline:none}
+.tk-time.none{color:var(--dim);background:none;border-color:transparent;font-weight:400}
+
+/* Meistgespielt */
+.tr-top-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:6px 18px}
+.tr-top-row{width:100%;display:grid;grid-template-columns:30px minmax(0,1fr) 150px;align-items:center;gap:12px;padding:8px 12px;background:var(--panel);
+  border:1px solid var(--line);border-radius:var(--radius-sm);text-align:left;color:var(--text);font-size:13.5px;transition:border-color var(--t-fast),transform var(--t-fast)}
+.tr-top-row:hover,.tr-top-row:focus-visible{border-color:var(--accent);transform:translateX(2px);outline:none}
+.tr-rank{font:700 13px var(--f-mono);color:var(--accent)}
+.tr-top-t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tr-top-n{position:relative;display:flex;align-items:center;justify-content:flex-end;height:20px;font:11.5px var(--f-mono);color:var(--muted)}
+.tr-top-n i{position:absolute;left:0;top:50%;height:4px;width:var(--w);transform:translateY(-50%);background:linear-gradient(90deg,var(--accent-2),var(--accent));border-radius:1px;opacity:.55}
+.tr-top-n b{position:relative;font-weight:600;background:var(--panel);padding-left:6px}
+
+/* Panel «Trackliste» */
+.tl-panel{width:min(760px,100%);max-height:min(86vh,900px)}
+.tl-head{display:flex;align-items:flex-start;gap:12px;padding:18px 22px 12px;border-bottom:1px solid var(--line)}
+.tl-head-t{flex:1;min-width:0}
+.tl-kicker{display:inline-flex;align-items:center;gap:6px;font:600 11px var(--f-mono);letter-spacing:1px;text-transform:uppercase;color:var(--accent)}
+.tl-kicker svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2}
+.tl-panel h3{padding:6px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tl-meta{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:8px;font:11.5px var(--f-mono);color:var(--muted)}
+.tl-src{color:var(--dim)}
+.tl-body{overflow:auto;padding:8px 14px 4px 22px;min-height:0}
+.tl-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.tl-row{padding:5px 6px;border-radius:var(--radius-sm)}
+.tl-row:nth-child(odd){background:rgba(255,255,255,.018)}
+.tl-row:hover{background:var(--panel-2)}
+.tl-pos{flex:none;width:24px;font:11px var(--f-mono);color:var(--dim);text-align:right}
+.tl-empty{padding:40px 10px}
+@media (max-width:1180px){.tr-hits{padding-left:0} .tr-top-list{grid-template-columns:1fr}}

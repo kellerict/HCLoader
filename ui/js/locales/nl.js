@@ -1715,5 +1715,70 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
   "q_missing": "zonder treffer: {n}",
   "q_other": "niet te downloaden: {n}",
   "q_retag": "opnieuw getagd: {n}"
+ },
+ "tracks": {
+  "nav": "Tracks",
+  "open_title": "Welke sets draaien een track? Doorzoek de tracklists van je bibliotheek",
+  "title": "Tracks",
+  "sub": "Welke sets draaien deze track?",
+  "back": "Terug naar de bibliotheek",
+  "search": "Artiest of titel, bv. Dragonborn",
+  "n_tracks": {
+   "one": "{n} track",
+   "other": "{n} tracks"
+  },
+  "n_sets": {
+   "one": "{n} set",
+   "other": "{n} sets"
+  },
+  "status": "{tracks} in {sets}",
+  "status_last": "Ingelezen:",
+  "scan": "Tracklists inlezen",
+  "scan_title": "Tracklists van alle sets inlezen (offline: hoofdstukken, beschrijvingen, CUE-bestanden)",
+  "rescan": "Opnieuw inlezen",
+  "running": "Tracklists inlezen … {done} / {total}",
+  "engine_like": "Eenvoudig zoeken: deze SQLite heeft geen volledige-tekstindex",
+  "top_title": "Meest gedraaide tracks",
+  "top_sub": "in de meeste sets",
+  "top_sets": {
+   "one": "{n} set",
+   "other": "{n} sets"
+  },
+  "top_find": "Sets met deze track tonen",
+  "top_empty": "Nog geen track komt in meer dan één set voor.",
+  "results": {
+   "one": "{n} set met ‘{q}’",
+   "other": "{n} sets met ‘{q}’"
+  },
+  "truncated": "de eerste {n} – verfijn de zoekopdracht",
+  "more_hits": {
+   "one": "+ nog {n} treffer",
+   "other": "+ nog {n} treffers"
+  },
+  "no_results_title": "Geen set draait ‘{q}’",
+  "no_results_text": "Probeer een deel van artiest of titel. Alleen sets met tracklist (hoofdstukken, beschrijving, CUE-bestand) worden gevonden.",
+  "empty_title": "Nog geen tracklists",
+  "empty_text": "HCLoader leest tracklists uit hoofdstukken, beschrijvingen en CUE-bestanden van je sets – offline, zonder YouTube te vragen.",
+  "empty_none_title": "Geen van je sets heeft een tracklist",
+  "empty_none_text": "Tracklists komen uit hoofdstukken, beschrijvingen met tijdstempels en CUE-bestanden. Sets zonder kun je niet doorzoeken.",
+  "library_empty": "Download eerst een paar sets – hun tracklists verschijnen hier.",
+  "jump": "Afspelen vanaf {time}",
+  "jump_external": "Geopend in de standaardspeler – spring daar naar {time}",
+  "no_time": "Geen tijdstempel in de tracklist",
+  "tracklist": "Tracklist",
+  "tracklist_title": "Hele tracklist van deze set tonen",
+  "panel_source": "Bron: {source}",
+  "source_chapters": "hoofdstukken",
+  "source_description": "beschrijving",
+  "source_id3": "ID3-hoofdstukken",
+  "source_cue": "CUE-bestand",
+  "source_none": "geen",
+  "panel_empty": "Deze set heeft geen tracklist",
+  "panel_empty_hint": "Geen hoofdstukken, geen beschrijving met tracklist en geen CUE-bestand gevonden.",
+  "close": "Sluiten",
+  "id_track": "Onuitgebrachte of onbekende track (ID)",
+  "play_set": "Set vanaf het begin afspelen",
+  "toast_done": "Tracklists ingelezen: {sets}, {tracks}",
+  "toast_cancelled": "Tracklists inlezen geannuleerd"
  }
 });

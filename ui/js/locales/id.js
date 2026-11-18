@@ -1681,5 +1681,65 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
   "q_missing": "tanpa hasil: {n}",
   "q_other": "tidak bisa diunduh: {n}",
   "q_retag": "tag diperbarui: {n}"
+ },
+ "tracks": {
+  "nav": "Lagu",
+  "open_title": "Set mana yang memutar sebuah lagu? Cari di tracklist pustaka",
+  "title": "Lagu",
+  "sub": "Set mana yang memutar lagu ini?",
+  "back": "Kembali ke pustaka",
+  "search": "Artis atau judul, mis. Dragonborn",
+  "n_tracks": {
+   "other": "{n} lagu"
+  },
+  "n_sets": {
+   "other": "{n} set"
+  },
+  "status": "{tracks} di {sets}",
+  "status_last": "Dibaca:",
+  "scan": "Baca tracklist",
+  "scan_title": "Baca tracklist semua set (offline: chapter, deskripsi, file CUE)",
+  "rescan": "Baca ulang",
+  "running": "Membaca tracklist … {done} / {total}",
+  "engine_like": "Pencarian sederhana: SQLite ini tidak punya indeks teks lengkap",
+  "top_title": "Lagu paling sering diputar",
+  "top_sub": "di paling banyak set",
+  "top_sets": {
+   "other": "{n} set"
+  },
+  "top_find": "Tampilkan set dengan lagu ini",
+  "top_empty": "Belum ada lagu yang muncul di lebih dari satu set.",
+  "results": {
+   "other": "{n} set dengan “{q}”"
+  },
+  "truncated": "{n} pertama – persempit pencarian",
+  "more_hits": {
+   "other": "+ {n} hasil lagi"
+  },
+  "no_results_title": "Tidak ada set yang memutar “{q}”",
+  "no_results_text": "Coba sebagian nama artis atau judul. Hanya set dengan tracklist (chapter, deskripsi, file CUE) yang ditemukan.",
+  "empty_title": "Belum ada tracklist",
+  "empty_text": "HCLoader membaca tracklist dari chapter, deskripsi, dan file CUE set Anda – offline, tanpa bertanya ke YouTube.",
+  "empty_none_title": "Tidak ada set Anda yang punya tracklist",
+  "empty_none_text": "Tracklist berasal dari chapter, deskripsi bertanda waktu, dan file CUE. Set tanpa itu tidak bisa dicari.",
+  "library_empty": "Unduh beberapa set dulu – tracklist-nya akan muncul di sini.",
+  "jump": "Putar dari {time}",
+  "jump_external": "Dibuka di pemutar bawaan – lompat ke {time} di sana",
+  "no_time": "Tidak ada tanda waktu di tracklist",
+  "tracklist": "Tracklist",
+  "tracklist_title": "Tampilkan seluruh tracklist set ini",
+  "panel_source": "Sumber: {source}",
+  "source_chapters": "chapter",
+  "source_description": "deskripsi",
+  "source_id3": "chapter ID3",
+  "source_cue": "file CUE",
+  "source_none": "tidak ada",
+  "panel_empty": "Set ini tidak punya tracklist",
+  "panel_empty_hint": "Tidak ditemukan chapter, deskripsi dengan tracklist, maupun file CUE.",
+  "close": "Tutup",
+  "id_track": "Lagu belum rilis atau tak dikenal (ID)",
+  "play_set": "Putar set dari awal",
+  "toast_done": "Tracklist dibaca: {sets}, {tracks}",
+  "toast_cancelled": "Membaca tracklist dibatalkan"
  }
 });

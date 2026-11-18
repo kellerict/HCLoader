@@ -1407,6 +1407,52 @@
     }, 120 * speed.factor);
   };
 
+  /* ---------- Tracklisten (v0.6.0, «Tracklist-Suche») ----------
+     Pro Set eine erfundene Trackliste aus einem gemeinsamen Pool (manche Tracks in vielen Sets -> «Meistgespielt»).
+     Einige Sets: nummerierte Liste ohne Zeitstempel (Quelle Beschreibung), einige ganz ohne Trackliste. */
+  const TRACK_POOL = [
+    ['Kernschmelze', 'Concrete Pressure', '', 'Bunker Tapes'], ['Pulsewerk', 'Warehouse Anthem', 'Raw Edit', ''], ['Distortion Unit', 'Static Overdrive', '', 'Overdrive Records'],
+    ['Hardfloor Zürich', 'No Sleep Till Sunrise', '', ''], ['Bunker 303 & NRG Tapes', 'Bassdrum Ritual', '', ''], ['Overdrive', 'Terror Transmission 303', 'VIP', ''],
+    ['Stahlwerk feat. MC Rawdog', 'Iron Lung', '', 'Stahlwerk Audio'], ['Riot Engine', 'Molotov Melody', 'Pulsewerk Remix', ''], ['Nocturnal Pressure', 'Dead Hours', '', ''],
+    ['Vandal Frequency x Kick Assassins', 'Sirens Of The City', '', ''], ['Toxic Tempo', '250 BPM Club', 'Extended Mix', ''], ['Zero Gravity Crew', 'Free Fall', '', 'Antigrav'],
+    ['Black Mamba Sound', 'Venom', '', ''], ['Kick Assassins', 'Contract Killer', 'Kernschmelze Remix', ''], ['Mainframe Rebels', 'System Override', '', ''],
+    ['Pulsewerk vs. Riot Engine', 'Collision Course', '', ''], ['Euphoric Theory', 'Golden Hour', '', 'Lightyear'], ['Euphoric Theory feat. Mila', 'Wings Of Glass', 'Radio Edit', ''],
+    ['Raw Nation', 'Bloodline', '', ''], ['Speedfreak Society', 'Gabber Forever', '', ''], ['Distortion Unit', 'Feedback Loop', '', ''],
+    ['Rotterdam Ravers', 'Maasvlakte ’96', '', ''], ['Terror Sisters', 'Hyperdrive', '', ''], ['Iron Curtain', 'Kicks From The East', 'Bootleg', ''],
+    ['Neon Psycho', 'Laser Cult', '', ''], ['Vandal Frequency', 'Hooligan Hymn', '', ''], ['Kernschmelze', 'Fallout', 'Toxic Tempo Remix', ''],
+    ['Mainframe Rebels', 'Kernel Panic', '', ''], ['Noise Doctrine', 'Sermon Of Distortion', '', 'Doctrine Audio'], ['Stahlwerk', 'Schmiede', 'Hardcore Edit', ''],
+    ['Lunar Kicks', 'Moonquake', '', ''], ['Sub Basement', 'Concrete Jungle 2026', '', ''], ['Rave Reaktor & Toxic Tempo', 'Meltdown', '', ''],
+    ['Pulsewerk', 'Night Drive', '', ''], ['Velvet Violence', 'Soft Kill', 'Uptempo Mix', ''], ['Raw Nation', 'Brotherhood', 'Live Edit', ''],
+    ['Glitch Militia', 'Payload', '', ''], ['Tempo Tyrant', 'Crown Of Kicks', '', ''], ['Hardfloor Zürich', 'Langstrasse 4AM', '', ''],
+  ];
+  const TRACK_HOT = [0, 1, 2, 5, 10, 13]; // kommen in vielen Sets vor
+  const TRACKLISTS = {};
+  (() => {
+    let seed = 7;
+    const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+    LIBRARY.forEach((l, i) => {
+      if (i % 7 === 5) return; // ohne Trackliste
+      const n = 7 + Math.floor(rnd() * 9), dur = (l.duration || 3600), picks = [];
+      TRACK_HOT.forEach((h, j) => { if (rnd() < 0.5 - j * 0.06) picks.push(h); });
+      while (picks.length < n) { const k = Math.floor(rnd() * TRACK_POOL.length); if (!picks.includes(k)) picks.push(k); }
+      picks.sort(() => rnd() - 0.5);
+      const timed = i % 6 !== 4;
+      const tracks = picks.slice(0, n).map((k, j) => {
+        const [artist, title, version, label] = TRACK_POOL[k];
+        return { start: timed ? Math.round((dur * j) / n) - (j ? Math.floor(rnd() * 20) : 0) : null, artist, title, version, label, is_id: false };
+      });
+      if (n > 9) tracks.splice(Math.floor(n / 2), 0, { start: null, artist: 'ID', title: 'ID', version: '', label: '', is_id: true });
+      if (n > 12) tracks.splice(n - 2, 0, { start: null, artist: 'Riot Engine', title: 'ID', version: '', label: '', is_id: true });
+      if (timed) tracks.forEach((x, j) => { if (x.start == null) x.start = Math.round(((tracks[j - 1] || {}).start + ((tracks[j + 1] || {}).start || dur)) / 2); });
+      tracks.forEach((x, j) => { x.position = j + 1; });
+      TRACKLISTS[l.id] = { source: timed ? (i % 3 ? 'chapters' : 'description') : 'description', tracks };
+    });
+  })();
+  const tlState = { lastPass: isoAt(1, 9, 12), running: false, cancel: false, timer: null };
+  const tlFold = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ß/g, 'ss').replace(/&/g, ' and ').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  const tlIndexed = () => (tlState.lastPass ? LIBRARY.filter((l) => TRACKLISTS[l.id]) : []);
+  const tlSearchText = (x) => (x.is_id && x.artist === 'ID' ? '' : tlFold(`${x.artist === 'ID' ? '' : x.artist} ${x.is_id ? '' : x.title} ${x.version}`));
+
   const api = {
     /* Einstellungen */
     get_settings: () => later(30, () => ({ values: clone(settings), defaults: clone(DEFAULTS), language: resolvedLanguage() })),
@@ -2084,6 +2130,79 @@
     },
     cancel_assign_festivals: () => later(20, () => { festState.cancel = true; return { ok: true, running: festState.running }; }),
 
+    /* Tracklist-Suche (v0.6.0) */
+    search_tracks(query) {
+      return later(70, () => {
+        const ws = tlFold(query).split(' ').filter(Boolean);
+        const out = { ok: true, query, engine: 'fts5', sets: [], hits: 0, truncated: false };
+        if (!ws.length) return out;
+        const has = (txt, w) => txt.split(' ').some((x) => x.startsWith(w));
+        tlIndexed().slice().sort((a, b) => String(b.downloaded_at).localeCompare(String(a.downloaded_at))).forEach((l) => {
+          const hits = TRACKLISTS[l.id].tracks.filter((x) => { const txt = tlSearchText(x); return txt && ws.every((w) => has(txt, w)); });
+          if (!hits.length) return;
+          out.hits += hits.length;
+          out.sets.push({ id: l.id, title: l.title, artist: l.artist, duration: l.duration, thumbnail: l.thumbnail, genre: l.genre, platform: l.platform || 'youtube', upload_date: l.upload_date, downloaded_at: l.downloaded_at, hits: clone(hits.slice(0, 12)), more: Math.max(0, hits.length - 12) });
+        });
+        return out;
+      });
+    },
+    get_tracklist(id) {
+      return later(50, () => {
+        const l = LIBRARY.find((x) => x.id === id);
+        if (!l) return { ok: false, error: 'This set is not in the library' };
+        const tl = TRACKLISTS[id];
+        return { ok: true, video_id: id, source: tl ? tl.source : 'none', extracted: tlState.lastPass, tracks: tl ? clone(tl.tracks) : [] };
+      });
+    },
+    get_top_tracks(limit) {
+      return later(50, () => {
+        const counts = new Map();
+        tlIndexed().forEach((l) => {
+          const seen = new Set();
+          TRACKLISTS[l.id].tracks.forEach((x) => {
+            if (x.is_id || !x.artist) return;
+            const key = `${tlFold(x.artist)}|${tlFold(x.title)}|${tlFold(x.version.replace(/extended mix|radio edit/i, ''))}`;
+            if (seen.has(key)) return;
+            seen.add(key);
+            const c = counts.get(key) || { key, artist: x.artist, title: x.title, version: /extended mix|radio edit/i.test(x.version) ? '' : x.version, sets: 0 };
+            c.sets++;
+            counts.set(key, c);
+          });
+        });
+        const tracks = [...counts.values()].filter((c) => c.sets >= 2).sort((a, b) => b.sets - a.sets || a.key.localeCompare(b.key)).slice(0, limit || 20);
+        return { ok: true, tracks };
+      });
+    },
+    get_tracklist_status: () => later(30, () => {
+      const idx = tlIndexed();
+      return { total: LIBRARY.length, scanned: tlState.lastPass ? LIBRARY.length : 0, sets: idx.length, tracks: idx.reduce((a, l) => a + TRACKLISTS[l.id].tracks.length, 0), last_pass: tlState.lastPass, engine: 'fts5', running: tlState.running };
+    }),
+    build_tracklists(opts) {
+      return later(60, () => {
+        const scope = opts && opts.scope === 'all' ? 'all' : 'missing';
+        if (tlState.running) return { ok: true, started: false, running: true };
+        Object.assign(tlState, { running: true, cancel: false });
+        const total = LIBRARY.length;
+        let done = 0, sets = 0, tracks = 0;
+        emit('tracklist_index', { phase: 'start', scope });
+        pushLog('info', 'Reading tracklists (offline) …');
+        const step = () => {
+          const end = Math.min(total, done + 6);
+          for (; done < end && !tlState.cancel; done++) { const tl = TRACKLISTS[LIBRARY[done].id]; if (tl) { sets++; tracks += tl.tracks.length; } }
+          const finished = done >= total || tlState.cancel;
+          emit('tracklist_index', { phase: 'progress', scope, done, total, sets, tracks });
+          if (!finished) { tlState.timer = setTimeout(step, 240 * speed.factor); return; }
+          tlState.running = false;
+          if (!tlState.cancel) tlState.lastPass = new Date().toISOString();
+          pushLog('ok', `Tracklists read: ${done} checked, ${sets} sets with tracklist, ${tracks} tracks`);
+          emit('tracklist_index', { phase: 'done', scope, ok: true, cancelled: tlState.cancel, total, done, sets, tracks });
+        };
+        tlState.timer = setTimeout(step, 200 * speed.factor);
+        return { ok: true, started: true, scope };
+      });
+    },
+    cancel_build_tracklists: () => later(20, () => { tlState.cancel = true; return { ok: true, running: tlState.running }; }),
+
     /* Festival-Sammler (v0.5.0) */
     get_collector_editions: () => later(40, () => [...CL.keys()].map(clEdition).sort((a, b) => (b.year || 0) - (a.year || 0) || a.edition.localeCompare(b.edition))),
     open_collector_edition(data) {
@@ -2346,6 +2465,8 @@
       taskUnknown(on) { state.task.unknown = on !== false; },
       /** Registrierte Aufgabe zeigt auf einen alten App-Ordner (App verschoben); on = false hebt auf. */
       taskMoved(on) { state.task.moved = on !== false; if (state.task.moved) { state.task.registered = true; settings.schedule.task_scheduler_enabled = true; } },
+      /** Tracklisten noch nie eingelesen (on = false: wieder eingelesen); running = true: Einlesen läuft (Screenshots). */
+      tracksFresh(on) { clearTimeout(tlState.timer); Object.assign(tlState, { lastPass: on === false ? isoAt(1, 9, 12) : null, running: false, cancel: false }); },
       /** Leere Bibliothek zeigen (on = false stellt sie wieder her). */
       libraryEmpty(on) {
         if (on === false) { if (libraryBackup) LIBRARY = libraryBackup; libraryBackup = null; return; }

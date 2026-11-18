@@ -1715,5 +1715,70 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "q_missing": "uten treff: {n}",
     "q_other": "kan ikke lastes: {n}",
     "q_retag": "tagget på nytt: {n}"
+  },
+  "tracks": {
+    "nav": "Spor",
+    "open_title": "Hvilke sett spiller et spor? Søk i bibliotekets sporlister",
+    "title": "Spor",
+    "sub": "Hvilke sett spiller dette sporet?",
+    "back": "Tilbake til biblioteket",
+    "search": "Artist eller tittel, f.eks. Dragonborn",
+    "n_tracks": {
+      "one": "{n} spor",
+      "other": "{n} spor"
+    },
+    "n_sets": {
+      "one": "{n} sett",
+      "other": "{n} sett"
+    },
+    "status": "{tracks} i {sets}",
+    "status_last": "Lest inn:",
+    "scan": "Les inn sporlister",
+    "scan_title": "Les inn sporlistene for alle sett (frakoblet: kapitler, beskrivelser, CUE-filer)",
+    "rescan": "Les inn på nytt",
+    "running": "Leser inn sporlister … {done} / {total}",
+    "engine_like": "Enkelt søk: denne SQLite har ingen fulltekstindeks",
+    "top_title": "Mest spilte spor",
+    "top_sub": "i flest sett",
+    "top_sets": {
+      "one": "{n} sett",
+      "other": "{n} sett"
+    },
+    "top_find": "Vis sett med dette sporet",
+    "top_empty": "Ingen spor finnes ennå i mer enn ett sett.",
+    "results": {
+      "one": "{n} sett med «{q}»",
+      "other": "{n} sett med «{q}»"
+    },
+    "truncated": "de første {n} – avgrens søket",
+    "more_hits": {
+      "one": "+ {n} treff til",
+      "other": "+ {n} treff til"
+    },
+    "no_results_title": "Ingen sett spiller «{q}»",
+    "no_results_text": "Prøv en del av artisten eller tittelen. Bare sett med sporliste (kapitler, beskrivelse, CUE-fil) blir funnet.",
+    "empty_title": "Ingen sporlister ennå",
+    "empty_text": "HCLoader leser sporlister fra kapitler, beskrivelser og CUE-filer i settene dine – frakoblet, uten å spørre YouTube.",
+    "empty_none_title": "Ingen av settene dine har en sporliste",
+    "empty_none_text": "Sporlister kommer fra kapitler, beskrivelser med tidsstempler og CUE-filer. Sett uten dem kan ikke søkes i.",
+    "library_empty": "Last ned noen sett først – sporlistene deres vises her.",
+    "jump": "Spill fra {time}",
+    "jump_external": "Åpnet i standardspilleren – hopp til {time} der",
+    "no_time": "Ingen tidsstempel i sporlisten",
+    "tracklist": "Sporliste",
+    "tracklist_title": "Vis hele sporlisten for dette settet",
+    "panel_source": "Kilde: {source}",
+    "source_chapters": "kapitler",
+    "source_description": "beskrivelse",
+    "source_id3": "ID3-kapitler",
+    "source_cue": "CUE-fil",
+    "source_none": "ingen",
+    "panel_empty": "Dette settet har ingen sporliste",
+    "panel_empty_hint": "Fant verken kapitler, en beskrivelse med sporliste eller en CUE-fil.",
+    "close": "Lukk",
+    "id_track": "Uutgitt eller ukjent spor (ID)",
+    "play_set": "Spill settet fra starten",
+    "toast_done": "Sporlister lest inn: {sets}, {tracks}",
+    "toast_cancelled": "Innlesing av sporlister avbrutt"
   }
 });

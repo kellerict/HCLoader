@@ -258,6 +258,17 @@
     if (opt.paused) { audio.load(); paintState(); } else start();
     emit();
   }
+  /** Mix ab Sekunde `at` spielen (Tracklist-Suche): läuft er schon, nur springen und weiterspielen. */
+  function playAt(item, at) {
+    if (!el || !item || item.id == null) return Promise.resolve();
+    const to = Math.max(0, +at || 0);
+    if (media && media.id === item.id && audio.getAttribute('src')) {
+      seek(to);
+      if (audio.paused || audio.ended) start();
+      return Promise.resolve();
+    }
+    return play(item, { reload: !!media && media.id === item.id, at: to });
+  }
   function close(silent) {
     loadSeq++;
     if (!el) return;
@@ -479,7 +490,7 @@
   }
 
   HC.player = {
-    init, play, toggle, close, seek, suspend, resume, release,
+    init, play, playAt, toggle, close, seek, suspend, resume, release,
     pause() { if (audio && media) audio.pause(); },
     openList: (open) => { if (el && media) setList(open !== false); },
     /** -> {id, playing} – id null = nichts geladen */

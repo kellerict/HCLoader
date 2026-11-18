@@ -1715,5 +1715,70 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "q_missing": "without a hit: {n}",
     "q_other": "not loadable: {n}",
     "q_retag": "retagged: {n}"
+  },
+  "tracks": {
+    "nav": "Tracks",
+    "open_title": "Which sets play a track? Search the tracklists of your library",
+    "title": "Tracks",
+    "sub": "Which sets play this track?",
+    "back": "Back to the library",
+    "search": "Artist or title, e.g. Dragonborn",
+    "n_tracks": {
+      "one": "{n} track",
+      "other": "{n} tracks"
+    },
+    "n_sets": {
+      "one": "{n} set",
+      "other": "{n} sets"
+    },
+    "status": "{tracks} in {sets}",
+    "status_last": "Read:",
+    "scan": "Read tracklists",
+    "scan_title": "Read the tracklists of all sets (offline: chapters, descriptions, CUE files)",
+    "rescan": "Read again",
+    "running": "Reading tracklists … {done} / {total}",
+    "engine_like": "Simple search: this SQLite has no full-text index",
+    "top_title": "Most played tracks",
+    "top_sub": "in the most sets",
+    "top_sets": {
+      "one": "{n} set",
+      "other": "{n} sets"
+    },
+    "top_find": "Show the sets with this track",
+    "top_empty": "No track appears in more than one set yet.",
+    "results": {
+      "one": "{n} set with “{q}”",
+      "other": "{n} sets with “{q}”"
+    },
+    "truncated": "first {n} – refine the search",
+    "more_hits": {
+      "one": "+ {n} more hit",
+      "other": "+ {n} more hits"
+    },
+    "no_results_title": "No set plays “{q}”",
+    "no_results_text": "Try part of the artist or title. Only sets with a tracklist (chapters, description, CUE file) can be found.",
+    "empty_title": "No tracklists yet",
+    "empty_text": "HCLoader reads tracklists from the chapters, descriptions and CUE files of your sets – offline, without asking YouTube.",
+    "empty_none_title": "None of your sets has a tracklist",
+    "empty_none_text": "Tracklists come from chapters, timestamped descriptions and CUE files. Sets without them cannot be searched.",
+    "library_empty": "Download a few sets first – their tracklists show up here.",
+    "jump": "Play from {time}",
+    "jump_external": "Opened in the default player – jump to {time} there",
+    "no_time": "No timestamp in the tracklist",
+    "tracklist": "Tracklist",
+    "tracklist_title": "Show the whole tracklist of this set",
+    "panel_source": "Source: {source}",
+    "source_chapters": "chapters",
+    "source_description": "description",
+    "source_id3": "ID3 chapters",
+    "source_cue": "CUE file",
+    "source_none": "none",
+    "panel_empty": "This set has no tracklist",
+    "panel_empty_hint": "Neither chapters, a description with a tracklist nor a CUE file were found.",
+    "close": "Close",
+    "id_track": "Unreleased or unidentified track (ID)",
+    "play_set": "Play the set from the start",
+    "toast_done": "Tracklists read: {sets}, {tracks}",
+    "toast_cancelled": "Reading tracklists cancelled"
   }
 });

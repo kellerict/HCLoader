@@ -1715,5 +1715,70 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
     "q_missing": "sans résultat : {n}",
     "q_other": "non téléchargeables : {n}",
     "q_retag": "retagués : {n}"
+  },
+  "tracks": {
+    "nav": "Morceaux",
+    "open_title": "Quels sets jouent un morceau ? Chercher dans les tracklists de la bibliothèque",
+    "title": "Morceaux",
+    "sub": "Quels sets jouent ce morceau ?",
+    "back": "Retour à la bibliothèque",
+    "search": "Artiste ou titre, p. ex. Dragonborn",
+    "n_tracks": {
+      "one": "{n} morceau",
+      "other": "{n} morceaux"
+    },
+    "n_sets": {
+      "one": "{n} set",
+      "other": "{n} sets"
+    },
+    "status": "{tracks} dans {sets}",
+    "status_last": "Lu :",
+    "scan": "Lire les tracklists",
+    "scan_title": "Lire les tracklists de tous les sets (hors ligne : chapitres, descriptions, fichiers CUE)",
+    "rescan": "Relire",
+    "running": "Lecture des tracklists … {done} / {total}",
+    "engine_like": "Recherche simple : ce SQLite n’a pas d’index plein texte",
+    "top_title": "Morceaux les plus joués",
+    "top_sub": "dans le plus de sets",
+    "top_sets": {
+      "one": "{n} set",
+      "other": "{n} sets"
+    },
+    "top_find": "Afficher les sets avec ce morceau",
+    "top_empty": "Aucun morceau n’apparaît encore dans plus d’un set.",
+    "results": {
+      "one": "{n} set avec « {q} »",
+      "other": "{n} sets avec « {q} »"
+    },
+    "truncated": "les {n} premiers – affinez la recherche",
+    "more_hits": {
+      "one": "+ {n} autre résultat",
+      "other": "+ {n} autres résultats"
+    },
+    "no_results_title": "Aucun set ne joue « {q} »",
+    "no_results_text": "Essayez une partie de l’artiste ou du titre. Seuls les sets avec tracklist (chapitres, description, fichier CUE) sont trouvés.",
+    "empty_title": "Pas encore de tracklists",
+    "empty_text": "HCLoader lit les tracklists dans les chapitres, descriptions et fichiers CUE de vos sets – hors ligne, sans interroger YouTube.",
+    "empty_none_title": "Aucun de vos sets n’a de tracklist",
+    "empty_none_text": "Les tracklists viennent des chapitres, des descriptions horodatées et des fichiers CUE. Les sets sans elles ne sont pas consultables.",
+    "library_empty": "Téléchargez d’abord quelques sets – leurs tracklists apparaîtront ici.",
+    "jump": "Lire à partir de {time}",
+    "jump_external": "Ouvert dans le lecteur par défaut – allez à {time}",
+    "no_time": "Pas d’horodatage dans la tracklist",
+    "tracklist": "Tracklist",
+    "tracklist_title": "Afficher toute la tracklist de ce set",
+    "panel_source": "Source : {source}",
+    "source_chapters": "chapitres",
+    "source_description": "description",
+    "source_id3": "chapitres ID3",
+    "source_cue": "fichier CUE",
+    "source_none": "aucune",
+    "panel_empty": "Ce set n’a pas de tracklist",
+    "panel_empty_hint": "Ni chapitres, ni description avec tracklist, ni fichier CUE trouvés.",
+    "close": "Fermer",
+    "id_track": "Morceau inédit ou non identifié (ID)",
+    "play_set": "Lire le set depuis le début",
+    "toast_done": "Tracklists lues : {sets}, {tracks}",
+    "toast_cancelled": "Lecture des tracklists annulée"
   }
 });
