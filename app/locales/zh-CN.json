@@ -263,13 +263,15 @@
     "gui_failed": "界面启动失败",
     "missing": "缺失",
     "no_pywebview": "未安装 pywebview（pip install pywebview）。",
+    "open_page": "现在打开下载页面吗？",
     "start_failed": "无法启动 HCLoader：\n\n{error}",
     "start_failed_log": "无法启动 HCLoader：\n\n{error}\n\n详情见日志：{logs}",
     "started": "HCLoader 已启动 · yt-dlp {ytdlp} · Deno {deno} · ffmpeg {ffmpeg} · 插件 {plugin}",
     "update_recover_failed": "应用更新被中断，且无法启动恢复。旧版本位于应用文件夹的“_previous”下（见 wiki，故障排除）。",
     "update_recovering": "应用更新被中断。正在恢复之前的版本 – 完成后 HCLoader 会自动重启。",
     "update_running": "HCLoader 正在更新 – 请稍候。完成后应用会自动重启。",
-    "update_start_failed": "无法启动应用更新"
+    "update_start_failed": "无法启动应用更新",
+    "webview2_missing": "HCLoader 需要 Microsoft Edge WebView2 Runtime 才能显示窗口，但此电脑上尚未安装。\n\n请安装（免费，来自 Microsoft）后重新启动 HCLoader：\n{url}"
   },
   "maint": {
     "backup_deleted": "已删除旧备份：{path}",

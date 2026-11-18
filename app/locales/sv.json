@@ -264,13 +264,15 @@
     "gui_failed": "GUI-starten misslyckades",
     "missing": "SAKNAS",
     "no_pywebview": "pywebview är inte installerat (pip install pywebview).",
+    "open_page": "Öppna nedladdningssidan nu?",
     "start_failed": "HCLoader kunde inte startas:\n\n{error}",
     "start_failed_log": "HCLoader kunde inte startas:\n\n{error}\n\nDetaljer i loggen: {logs}",
     "started": "HCLoader startat · yt-dlp {ytdlp} · Deno {deno} · ffmpeg {ffmpeg} · plugin {plugin}",
     "update_recover_failed": "En appuppdatering avbröts och återställningen kunde inte startas. Den gamla versionen finns i appmappen under ”_previous” (se wiki, felsökning).",
     "update_recovering": "En appuppdatering avbröts. Den föregående versionen återställs – HCLoader startar sedan om av sig själv.",
     "update_running": "HCLoader uppdateras just nu – vänta en stund. Appen startar sedan om av sig själv.",
-    "update_start_failed": "Appuppdateringen kunde inte startas"
+    "update_start_failed": "Appuppdateringen kunde inte startas",
+    "webview2_missing": "HCLoader behöver Microsoft Edge WebView2 Runtime för att visa sitt fönster, men den är inte installerad på den här datorn.\n\nInstallera den (gratis, från Microsoft) och starta HCLoader igen:\n{url}"
   },
   "maint": {
     "backup_deleted": "Gammal säkerhetskopia raderad: {path}",

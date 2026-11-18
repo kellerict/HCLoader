@@ -266,13 +266,15 @@
     "gui_failed": "Grafinės sąsajos paleisti nepavyko",
     "missing": "TRŪKSTA",
     "no_pywebview": "pywebview neįdiegtas (pip install pywebview).",
+    "open_page": "Atidaryti atsisiuntimo puslapį dabar?",
     "start_failed": "HCLoader paleisti nepavyko:\n\n{error}",
     "start_failed_log": "HCLoader paleisti nepavyko:\n\n{error}\n\nIšsami informacija žurnale: {logs}",
     "started": "HCLoader paleistas · yt-dlp {ytdlp} · Deno {deno} · ffmpeg {ffmpeg} · įskiepis {plugin}",
     "update_recover_failed": "Programos naujinimas buvo nutrauktas ir atkūrimo paleisti nepavyko. Senoji versija yra programos aplanke „_previous“ (žr. wiki, Troubleshooting).",
     "update_recovering": "Programos naujinimas buvo nutrauktas. Atkuriama ankstesnė versija – po to HCLoader pasileis iš naujo pats.",
     "update_running": "HCLoader šiuo metu atnaujinamas – palaukite. Po to programa pasileis iš naujo pati.",
-    "update_start_failed": "Programos naujinimo paleisti nepavyko"
+    "update_start_failed": "Programos naujinimo paleisti nepavyko",
+    "webview2_missing": "HCLoader reikia Microsoft Edge WebView2 Runtime, kad būtų rodomas langas, tačiau šiame kompiuteryje jis neįdiegtas.\n\nĮdiekite jį (nemokamai, iš Microsoft) ir vėl paleiskite HCLoader:\n{url}"
   },
   "maint": {
     "backup_deleted": "Sena atsarginė kopija ištrinta: {path}",

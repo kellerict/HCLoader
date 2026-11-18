@@ -264,13 +264,15 @@
     "gui_failed": "Graafisen käyttöliittymän käynnistys epäonnistui",
     "missing": "PUUTTUU",
     "no_pywebview": "pywebview ei ole asennettu (pip install pywebview).",
+    "open_page": "Avataanko lataussivu nyt?",
     "start_failed": "HCLoaderia ei voitu käynnistää:\n\n{error}",
     "start_failed_log": "HCLoaderia ei voitu käynnistää:\n\n{error}\n\nLisätiedot lokissa: {logs}",
     "started": "HCLoader käynnistetty · yt-dlp {ytdlp} · Deno {deno} · ffmpeg {ffmpeg} · lisäosa {plugin}",
     "update_recover_failed": "Sovelluksen päivitys keskeytyi, eikä palautusta voitu käynnistää. Vanha versio on sovelluskansiossa kohdassa ”_previous” (katso wiki, vianmääritys).",
     "update_recovering": "Sovelluksen päivitys keskeytyi. Edellistä versiota palautetaan – HCLoader käynnistyy sen jälkeen itsestään uudelleen.",
     "update_running": "HCLoaderia päivitetään juuri nyt – odota hetki. Sovellus käynnistyy sen jälkeen itsestään uudelleen.",
-    "update_start_failed": "Sovelluksen päivitystä ei voitu aloittaa"
+    "update_start_failed": "Sovelluksen päivitystä ei voitu aloittaa",
+    "webview2_missing": "HCLoader tarvitsee Microsoft Edge WebView2 Runtimen ikkunansa näyttämiseen, mutta sitä ei ole asennettu tähän tietokoneeseen.\n\nAsenna se (ilmainen, Microsoftilta) ja käynnistä HCLoader uudelleen:\n{url}"
   },
   "maint": {
     "backup_deleted": "Vanha varmuuskopio poistettu: {path}",

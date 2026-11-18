@@ -263,13 +263,15 @@
     "gui_failed": "GUI gagal dimulai",
     "missing": "TIDAK ADA",
     "no_pywebview": "pywebview tidak terpasang (pip install pywebview).",
+    "open_page": "Buka halaman unduhan sekarang?",
     "start_failed": "HCLoader tidak dapat dimulai:\n\n{error}",
     "start_failed_log": "HCLoader tidak dapat dimulai:\n\n{error}\n\nRincian di log: {logs}",
     "started": "HCLoader dimulai · yt-dlp {ytdlp} · Deno {deno} · ffmpeg {ffmpeg} · plugin {plugin}",
     "update_recover_failed": "Pembaruan aplikasi terputus dan pemulihan tidak dapat dimulai. Versi lama ada di folder aplikasi di bawah “_previous” (lihat wiki, Pemecahan masalah).",
     "update_recovering": "Pembaruan aplikasi terputus. Versi sebelumnya sedang dipulihkan – HCLoader dimulai ulang sendiri setelahnya.",
     "update_running": "HCLoader sedang diperbarui – harap tunggu sebentar. Aplikasi dimulai ulang sendiri setelahnya.",
-    "update_start_failed": "Pembaruan aplikasi tidak dapat dimulai"
+    "update_start_failed": "Pembaruan aplikasi tidak dapat dimulai",
+    "webview2_missing": "HCLoader memerlukan Microsoft Edge WebView2 Runtime untuk menampilkan jendelanya, tetapi runtime ini belum terpasang di PC ini.\n\nPasang (gratis, dari Microsoft) lalu jalankan HCLoader lagi:\n{url}"
   },
   "maint": {
     "backup_deleted": "Cadangan lama dihapus: {path}",

@@ -9,7 +9,7 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from .core import binaries, config, i18n, locks, selfupdate
+from .core import binaries, config, i18n, locks, selfupdate, webview2
 from .core.db import Database, MigrationBackupError, SchemaTooNewError
 from .core.i18n import tr
 from .core.logging_setup import console_logs_errors, setup_logging
@@ -104,12 +104,13 @@ def _dialog_allowed() -> bool:
     )
 
 
-def show_fatal(message: str) -> None:
+def show_fatal(message: str, open_url: str | None = None) -> None:
     """Make a start error visible: under pythonw there is no console (n4).
 
     Always stderr + log; on Windows additionally a MessageBox (ctypes, no extra dependency) -
     but only without a console (pythonw: `sys.stderr` is None) and never when
-    `HCLOADER_NO_DIALOG` is set (tests/CI: a modal box would block forever).
+    `HCLOADER_NO_DIALOG` is set (tests/CI: a modal box would block forever). With `open_url`
+    the box asks whether to open that page (Yes = default browser).
     """
     log.critical("%s", message)
     try:
@@ -121,8 +122,15 @@ def show_fatal(message: str) -> None:
         try:
             import ctypes
 
-            mb_iconerror = 0x10
-            ctypes.windll.user32.MessageBoxW(None, message, "HCLoader", mb_iconerror)  # type: ignore[attr-defined]
+            mb_iconerror, mb_yesno, idyes = 0x10, 0x04, 6
+            if open_url:
+                text = f"{message}\n\n{tr('main.open_page')}"
+                flags = mb_iconerror | mb_yesno
+            else:
+                text, flags = message, mb_iconerror
+            answer = ctypes.windll.user32.MessageBoxW(None, text, "HCLoader", flags)  # type: ignore[attr-defined]
+            if open_url and answer == idyes:
+                os.startfile(open_url)  # type: ignore[attr-defined]
         except Exception:
             log.debug("MessageBox failed", exc_info=True)
 
@@ -173,6 +181,13 @@ def _run_gui() -> int:
 
     settings, _ = config.load_with_warnings()
     setup_logging(settings.general.log_level, history=500)
+    if webview2.missing():
+        # pywebview would fall back to MSHTML, where the UI does not work (portable ZIP: nobody
+        # installed the runtime; the installer does it itself)
+        show_fatal(
+            tr("main.webview2_missing", url=webview2.DOWNLOAD_URL), open_url=webview2.DOWNLOAD_URL
+        )
+        return EXIT_FAILED
     st = binaries.status()
     log.info(
         tr(

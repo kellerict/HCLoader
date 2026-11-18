@@ -265,13 +265,15 @@
     "gui_failed": "GUI startēšana neizdevās",
     "missing": "TRŪKST",
     "no_pywebview": "pywebview nav instalēts (pip install pywebview).",
+    "open_page": "Vai atvērt lejupielādes lapu tagad?",
     "start_failed": "HCLoader startēšana neizdevās:\n\n{error}",
     "start_failed_log": "HCLoader startēšana neizdevās:\n\n{error}\n\nDetaļas žurnālā: {logs}",
     "started": "HCLoader startēts · yt-dlp {ytdlp} · Deno {deno} · ffmpeg {ffmpeg} · spraudnis {plugin}",
     "update_recover_failed": "Lietotnes atjaunināšana tika pārtraukta, un atkopšanu nevarēja palaist. Vecā versija atrodas lietotnes mapē “_previous” (skatiet wiki, Troubleshooting).",
     "update_recovering": "Lietotnes atjaunināšana tika pārtraukta. Tiek atjaunota iepriekšējā versija – pēc tam HCLoader restartēsies pats.",
     "update_running": "HCLoader šobrīd tiek atjaunināts – lūdzu, uzgaidiet. Pēc tam lietotne restartēsies pati.",
-    "update_start_failed": "Lietotnes atjaunināšanu nevarēja sākt"
+    "update_start_failed": "Lietotnes atjaunināšanu nevarēja sākt",
+    "webview2_missing": "HCLoader loga attēlošanai nepieciešams Microsoft Edge WebView2 Runtime, bet tas šajā datorā nav instalēts.\n\nInstalējiet to (bez maksas, no Microsoft) un palaidiet HCLoader vēlreiz:\n{url}"
   },
   "maint": {
     "backup_deleted": "Vecais dublējums izdzēsts: {path}",

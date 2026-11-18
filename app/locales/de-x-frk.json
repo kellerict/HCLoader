@@ -266,13 +266,15 @@
     "gui_failed": "GUI-Start fehlgschlong",
     "missing": "FEHLD",
     "no_pywebview": "pywebview is ned installierd (pip install pywebview).",
+    "open_page": "Download-Seitn etz aufmachn?",
     "start_failed": "HCLoader konnd ned gstarded werdn:\n\n{error}",
     "start_failed_log": "HCLoader konnd ned gstarded werdn:\n\n{error}\n\nDetails im Brodokoll: {logs}",
     "started": "HCLoader gstarded · yt-dlp {ytdlp} · Deno {deno} · ffmpeg {ffmpeg} · Plugin {plugin}",
     "update_recover_failed": "A App-Update wurde unterbrochn und die Wiederherstellung konnd ned gstarded werdn. Die alde Version liegd im App-Ordner unter «_previous» (siehe Wiki, Fehlerbehebung).",
     "update_recovering": "A App-Update wurde unterbrochn. Die vorherige Version wird wiederhergstelld – HCLoader starded danach vo selber neu.",
     "update_running": "HCLoader wird grad aktualisierd – bidde an Moment wardn. Die App starded danach vo selber neu.",
-    "update_start_failed": "App-Update konnd ned gstarded werdn"
+    "update_start_failed": "App-Update konnd ned gstarded werdn",
+    "webview2_missing": "HCLoader braucht die Microsoft Edge WebView2 Runtime fürs Fenster, und die is auf dem PC ned drauf.\n\nInstallier's (kost nix, vo Microsoft) und start HCLoader nochämal:\n{url}"
   },
   "maint": {
     "backup_deleted": "Alds Backup glöscht: {path}",

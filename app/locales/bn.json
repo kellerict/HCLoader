@@ -264,13 +264,15 @@
     "gui_failed": "GUI চালু করা ব্যর্থ",
     "missing": "নেই",
     "no_pywebview": "pywebview ইনস্টল করা নেই (pip install pywebview)।",
+    "open_page": "এখনই ডাউনলোড পৃষ্ঠা খুলবেন?",
     "start_failed": "HCLoader চালু করা যায়নি:\n\n{error}",
     "start_failed_log": "HCLoader চালু করা যায়নি:\n\n{error}\n\nবিস্তারিত লগে: {logs}",
     "started": "HCLoader চালু হয়েছে · yt-dlp {ytdlp} · Deno {deno} · ffmpeg {ffmpeg} · প্লাগইন {plugin}",
     "update_recover_failed": "একটি অ্যাপ আপডেট মাঝপথে থেমে গিয়েছিল এবং পুনরুদ্ধার শুরু করা যায়নি। পুরোনো সংস্করণ অ্যাপ ফোল্ডারে “_previous”-এর নিচে আছে (উইকি, সমস্যা সমাধান দেখুন)।",
     "update_recovering": "একটি অ্যাপ আপডেট মাঝপথে থেমে গিয়েছিল। আগের সংস্করণ ফিরিয়ে আনা হচ্ছে – তারপর HCLoader নিজে থেকেই আবার চালু হবে।",
     "update_running": "HCLoader এখন আপডেট হচ্ছে – অনুগ্রহ করে একটু অপেক্ষা করুন। তারপর অ্যাপ নিজে থেকেই আবার চালু হবে।",
-    "update_start_failed": "অ্যাপ আপডেট শুরু করা যায়নি"
+    "update_start_failed": "অ্যাপ আপডেট শুরু করা যায়নি",
+    "webview2_missing": "HCLoader-এর উইন্ডো দেখাতে Microsoft Edge WebView2 Runtime দরকার, কিন্তু এই PC-তে এটি ইনস্টল করা নেই।\n\nএটি ইনস্টল করুন (বিনামূল্যে, Microsoft থেকে) এবং HCLoader আবার চালু করুন:\n{url}"
   },
   "maint": {
     "backup_deleted": "পুরোনো ব্যাকআপ মোছা হয়েছে: {path}",

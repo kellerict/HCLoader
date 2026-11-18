@@ -266,13 +266,15 @@
     "gui_failed": "Не удалось запустить GUI",
     "missing": "ОТСУТСТВУЕТ",
     "no_pywebview": "pywebview не установлен (pip install pywebview).",
+    "open_page": "Открыть страницу загрузки сейчас?",
     "start_failed": "Не удалось запустить HCLoader:\n\n{error}",
     "start_failed_log": "Не удалось запустить HCLoader:\n\n{error}\n\nПодробности в журнале: {logs}",
     "started": "HCLoader запущен · yt-dlp {ytdlp} · Deno {deno} · ffmpeg {ffmpeg} · плагин {plugin}",
     "update_recover_failed": "Обновление приложения было прервано, и восстановление запустить не удалось. Старая версия лежит в папке приложения в «_previous» (см. вики, «Устранение неполадок»).",
     "update_recovering": "Обновление приложения было прервано. Восстанавливается предыдущая версия – после этого HCLoader перезапустится сам.",
     "update_running": "HCLoader сейчас обновляется – подождите немного. После этого приложение перезапустится само.",
-    "update_start_failed": "Не удалось начать обновление приложения"
+    "update_start_failed": "Не удалось начать обновление приложения",
+    "webview2_missing": "Для отображения окна HCLoader нужен Microsoft Edge WebView2 Runtime, но он не установлен на этом компьютере.\n\nУстановите его (бесплатно, от Microsoft) и снова запустите HCLoader:\n{url}"
   },
   "maint": {
     "backup_deleted": "Старая копия удалена: {path}",
