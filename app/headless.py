@@ -180,7 +180,7 @@ def run_watchlist(
             or Throttle(
                 db,
                 lambda: settings.throttle,
-                platform_settings={"soundcloud": lambda: settings.soundcloud},
+                platform_settings=config.platform_throttle_settings(lambda: settings),
             ),
             pot_wait,
             backfill_lock,

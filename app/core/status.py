@@ -8,6 +8,7 @@ from typing import Any
 from . import binaries, maintenance, scheduler
 from .config import Settings
 from .db import Database
+from .platforms import PLATFORMS
 from .throttle import Throttle
 
 QUEUE_STATUSES = ("queued", "downloading")
@@ -106,10 +107,8 @@ def _one(th: Any, enabled: bool) -> dict[str, Any]:
 
 
 def platform_status(settings: Settings, throttle: Any) -> dict[str, Any]:
-    """{youtube: {...}, soundcloud: {...}} with backoff, counters and limits of each platform."""
+    """{youtube: {...}, soundcloud: {...}, mixcloud: {...}, hearthis: {...}} with backoff,
+    counters and limits of each platform (v0.10.0: every platform of `platforms.PLATFORMS`)."""
     if not hasattr(throttle, "platform"):
         return {"youtube": _one(throttle, True)}
-    return {
-        "youtube": _one(throttle.platform("youtube"), True),
-        "soundcloud": _one(throttle.platform("soundcloud"), settings.soundcloud.enabled),
-    }
+    return {p: _one(throttle.platform(p), settings.platform_enabled(p)) for p in PLATFORMS}

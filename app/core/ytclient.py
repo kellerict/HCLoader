@@ -4,17 +4,23 @@ Every yt-dlp call passes through `Throttle.before_request(kind)` first. 429 / bo
 start the persistent backoff and are never retried; network errors get exactly one retry
 (yt-dlp's own retries are therefore set to 0).
 
-Phase 7a: two platforms, YouTube and SoundCloud. Every call goes through the throttle of its
-platform (`Throttle.platform(name)`); the platform comes from the id (`sc:` prefix), the URL
-(watchlist sources) or `search(..., platform=)`. SoundCloud flat listings use slightly
+Phase 7a: two platforms, YouTube and SoundCloud; v0.10.0 adds Mixcloud and hearthis.at. Every
+call goes through the throttle of its platform (`Throttle.platform(name)`); the platform comes
+from the id (`sc:` / `mc:` / `ht:` prefix), the URL (watchlist sources) or
+`search(..., platform=)`. SoundCloud flat listings use slightly
 extended copies of yt-dlp's SoundCloud extractors (`_sc_flat_extractors`): they keep the track
 metadata yt-dlp already received (duration, date, uploader) and skip one HEAD request per
-entry for the thumbnail; docs/decisions.md «SoundCloud: yt-dlp-Extractor».
+entry for the thumbnail; docs/decisions.md «SoundCloud: yt-dlp-Extractor». Mixcloud listings
+use extended copies of yt-dlp's user/playlist extractors (more fields in the same GraphQL page,
+page size capped to the wanted window); Mixcloud search and hearthis.at search/user/set
+listings are own small extractors on top of yt-dlp's networking (`_extra_extractor_classes`),
+docs/decisions.md «Mixcloud and hearthis.at».
 """
 
 from __future__ import annotations
 
 import inspect
+import itertools
 import logging
 import os
 import re
@@ -38,7 +44,7 @@ from .filters import normalize
 from .genre import detect_genre, genre_search_terms
 from .i18n import tr
 from .library import FS_LOCK
-from .platforms import SOUNDCLOUD, YOUTUBE
+from .platforms import HEARTHIS, MIXCLOUD, SOUNDCLOUD, YOUTUBE
 from .redact import redact
 from .throttle import (
     K_YTDLP_UPDATE,
@@ -127,6 +133,30 @@ __all__ = [
 ]
 
 
+# search prefix and forced extractor (own extractors) per platform
+SEARCH_KEYS: dict[str, tuple[str, str | None]] = {
+    YOUTUBE: ("ytsearch", None),
+    SOUNDCLOUD: ("scsearch", None),
+    MIXCLOUD: ("mcsearch", "HcMixcloudSearch"),
+    HEARTHIS: ("htsearch", "HcHearthisSearch"),
+}
+MC_SEARCH_PAGE = 50  # api.mixcloud.com/search: results per page
+HT_PAGE = 20  # api-v2.hearthis.at: entries per page (search, user tracks, sets)
+
+
+def off_message(platform: str) -> str:
+    """«<Platform> is turned off in the settings» (SoundCloud keeps its Phase 7a text)."""
+    if platform == SOUNDCLOUD:
+        return tr("sc.off_in_settings")
+    return tr("platform.off_in_settings", platform=platforms.label(platform))
+
+
+def _listing_ie_key(platform: str) -> str | None:
+    """hearthis.at listings: the own extractor (yt-dlp's HearThisAtIE would take a set URL
+    for a single track). Mixcloud: yt-dlp's extractors (extended in place)."""
+    return "HcHearthisList" if platform == HEARTHIS else None
+
+
 class YtClientError(RuntimeError):
     """A yt-dlp operation failed. `rate_limited` is True if the backoff was triggered."""
 
@@ -173,10 +203,15 @@ class DownloadResult:
 
 
 def extract_video_id(url_or_id: str) -> str | None:
-    """DB id of a single video/track: YouTube id or URL, or a SoundCloud DB id `sc:<id>`."""
+    """DB id of a single video/track: YouTube id or URL, a DB id of another platform (`sc:<id>`,
+    `mc:<user>_<slug>`, `ht:<id>`) or a Mixcloud cloudcast URL (its id is built from the URL)."""
     text = (url_or_id or "").strip()
     if _ID_RE.match(text) or platforms.is_valid_db_id(text):
         return text
+    if platforms.url_platform(text) == MIXCLOUD:
+        return platforms.mixcloud_id_from_url(text)
+    if platforms.url_platform(text) not in (None, YOUTUBE):
+        return None
     m = _URL_ID_RE.search(text)
     return m.group(1) if m else None
 
@@ -191,10 +226,48 @@ def soundcloud_track_url(text: str) -> str | None:
 
 
 def watch_url(video_id: str) -> str:
-    """URL handed to yt-dlp for a single video/track, rebuilt from the DB id."""
-    if platforms.platform_of(video_id) == SOUNDCLOUD:
+    """URL handed to yt-dlp for a single video/track, rebuilt from the DB id. Mixcloud and
+    hearthis.at cannot be rebuilt from the id: '' (the stored track page is used instead)."""
+    platform = platforms.platform_of(video_id)
+    if platform == SOUNDCLOUD:
         return platforms.soundcloud_track_api_url(video_id)
+    if platform != YOUTUBE:
+        return ""
     return f"https://www.youtube.com/watch?v={video_id}"
+
+
+_MC_USER_RE = re.compile(
+    r"^https?://(?:www\.|m\.)?mixcloud\.com/([^/?#]+)/?"
+    r"(?:(uploads|playlists/([^/?#]+))/?)?(?:[?#].*)?$",
+    re.I,
+)
+_HT_USER_RE = re.compile(
+    r"^https?://(?:www\.)?hearthis\.at/([\w.-]+)/?(?:set/([\w.-]+)/?)?(?:[?#].*)?$", re.I
+)
+
+
+def mixcloud_source_parts(url: str) -> tuple[str, str | None] | None:
+    """(user, playlist slug) of a Mixcloud user / uploads / playlist URL, else None."""
+    m = _MC_USER_RE.match((url or "").strip())
+    if not m or m.group(1).lower() in platforms.MC_USER_RESERVED:
+        return None
+    if m.group(2) and m.group(2).lower().startswith("playlists"):
+        return m.group(1), m.group(3)
+    return m.group(1), None
+
+
+def hearthis_source_parts(url: str) -> tuple[str, str | None] | None:
+    """(user, set slug) of a hearthis.at user / set URL, else None."""
+    m = _HT_USER_RE.match((url or "").strip())
+    if not m or m.group(1).lower() in platforms.HT_USER_RESERVED:
+        return None
+    return m.group(1), m.group(2)
+
+
+def needs_resolve(url: str) -> bool:
+    """A track page whose DB id is only known after one request (SoundCloud permalink,
+    hearthis.at track page). Mixcloud ids come from the URL itself."""
+    return bool(soundcloud_track_url(url) or platforms.hearthis_track_url(url))
 
 
 def soundcloud_source_parts(url: str) -> tuple[str, str | None, str | None] | None:
@@ -214,6 +287,20 @@ def normalize_source_url(url: str) -> str:
     SoundCloud: a user root lists the user's stream incl. reposts of other users; the
     watchlist reads `/tracks` (own uploads, newest first)."""
     text = url.strip()
+    if platforms.url_platform(text) == MIXCLOUD:
+        parts = mixcloud_source_parts(text)
+        if parts and parts[1] is None:
+            return f"https://www.mixcloud.com/{parts[0]}/uploads/"
+        if parts:
+            return f"https://www.mixcloud.com/{parts[0]}/playlists/{parts[1]}/"
+        return text
+    if platforms.url_platform(text) == HEARTHIS:
+        parts = hearthis_source_parts(text)
+        if parts and parts[1]:
+            return f"https://hearthis.at/{parts[0]}/set/{parts[1]}/"
+        if parts:
+            return f"https://hearthis.at/{parts[0]}/"
+        return text
     if platforms.url_platform(text) == SOUNDCLOUD:
         parts = soundcloud_source_parts(text)
         if parts and parts[1] is None:
@@ -253,6 +340,8 @@ def normalize_entry(entry: Mapping[str, Any], platform: str = YOUTUBE) -> dict[s
     `id` is the DB id (SoundCloud: `sc:<id>`), `channel_id` too (`sc:<user id>`)."""
     if platform == SOUNDCLOUD:
         return _normalize_sc(entry)
+    if platform in (MIXCLOUD, HEARTHIS):
+        return _normalize_other(entry, platform)
     vid = str(entry.get("id") or "")
     thumbs = entry.get("thumbnails") or []
     thumb = entry.get("thumbnail") or (thumbs[-1].get("url") if thumbs else None)
@@ -317,6 +406,45 @@ def _normalize_sc(entry: Mapping[str, Any]) -> dict[str, Any]:
         "live_status": None,
         "preview": is_preview_entry(entry),
         "geo_blocked": is_geo_blocked_entry(entry),
+    }
+
+
+def _normalize_other(entry: Mapping[str, Any], platform: str) -> dict[str, Any]:
+    """Mixcloud / hearthis.at (v0.10.0): exact dates (`timestamp`), duration in seconds, the
+    track page in `url`/`webpage_url` (needed for the download: no rebuild from the id)."""
+    raw = str(entry.get("id") or "")
+    vid = platforms.db_id(platform, raw) if raw else ""
+    url = ""
+    for cand in (entry.get("webpage_url"), entry.get("url")):
+        if cand and platforms.track_page_ok(platform, str(cand)):
+            url = str(cand)
+            break
+    if platform == MIXCLOUD and not vid and url:
+        vid = platforms.mixcloud_id_from_url(url) or ""
+    upload = entry.get("upload_date") or _date_from_ts(
+        entry.get("timestamp") or entry.get("release_timestamp")
+    )
+    uploader_id = str(entry.get("uploader_id") or "")
+    duration = entry.get("duration")
+    thumbs = entry.get("thumbnails") or []
+    thumb = entry.get("thumbnail") or (thumbs[-1].get("url") if thumbs else None)
+    return {
+        "id": vid,
+        "platform": platform,
+        "title": entry.get("title") or "",
+        "channel_id": platforms.db_id(platform, uploader_id) if uploader_id else "",
+        "channel_name": entry.get("uploader") or "",
+        "channel_url": entry.get("uploader_url") or "",
+        "duration": int(round(duration)) if isinstance(duration, (int, float)) else None,
+        "upload_date": upload or "",
+        "date_approx": False,
+        "view_count": entry.get("view_count"),
+        "thumbnail": thumb,
+        "url": url,
+        "live_status": None,
+        # Mixcloud Select (subscriber-only) uploads are never loadable, like Go+ previews
+        "preview": bool(entry.get("mc_exclusive")),
+        "geo_blocked": False,
     }
 
 
@@ -400,7 +528,9 @@ def build_ydl_opts(
     Phase 7a, `platform`: PO token, Deno (`js_runtimes`) and `youtubetab:approximate_date` only
     for YouTube. SoundCloud gets its own request spacing / rate limit (`settings.soundcloud`),
     the `soundcloud:formats` list (SC_FORMATS: fewer format-info requests) and, with
-    `download.keep_original_soundcloud`, no MP3 conversion.
+    `download.keep_original_soundcloud`, no MP3 conversion. v0.10.0: Mixcloud / hearthis.at the
+    same way with their own sections (`settings.mixcloud`, `settings.hearthis`) and
+    `download.keep_original_mixcloud` / `keep_original_hearthis`.
     """
     if purpose not in PURPOSES:
         raise ValueError(f"Unknown purpose: {purpose}")
@@ -442,7 +572,7 @@ def build_ydl_opts(
         # YouTube: one extractor retry for transient player errors. SoundCloud: the
         # RetryManager in `SoundcloudIE._real_extract` retries exactly on 429 and without
         # `retry_sleep`, i.e. a second request right after the rate limit (Review m4) -> 0.
-        opts["extractor_retries"] = 0 if platform == SOUNDCLOUD else 1
+        opts["extractor_retries"] = 1 if platform == YOUTUBE else 0
     else:
         _download_opts(opts, settings, target_dir, platform)
         if progress_hook:
@@ -465,6 +595,8 @@ def _extractor_args(
     """
     if platform == SOUNDCLOUD:
         return {"soundcloud": {"formats": list(SC_FORMATS)}}
+    if platform != YOUTUBE:
+        return {}
     net = settings.network
     args: dict[str, dict[str, list[str]]] = {}
     if purpose in ("search", "list"):
@@ -485,15 +617,15 @@ def _download_opts(
     target = target_dir or settings.target_dir_path()
     tmp = paths.tmp_dir(target)
     rate_mb = settings.throttle_for(platform).limit_rate_mb
-    sc = platform == SOUNDCLOUD
     opts.update(
         {
-            "format": SC_FORMAT if sc else "bestaudio/best",
+            # SoundCloud / hearthis.at: lossless originals are huge and cannot be tagged
+            "format": SC_FORMAT if platform in (SOUNDCLOUD, HEARTHIS) else "bestaudio/best",
             "ratelimit": int(rate_mb * 1024 * 1024) if rate_mb and rate_mb > 0 else None,
             "playlist_items": "1",
             "paths": {"home": str(tmp), "temp": str(tmp)},
             # temp name = file id: `sc-<id>` never collides with a YouTube id of the same digits
-            "outtmpl": {"default": f"{platforms.SC_FILE_PREFIX if sc else ''}%(id)s.%(ext)s"},
+            "outtmpl": {"default": f"{platforms.file_prefix(platform)}%(id)s.%(ext)s"},
             "writethumbnail": bool(dl.embed_cover or dl.write_cover_jpg),
             "overwrites": True,
             "continuedl": True,
@@ -502,8 +634,8 @@ def _download_opts(
     ffmpeg = binaries.ffmpeg_path()
     if ffmpeg.exists():
         opts["ffmpeg_location"] = str(ffmpeg)
-    if sc and dl.keep_original_soundcloud:
-        return  # SoundCloud streams are 128-160 kbps: MP3 320 would only inflate the file
+    if settings.keep_original(platform):
+        return  # SoundCloud/Mixcloud/hearthis streams: MP3 320 would only inflate the file
     if dl.audio_format == "mp3":
         quality = "0" if dl.mp3_quality == "v0" else "320"
         opts["postprocessors"] = [
@@ -618,6 +750,7 @@ class YtClient:
         handler: Callable[[Any, dict[str, Any]], dict[str, Any]] | None = None,
         platform: str = YOUTUBE,
         window: tuple[str, int] | None = None,
+        ie_key: str | None = None,
     ) -> dict[str, Any]:
         """One yt-dlp call behind the throttle and the metadata lock (m4) of `platform`.
 
@@ -632,7 +765,9 @@ class YtClient:
         The download takes the lock *after* `before_request`, so the pause between downloads
         never blocks searches. `on_request` is called right before the first YouTube request
         (m2: only then did the attempt reach the network).
-        SoundCloud metadata calls register `_sc_flat_extractors(window)` on the YoutubeDL.
+        SoundCloud metadata calls register `_sc_flat_extractors(window)` on the YoutubeDL,
+        Mixcloud / hearthis.at calls `_extra_extractor_classes` (v0.10.0); `ie_key` forces
+        one extractor (own search/listing extractors are registered after yt-dlp's generic one).
         """
         th = self.throttle.platform(platform)
         th.check_backoff()
@@ -668,9 +803,10 @@ class YtClient:
                     on_request()
                 try:
                     with yt_dlp.YoutubeDL(opts) as ydl:
-                        if platform == SOUNDCLOUD:
-                            _install_sc_flat_extractors(ydl, window)
-                        info = ydl.extract_info(url, download=False, process=handler is None)
+                        _install_platform_extractors(ydl, platform, window)
+                        info = ydl.extract_info(
+                            url, download=False, process=handler is None, ie_key=ie_key
+                        )
                         if info is None:
                             raise YtClientError(tr("yt.no_data"))
                         if handler is not None:
@@ -695,6 +831,7 @@ class YtClient:
         handler: Callable[[Any, dict[str, Any]], dict[str, Any]] | None = None,
         platform: str = YOUTUBE,
         window: tuple[str, int] | None = None,
+        ie_key: str | None = None,
     ):
         try:
             return self._extract(
@@ -706,6 +843,7 @@ class YtClient:
                 handler=handler,
                 platform=platform,
                 window=window,
+                ie_key=ie_key,
             )
         except (DownloadCancelled, MetadataBusy, WaitCancelled):
             raise
@@ -731,16 +869,17 @@ class YtClient:
     ) -> list[dict[str, Any]]:
         """Flat search; genre search terms and (with `search.append_year`) the year are appended.
         `platform` 'soundcloud': `scsearchN:` (one API request for N <= 200), entries carry
-        `platform` and DB ids `sc:<id>`."""
+        `platform` and DB ids `sc:<id>`. v0.10.0 'mixcloud' (`mcsearchN:`, 50 per page) and
+        'hearthis' (`htsearchN:`, 20 per page) through own extractors."""
         settings = self.settings
-        if platform not in platforms.PLATFORMS:
+        if platform not in platforms.PLATFORMS or not platforms.info(platform).search:
             raise YtClientError(tr("api.unknown_platform_x", platform=platform))
-        if platform == SOUNDCLOUD and not settings.soundcloud.enabled:
-            raise YtClientError(tr("sc.off_in_settings"))
+        if not settings.platform_enabled(platform):
+            raise YtClientError(off_message(platform))
         n = n or settings.search.results_count
         full_query = build_search_query(query, genre=genre, year=year, settings=settings)
         opts = build_ydl_opts(settings, "search", platform)
-        prefix = "scsearch" if platform == SOUNDCLOUD else "ytsearch"
+        prefix, ie_key = SEARCH_KEYS[platform]
         info = self._metadata_call(
             "search",
             f"{prefix}{int(n)}:{full_query}",
@@ -749,6 +888,7 @@ class YtClient:
             cancel_event=cancel_event,
             platform=platform,
             window=("head", int(n)),
+            ie_key=ie_key,
         )
         return [
             normalize_entry(e, platform) for e in info.get("entries") or [] if e and e.get("id")
@@ -768,8 +908,8 @@ class YtClient:
         at most NEWEST_LAST_MAX entries (m4), see docs/decisions.md."""
         settings = self.settings
         platform = platforms.url_platform(url) or YOUTUBE
-        if platform == SOUNDCLOUD and not settings.soundcloud.enabled:
-            raise YtClientError(tr("sc.off_in_settings"))
+        if not settings.platform_enabled(platform):
+            raise YtClientError(off_message(platform))
         max_entries = int(max_entries or settings.schedule.entries_per_source)
         opts = build_ydl_opts(settings, "list", platform)
         handler = None
@@ -786,6 +926,7 @@ class YtClient:
             handler=handler,
             platform=platform,
             window=("tail" if newest_last else "head", max_entries),
+            ie_key=_listing_ie_key(platform),
         )
         entries = [
             normalize_entry(e, platform) for e in info.get("entries") or [] if e and e.get("id")
@@ -829,8 +970,8 @@ class YtClient:
         YtClientError(rate_limited)."""
         settings = self.settings
         platform = platforms.url_platform(url) or YOUTUBE
-        if platform == SOUNDCLOUD and not settings.soundcloud.enabled:
-            raise YtClientError(tr("sc.off_in_settings"))
+        if not settings.platform_enabled(platform):
+            raise YtClientError(off_message(platform))
         limit = max(1, int(limit))
         start = max(0, int(start))
         opts = build_ydl_opts(settings, "list", platform)
@@ -860,9 +1001,13 @@ class YtClient:
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
                 gate.install(ydl)
-                if platform == SOUNDCLOUD:
-                    _install_sc_flat_extractors(ydl, ("head", limit))
-                ie = ydl.extract_info(normalize_source_url(url), download=False, process=False)
+                _install_platform_extractors(ydl, platform, ("head", limit))
+                ie = ydl.extract_info(
+                    normalize_source_url(url),
+                    download=False,
+                    process=False,
+                    ie_key=_listing_ie_key(platform),
+                )
                 if ie is None:
                     raise YtClientError(tr("yt.no_data"))
                 if ie.get("_type") in ("url", "url_transparent") and ie.get("url"):
@@ -920,13 +1065,21 @@ class YtClient:
     def resolve(self, video_id: str) -> dict[str, Any]:
         settings = self.settings
         permalink = soundcloud_track_url(video_id)
+        ht_page = platforms.hearthis_track_url(video_id)
         if permalink:  # SoundCloud permalink: the id is only known after this request
             vid, url = "", permalink
             platform = SOUNDCLOUD
+        elif ht_page:  # hearthis.at track page: same
+            vid, url = "", ht_page
+            platform = HEARTHIS
         else:
             vid = extract_video_id(video_id) or video_id
             platform = platforms.platform_of(vid)
-            url = watch_url(vid)
+            url = self._track_url(vid, video_id)
+            if not url:
+                raise YtClientError(tr("yt.no_track_page"))
+        if not settings.platform_enabled(platform):
+            raise YtClientError(off_message(platform))
         opts = build_ydl_opts(settings, "resolve", platform)
         info = self._metadata_call("resolve", url, opts, settings, platform=platform)
         out = normalize_entry(info, platform)
@@ -991,15 +1144,19 @@ class YtClient:
             msg = tr("yt.no_video_url")
             log.error(tr("yt.download_refused", target=msg, error=(url_or_id or "")[:100]))
             return DownloadResult("", "failed", error=msg)
-        url = watch_url(vid)
         platform = platforms.platform_of(vid)
+        url = self._track_url(vid, url_or_id)
         stem = platforms.file_id(vid)
 
         skipped = self._skip_result(vid)
         if skipped:
             return skipped
-        if platform == SOUNDCLOUD and not settings.soundcloud.enabled:
-            return DownloadResult(vid, "failed", error=tr("sc.off_in_settings"))
+        if not settings.platform_enabled(platform):
+            return DownloadResult(vid, "failed", error=off_message(platform))
+        if not url:
+            msg = tr("yt.no_track_page")
+            log.error(tr("yt.download_refused", target=vid, error=msg))
+            return DownloadResult(vid, "failed", error=msg)
         th = self.throttle.platform(platform)
         th.check_download()
 
@@ -1010,7 +1167,7 @@ class YtClient:
         previous = self.db.get_video(vid)
         prev_status = previous["status"] if previous else "new"
         prev_error = previous.get("error") if previous else None
-        self.db.upsert_video({"id": vid})
+        self.db.upsert_video({"id": vid, "url": url if platform in (MIXCLOUD, HEARTHIS) else None})
         self.db.set_status(vid, "downloading")
         _cleanup_tmp(tmp, stem, keep_partial=True)
 
@@ -1067,6 +1224,24 @@ class YtClient:
                 and bool(_NETWORK_RE.search(str(exc)))
             )
             return self._fail(vid, tmp, msg, rate_limited=limited, keep_partial=keep)
+
+    def _track_url(self, vid: str, given: str = "") -> str:
+        """URL handed to yt-dlp for `vid`: rebuilt from the id (YouTube, SoundCloud) or the
+        track page of a Mixcloud/hearthis.at entry (the given URL or `videos.url`), only if it
+        is a single track page of that platform."""
+        platform = platforms.platform_of(vid)
+        if platform in (YOUTUBE, SOUNDCLOUD):
+            return watch_url(vid)
+        given = (given or "").strip()
+        if platform == MIXCLOUD and platforms.mixcloud_id_from_url(given) == vid:
+            return platforms.mixcloud_track_url(given) or ""
+        row = self.db.get_video(vid) if self.db is not None else None
+        stored = str((row or {}).get("url") or "")
+        if platforms.track_page_ok(platform, stored):
+            if platform == MIXCLOUD and platforms.mixcloud_id_from_url(stored) != vid:
+                return ""
+            return stored
+        return ""
 
     def check_local(
         self,
@@ -1187,6 +1362,10 @@ class YtClient:
             if stored and stored != UNSORTED and stored in {g.name for g in settings.genres.items}:
                 genre = stored
         title = paths.clean_title(meta["title"], st.title_cleanup_patterns)
+        # hearthis.at: the full extraction carries no uploader - keep the one of the listing
+        for key in ("channel_name", "channel_id", "channel_url", "thumbnail", "url"):
+            if not meta.get(key) and row.get(key):
+                meta[key] = row[key]
         channel = meta["channel_name"]
         artist = channel
         if st.artist_from_title:
@@ -1462,6 +1641,14 @@ def listing_name(info: Mapping[str, Any], url: str, platform: str = YOUTUBE) -> 
     YouTube playlist: `title`. SoundCloud user: `title` «<Name> (Tracks)» without the suffix;
     SoundCloud set: «<uploader> – <title>»."""
     title = str(info.get("title") or "").strip()
+    if platform == MIXCLOUD:
+        parts = mixcloud_source_parts(url)
+        if parts and parts[1]:
+            return title or parts[1]
+        # MixcloudUserIE: «<Name> (uploads)»
+        return re.sub(r"\s*\((?:uploads|favorites|listens|stream)\)$", "", title).strip()
+    if platform == HEARTHIS:
+        return title
     if platform == SOUNDCLOUD:
         parts = soundcloud_source_parts(url)
         if parts and parts[1] == "sets":
@@ -1770,6 +1957,313 @@ def _install_sc_flat_extractors(ydl: Any, window: tuple[str, int] | None) -> Non
         )
         return
     for cls in classes:
+        ie = cls()
+        ie._hc_window = window
+        add(ie)
+
+
+# --------------------------------------------------------------------------- Mixcloud, hearthis.at
+
+# fields of a cloudcast in a listing page (the same GraphQL answer, no extra request; all of
+# them are fields yt-dlp's MixcloudIE itself queries on the Cloudcast type)
+MC_NODE_FIELDS = """slug
+          url
+          name
+          audioLength
+          publishDate
+          isExclusive
+          picture(width: 640, height: 640) { url }
+          owner { username displayName url }"""
+_EXTRA_CLASSES: dict[str, list[type]] = {}
+
+
+def mixcloud_meta(cloudcast: Mapping[str, Any]) -> dict[str, Any]:
+    """Flat entry fields from a Mixcloud cloudcast node (listing page or search result)."""
+    from yt_dlp.utils import parse_iso8601
+
+    owner = cloudcast.get("owner") or cloudcast.get("user") or {}
+    pic = cloudcast.get("picture") or {}
+    pics = cloudcast.get("pictures") or {}
+    duration = cloudcast.get("audioLength", cloudcast.get("audio_length"))
+    published = cloudcast.get("publishDate") or cloudcast.get("created_time")
+    out: dict[str, Any] = {
+        "title": cloudcast.get("name") or "",
+        "duration": duration if isinstance(duration, (int, float)) else None,
+        "timestamp": parse_iso8601(published) if isinstance(published, str) else None,
+        "uploader": owner.get("displayName") or owner.get("name") or owner.get("username"),
+        "uploader_id": owner.get("username"),
+        "uploader_url": owner.get("url"),
+        "thumbnail": pic.get("url")
+        or pics.get("extra_large")
+        or pics.get("large")
+        or pics.get("medium"),
+        "view_count": cloudcast.get("play_count"),
+        "mc_exclusive": bool(cloudcast.get("isExclusive") or cloudcast.get("is_exclusive")),
+    }
+    return {k: v for k, v in out.items() if v not in (None, "")}
+
+
+def hearthis_entry(track: Mapping[str, Any]) -> dict[str, Any] | None:
+    """Flat entry (url_result fields) from a track object of api-v2.hearthis.at, the same
+    title style as yt-dlp's HearThisAtIE («<user> - <title>»)."""
+    from yt_dlp.utils import int_or_none, parse_iso8601, str_to_int
+
+    tid = track.get("id")
+    page = str(track.get("permalink_url") or "")
+    if tid is None or not platforms.hearthis_track_url(page):
+        return None
+    user = track.get("user") or {}
+    name = str(user.get("username") or "").strip()
+    title = str(track.get("title") or "").strip()
+    stamp = int_or_none(track.get("release_timestamp"))
+    if stamp is None and isinstance(track.get("created_at"), str):
+        stamp = parse_iso8601(track["created_at"].replace(" ", "T"))
+    return {
+        "_type": "url",
+        "ie_key": "HearThisAt",
+        "url": page,
+        "id": str(tid),
+        "title": f"{name} - {title}" if name and title else title or name,
+        "duration": str_to_int(track.get("duration")),
+        "timestamp": stamp,
+        "uploader": name or None,
+        "uploader_id": str(user.get("permalink") or user.get("id") or "") or None,
+        "uploader_url": user.get("permalink_url"),
+        "thumbnail": track.get("artwork_url") or track.get("thumb"),
+        "view_count": str_to_int(track.get("playback_count")),
+        "genre": track.get("genre"),
+    }
+
+
+def _mc_check_capabilities(mc: Any) -> list[str]:
+    problems = []
+    for name in ("MixcloudUserIE", "MixcloudPlaylistIE", "MixcloudPlaylistBaseIE"):
+        if not isinstance(getattr(mc, name, None), type):
+            problems.append(f"Class {name} missing")
+    if problems:
+        return problems
+    base = mc.MixcloudPlaylistBaseIE
+    for attr in ("_call_api", "_get_cloudcast", "url_result"):
+        if not callable(getattr(base, attr, None)):
+            problems.append(f"MixcloudPlaylistBaseIE.{attr} missing")
+    for cls in (mc.MixcloudUserIE, mc.MixcloudPlaylistIE):
+        if not isinstance(getattr(cls, "_NODE_TEMPLATE", None), str):
+            problems.append(f"{cls.__name__}._NODE_TEMPLATE missing")
+    ps = _params(base._call_api) if callable(getattr(base, "_call_api", None)) else None
+    names = [x.name for x in ps or []]
+    if names[:5] != ["self", "object_type", "object_fields", "display_id", "username"]:
+        problems.append(f"Signature _call_api changed: {names}")
+    return problems
+
+
+def _extra_extractor_classes(platform: str) -> list[type]:
+    """v0.10.0 extractors registered per YoutubeDL instance (metadata calls only):
+
+    Mixcloud: subclasses of yt-dlp's `MixcloudUserIE` / `MixcloudPlaylistIE` (same ie_key,
+    replaced in place) that ask the same GraphQL page for the cloudcast fields of the list
+    (title, duration, date, uploader, picture, Select flag) instead of only slug/url/owner - so
+    the filters work without resolving every entry - and cap the page size / stop paging at
+    the wanted window (`head`, n). `HcMixcloudSearch` (`mcsearchN:`): the public search API
+    `api.mixcloud.com/search/?type=cloudcast` (yt-dlp has no Mixcloud search).
+
+    hearthis.at: yt-dlp only knows single tracks. `HcHearthisSearch` (`htsearchN:`) and
+    `HcHearthisList` (user tracks `hearthis.at/<user>/`, sets `hearthis.at/<user>/set/<slug>/`)
+    read the public API `api-v2.hearthis.at` page by page (lazy: a capped listing stops early).
+    Entries point at the track page; downloads use yt-dlp's `HearThisAtIE`.
+
+    All requests go through yt-dlp's networking (proxy, `sleep_interval_requests`, the paged
+    gate of «Read everything»), i.e. through the throttle of the platform."""
+    if platform in _EXTRA_CLASSES:
+        return _EXTRA_CLASSES[platform]
+    from yt_dlp.extractor.common import InfoExtractor, SearchInfoExtractor
+
+    out: list[type] = []
+    if platform == MIXCLOUD:
+        from yt_dlp.extractor import mixcloud as mc
+
+        problems = _mc_check_capabilities(mc)
+
+        class HcMixcloudSearchIE(SearchInfoExtractor):
+            IE_NAME = "mixcloud:search:hcloader"
+            _SEARCH_KEY = "mcsearch"
+            _MAX_RESULTS = 500
+            _hc_window: tuple[str, int] | None = None
+
+            def _search_results(self, query: str) -> Any:
+                n = (self._hc_window or ("head", MC_SEARCH_PAGE))[1]
+                url: str | None = "https://api.mixcloud.com/search/"
+                params: dict[str, Any] | None = {
+                    "q": query,
+                    "type": "cloudcast",
+                    "limit": max(1, min(MC_SEARCH_PAGE, int(n))),
+                }
+                for page in itertools.count(1):
+                    if not url:
+                        return
+                    data = self._download_json(
+                        url, query, note=f"Downloading search page {page}", query=params
+                    )
+                    for item in (data or {}).get("data") or []:
+                        if not isinstance(item, dict) or not item.get("url"):
+                            continue
+                        vid = platforms.mixcloud_id_from_url(item["url"])
+                        if not vid:
+                            continue
+                        yield self.url_result(
+                            item["url"],
+                            "Mixcloud",
+                            platforms.native_id(vid),
+                            **mixcloud_meta(item),
+                        )
+                    nxt = ((data or {}).get("paging") or {}).get("next")
+                    url, params = (nxt if isinstance(nxt, str) else None), None
+
+        out.append(HcMixcloudSearchIE)
+        if problems:
+            _sc_warn_once(
+                "mc-build",
+                tr(
+                    "yt.mc_ext_inactive",
+                    version=getattr(yt_dlp.version, "__version__", "?"),
+                    error="; ".join(problems),
+                ),
+            )
+        else:
+
+            class _McMixin:
+                _hc_window: tuple[str, int] | None = None
+
+                def _real_extract(self, url: str) -> Any:
+                    self.__dict__["_hc_count"] = 0
+                    return super()._real_extract(url)  # type: ignore[misc]
+
+                def _call_api(
+                    self, object_type: Any, object_fields: Any, *args: Any, **kw: Any
+                ) -> Any:
+                    window = self._hc_window
+                    head = window[1] if window and window[0] == "head" else None
+                    if head and isinstance(object_fields, str):
+                        size = max(1, min(100, int(head)))
+                        object_fields = object_fields.replace("(first: 100", f"(first: {size}", 1)
+                    res = super()._call_api(object_type, object_fields, *args, **kw)  # type: ignore[misc]
+                    if head and isinstance(res, dict):
+                        try:
+                            for value in res.values():
+                                if isinstance(value, dict) and isinstance(value.get("edges"), list):
+                                    count = self.__dict__.get("_hc_count", 0) + len(value["edges"])
+                                    self.__dict__["_hc_count"] = count
+                                    info = value.get("pageInfo")
+                                    if count >= head and isinstance(info, dict):
+                                        value["pageInfo"] = {**info, "hasNextPage": False}
+                        except _SC_DRIFT_ERRORS as exc:
+                            _sc_fallback("mixcloud._call_api", exc)
+                    return res
+
+                def _get_cloudcast(self, node: Any) -> Any:
+                    cc = super()._get_cloudcast(node)  # type: ignore[misc]
+                    self.__dict__["_hc_last"] = cc
+                    return cc
+
+                def url_result(
+                    self, url: Any, ie: Any = None, video_id: Any = None, *a: Any, **kw: Any
+                ) -> Any:
+                    cc = self.__dict__.pop("_hc_last", None)
+                    try:
+                        if isinstance(cc, dict) and cc.get("url") == url:
+                            kw = {**mixcloud_meta(cc), **kw}
+                    except _SC_DRIFT_ERRORS as exc:
+                        _sc_fallback("mixcloud.url_result", exc)
+                    return super().url_result(url, ie, video_id, *a, **kw)  # type: ignore[misc]
+
+            for base, template in (
+                (mc.MixcloudUserIE, MC_NODE_FIELDS),
+                (mc.MixcloudPlaylistIE, "cloudcast {\n          " + MC_NODE_FIELDS + "\n        }"),
+            ):
+                out.append(
+                    type(
+                        base.__name__,
+                        (_McMixin, base),
+                        {"__module__": __name__, "_NODE_TEMPLATE": template},
+                    )
+                )
+    elif platform == HEARTHIS:
+
+        class HcHearthisSearchIE(SearchInfoExtractor):
+            IE_NAME = "hearthis:search:hcloader"
+            _SEARCH_KEY = "htsearch"
+            _MAX_RESULTS = 500
+
+            def _search_results(self, query: str) -> Any:
+                for page in itertools.count(1):
+                    data = self._download_json(
+                        "https://api-v2.hearthis.at/search",
+                        query,
+                        note=f"Downloading search page {page}",
+                        query={"t": query, "page": page, "count": HT_PAGE},
+                    )
+                    items = data if isinstance(data, list) else []
+                    for item in items:
+                        entry = hearthis_entry(item) if isinstance(item, dict) else None
+                        if entry:
+                            yield entry
+                    if len(items) < HT_PAGE:
+                        return
+
+        class HcHearthisListIE(InfoExtractor):
+            IE_NAME = "hearthis:list:hcloader"
+            _VALID_URL = (
+                r"https?://(?:www\.)?hearthis\.at/(?P<user>[\w.-]+)/?"
+                r"(?:set/(?P<set>[\w.-]+)/?)?(?:[?#].*)?$"
+            )
+
+            def _real_extract(self, url: str) -> Any:
+                m = self._match_valid_url(url)
+                user, slug = m.group("user"), m.group("set")
+                if slug:
+                    api = f"https://api-v2.hearthis.at/set/{slug}/"
+                    params: dict[str, Any] = {}
+                    pid = f"{user}_set_{slug}"
+                else:
+                    api = f"https://api-v2.hearthis.at/{user}/"
+                    params = {"type": "tracks"}
+                    pid = user
+
+                def entries() -> Any:
+                    for page in itertools.count(1):
+                        data = self._download_json(
+                            api,
+                            pid,
+                            note=f"Downloading page {page}",
+                            query={**params, "page": page, "count": HT_PAGE},
+                        )
+                        if isinstance(data, dict):
+                            data = data.get("tracks") or data.get("data") or []
+                        items = data if isinstance(data, list) else []
+                        for item in items:
+                            entry = hearthis_entry(item) if isinstance(item, dict) else None
+                            if entry:
+                                yield entry
+                        if len(items) < HT_PAGE:
+                            return
+
+                return self.playlist_result(entries(), pid, None)
+
+        out += [HcHearthisSearchIE, HcHearthisListIE]
+    _EXTRA_CLASSES[platform] = out
+    return out
+
+
+def _install_platform_extractors(ydl: Any, platform: str, window: tuple[str, int] | None) -> None:
+    """Register the extended/own extractors of `platform` on one YoutubeDL (metadata calls)."""
+    if platform == SOUNDCLOUD:
+        _install_sc_flat_extractors(ydl, window)
+        return
+    if platform not in (MIXCLOUD, HEARTHIS):
+        return
+    add = getattr(ydl, "add_info_extractor", None)
+    if add is None:  # test doubles
+        return
+    for cls in _extra_extractor_classes(platform):
         ie = cls()
         ie._hc_window = window
         add(ie)

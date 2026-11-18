@@ -169,7 +169,7 @@ class Api:
         self._throttle = throttle or Throttle(
             self._db,
             lambda: self._settings.throttle,
-            platform_settings={"soundcloud": lambda: self._settings.soundcloud},
+            platform_settings=config.platform_throttle_settings(lambda: self._settings),
         )
         self._bus = bus or EventBus()
         self._worker = worker or Worker()

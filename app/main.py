@@ -340,7 +340,7 @@ def run_smoke(url: str) -> int:
     throttle = Throttle(
         db,
         lambda: settings.throttle,
-        platform_settings={"soundcloud": lambda: settings.soundcloud},
+        platform_settings=config.platform_throttle_settings(lambda: settings),
     )
     # no GUI watchdog here: the smoke run starts (and stops) its own PO-token server if needed
     client = YtClient(lambda: settings, db, throttle)

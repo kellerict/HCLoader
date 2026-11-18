@@ -25,7 +25,7 @@ from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from . import locks
+from . import locks, platforms
 from .db import Database
 from .i18n import tr
 
@@ -117,7 +117,7 @@ class LimitReached(ThrottleError):
         super().__init__(tr("throttle.limit_reached", what=names.get(kind, kind), count=limit))
 
 
-PLATFORM_NAMES = {"youtube": "YouTube", "soundcloud": "SoundCloud"}
+PLATFORM_NAMES = dict(platforms.LABELS)
 
 
 def _utcnow() -> datetime:

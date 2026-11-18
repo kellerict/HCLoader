@@ -11,6 +11,7 @@ import os
 import re
 import shutil
 import sys
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal
@@ -329,6 +330,10 @@ class DownloadSettings(_Section):
     # Phase 7a: SoundCloud mostly streams 128 kbps (MP3) / 160 kbps (AAC); converting to MP3 320
     # only makes the file bigger. True = keep the original audio (M4A/MP3/Opus) for SoundCloud.
     keep_original_soundcloud: bool = True
+    # v0.10.0: Mixcloud streams AAC (~64-128 kbps), hearthis.at MP3 streams: converting to MP3
+    # 320 only inflates the file. True = keep the original audio of these platforms.
+    keep_original_mixcloud: bool = True
+    keep_original_hearthis: bool = True
 
     @field_validator("mp3_quality", mode="before")
     @classmethod
@@ -419,6 +424,40 @@ class SoundCloudSettings(ThrottleSettings):
     Counters and backoff are kept per platform: a 429 from SoundCloud never blocks YouTube."""
 
     enabled: bool = True
+
+
+class MixcloudSettings(ThrottleSettings):
+    """v0.10.0: Mixcloud on/off and its own throttle (own counters and backoff). Mixcloud
+    streams are rate-limited by the site above ~5 MB per chunk; the cautious defaults apply."""
+
+    enabled: bool = True
+
+
+class HearthisSettings(ThrottleSettings):
+    """v0.10.0: hearthis.at on/off and its own throttle (own counters and backoff)."""
+
+    enabled: bool = True
+
+
+class ReuploadSettings(_Section):
+    """v0.10.0 re-upload detection (core/fingerprint.py, docs/decisions.md «Re-upload
+    detection»): an offline audio fingerprint per library item (ffmpeg decode, no network),
+    compared against the library after every download.
+
+    - `fingerprint_after_download`: compute the fingerprint of every new download (low priority)
+    - `head_minutes`: fingerprinted minutes from the start of the file
+    - `windows`: extra 30 s windows spread over the rest of the set (0 = start only)
+    - `min_score`: share of matching hashes (in %) from which a match counts as re-upload
+    - `precheck`: before a download, compare duration (+-5 s) and title with the library on
+      the same platform too (cheap, no extra request); a hit goes to the inbox, not the queue
+    """
+
+    enabled: bool = True
+    fingerprint_after_download: bool = True
+    head_minutes: int = Field(3, ge=1, le=10)
+    windows: int = Field(3, ge=0, le=8)
+    min_score: int = Field(20, ge=5, le=90)
+    precheck: bool = False
 
 
 class NetworkSettings(_Section):
@@ -663,6 +702,8 @@ class Settings(BaseModel):
     throttle: ThrottleSettings = Field(default_factory=ThrottleSettings)
     network: NetworkSettings = Field(default_factory=NetworkSettings)
     soundcloud: SoundCloudSettings = Field(default_factory=SoundCloudSettings)
+    mixcloud: MixcloudSettings = Field(default_factory=MixcloudSettings)
+    hearthis: HearthisSettings = Field(default_factory=HearthisSettings)
     schedule: ScheduleSettings = Field(default_factory=ScheduleSettings)
     watchlist: WatchlistSettings = Field(default_factory=WatchlistSettings)
     appearance: AppearanceSettings = Field(default_factory=AppearanceSettings)
@@ -673,6 +714,7 @@ class Settings(BaseModel):
     playlists: PlaylistSettings = Field(default_factory=PlaylistSettings)
     notifications: NotificationSettings = Field(default_factory=NotificationSettings)
     media_server: MediaServerSettings = Field(default_factory=MediaServerSettings)
+    reupload: ReuploadSettings = Field(default_factory=ReuploadSettings)
 
     def to_dict(self) -> dict[str, Any]:
         return self.model_dump(mode="json")
@@ -687,8 +729,47 @@ class Settings(BaseModel):
         return self.target_dir_path() / "Playlists"
 
     def throttle_for(self, platform: str) -> ThrottleSettings:
-        """Throttle limits of a platform (`throttle` = YouTube, `soundcloud` = SoundCloud)."""
-        return self.soundcloud if platform == "soundcloud" else self.throttle
+        """Throttle limits of a platform (`throttle` = YouTube, otherwise the section of the
+        platform: `soundcloud`, `mixcloud`, `hearthis`)."""
+        name = PLATFORM_SECTIONS.get(platform or "youtube", "throttle")
+        return getattr(self, name)  # type: ignore[no-any-return]
+
+    def platform_enabled(self, platform: str | None) -> bool:
+        """YouTube is always on; the other platforms have `<section>.enabled`."""
+        name = PLATFORM_SECTIONS.get(platform or "youtube")
+        if name is None:
+            return False
+        if name == "throttle":
+            return True
+        return bool(getattr(self, name).enabled)
+
+    def keep_original(self, platform: str | None) -> bool:
+        """Keep the original audio of this platform (no MP3 conversion)."""
+        key = {
+            "soundcloud": "keep_original_soundcloud",
+            "mixcloud": "keep_original_mixcloud",
+            "hearthis": "keep_original_hearthis",
+        }.get(platform or "")
+        return bool(key and getattr(self.download, key))
+
+
+# platform -> settings section with its throttle limits (+ `enabled`, except YouTube)
+PLATFORM_SECTIONS = {
+    "youtube": "throttle",
+    "soundcloud": "soundcloud",
+    "mixcloud": "mixcloud",
+    "hearthis": "hearthis",
+}
+
+
+def platform_throttle_settings(provider: Callable[[], Settings]) -> dict[str, Any]:
+    """`Throttle(platform_settings=...)` for every non-YouTube platform: {platform: provider of
+    its ThrottleSettings}. One place, so a new platform gets its throttle everywhere."""
+
+    def make(section: str) -> Callable[[], ThrottleSettings]:
+        return lambda: getattr(provider(), section)
+
+    return {p: make(s) for p, s in PLATFORM_SECTIONS.items() if p != "youtube"}
 
 
 SECTION_MODELS: dict[str, type[_Section]] = {
@@ -822,6 +903,8 @@ SECTION_TITLES = {
     "throttle": "Schonung von YouTube",
     "network": "Netzwerk & PO-Token",
     "soundcloud": "SoundCloud",
+    "mixcloud": "Mixcloud",
+    "hearthis": "hearthis.at",
     "schedule": "Zeitplan",
     "watchlist": "Watchlist",
     "appearance": "Darstellung",
@@ -832,6 +915,7 @@ SECTION_TITLES = {
     "playlists": "Playlists (M3U8)",
     "notifications": "Benachrichtigungen",
     "media_server": "Medienserver (Plex/Jellyfin)",
+    "reupload": "Re-Uploads (Audio-Fingerabdruck)",
 }
 
 COMMENTS = {
@@ -861,8 +945,10 @@ COMMENTS = {
     "download.write_cue": "CUE-Datei aus Kapiteln erzeugen",
     "download.write_id3_chapters": "ID3-Kapitel (CHAP/CTOC) einbetten",
     "download.keep_original_soundcloud": "SoundCloud: Original behalten (meist 128-160 kbps; MP3 320 bringt nichts)",
+    "download.keep_original_mixcloud": "Mixcloud: Original behalten (AAC, meist 64-128 kbps; MP3 320 bringt nichts)",
+    "download.keep_original_hearthis": "hearthis.at: Original behalten (MP3-Stream; MP3 320 bringt nichts)",
     "storage.target_dir": "Zielordner; %USERPROFILE% wird ersetzt; relativ (z.B. .\\Music) = zum App-Ordner, nur Portable-Version",
-    "storage.path_template": "Ordner-/Dateimuster; Platzhalter: genre, artist, channel, year, date, title, id, platform (id bei SoundCloud: sc-<id>), festival, event_year, stage (leer = entfällt)",
+    "storage.path_template": "Ordner-/Dateimuster; Platzhalter: genre, artist, channel, year, date, title, id, platform (id bei SoundCloud: sc-<id>, Mixcloud: mc-<id>, hearthis.at: ht-<id>), festival, event_year, stage (leer = entfällt)",
     "storage.max_title_length": "Maximale Titellänge im Dateinamen (20-200)",
     "storage.max_path_length": "Maximale Gesamtpfadlänge (100-259, Windows-Limit)",
     "storage.artist_from_title": "Artist aus dem Titel ableiten (ARTIST @ EVENT / ARTIST - TITEL)",
@@ -892,6 +978,26 @@ COMMENTS = {
     "soundcloud.max_searches_per_hour": "SoundCloud: maximale Suchen pro Stunde (1-200)",
     "soundcloud.backoff_initial_hours": "SoundCloud: Sperrzeit nach HTTP 429 in Stunden (0.5-168)",
     "soundcloud.backoff_max_hours": "SoundCloud: Obergrenze der Sperrzeit (Verdopplung bis hierhin)",
+    "mixcloud.enabled": "Mixcloud als Plattform nutzen (Suche, Watchlist, Downloads)",
+    "mixcloud.sleep_requests": "Mixcloud: Pause zwischen Metadaten-Requests in Sekunden (0-60)",
+    "mixcloud.sleep_interval": "Mixcloud: minimale Pause zwischen Downloads in Sekunden",
+    "mixcloud.max_sleep_interval": "Mixcloud: maximale Pause zwischen Downloads (>= minimal)",
+    "mixcloud.limit_rate_mb": "Mixcloud: Download-Tempo in MB/s, 0 = unbegrenzt",
+    "mixcloud.max_downloads_per_run": "Mixcloud: maximale Downloads pro Lauf (1-100)",
+    "mixcloud.max_downloads_per_day": "Mixcloud: maximale Downloads pro Tag (1-500)",
+    "mixcloud.max_searches_per_hour": "Mixcloud: maximale Suchen pro Stunde (1-200)",
+    "mixcloud.backoff_initial_hours": "Mixcloud: Sperrzeit nach HTTP 429 in Stunden (0.5-168)",
+    "mixcloud.backoff_max_hours": "Mixcloud: Obergrenze der Sperrzeit (Verdopplung bis hierhin)",
+    "hearthis.enabled": "hearthis.at als Plattform nutzen (Suche, Watchlist, Downloads)",
+    "hearthis.sleep_requests": "hearthis.at: Pause zwischen Metadaten-Requests in Sekunden (0-60)",
+    "hearthis.sleep_interval": "hearthis.at: minimale Pause zwischen Downloads in Sekunden",
+    "hearthis.max_sleep_interval": "hearthis.at: maximale Pause zwischen Downloads (>= minimal)",
+    "hearthis.limit_rate_mb": "hearthis.at: Download-Tempo in MB/s, 0 = unbegrenzt",
+    "hearthis.max_downloads_per_run": "hearthis.at: maximale Downloads pro Lauf (1-100)",
+    "hearthis.max_downloads_per_day": "hearthis.at: maximale Downloads pro Tag (1-500)",
+    "hearthis.max_searches_per_hour": "hearthis.at: maximale Suchen pro Stunde (1-200)",
+    "hearthis.backoff_initial_hours": "hearthis.at: Sperrzeit nach HTTP 429 in Stunden (0.5-168)",
+    "hearthis.backoff_max_hours": "hearthis.at: Obergrenze der Sperrzeit (Verdopplung bis hierhin)",
     "schedule.watchlist_interval_hours": "Prüfintervall der Watchlist in Stunden (1-168)",
     "schedule.in_app_check": "Watchlist auch prüfen, solange die App offen ist",
     "schedule.task_scheduler_enabled": "Windows-Aufgabenplanung nutzen",
@@ -927,6 +1033,12 @@ COMMENTS = {
     "media_server.server_root": "Zielordner aus Sicht des Servers (NAS/Docker, z.B. /data/music/HCLoader); leer = gleicher Pfad",
     "media_server.delay_seconds": "Wartezeit nach dem letzten Download, bevor der Scan ausgelöst wird (10-3600 s, bündelt mehrere Downloads)",
     "media_server.verify_tls": "HTTPS-Zertifikat prüfen (aus nur für selbst signierte Zertifikate im Heimnetz)",
+    "reupload.enabled": "Re-Uploads erkennen: Audio-Fingerabdruck pro Set offline mit ffmpeg (kein Netz), Vergleich mit der Bibliothek",
+    "reupload.fingerprint_after_download": "Fingerabdruck nach jedem Download berechnen (niedrige Priorität)",
+    "reupload.head_minutes": "Minuten ab Anfang, die in den Fingerabdruck eingehen (1-10)",
+    "reupload.windows": "Zusätzliche 30-s-Fenster über den Rest des Sets verteilt (0-8)",
+    "reupload.min_score": "Ab diesem Anteil übereinstimmender Hashes (in %) gilt ein Set als Re-Upload (5-90)",
+    "reupload.precheck": "Vor dem Download Dauer (+-5 s) und Titel auch auf derselben Plattform vergleichen (kein zusätzlicher Request); Treffer kommen in den Eingang",
     "maintenance.check_updates_on_start": "Beim Start auf yt-dlp-Updates prüfen (max. 1x pro Tag)",
     "maintenance.check_app_updates_on_start": "Beim Start prüfen, ob eine neue HCLoader-Version da ist (GitHub)",
     "maintenance.apply_update_on_exit": "Ein heruntergeladenes App-Update beim Beenden automatisch einspielen",
@@ -1070,7 +1182,7 @@ def _repair_section(model: type[_Section], data: Any, name: str, warnings: list[
 
 
 def _normalize(settings: Settings) -> None:
-    for t in (settings.throttle, settings.soundcloud):
+    for t in (settings.throttle, settings.soundcloud, settings.mixcloud, settings.hearthis):
         if t.max_sleep_interval < t.sleep_interval:
             t.max_sleep_interval = t.sleep_interval
         if t.backoff_max_hours < t.backoff_initial_hours:
