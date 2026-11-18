@@ -1759,7 +1759,8 @@ button.tk-time:hover,button.tk-time:focus-visible{border-color:var(--acid);backg
 .st-card>.st-vbars.years{flex:1;display:flex;flex-direction:column}
 .st-card>.st-vbars.years .st-plot{flex:1;height:auto;min-height:150px}
 .st-card.wide{grid-column:1/-1}
-.st-h{font:var(--w-head) condensed 19px/1.1 var(--f-head);text-transform:var(--tt-head);letter-spacing:calc(1.5px * var(--ls));color:var(--text);margin:0 0 12px;padding-right:200px}
+.st-h{font:var(--w-head) condensed 19px/1.1 var(--f-head);text-transform:var(--tt-head);letter-spacing:calc(1.5px * var(--ls));color:var(--text);margin:0 0 12px}
+.st-card:has(.st-meta) .st-h{padding-right:min(45%, 320px)}
 .st-meta{position:absolute;right:16px;top:16px;color:var(--dim);font-size:11px;max-width:45%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .st-none{color:var(--dim);font:12px var(--f-mono);padding:14px 0}
 .st-foot{color:var(--dim);font-size:11px;margin-top:8px}
