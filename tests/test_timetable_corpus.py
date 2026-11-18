@@ -352,6 +352,113 @@ CORPUS = [
         [R("Headhunterz", N, N, "18:00"), R("Wildstylez", N, N, "19:00")],
         [],
     ),
+    # ------------------------------------------------------------------ holdout round
+    (
+        "Sonntag, 13.07.\nBLUE\n14:00 – 15:00 Ecstatic\n15:00 – 16:00 Vertile",
+        [
+            R("Ecstatic", "BLUE", "Sonntag, 13.07.", "14:00", "15:00"),
+            R("Vertile", "BLUE", "Sonntag, 13.07.", "15:00", "16:00"),
+        ],
+        [],
+    ),
+    (
+        "So. 13.7.2025\nINDIGO\n12:00 Sickddellz",
+        [R("Sickddellz", "INDIGO", "So. 13.7.2025", "12:00")],
+        [],
+    ),
+    (
+        "Zondag 13 juli 2025 – BLUE\n16:00 Phuture Noize",
+        [R("Phuture Noize", "BLUE", "Zondag 13 juli 2025", "16:00")],
+        [],
+    ),
+    (
+        "Samstag 12. Juli\nArena\n20:00 Sound Rush",
+        [R("Sound Rush", "Arena", "Samstag 12. Juli", "20:00")],
+        [],
+    ),
+    (
+        "Freitag\tYELLOW\t20:00\t21:00\tRadical Redemption\nFreitag\tYELLOW\t21:00\t22:00\tMish",
+        [
+            R("Radical Redemption", "YELLOW", "Freitag", "20:00", "21:00"),
+            R("Mish", "YELLOW", "Freitag", "21:00", "22:00"),
+        ],
+        [],
+    ),
+    (
+        "stage|artist|start|end\nRED|Rooler|18:00|19:00",
+        [R("Rooler", "RED", N, "18:00", "19:00")],
+        [],
+    ),
+    (
+        "Sat 12.07 | 18:00 | Headhunterz | RED",
+        [R("Headhunterz", "RED", "Sat 12.07", "18:00")],
+        [],
+    ),
+    ("Sat 12.07 18:00 Sefa", [R("Sefa", N, "Sat 12.07", "18:00")], []),
+    (
+        "Saturday\nYELLOW\nBass Modulators\nAtmozfears\nSILVER\nKELTEK\nRebelion",
+        [
+            R("Bass Modulators", "YELLOW", "Saturday"),
+            R("Atmozfears", "YELLOW", "Saturday"),
+            R("KELTEK", "SILVER", "Saturday"),
+            R("Rebelion", "SILVER", "Saturday"),
+        ],
+        [],
+    ),
+    (
+        "FRIDAY\nTHE GATHERING\nIrradiate\nDeadly Guns\nHARDCORE AREA\nMiss K8",
+        [
+            R("Irradiate", "THE GATHERING", "FRIDAY"),
+            R("Deadly Guns", "THE GATHERING", "FRIDAY"),
+            R("Miss K8", "HARDCORE AREA", "FRIDAY"),
+        ],
+        [],
+    ),
+    (
+        "Main Stage\nB-Front\nFrontliner\n\nHardcore Tent\nAngerfist",
+        [R("B-Front", "Mainstage"), R("Frontliner", "Mainstage"), R("Angerfist", "Hardcore Tent")],
+        [],
+    ),
+    (
+        "🚨 TIMETABLE OUT NOW 🚨\nSaturday\n18:00 Sefa\nGet your tickets at www.example.com\n"
+        "#hardstyle",
+        [R("Sefa", N, "Saturday", "18:00")],
+        ["🚨 TIMETABLE OUT NOW 🚨", "Get your tickets at www.example.com", "#hardstyle"],
+    ),
+    ("Doors: 12:00\n13:00 Warface", [R("Warface", N, N, "13:00")], ["Doors: 12:00"]),
+    (
+        "Wer kommt alles mit? 😍\n20:00 Sub Zero Project",
+        [R("Sub Zero Project", N, N, "20:00")],
+        ["Wer kommt alles mit? 😍"],
+    ),
+    (
+        "Dit wordt een feestje!\nZaterdag\n20:00 Brennan Heart",
+        [R("Brennan Heart", N, "Zaterdag", "20:00")],
+        ["Dit wordt een feestje!"],
+    ),
+    (
+        "18:00 Sefa\nBring your friends and see you on saturday",
+        [R("Sefa", N, N, "18:00")],
+        ["Bring your friends and see you on saturday"],
+    ),
+    (
+        "SUNDAY: Angerfist, Miss K8 & more",
+        [R("Angerfist", N, "SUNDAY"), R("Miss K8", N, "SUNDAY")],
+        ["& more"],
+    ),
+    (
+        "Wildstylez\nNoisecontrollers\n+ many more",
+        [R("Wildstylez"), R("Noisecontrollers")],
+        ["+ many more"],
+    ),
+    (
+        "r/hardstyle\nSaturday Mainstage:\n- 18:00 Headhunterz\n- 19:00 Wildstylez",
+        [
+            R("Headhunterz", "Mainstage", "Saturday", "18:00"),
+            R("Wildstylez", "Mainstage", "Saturday", "19:00"),
+        ],
+        ["r/hardstyle"],
+    ),
 ]
 
 

@@ -35,6 +35,7 @@ MAX_STAGE = 40
 MAX_DAY = 40
 MAX_LINES = 2000  # a pasted timetable larger than this is cut (never a real festival)
 MAX_TEXT = 512 * 1024  # characters; a larger paste is cut before anything is parsed
+MAX_LIST = 60  # names in one «A, B, C» line (a longer one is no line-up line)
 MAX_LINE = 500  # characters per line (a real timetable line is far shorter)
 FILE_FORMAT = 1
 DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "timetables"
@@ -199,6 +200,9 @@ def _day_heading(text: str) -> str | None:
     return None
 
 
+_DATE_LEAD = re.compile(
+    r"^([^\W\d_]{2,12}\.?,? \d{1,2}[./]\d{1,2}(?:[./](?:\d{4}|\d{2})?)?)[ ,|:\-–—]+(?=\d)"
+)
 _DAY_LEAD = re.compile(r"^([^\W\d_]{2,12})\.?(?: ?[|,:/\-–—])? ?(?=\d)")
 
 
@@ -207,6 +211,9 @@ def _day_lead(text: str) -> tuple[str | None, str]:
     front of the time of a set line; anything else -> (None, text)."""
     m = _DAY_LEAD.match(text)
     if m and m.group(1).casefold() in _DAY_WORDS:
+        dated = _DATE_LEAD.match(text)
+        if dated and _day_heading(dated.group(1)) and _find_times(text[dated.end() :])[0]:
+            return dated.group(1), text[dated.end() :]  # «Sat 12.07 18:00 Sefa»: a date
         return m.group(1), text[m.end() :]
     return None, text
 
@@ -668,6 +675,9 @@ def _parse_cells(
     stage = day = start = end = set_type = None
     texts: list[str] = []  # cells that are neither time, known stage, day nor set type
     for cell in cells:
+        if day is None and _day_heading(cell):
+            day = _day_heading(cell)  # before the times: «Sat 12.07» is a date, no 12:07
+            continue
         if start is None or end is None:
             s, e, rest = _find_times(cell)
             if s and not rest.strip(" -–—"):
@@ -681,9 +691,6 @@ def _parse_cells(
             if known:
                 stage = known
                 continue
-        if day is None and _day_heading(cell):
-            day = _day_heading(cell)
-            continue
         code = cell if cell in fx.SET_TYPES else None
         if code is None and fx.norm(cell) and _set_type(cell, set_types) and artist:
             code = _set_type(cell, set_types)
@@ -804,7 +811,7 @@ def _heading_before_times(raw: str, body: str, following: list[str], bullet: boo
 
 _CLOCK = re.compile(r"\d\s?[:hH]\s?[0-5]\d|\d\s?[ap]\.?\s?m\b", re.I)
 _URL = re.compile(
-    r"https?://|\bwww\.|\b[\w-]+\.(?:com|nl|de|be|ch|at|org|net|io|eu|fr|uk|tv|fm|app)(?:/|$|\s)",
+    r"https?://|\bwww\.|(?:^|\s)[ru]/\w{3,}|\b[\w-]+\.(?:com|nl|de|be|ch|at|org|net|io|eu|fr|uk|tv|fm|app)(?:/|$|\s)",
     re.I,
 )
 _HASHTAG = re.compile(r"(?:^|\s)#[^\W\d_]")
@@ -827,7 +834,7 @@ _STOPWORDS = frozenset(
 )
 _NAME_JOIN = re.compile(r"\b(?:b2b|b3b|vs\.?|versus|feat\.?|ft\.?|x|meets)\b|&", re.I)
 _MORE_TAIL = re.compile(
-    r"\s+((?:and|und|en|&|\+)\s+(?:many\s+|lots\s+|viele\s+|veel\s+|nog\s+veel\s+|so\s+much\s+)?"
+    r"(?:^|\s+)((?:and|und|en|&|\+)\s+(?:many\s+|lots\s+|viele\s+|veel\s+|nog\s+veel\s+|so\s+much\s+)?"
     r"(?:more|mehr|meer)\b.*)$",
     re.I,
 )
@@ -851,6 +858,8 @@ def _prose(line: str, rest: str) -> bool:
         return True
     if text.endswith((".", "…")) and len(words) >= 3:
         return True
+    if _list_items(text) is not None:
+        return False  # «Headhunterz, Wildstylez, Sub Zero Project, ...»: names
     stop = sum(1 for w in words if w.casefold().strip(".,!?:;'\"") in _STOPWORDS)
     if len(words) >= 4 and stop >= 2 and stop * 5 >= len(words) * 2:
         return True
@@ -861,7 +870,7 @@ def _list_items(text: str) -> list[str] | None:
     """«Headhunterz, Wildstylez, Sefa» / «A • B • C» -> the names; None if it is no list."""
     pieces = [p.strip() for p in _LIST_SPLIT.split(text)]
     pieces = [p for p in pieces if p]
-    if len(pieces) < 2:
+    if not 2 <= len(pieces) <= MAX_LIST:
         return None
     for p in pieces:
         if not _has_letter(p) or len(p) > MAX_ARTIST or len(p.split()) > 5:
@@ -952,6 +961,15 @@ def _parse_lines(
         body = body.strip().strip("=*").strip()
         if not body:
             continue
+        # --- «..., Wildstylez and many more!» / «+ many more»: the tail is reported
+        more = None if _CLOCK.search(body) else _MORE_TAIL.search(body)
+        if more:
+            body = body[: more.start()].strip()
+            if not _has_letter(body):
+                skipped.append(orig)
+                prev_row, prev_heading = None, False
+                continue
+            skipped.append(more.group(1))
         # --- «FRIDAY: Headhunterz, Wildstylez» / «MAINSTAGE: Sefa» / «Line-up: A, B»
         listed = _label_list(body, names, set_types)
         if listed is not None:
@@ -972,18 +990,14 @@ def _parse_lines(
             prev_row, prev_heading = None, True
             continue
         # --- time-ness
-        lead_day, timed = _day_lead(body)
+        lead_day, timed = _day_lead(body) if _cells(body) is None else (None, body)
         if lead_day and _find_times(timed)[0] is not None:
             body = timed  # «Sat 18.00-19.00 Lil Texas @ PURPLE»
         else:
             lead_day = None
         start, end, rest = _find_times(body)
         # --- free text
-        more = _MORE_TAIL.search(rest) if start is None else None
-        if more:
-            skipped.append(more.group(1))  # «..., Wildstylez and many more!»
-            rest = body = rest[: more.start()].strip()
-        if _prose(body, rest):
+        if _prose(line, rest):
             skipped.append(orig)
             prev_row, prev_heading = None, False
             continue
@@ -1025,6 +1039,8 @@ def _parse_lines(
                 prev_row["start"], prev_row["end"] = start, end
                 prev_row = None
             else:
+                if pending is not None:  # two time-only lines in a row: the first is reported
+                    skipped.insert(pending[3], expanded[pending[2]][0])
                 pending = (start, end, i, len(skipped))
             continue
         artist, st, t = _split_artist(rest, names, set_types)
