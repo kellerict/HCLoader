@@ -10,6 +10,8 @@ appears after «Show all changes» (`docs/RELEASING.md`).
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-18
+
 ### Highlights
 - **DJ pages**: every artist in your library with sets, hours, festivals and years – grouped by festival and year
 - **Aliases and b2b**: "HH" is Headhunterz, "SubZero Project" is Sub Zero Project, and a b2b set counts for every artist
@@ -46,6 +48,25 @@ appears after «Show all changes» (`docs/RELEASING.md`).
   `set_playlist_sync`, `forget_playlist`, `sync_playlists`; event `playlists_synced`
   (`docs/bridge-api.md`).
 - Texts in all languages; wiki page *DJ pages and playlists*, *Settings reference* updated.
+- Database migration 14: triggers keep one cache version for the DJ index, so festival
+  assignments, collector credits, retags, deletes and artist edits show up at once (also from a
+  scheduled run).
+
+### Fixed
+- Known artists (built-in list and your own entries) are recognised before a credit is split:
+  "Mark With a K" is no longer cut to "Mark"; "with" only cuts before an MC or between two known
+  names; "presents" and "feat." never cut into a known name.
+- "Will Sparks & MC Stretch" no longer makes the MC a b2b partner (an MC alone still counts).
+- Hidden artists no longer appear as b2b partners on DJ pages.
+- The DJ index is updated incrementally after downloads (only new or changed sets are parsed) and
+  builds about three times faster on large libraries.
+- Merging artists no longer drops aliases silently beyond the limit; it refuses with a message.
+- Playlists: a relative entry starting with "#" (or a space) is written as "`.\…`" so players do not
+  read it as a comment; line breaks of every kind are removed from entries; "foo.m3u8" is not
+  saved as "foo.m3u8.m3u8"; a unique temporary file is used and counted against the path limit.
+- A playlist deleted in Explorer is no longer recreated by the automatic sync – it stops being
+  kept up to date ("Write now" still writes it on request).
+- A sync request that arrived while the previous sync was finishing is no longer lost.
 
 ## [0.7.0] - 2026-11-18
 
