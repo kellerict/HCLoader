@@ -535,6 +535,81 @@ def _m13_artists_and_playlists(conn: sqlite3.Connection) -> None:
     )
 
 
+# columns of a library row the DJ index (core/artists.py) derives credits and counts from
+_ARTIST_COLS = (
+    "title",
+    "channel_id",
+    "channel_name",
+    "duration",
+    "upload_date",
+    "downloaded_at",
+    "genre",
+    "edition_id",
+    "stage",
+    "set_type",
+    "platform",
+    "file_path",
+    "status",
+)
+
+
+def _m14_artist_index_revision(conn: sqlite3.Connection) -> None:
+    """v0.8.0 review M2: one cache version for the DJ index (core/artists.py).
+
+    Two counters in `state`, bumped by triggers so that every write path (festival
+    assignment, collector, retag, delete, artist edits, headless runs in another process)
+    invalidates the cached index without each caller having to remember it:
+    - `artists_rev_rows`: a library row (status done before or after) changed in a column the
+      index reads, a set was deleted, or a confirmed collector credit changed -> the index is
+      updated incrementally (only the changed rows are parsed again),
+    - `artists_rev_names`: the artist table or the series catalogue changed -> full rebuild.
+    """
+    for key in ("artists_rev_rows", "artists_rev_names"):
+        conn.execute("INSERT OR IGNORE INTO state(key, value) VALUES (?, '0')", (key,))
+
+    def bump(key: str) -> str:
+        return f"UPDATE state SET value = CAST(value AS INTEGER) + 1 WHERE key = '{key}';"
+
+    changed = " OR ".join(f"NEW.{c} IS NOT OLD.{c}" for c in _ARTIST_COLS)
+    rows = bump("artists_rev_rows")
+    names = bump("artists_rev_names")
+    conn.execute(
+        "CREATE TRIGGER artists_rev_video_ins AFTER INSERT ON videos "
+        f"WHEN NEW.status = 'done' BEGIN {rows} END"
+    )
+    conn.execute(
+        "CREATE TRIGGER artists_rev_video_upd AFTER UPDATE ON videos "
+        f"WHEN (OLD.status = 'done' OR NEW.status = 'done') AND ({changed}) BEGIN {rows} END"
+    )
+    conn.execute(
+        "CREATE TRIGGER artists_rev_video_del AFTER DELETE ON videos "
+        f"WHEN OLD.status = 'done' BEGIN {rows} END"
+    )
+    credit = "NEW.video_id IS NOT NULL AND NEW.confirmed = 1"
+    old_credit = "OLD.video_id IS NOT NULL AND OLD.confirmed = 1"
+    conn.execute(
+        "CREATE TRIGGER artists_rev_check_ins AFTER INSERT ON checklist_rows "
+        f"WHEN {credit} BEGIN {rows} END"
+    )
+    conn.execute(
+        "CREATE TRIGGER artists_rev_check_upd AFTER UPDATE ON checklist_rows "
+        f"WHEN (({credit}) OR ({old_credit})) AND (NEW.video_id IS NOT OLD.video_id "
+        "OR NEW.confirmed IS NOT OLD.confirmed OR NEW.artist IS NOT OLD.artist "
+        "OR NEW.position IS NOT OLD.position) "
+        f"BEGIN {rows} END"
+    )
+    conn.execute(
+        "CREATE TRIGGER artists_rev_check_del AFTER DELETE ON checklist_rows "
+        f"WHEN {old_credit} BEGIN {rows} END"
+    )
+    for table in ("artists", "series"):
+        for op in ("INSERT", "UPDATE", "DELETE"):
+            conn.execute(
+                f"CREATE TRIGGER artists_rev_{table}_{op.lower()} AFTER {op} ON {table} "
+                f"BEGIN {names} END"
+            )
+
+
 # Append new steps at the end; never edit existing ones. Step i upgrades version i -> i+1.
 MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [
     _m1_initial,
@@ -550,6 +625,7 @@ MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [
     _m11_tracks_key_index,
     _m12_audio_and_playback,
     _m13_artists_and_playlists,
+    _m14_artist_index_revision,
 ]
 # statuses a user may put into the download queue (enqueue / retry)
 ENQUEUEABLE = ("new", "inbox", "failed")

@@ -17,8 +17,10 @@ Identity: `key_of(name)` folds case, accents, spaces and punctuation («Sub-Zero
 «SubZero Project» = «subzeroproject»). The table `artists` (migration 13) only holds what the
 user said (display name, aliases = merged spellings, own channel, hidden) plus a small seed list
 (`app/data/artists.yaml`, inserted once). Merging adds the other artist's names as aliases;
-splitting removes an alias again. The derived index is cached per database and rebuilt when the
-library, the artist table, the checklists or the series change.
+splitting removes an alias again. Known names are matched before a credit is split, so a user's
+entry always wins («Mark With a K» is never cut at «with»). The derived index is cached per
+database; DB triggers (migration 14) bump a cache version on every relevant write, and a change
+of library rows only re-parses the changed sets.
 """
 
 from __future__ import annotations
@@ -48,7 +50,8 @@ SEED_FILE = Path(__file__).resolve().parents[1] / "data" / "artists.yaml"
 SEED_VERSION = "1"
 K_SEED = "artists_seed_version"
 MAX_NAME = 80
-MAX_ALIASES = 40
+# one limit for the dialog and for merging (review v0.8.0 m6: merge used to keep 80 silently)
+MAX_ALIASES = 80
 MAX_CHANNEL_URL = 300
 TOP_TRACKS = 10
 
@@ -56,8 +59,17 @@ TOP_TRACKS = 10
 _TITLE_SPLIT = re.compile(r"\s+[|@~•·]\s+|\s+[-–—]\s+|\s*\|\s*|\s+//\s+")
 _BRACKETS = re.compile(r"\s*[(\[{][^)\]}]*[)\]}]\s*")
 _STRONG = re.compile(r"\s+(?:b2b|b3b|b4b|vs\.?|versus|x)\s+", re.I)
-_WEAK = re.compile(r"\s*(?:&|\+|,)\s*|\s+and\s+", re.I)
-_FEAT = re.compile(r"\s+(?:feat\.?|ft\.?|featuring|w/|with|hosted by|presents|pres\.?)\s+.*$", re.I)
+# «&», «+», «,», «and»; «with» only between two known names («Headhunterz with Wildstylez»)
+_WEAK = re.compile(r"\s*(?:&|\+|,)\s*|\s+and\s+|(?<=\x00)\s+with\s+(?=\x00)", re.I)
+# a feature / presenter tail is cut off: «X feat. MC Y», «X presents Y», «X with MC Y».
+# Whole words only, and never inside a known name («Mark With a K»: protected before).
+_FEAT = re.compile(
+    r"\s+(?:feat\.?|ft\.?|featuring|w/|hosted\s+by|presents|pres\.|with(?=\s+MC\b))\s+.*$", re.I
+)
+_MC = re.compile(r"^MC\s+\S", re.I)
+# words of a credit (joiners & + , / are never part of a word)
+_WORD = re.compile(r"[^\s&+,/]+")
+_MAX_SPAN = 8
 _BY = re.compile(r"\b(?:mixed|mix|hosted|presented|curated|selected|set)\s+by\s+(.+)$", re.I)
 _TAIL = re.compile(
     r"\s+(?:live(?:\s*set)?|liveset|dj\s*set|full\s*set|set|hq|hd|4k|uhd|\d{1,2}\s*(?:h|hours?))$",
@@ -101,8 +113,9 @@ def key_of(name: str | None) -> str:
 
 
 def _clean_name(text: str) -> str:
+    """Brackets, «Live»/«Set»/«HQ» tails and stray punctuation removed. A feature tail
+    («feat. MC …») is kept: `split_credit` cuts it, after known names are protected."""
     s = _BRACKETS.sub(" ", str(text or ""))
-    s = _FEAT.sub("", s)
     s = re.sub(r"\s+", " ", s).strip(" -–—|:.,;/\\'\"")
     for _ in range(2):
         s = _TAIL.sub("", s).strip(" -–—|:.,;")
@@ -131,28 +144,78 @@ class _Known:
         return self.by_key.get(key_of(name))
 
 
+def _protect(text: str, known: _Known) -> tuple[str, list[str]]:
+    """Replace every known name in `text` by a placeholder «\x00n\x00» (longest match first,
+    left to right), so that feature cutting and joiner splitting never cut into it:
+    «Mark With a K & MC Chucky» -> «\x000\x00 & MC Chucky»."""
+    if not known.by_key:
+        return text, []
+    words = list(_WORD.finditer(text))
+    saved: list[str] = []
+    out: list[str] = []
+    pos = 0
+    i = 0
+    while i < len(words):
+        hit = None
+        for j in range(min(len(words), i + _MAX_SPAN) - 1, i - 1, -1):
+            span = text[words[i].start() : words[j].end()]
+            if key_of(span) and known.resolve(span):
+                hit = (j, span)
+                break
+        if hit is None:
+            i += 1
+            continue
+        j, span = hit
+        out.append(text[pos : words[i].start()])
+        out.append(f"\x00{len(saved)}\x00")
+        saved.append(span)
+        pos = words[j].end()
+        i = j + 1
+    out.append(text[pos:])
+    return "".join(out), saved
+
+
+def _restore(text: str, saved: Sequence[str]) -> str:
+    return re.sub(r"\x00(\d+)\x00", lambda m: saved[int(m.group(1))], text)
+
+
 def split_credit(text: str, known: _Known | None = None) -> list[str]:
     """«Angerfist b2b Miss K8» -> [Angerfist, Miss K8]; «D-Block & S-te-Fan» stays one act if
-    it is known; «Brennan Heart & Wildstylez» -> both. Names are cleaned (brackets, «Live»,
-    «feat. MC …» removed); implausible pieces are dropped."""
+    it is known; «Brennan Heart & Wildstylez» -> both. Known names (seed list and the user's
+    artists/aliases) are matched first and never cut («Mark With a K»). Names are cleaned
+    (brackets, «Live», «feat. MC …», «presents …» removed); an MC next to a DJ («Will Sparks &
+    MC Stretch») is dropped, an MC alone («MC Nolz») is kept; implausible pieces are dropped."""
     known = known or _Known()
     whole = _clean_name(text)
-    if whole and known.resolve(whole):
+    if not whole:
+        return []
+    if known.resolve(whole):
         return [whole]
+    protected, saved = _protect(whole, known)
+
+    def ok(name: str) -> bool:
+        return bool(known.resolve(name)) or _plausible(name)
+
     out: list[str] = []
-    for piece in _STRONG.split(whole):
-        piece = _clean_name(piece)
+    for piece in _STRONG.split(protected):
+        piece = _FEAT.sub("", piece).strip(" -–—|:.,;/")
         if not piece:
             continue
-        if known.resolve(piece):
-            out.append(piece)
+        restored = _clean_name(_restore(piece, saved))
+        if not restored:
             continue
-        parts = [_clean_name(p) for p in _WEAK.split(piece)]
+        if known.resolve(restored):
+            out.append(restored)
+            continue
+        parts = [_clean_name(_restore(p, saved)) for p in _WEAK.split(piece)]
         parts = [p for p in parts if p]
-        if len(parts) > 1 and all(_plausible(p) for p in parts):
-            out.extend(parts)
-        elif _plausible(piece):
-            out.append(piece)
+        if len(parts) > 1:
+            keep = [p for p in parts if known.resolve(p) or not _MC.match(p)] or parts
+            if all(ok(p) for p in keep):
+                out.extend(keep)
+                continue
+        if ok(restored):
+            out.append(restored)
     seen: set[str] = set()
     uniq = []
     for n in out:
@@ -163,13 +226,43 @@ def split_credit(text: str, known: _Known | None = None) -> list[str]:
     return uniq
 
 
+def _series_rx(cat: fx.Catalog) -> re.Pattern[str] | None:
+    """One regex over every series alias of the catalogue (whole words, also written without
+    spaces - the same rule as `fx.contains`), built once per catalogue object."""
+    rx = getattr(cat, "_artists_series_rx", False)
+    if rx is not False:
+        return rx
+    forms: set[str] = set()
+    for _s, aliases in cat.compiled():
+        for alias, _strong in aliases:
+            a = fx.norm(alias)
+            forms |= {f for f in (a, a.replace(" ", "")) if f}
+    rx = (
+        re.compile(
+            r"(?<!\S)(?:"
+            + "|".join(re.escape(f) for f in sorted(forms, key=len, reverse=True))
+            + r")(?!\S)"
+        )
+        if forms
+        else None
+    )
+    object.__setattr__(cat, "_artists_series_rx", rx)
+    return rx
+
+
+def _stage_names(cat: fx.Catalog) -> set[str]:
+    names = getattr(cat, "_artists_stage_names", None)
+    if names is None:
+        names = {fx.norm(a) for st in cat.stages for a in (st.name, *st.aliases)}
+        object.__setattr__(cat, "_artists_stage_names", names)
+    return names
+
+
 def _segment_skipped(seg_norm: str, cat: fx.Catalog, stage_names: set[str]) -> bool:
     if not seg_norm:
         return True
-    for _s, forms in cat.compiled():
-        for alias, _strong in forms:
-            if fx.contains(seg_norm, alias):
-                return True
+    if _has_series(seg_norm, cat):
+        return True
     if fx.title_years(seg_norm) and len(seg_norm.split()) <= 2:
         return True
     stripped = re.sub(r"\b(?:stage|area|tent|arena)\b", " ", seg_norm).strip()
@@ -182,7 +275,7 @@ def _segment_skipped(seg_norm: str, cat: fx.Catalog, stage_names: set[str]) -> b
 def credit_from_title(title: str, cat: fx.Catalog, known: _Known | None = None) -> str | None:
     """The part of a title that names who played («Headhunterz | Defqon.1 2024 | RED» ->
     «Headhunterz»; «Q-dance Radio 512 | Hosted by Villain» -> «Villain»), or None."""
-    stage_names = {fx.norm(a) for st in cat.stages for a in (st.name, *st.aliases)}
+    stage_names = _stage_names(cat)
     known = known or _Known()
     for seg in _TITLE_SPLIT.split(title or ""):
         seg = (seg or "").strip()
@@ -319,6 +412,8 @@ class Index:
         default_factory=dict
     )  # video -> artist keys (credit order)
     rows: dict[str, dict[str, Any]] = field(default_factory=dict)  # video rows (status done)
+    # video -> (credit inputs, names): reused by an incremental rebuild for unchanged rows
+    memo: dict[str, tuple[tuple[Any, ...], list[str]]] = field(default_factory=dict)
 
     def visible(self, key: str) -> Artist | None:
         a = self.artists.get(key)
@@ -332,23 +427,46 @@ class Index:
         ]
 
 
-def _signature(db: Database, settings: Settings) -> tuple[Any, ...]:
-    q = (
-        db.query_one(
-            "SELECT (SELECT COUNT(*) FROM videos WHERE status='done') AS n, "
-            "(SELECT MAX(downloaded_at) FROM videos WHERE status='done') AS dl, "
-            "(SELECT COUNT(*) || ':' || IFNULL(MAX(updated), '') FROM artists) AS a, "
-            "(SELECT COUNT(*) || ':' || IFNULL(MAX(updated), '') FROM checklist_rows "
-            " WHERE video_id IS NOT NULL) AS c, "
-            "(SELECT COUNT(*) || ':' || IFNULL(MAX(updated), '') FROM series) AS s"
-        )
-        or {}
+K_REV_ROWS = "artists_rev_rows"
+K_REV_NAMES = "artists_rev_names"
+
+
+def _revisions(db: Database) -> tuple[str | None, str | None]:
+    """(rows, names) cache versions, bumped by DB triggers (migration 14) on every write that
+    the index depends on - festival assignment, collector credits, retag, delete, downloads,
+    artist edits, series edits - in this process or another one (headless run)."""
+    r = db.query("SELECT key, value FROM state WHERE key IN (?, ?)", (K_REV_ROWS, K_REV_NAMES))
+    d = {x["key"]: x["value"] for x in r}
+    return d.get(K_REV_ROWS), d.get(K_REV_NAMES)
+
+
+def _settings_sig(settings: Settings) -> tuple[Any, ...]:
+    fs = settings.festivals
+    return (
+        tuple(fs.extra_stages),
+        tuple((e.keyword, e.set_type) for e in fs.extra_set_types),
     )
-    extra = (tuple(settings.festivals.extra_stages), len(settings.festivals.extra_set_types))
-    return (q.get("n"), q.get("dl"), q.get("a"), q.get("c"), q.get("s"), extra)
+
+
+def _signature(db: Database, settings: Settings) -> tuple[Any, ...]:
+    return (*_revisions(db), _settings_sig(settings))
+
+
+def bump(db: Database) -> None:
+    """Force a full rebuild of the DJ index on its next use (in every process): the one cache
+    version bump for writes the triggers cannot see."""
+    with db.transaction():
+        for k in (K_REV_ROWS, K_REV_NAMES):
+            db.execute(
+                "INSERT INTO state(key, value) VALUES (?, '1') ON CONFLICT(key) DO UPDATE "
+                "SET value = CAST(value AS INTEGER) + 1",
+                (k,),
+            )
+    invalidate(db)
 
 
 def invalidate(db: Database | None = None) -> None:
+    """Drop the cached index of this process (the next use rebuilds it completely)."""
     with _LOCK:
         if db is None:
             _CACHE.clear()
@@ -357,14 +475,18 @@ def invalidate(db: Database | None = None) -> None:
 
 
 def index(db: Database, settings: Settings) -> Index:
-    """Artist index of the library (cached until the library or the artist table changes)."""
+    """Artist index of the library (cached; see `_signature`). If only library rows changed
+    (a download, a festival assignment, a retag, a delete), the cached index is updated
+    incrementally: only rows whose credit inputs changed are parsed again."""
     ensure_seeded(db)
+    series.sync_builtin(db)  # may write the series table: before the signature is read
     sig = _signature(db, settings)
     with _LOCK:
         hit = _CACHE.get(id(db))
-        if hit and hit[0] == sig:
-            return hit[1]
-    idx = build_index(db, settings)
+    if hit and hit[0] == sig and None not in sig[:2]:
+        return hit[1]
+    prev = hit[1] if hit and hit[0][1:] == sig[1:] and None not in sig[:2] else None
+    idx = build_index(db, settings, previous=prev)
     with _LOCK:
         _CACHE[id(db)] = (sig, idx)
     return idx
@@ -380,7 +502,8 @@ _SHOW_TYPES = {"full_show", "anthem"}
 
 
 def _has_series(text_norm: str, cat: fx.Catalog) -> bool:
-    return any(fx.contains(text_norm, a) for _s, forms in cat.compiled() for a, _strong in forms)
+    rx = _series_rx(cat)
+    return bool(rx and rx.search(text_norm))
 
 
 def title_names(row: Mapping[str, Any], cat: fx.Catalog, known: _Known) -> list[str]:
@@ -419,32 +542,63 @@ def channel_names(row: Mapping[str, Any], organisers: set[str], known: _Known) -
     return split_credit(ch, known)
 
 
-def build_index(db: Database, settings: Settings) -> Index:
-    cat = series.catalog(db, settings)
+_ROW_COLS = (
+    "id, title, channel_id, channel_name, duration, upload_date, downloaded_at, genre, "
+    "edition_id, stage, set_type, platform, file_path"
+)
+
+
+def _names_of_row(
+    row: Mapping[str, Any],
+    credit: str | None,
+    cat: fx.Catalog,
+    organisers: set[str],
+    known: _Known,
+) -> list[str]:
+    names = split_credit(credit, known) if credit else []
+    if not names:
+        names = title_names(row, cat, known)
+    if not names:
+        names = channel_names(row, organisers, known)
+    return names
+
+
+def build_index(db: Database, settings: Settings, *, previous: Index | None = None) -> Index:
+    """Derive the index. With `previous` (same artist table and catalogue, see `index`), rows
+    whose title/channel/edition/collector credit did not change reuse their parsed names."""
     known = _known(db)
-    organisers = _organiser_channels(cat)
+    cat: fx.Catalog | None = None
+    organisers: set[str] = set()
     idx = Index()
     for k, r in known.rows.items():
         idx.artists[k] = Artist(key=k, row=r)
-    collector = {}
+    collector: dict[str, str] = {}
     for r in db.query(
         "SELECT video_id, artist FROM checklist_rows WHERE video_id IS NOT NULL AND confirmed = 1 "
         "ORDER BY position, id"
     ):
         collector.setdefault(r["video_id"], r["artist"])
-    rows = db.query(
-        "SELECT id, title, channel_id, channel_name, duration, upload_date, downloaded_at, genre, "
-        "edition_id, stage, set_type, platform, file_path FROM videos WHERE status = 'done'"
-    )
+    rows = db.query(f"SELECT {_ROW_COLS} FROM videos WHERE status = 'done'")
+    memo = previous.memo if previous is not None else {}
     for row in rows:
         vid = row["id"]
         idx.rows[vid] = row
         credit = collector.get(vid)
-        names = split_credit(credit, known) if credit else []
-        if not names:
-            names = title_names(row, cat, known)
-        if not names:
-            names = channel_names(row, organisers, known)
+        inputs = (
+            credit,
+            row.get("title"),
+            row.get("channel_name"),
+            bool(row.get("edition_id")),
+        )
+        hit = memo.get(vid)
+        if hit is not None and hit[0] == inputs:
+            names = hit[1]
+        else:
+            if cat is None:
+                cat = series.catalog(db, settings)
+                organisers = _organiser_channels(cat)
+            names = _names_of_row(row, credit, cat, organisers, known)
+        idx.memo[vid] = (inputs, names)
         if not names:
             continue
         role = "b2b" if len(names) > 1 else "solo"
@@ -617,7 +771,11 @@ def detail(db: Database, settings: Settings, key: str) -> dict[str, Any] | None:
     editions = series.edition_map(db)
     sets = []
     for vid in video_ids(db, settings, k):
-        others = [idx.artists[o].name for o in idx.by_video.get(vid, []) if o != k]
+        others = [
+            idx.artists[o].name
+            for o in idx.by_video.get(vid, [])
+            if o != k and not idx.artists[o].hidden
+        ]
         sets.append({"id": vid, "role": a.videos.get(vid, "solo"), "with": others})
     return {
         "artist": _summary(a, idx, editions),
@@ -770,6 +928,8 @@ def merge(db: Database, settings: Settings, keys: Iterable[str], into: str) -> d
             if key_of(n) and key_of(n) not in have:
                 have.add(key_of(n))
                 aliases.append(n)
+    if len(aliases) > MAX_ALIASES:  # refuse instead of dropping spellings (they would split off)
+        raise ArtistError({"keys": tr("artist.merge_too_many", name=target.name, max=MAX_ALIASES)})
     with db.transaction():
         for s in sources:
             db.execute("DELETE FROM artists WHERE key = ?", (s.key,))
@@ -777,7 +937,7 @@ def merge(db: Database, settings: Settings, keys: Iterable[str], into: str) -> d
             db,
             target.key,
             target.name,
-            aliases[: MAX_ALIASES * 2],
+            aliases,
             channel_url=(trow or {}).get("channel_url")
             or next(
                 (

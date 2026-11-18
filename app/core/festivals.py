@@ -26,6 +26,7 @@ import unicodedata
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
+from functools import lru_cache
 from typing import Any
 
 KINDS = ("festival", "radio", "podcast")
@@ -205,7 +206,13 @@ _SEGMENT_SPLIT = re.compile(r"\s+[-–—~]\s+|[|()\[\]{}/@:•·,]+")
 
 def norm(text: str | None) -> str:
     """Lower case, accents removed, every non-alphanumeric run -> one space."""
-    text = unicodedata.normalize("NFKD", str(text or ""))
+    return _norm(str(text or ""))
+
+
+@lru_cache(maxsize=16384)
+def _norm(text: str) -> str:
+    # cached: the detection and the DJ index normalise the same aliases again and again
+    text = unicodedata.normalize("NFKD", text)
     text = "".join(ch for ch in text if not unicodedata.combining(ch)).casefold()
     text = text.replace("ß", "ss")
     return _NON_ALNUM.sub(" ", text).strip()
