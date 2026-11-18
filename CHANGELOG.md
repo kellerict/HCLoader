@@ -46,6 +46,8 @@ appears after «Show all changes» (`docs/RELEASING.md`).
 - Chapters read from a description no longer lose a closing bracket at the end of the title
   ("Title (X Remix" in CUE files and ID3 chapters).
 - A damaged audio file no longer breaks the Tracklist panel; it shows a clear message instead.
+- A download that fails on a local file error (missing program, locked file) now names the
+  error type, the file and where it happened, instead of a bare "[WinError 2]".
 
 ## [0.5.1] - 2026-11-18
 

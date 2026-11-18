@@ -1056,9 +1056,11 @@ class YtClient:
             return self._fail(vid, tmp, str(exc))
         except Exception as exc:
             limited = th.handle_error(exc)
-            msg = _clean_error(exc)
+            msg = _failure_reason(exc)
             if not isinstance(exc, (yt_dlp.utils.YoutubeDLError, OSError, YtClientError)):
                 log.exception(tr("yt.unexpected", id=vid))
+            elif isinstance(exc, OSError):
+                log.debug("Local OS error while downloading %s", vid, exc_info=True)
             keep = (
                 not limited
                 and not _HTTP_403_RE.search(str(exc))
@@ -1821,6 +1823,45 @@ def _newest_last_handler(
 def _clean_error(exc: BaseException) -> str:
     text = redact(re.sub(r"\x1b\[[0-9;]*m", "", str(exc))).strip()
     return re.sub(r"^ERROR:\s*", "", text)[:500] or exc.__class__.__name__
+
+
+_STDLIB_DIR = os.path.normcase(os.path.dirname(os.__file__))
+
+
+def _is_stdlib(filename: str) -> bool:
+    path = os.path.normcase(filename)
+    return path.startswith(_STDLIB_DIR) and "site-packages" not in path
+
+
+def _failure_reason(exc: BaseException) -> str:
+    """Failure reason stored on the job: like `_clean_error`, but a local `OSError` (missing
+    binary, locked file, bad path) also names its type, the file involved and the innermost
+    non-stdlib frame. On Windows `subprocess` raises a bare `[WinError 2] The system cannot
+    find the file specified` without any file name - unusable without the location."""
+    msg = _clean_error(exc)
+    if not isinstance(exc, OSError) or isinstance(exc, yt_dlp.utils.YoutubeDLError):
+        return msg
+    parts = [exc.__class__.__name__]
+    for name in (exc.filename, exc.filename2):
+        shown = redact(repr(str(name))) if name else ""
+        if shown and shown not in msg and str(name) not in msg:
+            parts.append(shown)
+    if where := _error_origin(exc):
+        parts.append(f"at {where}")
+    extra = " ".join(parts)
+    return f"{msg[: 500 - len(extra) - 3]} ({extra})"
+
+
+def _error_origin(exc: BaseException) -> str:
+    """`file.py:line in func` of the innermost frame outside the standard library."""
+    tb = exc.__traceback__
+    found = ""
+    while tb is not None:
+        code = tb.tb_frame.f_code
+        if not _is_stdlib(code.co_filename):
+            found = f"{Path(code.co_filename).name}:{tb.tb_lineno} in {code.co_name}"
+        tb = tb.tb_next
+    return found
 
 
 def _is_partial(name: str) -> bool:

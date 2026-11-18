@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import sqlite3
 import threading
+from pathlib import Path
 
 import pytest
 from test_api import env  # noqa: F401  (fixture)
@@ -590,10 +591,32 @@ def test_api_pass_refused_while_other_maintenance_job(env):  # noqa: F811
         gate.set()
 
 
-def test_download_extracts_tracklist_and_search_finds_it(world, monkeypatch):  # noqa: F811
+# A silent MPEG-1 Layer III frame (128 kbit/s, 44.1 kHz, 417 bytes); 40 of them ~ 1 s.
+_SILENT_MP3 = (b"\xff\xfb\x90\x64" + bytes(413)) * 40
+
+
+@pytest.fixture
+def no_ffmpeg_world(world, monkeypatch):  # noqa: F811
+    """`world` without the ffmpeg binary: windows-latest CI has none on PATH, and the module
+    skip of test_integration_queue does not reach a fixture imported here. Before v0.6.1 the
+    FakeYDL `subprocess.run(["ffmpeg", ...])` failed there with a bare `[WinError 2]` and the
+    download ended `failed`. The fake writes a short MP3 by hand instead."""
+    import types
+
     import test_integration_queue as tiq
 
-    w = world
+    def fake_run(cmd, **_kw):
+        assert cmd[0] == "ffmpeg"
+        Path(cmd[-1]).write_bytes(_SILENT_MP3)
+
+    monkeypatch.setattr(tiq, "subprocess", types.SimpleNamespace(run=fake_run))
+    return world
+
+
+def test_download_extracts_tracklist_and_search_finds_it(no_ffmpeg_world, monkeypatch):
+    import test_integration_queue as tiq
+
+    w = no_ffmpeg_world
     desc = "Tracklist:\n00:00 Partyraiser - Spin It\n05:00 Angerfist - Incoming (Miss K8 Remix)\n10:00 ID - ID"
     orig = tiq.FakeYDL.process_ie_result
 
@@ -847,3 +870,60 @@ def test_api_get_tracklist_broken_file_is_a_message(env, monkeypatch):  # noqa: 
     assert api.get_tracklist("broken00001")["ok"] is True and seen["files_ok"] is False
     assert api.build_tracklists()["scope"] == "new"
     api._worker.run("wait", lambda: None, timeout=10)
+
+
+@pytest.mark.parametrize(
+    "exc, expect",
+    [
+        # Windows `subprocess` on a missing binary: no file name in the exception at all
+        (
+            FileNotFoundError(2, "The system cannot find the file specified"),
+            "(FileNotFoundError at test_integration_queue.py:",
+        ),
+        # Windows sharing violation (file still open elsewhere) on a move/replace
+        (
+            PermissionError(13, "Access is denied", "C:\\tmp\\hcLiveset01.mp3"),
+            "(PermissionError at test_integration_queue.py:",
+        ),
+    ],
+)
+def test_local_os_error_reason_names_type_and_origin(no_ffmpeg_world, exc, expect):
+    """Regression for the v0.6.0 Windows CI failure: a local OSError during the download must
+    leave a self-explaining failure reason on the job (type + origin), not a bare WinError."""
+    import test_integration_queue as tiq
+
+    w = no_ffmpeg_world
+    tiq.FakeYDL.behaviour["hcLiveset01"] = exc
+    assert w.api.search("hardcore", {"genre": "Hardcore", "year": None})["ok"]
+    assert w.api.enqueue(["hcLiveset01"])["ok"]
+    w.api._queue.start()
+    assert w.api._queue.wait_idle(60)
+    row = w.db.get_video("hcLiveset01")
+    assert row["status"] == "failed"
+    assert str(exc.strerror) in row["error"] and expect in row["error"]
+    assert "in process_ie_result)" in row["error"]
+
+
+def test_failure_reason_finish_permission_error(no_ffmpeg_world, monkeypatch):
+    """A file still open while it is moved into the library raises PermissionError on Windows
+    (`shutil.move` -> `os.rename`/`os.replace`); the job fails with the file named in it."""
+    import test_integration_queue as tiq
+
+    from app.core import ytclient
+
+    w = no_ffmpeg_world
+
+    def locked_move(src, dst, *a, **kw):
+        msg = "The process cannot access the file because it is being used by another process"
+        raise PermissionError(13, msg, src)
+
+    monkeypatch.setattr(ytclient.shutil, "move", locked_move)
+    assert w.api.search("hardcore", {"genre": "Hardcore", "year": None})["ok"]
+    assert w.api.enqueue(["hcLiveset01"])["ok"]
+    w.api._queue.start()
+    assert w.api._queue.wait_idle(60)
+    row = w.db.get_video("hcLiveset01")
+    assert row["status"] == "failed"
+    assert "PermissionError" in row["error"] and "hcLiveset01.mp3" in row["error"]
+    assert "in locked_move)" in row["error"]
+    assert tiq.FakeYDL.downloads == ["hcLiveset01"]
