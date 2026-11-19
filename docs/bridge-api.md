@@ -625,7 +625,7 @@ Worker `AnalysisQueue` (`app/worker.py`, ein eigener Thread, eine Datei nach der
 | `set_now_playing(id)` | Video-ID des im Player geladenen Sets (auch pausiert) \| `null` = nichts geladen | `{ok:true}` – die UI meldet jeden Wechsel (Laden, Schliessen). In die Datei dieses Sets werden **keine** Tags geschrieben; die Messung wird gespeichert (`tagged = 0`), die ReplayGain-Tags folgen, sobald die UI ein anderes Set oder `null` meldet (Review v0.7.0 M1) |
 | `get_continue_listening(limit=5)` | 1–20 | `{ok:true, items:[{id, position, duration, updated, title, artist, genre, platform}]}` – zuletzt geänderte, unfertige Sets, die noch in der Bibliothek sind; leer bei `player.resume == "off"` |
 | `get_analysis_status()` | | `{total, analysed, tagged, waveforms, failed, pending, last_pass, ffmpeg, running}` – `pending` = Einträge, die der Durchlauf «new» anfassen würde |
-| `analyse_library(opts?)` | `{scope: "new" (Standard) \| "all"}` | `{ok:true, started:true, scope}` \| `{ok:true, started:false, running:true}` \| `{ok:false, error}` (ffmpeg fehlt) |
+| `analyse_library(opts?)` | `{scope: "new" (Standard) \| "all"}` | `{ok:true, started:true, scope}` \| `{ok:true, started:true, scope:"all", after_auto:true}` (v0.10.2: lief gerade der automatische Nachlauf, stoppt er und der eigene Durchlauf startet danach) \| `{ok:true, started:false, running:true}` \| `{ok:false, error}` (ffmpeg fehlt) |
 | `cancel_analyse_library()` | | `{ok:true, running}` – beendet auch das laufende ffmpeg (nichts wird geschrieben) |
 
 **Zusatzfelder von `get_media`**
@@ -801,7 +801,7 @@ solange die Lautheitsanalyse dekodiert) – nie im pywebview-Callback-Thread.
 | Methode | Parameter | Rückgabe |
 |---|---|---|
 | `get_reupload_status()` | | `{total, fingerprinted, failed, pending, open, kept, linked, last_pass, ffmpeg, running, enabled}` – `pending` = Bibliotheks-Einträge ohne (aktuellen) Fingerabdruck |
-| `fingerprint_library(opts?)` | `{scope: "new" (Standard) \| "all"}` | `{ok:true, started:true, scope}` \| `{ok:true, started:false, running:true}` \| `{ok:false, error}` (aus, kein ffmpeg). Fortschritt `fingerprint`, Treffer `reupload` (mit `pass:true`) |
+| `fingerprint_library(opts?)` | `{scope: "new" (Standard) \| "all"}` | `{ok:true, started:true, scope}` \| `{ok:true, started:true, scope:"all", after_auto:true}` (wie `analyse_library`) \| `{ok:true, started:false, running:true}` \| `{ok:false, error}` (aus, kein ffmpeg). Fortschritt `fingerprint`, Treffer `reupload` (mit `pass:true`) |
 | `cancel_fingerprint_library()` | | `{ok:true, running}` – bricht auch das laufende ffmpeg ab (nichts gespeichert) |
 | `get_reuploads(opts?)` | `{state: "open" (Standard) \| "all"}` | `{ok:true, items:[{id, title, platform, channel, file_path, downloaded_at, reupload: Reupload}]}` – nur Einträge in der Bibliothek, neueste zuerst |
 | `resolve_reupload(id, action)` | `action`: `"keep"` (beide behalten, Markierung weg) \| `"link"` (gleicher Mix, verknüpft) \| `"delete_new"` (diese neuere Datei löschen, Eintrag → `ignored`, wie `delete_library_item`; **nur wenn `of.present = "ok"`**) \| `"adopt"` (Original fehlt: diese Kopie ersetzt es; nur wenn `of.present` `"missing"`/`"gone"`; ein `missing`-Original wird aus der Bibliothek genommen, Event `video` `ignored`) \| `"open"` (Entscheid rückgängig) | `{ok:true, id, state, reupload}` \| `{ok:true, deleted, archive_removed?}` (delete_new) \| `{ok:true, id, removed: id\|null, reupload:null}` (adopt) \| `{ok:false, error, original?}` (nicht markiert, unbekannte Aktion, Original fehlt/unbekannt bzw. noch da) |

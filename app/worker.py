@@ -2057,6 +2057,7 @@ class CatchUp:
         self._lock = threading.Lock()
         self._thread: threading.Thread | None = None
         self.current: str | None = None
+        self._skipped: str | None = None  # the running pass the user asked to stop
 
     def start(self) -> None:
         with self._lock:
@@ -2079,10 +2080,19 @@ class CatchUp:
         """Stop the running pass `name` only (the next pass of the sequence follows)."""
         with self._lock:
             step = self._step(name) if self.current == name else None
+            if step is not None:
+                self._skipped = name  # before cancel_step: see `stopped`
         if step is None:
             return False
         _quiet_call(step.cancel_step)
         return True
+
+    def stopped(self, name: str) -> bool:
+        """True once the running pass `name` was skipped or the sequence cancelled. A step that
+        clears its shared stop event before submitting its job checks this afterwards and sets
+        the event again, so a skip in between is never lost (review v0.10.1 minor 1)."""
+        with self._lock:
+            return self._halted() or self._skipped == name
 
     def stop(self, timeout: float = 5.0) -> None:
         self._stop.set()
@@ -2122,6 +2132,7 @@ class CatchUp:
                 break
             with self._lock:
                 self.current = step.name
+                self._skipped = None
             ran = True
             log.info(tr("catchup.step", step=tr(f"catchup.name.{step.name}")))
             self._bus.emit("auto_pass", {"phase": "step", "step": step.name})

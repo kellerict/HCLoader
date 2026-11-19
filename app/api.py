@@ -2080,7 +2080,8 @@ class Api:
         scope = "all" if o.get("scope") == "all" else "library"
         if self._catchup.running() == "festivals":
             self._catchup.skip("festivals")  # the user's pass replaces the automatic one
-            self._worker.run("festivals:wait", lambda: None, timeout=JOB_TIMEOUT_S)
+            if not self._wait_maintenance("festivals:wait"):
+                return self._busy("festivals")
         if self._worker.busy("festivals"):
             return {"ok": True, "started": False, "running": True}
         other = self._maintenance_other("festivals")
@@ -2129,6 +2130,41 @@ class Api:
 
     # ================================================================== catch-up passes (v0.10.1)
 
+    def _wait_maintenance(self, key: str) -> bool:
+        """Wait until the jobs queued in the maintenance worker before now have ended (the
+        stopped automatic pass); False after JOB_TIMEOUT_S (e.g. a backup to a slow share
+        ahead of it) - then the caller reports «busy» instead of raising (review v0.10.1
+        minor 2)."""
+        try:
+            self._worker.run(key, lambda: None, timeout=JOB_TIMEOUT_S)
+        except FutureTimeout:
+            return False
+        return True
+
+    def _busy(self, key: str) -> dict[str, Any]:
+        other = self._worker.other_job(key) or key
+        label = tr(_JOB_LABELS[other]) if other in _JOB_LABELS else tr("job.retag")
+        return {"ok": False, "error": tr("api.maintenance_busy", label=label)}
+
+    def _after_auto_pass(self, step: str, queue: Any, scope: str) -> bool:
+        """«Re-measure all» while the automatic pass `step` («new» only) runs: stop it and start
+        the user's pass as soon as it has ended (a short helper thread, the bridge thread does
+        not wait). False if no automatic pass of `step` runs (review v0.10.1 minor 3)."""
+        if scope != "all" or self._catchup.running() != step or not self._catchup.skip(step):
+            return False
+
+        def later() -> None:
+            stop = threading.Event()
+            deadline = JOB_TIMEOUT_S
+            while queue.pass_running() and deadline > 0:
+                stop.wait(0.2)
+                deadline -= 0.2
+            if not queue.start_pass(scope):
+                log.warning("User pass %s not started: another pass still runs", step)
+
+        threading.Thread(target=later, name=f"hcloader-{step}-after-auto", daemon=True).start()
+        return True
+
     def _maintenance_other(self, key: str) -> str | None:
         """Another maintenance job, for the refusal «… is running». An automatic catch-up pass
         never blocks the user: it is stopped (continues at the next start) and the user's
@@ -2157,7 +2193,12 @@ class Api:
                 if cancel.is_set():
                     return None
                 stop.clear()
-                return self._worker.submit(key, fn, *args).result()
+                future = self._worker.submit(key, fn, *args)
+                if self._catchup.stopped(key):
+                    # the user started a job (or pressed «x») between the check above and
+                    # `clear()`: the cleared stop request is set again (review v0.10.1 minor 1)
+                    stop.set()
+                return future.result()
 
             return run
 
@@ -2260,7 +2301,8 @@ class Api:
         scope = "all" if o.get("scope") == "all" else "new"
         if self._catchup.running() == "tracklists" and scope == "all":
             self._catchup.skip("tracklists")  # the user's full pass replaces the automatic one
-            self._worker.run("tracklists:wait", lambda: None, timeout=JOB_TIMEOUT_S)
+            if not self._wait_maintenance("tracklists:wait"):
+                return self._busy("tracklists")
         if self._worker.busy("tracklists"):
             return {"ok": True, "started": False, "running": True}
         other = self._maintenance_other("tracklists")
@@ -2387,6 +2429,8 @@ class Api:
         if not binaries.ffmpeg_path().exists():
             return {"ok": False, "error": tr("analysis.no_ffmpeg")}
         if not self._analysis.start_pass(scope):
+            if self._after_auto_pass("analysis", self._analysis, scope):
+                return {"ok": True, "started": True, "scope": scope, "after_auto": True}
             return {"ok": True, "started": False, "running": True}
         return {"ok": True, "started": True, "scope": scope}
 
@@ -2426,6 +2470,8 @@ class Api:
         if not binaries.ffmpeg_path().exists():
             return {"ok": False, "error": tr("analysis.no_ffmpeg")}
         if not self._fp.start_pass(scope):
+            if self._after_auto_pass("fingerprints", self._fp, scope):
+                return {"ok": True, "started": True, "scope": scope, "after_auto": True}
             return {"ok": True, "started": False, "running": True}
         return {"ok": True, "started": True, "scope": scope}
 

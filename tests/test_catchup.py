@@ -387,3 +387,89 @@ def test_search_queue_download_tag_then_catchup_assigns(world):  # noqa: F811
     assert edition_of(w.db, "prDominat08") == "Dominator 2024"
     lib = {i["id"]: i for i in w.api.get_library()}
     assert lib["prDominat08"]["festival"]["edition"] == "Dominator 2024"
+
+
+# =========================================================================== review v0.10.1 minors
+
+
+def test_api_skip_between_check_and_clear_is_not_lost(env, monkeypatch):  # noqa: F811
+    """Minor 1: the user's job skips the automatic pass right before the catch-up clears the
+    shared stop event; the pass must still stop."""
+    a = env.make(catchup_delay=30)
+    seen: list[bool] = []
+
+    def fake_pass(db, **kw):
+        seen.append(kw["cancel"].wait(5))
+        return {"ok": True, "cancelled": True, "done": 0, "sets": 0, "tracks": 0}
+
+    monkeypatch.setattr(tracklist, "index_pass", fake_pass)
+    step = next(s for s in a._catchup_steps() if s.name == "tracklists")
+    a._catchup.current = "tracklists"
+    assert a._catchup.skip("tracklists") is True  # sets the stop event ...
+    step.run(threading.Event())  # ... which the step clears before submitting
+    assert seen == [True]
+    a._catchup.current = None
+
+
+def test_api_wait_for_auto_pass_timeout_reports_busy(env, monkeypatch):  # noqa: F811
+    """Minor 2: a long job ahead of the stopped automatic pass: «busy», no exception."""
+    from concurrent.futures import TimeoutError as FutureTimeout
+
+    a = env.make(catchup_delay=30)
+    real_run = a._worker.run
+
+    def run(key, fn, *args, timeout=None):
+        if key.endswith(":wait"):
+            raise FutureTimeout()
+        return real_run(key, fn, *args, timeout=timeout)
+
+    monkeypatch.setattr(a._worker, "run", run)
+    a._catchup.current = "festivals"
+    res = a.assign_festivals({"scope": "library"})
+    assert res["ok"] is False and res["error"]
+    a._catchup.current = "tracklists"
+    res = a.build_tracklists({"scope": "all"})
+    assert res["ok"] is False and res["error"]
+    a._catchup.current = None
+
+
+@pytest.mark.parametrize(("method", "queue", "step"), [
+    ("analyse_library", "_analysis", "analysis"),
+    ("fingerprint_library", "_fp", "fingerprints"),
+])  # fmt: skip
+def test_api_full_pass_replaces_running_auto_pass(env, monkeypatch, tmp_path, method, queue, step):  # noqa: F811
+    """Minor 3: «re-measure all» while the automatic «new» pass runs is not dropped silently:
+    the automatic pass stops and the user's full pass starts after it."""
+    a = env.make(catchup_delay=30)
+    exe = tmp_path / "ffmpeg.exe"
+    exe.write_bytes(b"")
+    monkeypatch.setattr(binaries, "ffmpeg_path", lambda: exe)
+    a._settings.reupload.enabled = True
+    q = getattr(a, queue)
+    state = {"running": True}
+    started = threading.Event()
+    calls: list[str] = []
+
+    def start_pass(scope, auto=False):
+        if state["running"]:
+            return False
+        calls.append(scope)
+        started.set()
+        return True
+
+    def cancel_pass():
+        state["running"] = False
+
+    monkeypatch.setattr(q, "start_pass", start_pass)
+    monkeypatch.setattr(q, "pass_running", lambda: state["running"])
+    monkeypatch.setattr(q, "cancel_pass", cancel_pass)
+    a._catchup = CatchUp(a._bus, a._catchup_steps(), delay=30)
+    a._catchup.current = step
+    res = getattr(a, method)({"scope": "all"})
+    assert res == {"ok": True, "started": True, "scope": "all", "after_auto": True}
+    assert started.wait(5) and calls == ["all"]
+    # «new» while the automatic «new» pass runs: the same work, nothing to replace
+    state["running"] = True
+    res = getattr(a, method)({"scope": "new"})
+    assert res == {"ok": True, "started": False, "running": True}
+    a._catchup.current = None
