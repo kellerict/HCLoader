@@ -14,6 +14,14 @@
 - A year filter can append the year to the query (setting *append_year*, default on).
 - Searches count against the hourly search limit (default 20 per hour). The counter is shown next
   to the chips.
+- The **platform selector** left of the search field shows the current choice (logo and name);
+  click it, or press Enter or the arrow keys, to open the list. Esc or a click outside closes it.
+  The last choice is remembered. Platforms that are turned off in the settings are greyed out.
+- **All** searches every enabled platform, strictly one after another through the normal search of
+  each platform. Every platform keeps its own pauses and its own hourly search limit, so one search
+  on "All" counts once per platform. A platform in backoff (or one that does not answer) is skipped
+  and named in a small note above the results. The hits are merged in turns (first hit of each
+  platform, then the second, …) and carry a platform badge; sorting works as usual.
 
 ## Filters
 
@@ -30,6 +38,11 @@ can override them temporarily here.
 | Hide downloaded and ignored | On by default. |
 | Apply channel blacklist | On by default. |
 | Sorting | Relevance, newest first, longest first, most views. |
+
+The keyword boxes are a **session filter**: they start with the keywords saved under Settings,
+Filters & keywords, and nothing you change here is saved. The small bin icon at the bottom right of
+a box removes all its keywords at once (the toast offers **Undo**). Saved keywords that are missing
+from a box are offered below it as faint "+ keyword" chips; a click adds them again.
 
 Keyword matching is case-insensitive, on word boundaries, with umlauts and accents normalized. By
 default only the title is checked; the description is optional (*match_description*) because flat

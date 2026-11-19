@@ -36,20 +36,27 @@ def _library(pg):
     pg.wait_for_selector(f'#lib-body tr[data-id="{REUP}"] .ru-tag')
 
 
+def _pick(pg, plat):
+    """Open the collapsible platform selector and choose an entry."""
+    pg.click("#plat-btn")
+    pg.click(f'#plat-list [data-p="{plat}"]')
+
+
 def test_platform_switch_searches_mixcloud_and_hearthis(page):  # noqa: F811
     page.evaluate(SPY)
     page.click('.nav-item[data-view="discover"]')
-    page.wait_for_selector('#plat [data-p="hearthis"]')
+    page.wait_for_selector('#plat-list [data-p="hearthis"]', state="attached")
     assert page.evaluate(
-        "[...document.querySelectorAll('#plat button')].map((b) => b.textContent.trim())"
+        "[...document.querySelectorAll('#plat-list [data-p] .psel-name')].map((b) => b.textContent.trim())"
     ) == [
+        "All",
         "YouTube",
         "SoundCloud",
         "Mixcloud",
         "hearthis.at",
     ]
     for plat, prefix in (("mixcloud", "mc:"), ("hearthis", "ht:")):
-        page.click(f'#plat [data-p="{plat}"]')
+        _pick(page, plat)
         page.wait_for_function(
             "p => document.getElementById('v-discover').dataset.platform === p", arg=plat
         )
@@ -67,7 +74,7 @@ def test_platform_switch_searches_mixcloud_and_hearthis(page):  # noqa: F811
         badge = page.locator("#grid .card .pbadge").first
         assert badge.inner_text().strip() == {"mixcloud": "MC", "hearthis": "HT"}[plat]
     # a Mixcloud Select upload is never loadable and says why
-    page.click('#plat [data-p="mixcloud"]')
+    _pick(page, "mixcloud")
     page.uncheck("#f-hide")
     page.wait_for_selector('#grid .card[data-id="mc:DJ_Thera_select-exclusive-mix"] .cnote.prev')
     assert "Subscribers only" in page.inner_text(
@@ -89,7 +96,9 @@ def test_disabled_platform_is_off_in_switch_and_hidden_in_status_bar(page):  # n
     page.wait_for_function("!HC.platform.enabled('mixcloud')")
     page.wait_for_selector("#sb-mc-it[hidden]", state="attached")
     page.click('.nav-item[data-view="discover"]')
-    page.wait_for_selector('#plat [data-p="mixcloud"].off[aria-disabled="true"]')
+    page.wait_for_selector(
+        '#plat-list [data-p="mixcloud"].off[aria-disabled="true"]', state="attached"
+    )
     page.dispatch_event(
         '#plat [data-p="mixcloud"]', "click"
     )  # aria-disabled: Playwright would refuse

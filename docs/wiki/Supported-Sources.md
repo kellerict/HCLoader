@@ -77,6 +77,13 @@ and an item is often a whole concert with many files. It may come back once that
 Every source has its own terms. You are responsible for following them. HCLoader keeps the load low,
 but it does not change what you are allowed to do.
 
+## Names and logos
+
+YouTube, SoundCloud, Mixcloud and hearthis.at are trademarks of their respective owners. HCLoader
+shows their names and small simplified marks (drawn for this app, bundled locally under
+`ui/icons/platforms/`, never loaded from the web) only to identify the services. HCLoader is not
+affiliated with, endorsed by or sponsored by any of them.
+
 ---
 
 [← Scheduled checks](Scheduled-Checks) · [🏠 Home](Home) · [Settings reference →](Settings-Reference)

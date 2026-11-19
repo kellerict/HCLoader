@@ -189,6 +189,8 @@ class Shooter:
         and the keyword boxes (clear all with undo toast, suggestion chips)."""
         page = self.page
         page.evaluate("HC.mock.api.clear_backoff(); HC.mock.demo.local(null)")
+        if self.reduced:  # earlier scenes re-apply the saved appearance
+            page.evaluate("document.body.classList.add('reduced')")
         self.go("discover")
         page.click("#f-reset")
         page.click("#plat-btn")
@@ -210,6 +212,7 @@ class Shooter:
         # keyword boxes: one removed keyword comes back as a suggestion chip
         page.click("#t-inc .tag:nth-child(2) button")
         page.click("#t-exc .tag:nth-child(1) button")
+        page.evaluate("document.activeElement.blur()")
         self.settle()
         self.shot("discover-all")
         page.click("#plat-btn")

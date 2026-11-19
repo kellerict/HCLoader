@@ -274,7 +274,13 @@ def test_inline_edit_add_row_and_escaping(page):
     assert _calls(page, "add_checklist_row")[-1][1]["artist"] == evil
     new = page.locator(f"{ROWS}:last-child")
     assert new.locator(".co-dj b").inner_text() == evil
-    assert page.locator("#lib-collector img, #toasts img").count() == 0
+    # the only images are the bundled platform logos (local files, no handlers)
+    assert page.locator("#lib-collector img:not(.picon), #toasts img").count() == 0
+    assert page.evaluate(
+        "[...document.querySelectorAll('#lib-collector img.picon')].every((i) =>"
+        " /^icons\\/platforms\\/[a-z]+\\.svg$/.test(i.getAttribute('src'))"
+        " && !i.hasAttribute('onerror'))"
+    )
     assert page.evaluate("window.__xss") == 0
     assert "Added by hand" in new.inner_text()
 
