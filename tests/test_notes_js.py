@@ -407,10 +407,11 @@ def test_changelog_renders_without_literal_markers(page):
 
     assert not re.search(r"(?<![\w*])\*(?=\S)[^*\n]+(?<=\S)\*(?!\w)", out)
     assert "**" not in out
+    from app import __version__
     from app.core import selfupdate
 
     rels = selfupdate.local_release_notes(ROOT)
-    assert rels[0]["version"] == "0.10.1"
+    assert rels[0]["version"] == __version__  # the newest section is the current version
     for r in rels:
         major, minor, _patch = (int(x) for x in r["version"].split("."))
         if (major, minor) < (0, 5):
