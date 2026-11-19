@@ -685,5 +685,14 @@
     "pass_done": "Kirjasto käyty läpi: {n} tiedostoa, {found} todennäköistä uudelleenlatausta, {failed} epäonnistui",
     "pass_cancelled": "Keskeytetty: {n} tiedostoa, {found} todennäköistä uudelleenlatausta, {failed} epäonnistui",
     "pass_failed": "Kirjaston sormenjäljet epäonnistuivat: {error}"
+  },
+  "catchup": {
+    "step": "Kirjaston vanhempia kohteita käsitellään: {step}",
+    "name": {
+      "festivals": "festivaalien määritys",
+      "tracklists": "kappalelistojen luku",
+      "analysis": "äänenvoimakkuus ja aaltomuodot",
+      "fingerprints": "sormenjäljet"
+    }
   }
 }

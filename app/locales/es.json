@@ -684,5 +684,14 @@
     "pass_done": "Huellas de la biblioteca listas: {n} archivos, {found} probables resubidas, {failed} con error",
     "pass_cancelled": "Huellas canceladas: {n} archivos, {found} probables resubidas, {failed} con error",
     "pass_failed": "Fallaron las huellas de la biblioteca: {error}"
+  },
+  "catchup": {
+    "step": "Poniendo al día elementos antiguos de la biblioteca: {step}",
+    "name": {
+      "festivals": "asignar festivales",
+      "tracklists": "leer tracklists",
+      "analysis": "volumen y formas de onda",
+      "fingerprints": "huellas"
+    }
   }
 }

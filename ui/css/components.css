@@ -396,6 +396,11 @@ footer .it{display:flex;align-items:center;gap:7px;transition:color var(--t-med)
 footer .it.right{margin-left:auto}
 footer b{color:var(--text);font-weight:600}
 footer .it.alert{color:var(--warn)} footer .it.alert b{color:var(--warn)}
+/* v0.10.1 automatischer Nachlauf (js/catchup.js): dezent, gedämpft, mit «×» */
+footer .it.sb-auto{color:var(--muted);font-variant-numeric:tabular-nums}
+footer .it.sb-auto .led{width:6px;height:6px}
+.sb-auto-x{background:none;border:0;color:var(--muted);cursor:pointer;font:inherit;line-height:1;padding:0 2px}
+.sb-auto-x:hover,.sb-auto-x:focus-visible{color:var(--text)}
 
 /* ---------- Toasts ---------- */
 .toasts{position:fixed;right:20px;bottom:46px;z-index:200;display:flex;flex-direction:column;gap:8px;align-items:flex-end;pointer-events:none}
@@ -1140,8 +1145,15 @@ footer .it>b{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .upd-none{color:var(--muted)}
 .upd-notes .upd-full,.upd-notes.all .upd-sum{display:none}
 .upd-notes.all .upd-full{display:block}
-/* Highlights: höchstens drei Zeilen je Punkt – die ganze Fassung steht unter «Alle Änderungen» */
-.upd-sum li,.upd-sum>p{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;overflow:hidden}
+/* Sicherheitsnetz (v0.10.1): lange Punkte höchstens drei Zeilen (Highlights und «Alle Änderungen»);
+   updater.js markiert die abgeschnittenen (.md-clamped), Klick/Enter klappt einen Punkt auf (.md-open) */
+.upd-sum li,.upd-sum>p,.upd-full li:not(:has(>ul,>ol)){display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;overflow:hidden}
+.upd-notes .md-clamped{cursor:pointer;padding-inline-end:4.5em}
+.upd-notes .md-clamped::after{content:attr(data-more);position:absolute;inset-inline-end:0;bottom:0;padding-inline-start:10px;
+  background:linear-gradient(to right,transparent,var(--panel) 10px);color:var(--accent);font:11.5px/1.55 var(--f-mono)}
+.upd-notes .md-clamped:focus-visible{outline:1px solid var(--line-2);outline-offset:2px}
+.upd-notes .md-clamped.md-open{display:block;-webkit-line-clamp:unset;line-clamp:none;overflow:visible;padding-inline-end:0}
+.upd-notes .md-clamped.md-open::after{content:none}
 .upd-notes-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
 .upd-toggle{display:inline-flex;align-items:center;gap:8px}
 .upd-chev{width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-2px) rotate(45deg)}

@@ -1750,7 +1750,8 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "rn_pos": "第 {i} / {n} 个",
     "rn_installed": "已安装",
     "rn_empty": "未找到版本说明。",
-    "rn_version": "版本"
+    "rn_version": "版本",
+    "notes_more": "更多"
   },
   "err": {
     "generic": "未知错误",
@@ -2287,5 +2288,15 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "toast_adopt": "此副本现已替代缺失的原文件",
     "original_missing_head": "原文件缺失 – 这是最后一个副本，无法在此删除",
     "original_unknown_head": "目标文件夹无法访问 – 无法检查原文件"
+  },
+  "catchup": {
+    "cancel": "停止后台补全",
+    "tip": "媒体库中的旧条目会在后台离线处理。停止后，下次启动时继续。",
+    "step": {
+      "festivals": "正在分配音乐节",
+      "tracklists": "正在读取曲目列表",
+      "analysis": "正在分析响度",
+      "fingerprints": "音频指纹"
+    }
   }
 });

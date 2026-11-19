@@ -1781,7 +1781,8 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "rn_pos": "{i} av {n}",
     "rn_installed": "installert",
     "rn_empty": "Fant ingen versjonsnotater.",
-    "rn_version": "Versjon"
+    "rn_version": "Versjon",
+    "notes_more": "mer"
   },
   "err": {
     "generic": "Ukjent feil",
@@ -2331,5 +2332,15 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "toast_adopt": "Denne kopien erstatter nå den manglende originalen",
     "original_missing_head": "Originalfilen mangler – denne kopien er den siste og kan ikke slettes her",
     "original_unknown_head": "Målmappen er ikke tilgjengelig – originalen kan ikke kontrolleres"
+  },
+  "catchup": {
+    "cancel": "Stopp innhentingen i bakgrunnen",
+    "tip": "Eldre elementer i biblioteket behandles frakoblet i bakgrunnen. Stoppet fortsetter den ved neste oppstart.",
+    "step": {
+      "festivals": "Tildeler festivaler",
+      "tracklists": "Leser sporlister",
+      "analysis": "Analyserer lydstyrke",
+      "fingerprints": "Fingeravtrykk"
+    }
   }
 });

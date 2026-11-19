@@ -1781,7 +1781,8 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
     "rn_pos": "{i} sur {n}",
     "rn_installed": "installée",
     "rn_empty": "Aucune note de version trouvée.",
-    "rn_version": "Version"
+    "rn_version": "Version",
+    "notes_more": "plus"
   },
   "err": {
     "generic": "Erreur inconnue",
@@ -2331,5 +2332,15 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
     "toast_adopt": "Cette copie remplace désormais l’original manquant",
     "original_missing_head": "Le fichier original est manquant – cette copie est la dernière et ne peut pas être supprimée ici",
     "original_unknown_head": "Dossier cible inaccessible – impossible de vérifier l’original"
+  },
+  "catchup": {
+    "cancel": "Arrêter le rattrapage en arrière-plan",
+    "tip": "Les anciens éléments de la bibliothèque sont traités hors ligne en arrière-plan. Arrêté, il reprend au prochain démarrage.",
+    "step": {
+      "festivals": "Attribution des festivals",
+      "tracklists": "Lecture des tracklists",
+      "analysis": "Analyse du volume",
+      "fingerprints": "Empreintes"
+    }
   }
 });

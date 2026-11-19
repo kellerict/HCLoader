@@ -686,5 +686,14 @@
     "pass_done": "Library fingerprinted: {n} files, {found} probable re-uploads, {failed} failed",
     "pass_cancelled": "Fingerprinting cancelled: {n} files, {found} probable re-uploads, {failed} failed",
     "pass_failed": "Fingerprinting the library failed: {error}"
+  },
+  "catchup": {
+    "step": "Catching up on older library items: {step}",
+    "name": {
+      "festivals": "assigning festivals",
+      "tracklists": "reading tracklists",
+      "analysis": "loudness and waveforms",
+      "fingerprints": "fingerprints"
+    }
   }
 }

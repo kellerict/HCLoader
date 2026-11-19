@@ -707,5 +707,14 @@
     "pass_done": "Biblioteka patikrinta: failų {n}, tikėtinų pakartotinių įkėlimų {found}, nepavyko {failed}",
     "pass_cancelled": "Atšaukta: failų {n}, tikėtinų pakartotinių įkėlimų {found}, nepavyko {failed}",
     "pass_failed": "Bibliotekos piršto atspaudai nepavyko: {error}"
+  },
+  "catchup": {
+    "step": "Atnaujinami senesni bibliotekos įrašai: {step}",
+    "name": {
+      "festivals": "festivalių priskyrimas",
+      "tracklists": "takelių sąrašų skaitymas",
+      "analysis": "garsumas ir bangų formos",
+      "fingerprints": "piršto atspaudai"
+    }
   }
 }

@@ -1493,7 +1493,8 @@
       if (d.phase === 'start' || d.phase === 'progress') cache.anRun = Object.assign(cache.anRun && cache.anRun.running ? cache.anRun : { running: true, done: 0, total: 0 }, d.done != null ? { done: d.done } : {}, d.total != null ? { total: d.total } : {});
       else {
         cache.anRun = { running: false, result: d };
-        if (d.phase === 'error' || d.ok === false) ui.toast(d.error || t('err.generic'), 'err');
+        /* v0.10.1: automatischer Nachlauf (auto) nur dezent in der Statusleiste, kein Toast */
+        if (d.auto) { /* still */ } else if (d.phase === 'error' || d.ok === false) ui.toast(d.error || t('err.generic'), 'err');
         else ui.toast(t(d.cancelled ? 'toast.analysis_cancelled' : 'toast.analysis_done', { n: d.analysed || 0, failed: d.failed || 0 }), d.cancelled ? 'warn' : 'ok', 5000);
         if (host && host._load) host._load();
       }
@@ -1505,7 +1506,8 @@
       if (d.phase === 'start' || d.phase === 'progress') cache.fpRun = Object.assign(cache.fpRun && cache.fpRun.running ? cache.fpRun : { running: true, done: 0, total: 0, found: 0 }, d.done != null ? { done: d.done } : {}, d.total != null ? { total: d.total } : {}, d.found != null ? { found: d.found } : {});
       else {
         cache.fpRun = { running: false, result: d };
-        if (d.phase === 'error' || d.ok === false) ui.toast(d.error || t('err.generic'), 'err');
+        /* v0.10.1: automatischer Nachlauf (auto) nur dezent in der Statusleiste, kein Toast */
+        if (d.auto) { /* still */ } else if (d.phase === 'error' || d.ok === false) ui.toast(d.error || t('err.generic'), 'err');
         else ui.toast(t(d.cancelled ? 'toast.fp_cancelled' : 'toast.fp_done', { n: d.done || 0, found: d.found || 0 }), d.cancelled ? 'warn' : 'ok', 5000);
         if (host && host._load) host._load();
       }
@@ -1518,7 +1520,8 @@
       if (d.phase === 'start' || d.phase === 'progress') cache.assign = Object.assign(cache.assign && cache.assign.running ? cache.assign : { running: true, done: 0, total: 0 }, d.done != null ? { done: d.done } : {}, d.total != null ? { total: d.total } : {});
       else {
         cache.assign = { running: false, result: d };
-        if (d.phase === 'error' || d.ok === false) ui.toast(d.error || t('err.generic'), 'err');
+        /* v0.10.1: automatischer Nachlauf (auto) nur dezent in der Statusleiste, kein Toast */
+        if (d.auto) { /* still */ } else if (d.phase === 'error' || d.ok === false) ui.toast(d.error || t('err.generic'), 'err');
         else ui.toast(t(d.cancelled ? 'toast.assign_cancelled' : 'toast.assign_done', { assigned: d.assigned || 0, suggested: d.suggested || 0 }), d.cancelled ? 'warn' : 'ok', 5000);
         const sr = $('[data-custom=series]', el);
         if (host && host._load) host._load();

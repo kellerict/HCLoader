@@ -2383,6 +2383,8 @@
       });
     },
     cancel_fingerprint_library: () => later(20, () => { state.reup.cancel = true; return { ok: true, running: state.reup.running }; }),
+    get_catchup_status: () => later(10, () => ({ ok: true, running: null })),
+    cancel_catchup: () => later(10, () => ({ ok: true, cancelled: false })),
     get_reuploads: (opts) => later(30, () => ({
       ok: true,
       items: LIBRARY.filter((l) => l.reupload && ((opts && opts.state === 'all') || l.reupload.state === 'open'))

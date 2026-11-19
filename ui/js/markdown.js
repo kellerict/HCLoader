@@ -14,7 +14,8 @@
    HC.md.parse(md)            -> blocks
    HC.md.render(md | blocks)  -> HTML string
    HC.md.summary(md, max)     -> {html, partial} | null   highlights: the list below a
-                                 «Highlights» heading, else the first list, else the first paragraph
+                                 «Highlights» heading (max bullets), else the first 6 bullets of the
+                                 first list, else the first paragraph
    ===================================================================== */
 (function () {
   'use strict';
@@ -46,12 +47,14 @@
     /(`+)(?!`)(.+?)\2(?!`)/, // 2,3 code
     /!?\[((?:[^[\]\\]|\\.)*)\]\(\s*<?([^\s<>()]*(?:\([^\s<>()]*\)[^\s<>()]*)*)>?(?:\s+(?:"[^"]*"|'[^']*'))?\s*\)/, // 4,5 link / image
     /<(https:\/\/[^\s<>]+)>/, // 6 autolink
-    /\*\*(?=\S)(.+?)(?<=\S)\*\*/, // 7 bold
-    /(?<![A-Za-z0-9])__(?=\S)(.+?)(?<=\S)__(?![A-Za-z0-9])/, // 8 bold
-    /~~(?=\S)(.+?)(?<=\S)~~/, // 9 strike
-    /(?<![A-Za-z0-9*])\*(?=[^\s*])([^*]+?)(?<=[^\s*])\*(?![A-Za-z0-9*])/, // 10 italic (not inside words: 2*3*4, *.mp3)
-    /(?<![A-Za-z0-9_])_(?=[^\s_])([^_]+?)(?<=[^\s_])_(?![A-Za-z0-9_])/, // 11 italic
-    /(?<![A-Za-z0-9])(https:\/\/[^\s<>"'`]+)/, // 12 bare URL
+    /\*\*\*(?=[^\s*])(.+?)(?<=[^\s*])\*\*\*/, // 7 bold italic
+    /\*\*(?=\S)(.+?)(?<=\S)\*\*/, // 8 bold
+    /(?<![A-Za-z0-9])__(?=\S)(.+?)(?<=\S)__(?![A-Za-z0-9])/, // 9 bold
+    /~~(?=\S)(.+?)(?<=\S)~~/, // 10 strike
+    // 11 italic, may hold **bold** (v0.10.1); not inside words: 2*3*4, *.mp3
+    /(?<![A-Za-z0-9*])\*(?=[^\s*]|\*\*\S)((?:\*\*(?=\S)[^*]+?(?<=\S)\*\*|[^*])+?)(?<=[^\s*]|\S\*\*)\*(?![A-Za-z0-9*])/,
+    /(?<![A-Za-z0-9_])_(?=[^\s_])([^_]+?)(?<=[^\s_])_(?![A-Za-z0-9_])/, // 12 italic
+    /(?<![A-Za-z0-9])(https:\/\/[^\s<>"'`]+)/, // 13 bare URL
   ].map((r) => r.source).join('|'), 'g');
 
   function inline(raw, noLinks, depth) {
@@ -75,12 +78,13 @@
       } else if (m[6] != null) {
         const href = noLinks ? '' : safeUrl(m[6]);
         out += href ? anchor(href, esc(m[6])) : esc(m[6]);
-      } else if (m[7] != null || m[8] != null) out += `<strong>${sub(m[7] != null ? m[7] : m[8])}</strong>`;
-      else if (m[9] != null) out += `<del>${sub(m[9])}</del>`;
-      else if (m[10] != null || m[11] != null) out += `<em>${sub(m[10] != null ? m[10] : m[11])}</em>`;
-      else if (m[12] != null) {
-        const tail = /[.,;:!?)\]]+$/.exec(m[12]); // punctuation after a URL belongs to the sentence
-        const url = tail ? m[12].slice(0, -tail[0].length) : m[12];
+      } else if (m[7] != null) out += `<strong><em>${sub(m[7])}</em></strong>`;
+      else if (m[8] != null || m[9] != null) out += `<strong>${sub(m[8] != null ? m[8] : m[9])}</strong>`;
+      else if (m[10] != null) out += `<del>${sub(m[10])}</del>`;
+      else if (m[11] != null || m[12] != null) out += `<em>${sub(m[11] != null ? m[11] : m[12])}</em>`;
+      else if (m[13] != null) {
+        const tail = /[.,;:!?)\]]+$/.exec(m[13]); // punctuation after a URL belongs to the sentence
+        const url = tail ? m[13].slice(0, -tail[0].length) : m[13];
         const href = noLinks ? '' : safeUrl(url);
         out += (href ? anchor(href, esc(url)) : esc(url)) + (tail ? esc(tail[0]) : '');
       }
@@ -224,6 +228,7 @@
 
   /* ---------- highlights ---------- */
   const RE_HIGHLIGHTS = /^highlights?\b/i;
+  const FALLBACK_BULLETS = 6; // v0.10.1: versions without «Highlights» show at most this many
   function summary(md, max) {
     const blocks = Array.isArray(md) ? md : parse(md);
     const limit = max || 8;
@@ -233,11 +238,15 @@
     for (let i = at + 1; at >= 0 && i < blocks.length && blocks[i].t !== 'h'; i++) {
       if (isList(blocks[i])) { list = blocks[i]; break; }
     }
-    if (!list) list = blocks.find(isList);
+    let shown = limit;
+    if (!list) {
+      list = blocks.find(isList);
+      shown = Math.min(limit, FALLBACK_BULLETS); // no Highlights: a short start, not a wall of text
+    }
     if (list) {
-      const items = list.items.slice(0, limit).map((it) => ({ text: it.text, task: it.task, children: [] }));
+      const items = list.items.slice(0, shown).map((it) => ({ text: it.text, task: it.task, children: [] }));
       const whole = blocks.filter((b) => !(b.t === 'h' && RE_HIGHLIGHTS.test(plain(b.text)))).length === 1 &&
-        list.items.length <= limit && list.items.every((it) => !it.children.length);
+        list.items.length <= shown && list.items.every((it) => !it.children.length);
       return { html: blockHtml({ t: 'ul', items }), partial: !whole };
     }
     const p = blocks.find((b) => b.t === 'p');

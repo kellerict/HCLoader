@@ -64,6 +64,8 @@ from .core.redact import redact
 from .core.throttle import Throttle
 from .worker import (
     AnalysisQueue,
+    CatchUp,
+    CatchUpStep,
     DownloadQueue,
     EventBus,
     FingerprintQueue,
@@ -80,6 +82,7 @@ from .worker import (
     local_preflight,
     log_ok,
     video_dict,
+    wait_while,
 )
 
 log = logging.getLogger("hcloader.api")
@@ -94,6 +97,9 @@ QUEUE_STOP_TIMEOUT_S = 60.0
 WATCHLIST_STOP_TIMEOUT_S = 10.0  # n5: a cancelled check ends after the current request
 # v0.4.0: open «Read everything (once)» backfills continue this long after the app start
 BACKFILL_START_DELAY_S = 90.0
+# v0.10.1: automatic catch-up passes (festivals, tracklists, loudness, fingerprints) start this
+# long after the GUI start, so the first view loads without competition
+CATCHUP_START_DELAY_S = 20.0
 # v0.9.0: «Test connection» = 2 requests of at most mediaserver.TIMEOUT_S each (+ margin)
 MEDIA_TEST_TIMEOUT_S = 2 * mediaserver.TIMEOUT_S + 10
 MEDIA_SCAN_TIMEOUT_S = (mediaserver.PLEX_MAX_FOLDERS + 1) * mediaserver.TIMEOUT_S + 10
@@ -261,6 +267,8 @@ class Api:
         self._loaded_once = False
         self._fest_cancel = threading.Event()
         self._tl_cancel = threading.Event()  # v0.6.0 tracklist pass
+        # v0.10.1: one-off passes catch up on existing libraries by themselves (GUI only)
+        self._catchup = CatchUp(self._bus, self._catchup_steps(), delay=CATCHUP_START_DELAY_S)
         # v0.5.0 «Festival collector»: matching jobs (one at a time, long: paced searches) and
         # playlist imports (short) in their own threads; per-edition stop events
         self._col_worker = Worker("hcloader-collector")
@@ -351,6 +359,7 @@ class Api:
             ev.set()
         self._bf_worker.stop(WATCHLIST_STOP_TIMEOUT_S)
         backfill.release_running(self._db, tr("backfill.note_interrupted"))
+        self._catchup.stop(0)  # v0.10.1: no further catch-up pass starts
         self._fest_cancel.set()  # a running «Assign festivals» pass stops after the current row
         self._tl_cancel.set()  # v0.6.0: a running tracklist pass stops after the current item
         self._col_stop.set()  # v0.5.0: collector job/import stop before their next request
@@ -398,6 +407,7 @@ class Api:
             self._startup_collector()
             self._startup_analysis()
             self._startup_fingerprints()
+            self._catchup.start()  # v0.10.1
 
     def _on_run_finished(self, row: dict[str, Any]) -> None:
         """A run (watchlist, headless, manual queue) ended: event `run` for the log view."""
@@ -597,7 +607,7 @@ class Api:
 
     def _job(self, key: str, fn: Callable[[], dict[str, Any]], timeout: float) -> dict[str, Any]:
         """Run a maintenance job; refuse at once if another one is running (m3)."""
-        other = self._worker.other_job(key)
+        other = self._maintenance_other(key)
         if other is not None:
             label = (
                 tr("job.retag")
@@ -2067,9 +2077,12 @@ class Api:
         """Start the offline pass in the maintenance worker; progress via `festival_assign`."""
         o = opts if isinstance(opts, dict) else {}
         scope = "all" if o.get("scope") == "all" else "library"
+        if self._catchup.running() == "festivals":
+            self._catchup.skip("festivals")  # the user's pass replaces the automatic one
+            self._worker.run("festivals:wait", lambda: None, timeout=JOB_TIMEOUT_S)
         if self._worker.busy("festivals"):
             return {"ok": True, "started": False, "running": True}
-        other = self._worker.other_job("festivals")
+        other = self._maintenance_other("festivals")
         if other is not None:
             label = tr(_JOB_LABELS[other]) if other in _JOB_LABELS else tr("job.retag")
             return {"ok": False, "error": tr("api.maintenance_busy", label=label)}
@@ -2082,11 +2095,13 @@ class Api:
         return {"ok": True, "running": self._worker.busy("festivals")}
 
     def _do_assign(self, scope: str) -> dict[str, Any]:
-        self._bus.emit("festival_assign", {"phase": "start", "scope": scope})
+        auto = scope == "auto"  # v0.10.1 catch-up: shown discreetly (status bar, no toast)
+        self._bus.emit("festival_assign", {"phase": "start", "scope": scope, "auto": auto})
         log.info(tr("festival.pass_started"))
 
         def progress(data: dict[str, Any]) -> None:
-            self._bus.emit("festival_assign", {"phase": "progress", "scope": scope, **data})
+            ev = {"phase": "progress", "scope": scope, "auto": auto, **data}
+            self._bus.emit("festival_assign", ev)
 
         def description_of(vid: str) -> str | None:
             return (sidecar.read(vid) or {}).get("description") or None
@@ -2103,12 +2118,99 @@ class Api:
         except Exception as exc:
             log.error(tr("festival.pass_failed", error=exc))
             res = {"ok": False, "error": tr("festival.pass_failed", error=exc)}
-            self._bus.emit("festival_assign", {"phase": "error", "scope": scope, **res})
+            ev = {"phase": "error", "scope": scope, "auto": auto, **res}
+            self._bus.emit("festival_assign", ev)
             return res
         key = "festival.pass_cancelled" if res["cancelled"] else "festival.pass_done"
         log_ok(log, tr(key, n=res["done"], assigned=res["assigned"], suggested=res["suggested"]))
-        self._bus.emit("festival_assign", {"phase": "done", "scope": scope, **res})
+        self._bus.emit("festival_assign", {"phase": "done", "scope": scope, "auto": auto, **res})
         return res
+
+    # ================================================================== catch-up passes (v0.10.1)
+
+    def _maintenance_other(self, key: str) -> str | None:
+        """Another maintenance job, for the refusal «… is running». An automatic catch-up pass
+        never blocks the user: it is stopped (continues at the next start) and the user's
+        job queues behind it (it ends after the current batch/item)."""
+        other = self._worker.other_job(key)
+        if other is not None and other == self._catchup.running():
+            self._catchup.skip(other)
+            return None
+        return other
+
+    def _catchup_steps(self) -> list[CatchUpStep]:
+        """The one-off passes older libraries need, in order (cheap first). Each step checks
+        its own settings; the file passes need ffmpeg and a reachable library folder."""
+
+        def files_ok() -> bool:
+            return binaries.ffmpeg_path().exists() and library.target_reachable(
+                self._cfg.target_dir_path()
+            )
+
+        def maintenance(
+            key: str, stop: threading.Event, fn: Callable[..., Any], *args: Any
+        ) -> Callable[..., Any]:
+            def run(cancel: threading.Event) -> Any:
+                if self._worker.other_job(key) is not None or self._worker.busy(key):
+                    return None  # the user runs a maintenance job: next start
+                if cancel.is_set():
+                    return None
+                stop.clear()
+                return self._worker.submit(key, fn, *args).result()
+
+            return run
+
+        def analysis_needed() -> bool:
+            lo = self._settings.loudness
+            return (
+                lo.analyse_after_download
+                and bool(analysis.pending(self._db, self._settings))
+                and files_ok()
+            )
+
+        def fingerprints_needed() -> bool:
+            rp = self._settings.reupload
+            return (
+                rp.enabled
+                and rp.fingerprint_after_download
+                and bool(fingerprint.pending(self._db))
+                and files_ok()
+            )
+
+        def analysis_run(cancel: threading.Event) -> None:
+            if self._analysis.start_pass("new", auto=True):
+                wait_while(self._analysis.pass_running, cancel)
+
+        def fingerprints_run(cancel: threading.Event) -> None:
+            if self._fp.start_pass("new", auto=True):
+                wait_while(self._fp.pass_running, cancel)
+
+        return [
+            CatchUpStep(
+                "festivals",
+                lambda: bool(series.auto_pending(self._db, self._settings)),
+                maintenance("festivals", self._fest_cancel, self._do_assign, "auto"),
+                self._fest_cancel.set,
+            ),
+            CatchUpStep(
+                "tracklists",
+                lambda: tracklist.unscanned(self._db) > 0,
+                maintenance("tracklists", self._tl_cancel, self._do_tracklists, "new", True),
+                self._tl_cancel.set,
+            ),
+            CatchUpStep("analysis", analysis_needed, analysis_run, self._analysis.cancel_pass),
+            CatchUpStep(
+                "fingerprints", fingerprints_needed, fingerprints_run, self._fp.cancel_pass
+            ),
+        ]
+
+    def get_catchup_status(self) -> dict[str, Any]:
+        """Which automatic catch-up pass runs right now (None = none)."""
+        return {"ok": True, "running": self._catchup.running()}
+
+    def cancel_catchup(self) -> dict[str, Any]:
+        """Stop the automatic catch-up for this session (it continues at the next start)."""
+        return {"ok": True, "cancelled": self._catchup.cancel()}
 
     # ================================================================== tracklist search (v0.6.0)
 
@@ -2155,9 +2257,12 @@ class Api:
         "missing") | "all" (re-read everything)}."""
         o = opts if isinstance(opts, dict) else {}
         scope = "all" if o.get("scope") == "all" else "new"
+        if self._catchup.running() == "tracklists" and scope == "all":
+            self._catchup.skip("tracklists")  # the user's full pass replaces the automatic one
+            self._worker.run("tracklists:wait", lambda: None, timeout=JOB_TIMEOUT_S)
         if self._worker.busy("tracklists"):
             return {"ok": True, "started": False, "running": True}
-        other = self._worker.other_job("tracklists")
+        other = self._maintenance_other("tracklists")
         if other is not None:
             label = tr(_JOB_LABELS[other]) if other in _JOB_LABELS else tr("job.retag")
             return {"ok": False, "error": tr("api.maintenance_busy", label=label)}
@@ -2169,12 +2274,13 @@ class Api:
         self._tl_cancel.set()
         return {"ok": True, "running": self._worker.busy("tracklists")}
 
-    def _do_tracklists(self, scope: str) -> dict[str, Any]:
-        self._bus.emit("tracklist_index", {"phase": "start", "scope": scope})
+    def _do_tracklists(self, scope: str, auto: bool = False) -> dict[str, Any]:
+        self._bus.emit("tracklist_index", {"phase": "start", "scope": scope, "auto": auto})
         log.info(tr("tracklist.pass_started"))
 
         def progress(data: dict[str, Any]) -> None:
-            self._bus.emit("tracklist_index", {"phase": "progress", "scope": scope, **data})
+            ev = {"phase": "progress", "scope": scope, "auto": auto, **data}
+            self._bus.emit("tracklist_index", ev)
 
         try:
             # a dead network share must not hang the pass: files below it are skipped
@@ -2185,11 +2291,12 @@ class Api:
         except Exception as exc:
             log.error(tr("tracklist.pass_failed", error=exc))
             res = {"ok": False, "error": tr("tracklist.pass_failed", error=exc)}
-            self._bus.emit("tracklist_index", {"phase": "error", "scope": scope, **res})
+            ev = {"phase": "error", "scope": scope, "auto": auto, **res}
+            self._bus.emit("tracklist_index", ev)
             return res
         key = "tracklist.pass_cancelled" if res["cancelled"] else "tracklist.pass_done"
         log_ok(log, tr(key, n=res["done"], sets=res["sets"], tracks=res["tracks"]))
-        self._bus.emit("tracklist_index", {"phase": "done", "scope": scope, **res})
+        self._bus.emit("tracklist_index", {"phase": "done", "scope": scope, "auto": auto, **res})
         return res
 
     # ======================================================== loudness, waveform, memory (v0.7.0)

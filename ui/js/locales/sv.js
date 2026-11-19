@@ -1781,7 +1781,8 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "rn_pos": "{i} av {n}",
     "rn_installed": "installerad",
     "rn_empty": "Ingen versionsinformation hittades.",
-    "rn_version": "Version"
+    "rn_version": "Version",
+    "notes_more": "mer"
   },
   "err": {
     "generic": "Okänt fel",
@@ -2331,5 +2332,15 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "toast_adopt": "Den här kopian ersätter nu det saknade originalet",
     "original_missing_head": "Originalfilen saknas – den här kopian är den sista och kan inte raderas här",
     "original_unknown_head": "Målmappen kan inte nås – originalet kan inte kontrolleras"
+  },
+  "catchup": {
+    "cancel": "Stoppa ikappkörningen i bakgrunden",
+    "tip": "Äldre objekt i biblioteket bearbetas offline i bakgrunden. Stoppad fortsätter den vid nästa start.",
+    "step": {
+      "festivals": "Tilldelar festivaler",
+      "tracklists": "Läser låtlistor",
+      "analysis": "Analyserar ljudstyrka",
+      "fingerprints": "Fingeravtryck"
+    }
   }
 });

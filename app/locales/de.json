@@ -686,5 +686,14 @@
     "pass_done": "Bibliothek abgeglichen: {n} Dateien, {found} vermutliche Re-Uploads, {failed} fehlgeschlagen",
     "pass_cancelled": "Abgleich abgebrochen: {n} Dateien, {found} vermutliche Re-Uploads, {failed} fehlgeschlagen",
     "pass_failed": "Abgleich der Bibliothek fehlgeschlagen: {error}"
+  },
+  "catchup": {
+    "step": "Ältere Einträge der Bibliothek werden nachgeholt: {step}",
+    "name": {
+      "festivals": "Festivals zuordnen",
+      "tracklists": "Tracklisten einlesen",
+      "analysis": "Lautheit und Wellenformen",
+      "fingerprints": "Fingerabdrücke"
+    }
   }
 }

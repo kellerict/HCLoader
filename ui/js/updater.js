@@ -86,6 +86,41 @@
     const href = HC.md.safeUrl(url);
     return href ? `<a class="${cls}" href="${esc(href)}" target="_blank" rel="noopener noreferrer">${html}</a>` : '';
   };
+  /** Sicherheitsnetz (v0.10.1): sichtbare Punkte, die mehr als drei Zeilen bräuchten, als
+      abgeschnitten markieren (CSS line-clamp); Klick oder Enter/Leertaste klappt einen auf. */
+  function clampLong(root) {
+    if (!root || !root.isConnected) return;
+    root.querySelectorAll('.upd-sum li, .upd-sum > p, .upd-full li').forEach((li) => {
+      if (li.classList.contains('md-open') || !li.offsetParent) return;
+      const cut = li.scrollHeight > li.clientHeight + 2;
+      li.classList.toggle('md-clamped', cut);
+      if (cut) {
+        li.dataset.more = t('upd.notes_more');
+        li.tabIndex = 0;
+        li.setAttribute('aria-expanded', 'false');
+      }
+    });
+  }
+  function wireClamp(root) {
+    const open = (li) => {
+      li.classList.add('md-open');
+      li.setAttribute('aria-expanded', 'true');
+    };
+    root.addEventListener('click', (e) => {
+      const li = e.target.closest('.md-clamped:not(.md-open)');
+      if (li && !e.target.closest('a')) open(li);
+    });
+    root.addEventListener('keydown', (e) => {
+      const li = e.target.closest && e.target.closest('.md-clamped:not(.md-open)');
+      if (li && e.target === li && (e.key === 'Enter' || e.key === ' ')) {
+        e.preventDefault();
+        e.stopPropagation(); // Enter must not confirm the dialog («Download»)
+        open(li);
+      }
+    });
+  }
+  const afterPaint = (fn) => requestAnimationFrame(() => requestAnimationFrame(fn));
+
   function notesBody(s) {
     const rels = releaseList(s);
     let partial = false;
@@ -119,6 +154,10 @@
       onOpen(el) {
         const box = el.querySelector('.upd-notes');
         const btn = el.querySelector('[data-upd-toggle]');
+        if (box) {
+          wireClamp(box);
+          afterPaint(() => clampLong(box));
+        }
         if (!btn) return;
         btn.addEventListener('click', () => {
           const all = !box.classList.contains('all');
@@ -126,6 +165,7 @@
           btn.setAttribute('aria-expanded', String(all));
           btn.querySelector('[data-upd-toggle-label]').textContent = t(all ? 'upd.notes_less' : 'upd.notes_all');
           box.scrollTop = 0;
+          afterPaint(() => clampLong(box));
         });
       },
     }).then((ok) => { if (ok && canDownload) download(); });
@@ -315,7 +355,9 @@
       }
       host.innerHTML = `<div class="field plain"><div class="fl"><b>${esc(t('upd.rn_label'))}</b><span class="help">${esc(t('upd.rn_help'))}</span></div>
         <div class="fc"><div class="fc-main upd-rn">${body}</div></div></div>`;
+      afterPaint(() => clampLong(host.querySelector('[data-rn-box]')));
     };
+    wireClamp(host);
     const go = (i) => {
       if (!view.list || i < 0 || i >= view.list.length || i === view.i) return;
       view.i = i;
@@ -332,6 +374,7 @@
       btn.setAttribute('aria-expanded', String(all));
       btn.querySelector('[data-rn-toggle-label]').textContent = t(all ? 'upd.notes_less' : 'upd.notes_all');
       box.scrollTop = 0;
+      afterPaint(() => clampLong(box));
     });
     host.addEventListener('change', (e) => {
       if (e.target.matches('[data-rn-pick]')) go(parseInt(e.target.value, 10) || 0);

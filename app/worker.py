@@ -1533,6 +1533,7 @@ class AnalysisQueue:
         self._urgent: deque[str] = deque()
         self._items: deque[str] = deque()
         self._pass_scope: str | None = None
+        self._pass_auto = False
         self._pass_running = False
         self._pass_cancel = threading.Event()
         self._stop = threading.Event()
@@ -1590,12 +1591,14 @@ class AnalysisQueue:
             ):
                 self.request(prev)
 
-    def start_pass(self, scope: str = "new") -> bool:
-        """False if a pass is already queued or running."""
+    def start_pass(self, scope: str = "new", *, auto: bool = False) -> bool:
+        """False if a pass is already queued or running. `auto` (v0.10.1): started by the
+        automatic catch-up on GUI start - marked in its events so the UI shows it discreetly."""
         with self._cond:
             if self._pass_running or self._pass_scope is not None:
                 return False
             self._pass_cancel.clear()
+            self._pass_auto = bool(auto)
             self._pass_scope = "all" if scope == "all" else "new"
             self._cond.notify_all()
         self.start()
@@ -1610,6 +1613,7 @@ class AnalysisQueue:
                     {
                         "phase": "done",
                         "scope": scope,
+                        "auto": self._pass_auto,
                         "ok": True,
                         "cancelled": True,
                         "total": 0,
@@ -1707,11 +1711,16 @@ class AnalysisQueue:
         self._bus.emit("media_analysed", res)
 
     def _run_pass(self, scope: str) -> None:
-        self._bus.emit("audio_analysis", {"phase": "start", "scope": scope})
+        self._bus.emit(
+            "audio_analysis", {"phase": "start", "scope": scope, "auto": self._pass_auto}
+        )
         log.info(tr("analysis.pass_started"))
 
         def progress(data: dict[str, Any]) -> None:
-            self._bus.emit("audio_analysis", {"phase": "progress", "scope": scope, **data})
+            self._bus.emit(
+                "audio_analysis",
+                {"phase": "progress", "scope": scope, "auto": self._pass_auto, **data},
+            )
 
         def between() -> None:
             self._serve()
@@ -1734,6 +1743,7 @@ class AnalysisQueue:
                 {
                     "phase": "error",
                     "scope": scope,
+                    "auto": self._pass_auto,
                     "ok": False,
                     "error": tr("analysis.pass_failed", error=exc),
                 },
@@ -1741,11 +1751,15 @@ class AnalysisQueue:
             return
         if not res.get("ok"):
             log.error(res.get("error") or "")
-            self._bus.emit("audio_analysis", {"phase": "error", "scope": scope, **res})
+            self._bus.emit(
+                "audio_analysis", {"phase": "error", "scope": scope, "auto": self._pass_auto, **res}
+            )
             return
         key = "analysis.pass_cancelled" if res["cancelled"] else "analysis.pass_done"
         log_ok(log, tr(key, n=res["done"], analysed=res["analysed"], failed=res["failed"]))
-        self._bus.emit("audio_analysis", {"phase": "done", "scope": scope, **res})
+        self._bus.emit(
+            "audio_analysis", {"phase": "done", "scope": scope, "auto": self._pass_auto, **res}
+        )
 
 
 class FingerprintQueue:
@@ -1784,6 +1798,7 @@ class FingerprintQueue:
         self._cond = threading.Condition()
         self._items: deque[str] = deque()
         self._pass_scope: str | None = None
+        self._pass_auto = False
         self._pass_running = False
         self._pass_cancel = threading.Event()
         self._stop = threading.Event()
@@ -1813,11 +1828,13 @@ class FingerprintQueue:
             self._cond.notify_all()
         self.start()
 
-    def start_pass(self, scope: str = "new") -> bool:
+    def start_pass(self, scope: str = "new", *, auto: bool = False) -> bool:
+        """False if a pass is already queued or running; `auto` as in AnalysisQueue."""
         with self._cond:
             if self._pass_running or self._pass_scope is not None:
                 return False
             self._pass_cancel.clear()
+            self._pass_auto = bool(auto)
             self._pass_scope = "all" if scope == "all" else "new"
             self._cond.notify_all()
         self.start()
@@ -1832,6 +1849,7 @@ class FingerprintQueue:
                     {
                         "phase": "done",
                         "scope": scope,
+                        "auto": self._pass_auto,
                         "ok": True,
                         "cancelled": True,
                         "total": 0,
@@ -1946,11 +1964,14 @@ class FingerprintQueue:
         self._emit_match(res)
 
     def _run_pass(self, scope: str) -> None:
-        self._bus.emit("fingerprint", {"phase": "start", "scope": scope})
+        self._bus.emit("fingerprint", {"phase": "start", "scope": scope, "auto": self._pass_auto})
         log.info(tr("reupload.pass_started"))
 
         def progress(data: dict[str, Any]) -> None:
-            self._bus.emit("fingerprint", {"phase": "progress", "scope": scope, **data})
+            self._bus.emit(
+                "fingerprint",
+                {"phase": "progress", "scope": scope, "auto": self._pass_auto, **data},
+            )
 
         def between() -> None:
             self._serve()
@@ -1974,6 +1995,7 @@ class FingerprintQueue:
                 {
                     "phase": "error",
                     "scope": scope,
+                    "auto": self._pass_auto,
                     "ok": False,
                     "error": tr("reupload.pass_failed", error=exc),
                 },
@@ -1981,11 +2003,151 @@ class FingerprintQueue:
             return
         if not res.get("ok"):
             log.error(res.get("error") or "")
-            self._bus.emit("fingerprint", {"phase": "error", "scope": scope, **res})
+            self._bus.emit(
+                "fingerprint", {"phase": "error", "scope": scope, "auto": self._pass_auto, **res}
+            )
             return
         key = "reupload.pass_cancelled" if res["cancelled"] else "reupload.pass_done"
         log_ok(log, tr(key, n=res["done"], found=res["found"], failed=res["failed"]))
-        self._bus.emit("fingerprint", {"phase": "done", "scope": scope, **res})
+        self._bus.emit(
+            "fingerprint", {"phase": "done", "scope": scope, "auto": self._pass_auto, **res}
+        )
+
+
+@dataclass
+class CatchUpStep:
+    """One automatic catch-up pass (v0.10.1). `needed()` = cheap check whether anything is
+    to do (respects the pass's own settings); `run(cancel)` starts the pass and blocks until
+    it ended; `cancel_step()` makes the running pass stop at its next checkpoint."""
+
+    name: str
+    needed: Callable[[], bool]
+    run: Callable[[threading.Event], Any]
+    cancel_step: Callable[[], None]
+
+
+class CatchUp:
+    """v0.10.1 automatic catch-up for existing libraries (docs/decisions.md «Automatic
+    catch-up passes»): after the GUI start (and a delay) the offline one-off passes run one
+    after another in their usual low-priority threads, each only over the items it has never
+    seen. Never touches the network. Events:
+
+    `auto_pass` {phase: "step", step} when a pass starts, {phase: "end", cancelled} at the
+    end (only when at least one pass ran). The passes themselves emit their own progress
+    events with `auto: true`.
+
+    `cancel()` stops the whole sequence (status bar «x»), `skip(name)` only the running pass
+    of that name (a maintenance job the user starts has priority); skipped or cancelled passes
+    continue at the next start."""
+
+    def __init__(
+        self,
+        bus: EventBus,
+        steps: list[CatchUpStep],
+        *,
+        delay: float = 20.0,
+        name: str = "hcloader-catchup",
+    ) -> None:
+        self._bus = bus
+        self._steps = steps
+        self._delay = delay
+        self._name = name
+        self._cancel = threading.Event()
+        self._stop = threading.Event()
+        self._lock = threading.Lock()
+        self._thread: threading.Thread | None = None
+        self.current: str | None = None
+
+    def start(self) -> None:
+        with self._lock:
+            if self._thread is not None:
+                return  # once per session
+            self._thread = threading.Thread(target=self._run, name=self._name, daemon=True)
+            self._thread.start()
+
+    def cancel(self) -> bool:
+        """Stop the sequence; True if a pass was running or still to come."""
+        with self._lock:
+            active = self._thread is not None and self._thread.is_alive()
+            step = self._step(self.current)
+        self._cancel.set()
+        if step is not None:
+            _quiet_call(step.cancel_step)
+        return active
+
+    def skip(self, name: str) -> bool:
+        """Stop the running pass `name` only (the next pass of the sequence follows)."""
+        with self._lock:
+            step = self._step(name) if self.current == name else None
+        if step is None:
+            return False
+        _quiet_call(step.cancel_step)
+        return True
+
+    def stop(self, timeout: float = 5.0) -> None:
+        self._stop.set()
+        self.cancel()
+        thread = self._thread
+        if thread is not None and thread.is_alive() and thread is not threading.current_thread():
+            thread.join(timeout)
+
+    def running(self) -> str | None:
+        return self.current
+
+    def join(self, timeout: float | None = None) -> None:
+        thread = self._thread
+        if thread is not None:
+            thread.join(timeout)
+
+    def _step(self, name: str | None) -> CatchUpStep | None:
+        return next((s for s in self._steps if s.name == name), None)
+
+    def _halted(self) -> bool:
+        return self._cancel.is_set() or self._stop.is_set()
+
+    def _run(self) -> None:
+        if self._stop.wait(self._delay) or self._halted():
+            return
+        ran = False
+        for step in self._steps:
+            if self._halted():
+                break
+            try:
+                if not step.needed():
+                    continue
+            except Exception:
+                log.debug("Catch-up check failed: %s", step.name, exc_info=True)
+                continue
+            if self._halted():
+                break
+            with self._lock:
+                self.current = step.name
+            ran = True
+            log.info(tr("catchup.step", step=tr(f"catchup.name.{step.name}")))
+            self._bus.emit("auto_pass", {"phase": "step", "step": step.name})
+            try:
+                step.run(self._cancel)
+            except Exception:
+                log.exception("Catch-up pass failed: %s", step.name)
+            finally:
+                with self._lock:
+                    self.current = None
+        if ran:
+            self._bus.emit("auto_pass", {"phase": "end", "cancelled": self._cancel.is_set()})
+
+
+def wait_while(busy: Callable[[], bool], cancel: threading.Event, interval: float = 1.0) -> None:
+    """Block until `busy()` is false (or `cancel` is set) - for catch-up steps whose pass runs
+    in another thread."""
+    while busy() and not cancel.wait(interval):
+        pass
+
+
+def _quiet_call(fn: Callable[[], Any]) -> None:
+    try:
+        fn()
+    except Exception:
+        log.debug("Catch-up cancel failed", exc_info=True)
 
 
 class _AnyEvent:

@@ -696,5 +696,14 @@
     "pass_done": "Bibliotēka pārbaudīta: {n} faili, {found} iespējamas atkārtotas augšupielādes, {failed} neizdevās",
     "pass_cancelled": "Atcelts: {n} faili, {found} iespējamas atkārtotas augšupielādes, {failed} neizdevās",
     "pass_failed": "Bibliotēkas pirkstu nospiedumi neizdevās: {error}"
+  },
+  "catchup": {
+    "step": "Tiek apstrādāti vecākie bibliotēkas ieraksti: {step}",
+    "name": {
+      "festivals": "festivālu piešķiršana",
+      "tracklists": "celiņu sarakstu nolasīšana",
+      "analysis": "skaļums un viļņu formas",
+      "fingerprints": "pirkstu nospiedumi"
+    }
   }
 }

@@ -1781,7 +1781,8 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "rn_pos": "{i}/{n}",
     "rn_installed": "paigaldatud",
     "rn_empty": "Väljalaskemärkmeid ei leitud.",
-    "rn_version": "Versioon"
+    "rn_version": "Versioon",
+    "notes_more": "veel"
   },
   "err": {
     "generic": "Tundmatu viga",
@@ -2331,5 +2332,15 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "toast_adopt": "See koopia asendab nüüd puuduvat originaali",
     "original_missing_head": "Originaalfail puudub – see koopia on viimane ja seda ei saa siin kustutada",
     "original_unknown_head": "Sihtkaust pole kättesaadav – originaali ei saa kontrollida"
+  },
+  "catchup": {
+    "cancel": "Peata taustal järeletöötlus",
+    "tip": "Kogu vanemaid kirjeid töödeldakse taustal võrguühenduseta. Peatatuna jätkub see järgmisel käivitusel.",
+    "step": {
+      "festivals": "Festivalide määramine",
+      "tracklists": "Lugude loendite lugemine",
+      "analysis": "Valjuse analüüs",
+      "fingerprints": "Sõrmejäljed"
+    }
   }
 });

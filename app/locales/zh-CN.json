@@ -674,5 +674,14 @@
     "pass_done": "媒体库指纹完成：{n} 个文件，{found} 个可能的重复上传，{failed} 个失败",
     "pass_cancelled": "指纹已取消：{n} 个文件，{found} 个可能的重复上传，{failed} 个失败",
     "pass_failed": "媒体库指纹失败：{error}"
+  },
+  "catchup": {
+    "step": "正在补全媒体库旧条目：{step}",
+    "name": {
+      "festivals": "分配音乐节",
+      "tracklists": "读取曲目列表",
+      "analysis": "响度和波形",
+      "fingerprints": "音频指纹"
+    }
   }
 }

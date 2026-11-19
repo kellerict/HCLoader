@@ -1781,7 +1781,8 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "rn_pos": "{i}/{n}",
     "rn_installed": "asennettu",
     "rn_empty": "Julkaisutietoja ei löytynyt.",
-    "rn_version": "Versio"
+    "rn_version": "Versio",
+    "notes_more": "lisää"
   },
   "err": {
     "generic": "Tuntematon virhe",
@@ -2331,5 +2332,15 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "toast_adopt": "Tämä kopio korvaa nyt puuttuvan alkuperäisen",
     "original_missing_head": "Alkuperäinen tiedosto puuttuu – tämä kopio on viimeinen eikä sitä voi poistaa täällä",
     "original_unknown_head": "Kohdekansio ei ole saatavilla – alkuperäistä ei voi tarkistaa"
+  },
+  "catchup": {
+    "cancel": "Pysäytä taustalla kiinniotto",
+    "tip": "Kirjaston vanhemmat kohteet käsitellään offline-tilassa taustalla. Pysäytettynä se jatkuu seuraavalla käynnistyksellä.",
+    "step": {
+      "festivals": "Festivaalien määritys",
+      "tracklists": "Kappalelistojen luku",
+      "analysis": "Äänenvoimakkuuden analyysi",
+      "fingerprints": "Sormenjäljet"
+    }
   }
 });

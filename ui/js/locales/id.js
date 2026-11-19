@@ -1750,7 +1750,8 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "rn_pos": "{i} dari {n}",
     "rn_installed": "terpasang",
     "rn_empty": "Catatan rilis tidak ditemukan.",
-    "rn_version": "Versi"
+    "rn_version": "Versi",
+    "notes_more": "lainnya"
   },
   "err": {
     "generic": "Galat tidak diketahui",
@@ -2287,5 +2288,15 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "toast_adopt": "Salinan ini sekarang menggantikan file asli yang hilang",
     "original_missing_head": "File asli hilang – salinan ini yang terakhir dan tidak dapat dihapus di sini",
     "original_unknown_head": "Folder tujuan tidak dapat dijangkau – file asli tidak dapat diperiksa"
+  },
+  "catchup": {
+    "cancel": "Hentikan pembaruan di latar belakang",
+    "tip": "Item lama di pustaka diproses offline di latar belakang. Jika dihentikan, lanjut saat mulai berikutnya.",
+    "step": {
+      "festivals": "Menetapkan festival",
+      "tracklists": "Membaca tracklist",
+      "analysis": "Menganalisis kenyaringan",
+      "fingerprints": "Sidik jari"
+    }
   }
 });

@@ -279,6 +279,10 @@
                                            opts {scope:"new"|"all"}; offline, eine Datei nach der anderen, niedrige
                                            Priorität; Fortschritt: Event "fingerprint", Treffer: Event "reupload"
      cancel_fingerprint_library()       -> {ok, running}
+
+   Automatischer Nachlauf (v0.10.1, offline; Vertrag: docs/bridge-api.md «Automatic catch-up passes»)
+     get_catchup_status()               -> {ok, running: "festivals"|"tracklists"|"analysis"|"fingerprints"|null}
+     cancel_catchup()                   -> {ok, cancelled}   stoppt den Nachlauf für diese Sitzung (nächster Start macht weiter)
      get_reuploads(opts?)               -> {ok, items:[{id, title, platform, channel, file_path, downloaded_at,
                                             reupload: Reupload}]}   opts {state:"open" (Standard) | "all"}
      resolve_reupload(id, action)       -> {ok, id, state, reupload} | {ok, id, removed, reupload:null} (adopt)
@@ -467,6 +471,9 @@
      waveform        {id, ok, peaks?, duration?, loudness?, error?}   v0.7.0 angeforderte Wellenform ist fertig
      fingerprint     {phase, scope, done?, total?, found?, failed?, cancelled?, error?}
                      phase: "start"|"progress"|"done"|"error" (v0.10.0, «Bibliothek abgleichen»)
+                     v0.10.1: festival_assign, tracklist_index, audio_analysis, fingerprint tragen auto:true, wenn
+                     der automatische Nachlauf sie gestartet hat (UI: dezent in der Statusleiste, kein Toast)
+     auto_pass       {phase:"step", step} | {phase:"end", cancelled}   v0.10.1 automatischer Nachlauf beim GUI-Start
      reupload        {id, reupload: Reupload|null, deleted?, adopted?, pass?}   v0.10.0 Markierung neu/geändert/aufgelöst
                      (pass: true = Treffer des Bibliotheks-Abgleichs, die UI zeigt dafür keinen Toast)
      playlists_synced {synced, failed}                 v0.8.0 gespeicherte Playlists nach Downloads neu geschrieben

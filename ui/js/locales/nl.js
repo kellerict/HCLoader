@@ -1781,7 +1781,8 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "rn_pos": "{i} van {n}",
     "rn_installed": "geïnstalleerd",
     "rn_empty": "Geen release-opmerkingen gevonden.",
-    "rn_version": "Versie"
+    "rn_version": "Versie",
+    "notes_more": "meer"
   },
   "err": {
     "generic": "Onbekende fout",
@@ -2331,5 +2332,15 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "toast_adopt": "Deze kopie vervangt nu het ontbrekende origineel",
     "original_missing_head": "Het originele bestand ontbreekt – deze kopie is de laatste en kan hier niet worden verwijderd",
     "original_unknown_head": "Doelmap niet bereikbaar – het origineel kan niet worden gecontroleerd"
+  },
+  "catchup": {
+    "cancel": "Inhalen op de achtergrond stoppen",
+    "tip": "Oudere items in de bibliotheek worden offline op de achtergrond verwerkt. Gestopt gaat het verder bij de volgende start.",
+    "step": {
+      "festivals": "Festivals toewijzen",
+      "tracklists": "Tracklists inlezen",
+      "analysis": "Luidheid analyseren",
+      "fingerprints": "Vingerafdrukken"
+    }
   }
 });

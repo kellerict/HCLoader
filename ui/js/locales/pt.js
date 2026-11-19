@@ -1781,7 +1781,8 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "rn_pos": "{i} de {n}",
     "rn_installed": "instalada",
     "rn_empty": "Nenhuma nota de versão encontrada.",
-    "rn_version": "Versão"
+    "rn_version": "Versão",
+    "notes_more": "mais"
   },
   "err": {
     "generic": "Erro desconhecido",
@@ -2331,5 +2332,15 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "toast_adopt": "Esta cópia substitui agora o original em falta",
     "original_missing_head": "O ficheiro original está em falta – esta cópia é a última e não pode ser apagada aqui",
     "original_unknown_head": "Pasta de destino inacessível – não é possível verificar o original"
+  },
+  "catchup": {
+    "cancel": "Parar a atualização em segundo plano",
+    "tip": "Os itens antigos da biblioteca são processados offline em segundo plano. Se parar, continua no próximo início.",
+    "step": {
+      "festivals": "A atribuir festivais",
+      "tracklists": "A ler tracklists",
+      "analysis": "A analisar volume",
+      "fingerprints": "Impressões digitais"
+    }
   }
 });

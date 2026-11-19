@@ -685,5 +685,14 @@
     "pass_done": "Kogu läbi vaadatud: {n} faili, {found} tõenäolist uuesti üleslaadimist, {failed} ebaõnnestus",
     "pass_cancelled": "Katkestatud: {n} faili, {found} tõenäolist uuesti üleslaadimist, {failed} ebaõnnestus",
     "pass_failed": "Kogu sõrmejäljed ebaõnnestusid: {error}"
+  },
+  "catchup": {
+    "step": "Kogu vanemate kirjete järeletöötlus: {step}",
+    "name": {
+      "festivals": "festivalide määramine",
+      "tracklists": "lugude loendite lugemine",
+      "analysis": "valjus ja lainekujud",
+      "fingerprints": "sõrmejäljed"
+    }
   }
 }

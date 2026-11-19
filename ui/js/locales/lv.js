@@ -1812,7 +1812,8 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "rn_pos": "{i} no {n}",
     "rn_installed": "instalēta",
     "rn_empty": "Laidiena piezīmes nav atrastas.",
-    "rn_version": "Versija"
+    "rn_version": "Versija",
+    "notes_more": "vairāk"
   },
   "err": {
     "generic": "Nezināma kļūda",
@@ -2375,5 +2376,15 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "toast_adopt": "Šī kopija tagad aizstāj trūkstošo oriģinālu",
     "original_missing_head": "Oriģinālais fails trūkst – šī kopija ir pēdējā, un to šeit nevar dzēst",
     "original_unknown_head": "Mērķa mape nav pieejama – oriģinālu nevar pārbaudīt"
+  },
+  "catchup": {
+    "cancel": "Apturēt fona atjaunināšanu",
+    "tip": "Vecākie bibliotēkas ieraksti tiek apstrādāti bezsaistē fonā. Apturēta, tā turpinās nākamajā palaišanā.",
+    "step": {
+      "festivals": "Piešķir festivālus",
+      "tracklists": "Nolasa celiņu sarakstus",
+      "analysis": "Analizē skaļumu",
+      "fingerprints": "Pirkstu nospiedumi"
+    }
   }
 });

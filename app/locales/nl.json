@@ -685,5 +685,14 @@
     "pass_done": "Bibliotheek vergeleken: {n} bestanden, {found} waarschijnlijke heruploads, {failed} mislukt",
     "pass_cancelled": "Vergelijken geannuleerd: {n} bestanden, {found} waarschijnlijke heruploads, {failed} mislukt",
     "pass_failed": "Vergelijken van de bibliotheek mislukt: {error}"
+  },
+  "catchup": {
+    "step": "Oudere bibliotheekitems worden ingehaald: {step}",
+    "name": {
+      "festivals": "festivals toewijzen",
+      "tracklists": "tracklists inlezen",
+      "analysis": "luidheid en golfvormen",
+      "fingerprints": "vingerafdrukken"
+    }
   }
 }

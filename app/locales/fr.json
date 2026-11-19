@@ -684,5 +684,14 @@
     "pass_done": "Empreintes terminées : {n} fichiers, {found} re-uploads probables, {failed} en échec",
     "pass_cancelled": "Empreintes annulées : {n} fichiers, {found} re-uploads probables, {failed} en échec",
     "pass_failed": "Échec des empreintes de la bibliothèque : {error}"
+  },
+  "catchup": {
+    "step": "Rattrapage des anciens éléments de la bibliothèque : {step}",
+    "name": {
+      "festivals": "attribution des festivals",
+      "tracklists": "lecture des tracklists",
+      "analysis": "volume et formes d’onde",
+      "fingerprints": "empreintes"
+    }
   }
 }

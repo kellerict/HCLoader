@@ -685,5 +685,14 @@
     "pass_done": "Biblioteket klart: {n} filer, {found} troliga omuppladdningar, {failed} misslyckades",
     "pass_cancelled": "Avbrutet: {n} filer, {found} troliga omuppladdningar, {failed} misslyckades",
     "pass_failed": "Fingeravtryck av biblioteket misslyckades: {error}"
+  },
+  "catchup": {
+    "step": "Kör ikapp äldre biblioteksobjekt: {step}",
+    "name": {
+      "festivals": "tilldela festivaler",
+      "tracklists": "läsa låtlistor",
+      "analysis": "ljudstyrka och vågformer",
+      "fingerprints": "fingeravtryck"
+    }
   }
 }

@@ -678,6 +678,25 @@ def _m16_fingerprints(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX idx_reuploads_of ON reuploads(of_id)")
 
 
+def _m17_festival_checks(conn: sqlite3.Connection) -> None:
+    """v0.10.1 automatic festival assignment for existing libraries (core/series.py
+    `auto_pending`, docs/decisions.md «Automatic catch-up passes»).
+
+    `festival_checks`: library items the automatic pass has examined, with the catalogue
+    signature it used (built-in series list, user series, detection settings). An item is
+    examined again only when the signature changes (app update with a new series list, series
+    edited) - so the pass on every GUI start only touches items it has never seen. A separate
+    table (not a column on `videos`) so the DJ index triggers on `videos` do not fire.
+    """
+    conn.execute(
+        """CREATE TABLE festival_checks(
+          video_id TEXT PRIMARY KEY REFERENCES videos(id) ON DELETE CASCADE,
+          sig TEXT NOT NULL,
+          checked TEXT NOT NULL
+        )"""
+    )
+
+
 # Append new steps at the end; never edit existing ones. Step i upgrades version i -> i+1.
 MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [
     _m1_initial,
@@ -696,6 +715,7 @@ MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [
     _m14_artist_index_revision,
     _m15_stats,
     _m16_fingerprints,
+    _m17_festival_checks,
 ]
 # statuses a user may put into the download queue (enqueue / retry)
 ENQUEUEABLE = ("new", "inbox", "failed")

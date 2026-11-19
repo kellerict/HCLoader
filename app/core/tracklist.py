@@ -752,6 +752,16 @@ def status(db: Database) -> dict[str, Any]:
     }
 
 
+def unscanned(db: Database) -> int:
+    """Library items whose tracklist was never extracted (e.g. downloaded before v0.6.0):
+    the automatic catch-up on GUI start (v0.10.1) reads them. One cheap query."""
+    row = db.query_one(
+        "SELECT COUNT(*) AS n FROM videos v LEFT JOIN tracklists l ON l.video_id = v.id "
+        "WHERE v.status = 'done' AND l.video_id IS NULL"
+    )
+    return int(row["n"]) if row else 0
+
+
 # --------------------------------------------------------------------------- offline pass
 
 

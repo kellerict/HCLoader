@@ -674,5 +674,14 @@
     "pass_done": "Sidik jari pustaka selesai: {n} file, {found} kemungkinan unggahan ulang, {failed} gagal",
     "pass_cancelled": "Sidik jari dibatalkan: {n} file, {found} kemungkinan unggahan ulang, {failed} gagal",
     "pass_failed": "Sidik jari pustaka gagal: {error}"
+  },
+  "catchup": {
+    "step": "Memproses item lama pustaka: {step}",
+    "name": {
+      "festivals": "menetapkan festival",
+      "tracklists": "membaca tracklist",
+      "analysis": "kenyaringan dan bentuk gelombang",
+      "fingerprints": "sidik jari"
+    }
   }
 }

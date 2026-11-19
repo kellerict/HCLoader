@@ -272,7 +272,7 @@
         return;
       }
       pass = null;
-      if (d.phase === 'error' || d.ok === false) ui.toast(d.error || t('err.generic'), 'err');
+      if (d.auto) { /* v0.10.1 automatischer Nachlauf: kein Toast (Statusleiste) */ } else if (d.phase === 'error' || d.ok === false) ui.toast(d.error || t('err.generic'), 'err');
       else ui.toast(d.cancelled ? t('tracks.toast_cancelled') : t('tracks.toast_done', { sets: nSets(d.sets || 0), tracks: nTracks(d.tracks || 0) }), d.cancelled ? 'warn' : 'ok', 5200);
       if (open) refresh();
     });

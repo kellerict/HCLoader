@@ -1843,7 +1843,8 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "rn_pos": "{i} iš {n}",
     "rn_installed": "įdiegta",
     "rn_empty": "Leidimo pastabų nerasta.",
-    "rn_version": "Versija"
+    "rn_version": "Versija",
+    "notes_more": "daugiau"
   },
   "err": {
     "generic": "Nežinoma klaida",
@@ -2419,5 +2420,15 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "toast_adopt": "Ši kopija dabar pakeičia trūkstamą originalą",
     "original_missing_head": "Originalaus failo nėra – ši kopija yra paskutinė ir jos čia ištrinti negalima",
     "original_unknown_head": "Paskirties aplankas nepasiekiamas – originalo patikrinti negalima"
+  },
+  "catchup": {
+    "cancel": "Sustabdyti foninį atnaujinimą",
+    "tip": "Senesni bibliotekos įrašai apdorojami neprisijungus fone. Sustabdžius tęsiama kito paleidimo metu.",
+    "step": {
+      "festivals": "Priskiriami festivaliai",
+      "tracklists": "Skaitomi takelių sąrašai",
+      "analysis": "Analizuojamas garsumas",
+      "fingerprints": "Piršto atspaudai"
+    }
   }
 });

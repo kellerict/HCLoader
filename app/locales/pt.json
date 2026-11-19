@@ -684,5 +684,14 @@
     "pass_done": "Impressões digitais concluídas: {n} arquivos, {found} prováveis reenvios, {failed} com falha",
     "pass_cancelled": "Impressões digitais canceladas: {n} arquivos, {found} prováveis reenvios, {failed} com falha",
     "pass_failed": "Falha nas impressões digitais da biblioteca: {error}"
+  },
+  "catchup": {
+    "step": "A atualizar itens antigos da biblioteca: {step}",
+    "name": {
+      "festivals": "atribuir festivais",
+      "tracklists": "ler tracklists",
+      "analysis": "volume e formas de onda",
+      "fingerprints": "impressões digitais"
+    }
   }
 }

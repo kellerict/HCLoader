@@ -1781,7 +1781,8 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "rn_pos": "{i} von {n}",
     "rn_installed": "installiert",
     "rn_empty": "Keine Versionshinweise gefunden.",
-    "rn_version": "Version"
+    "rn_version": "Version",
+    "notes_more": "mehr"
   },
   "err": {
     "generic": "Unbekannter Fehler",
@@ -2331,5 +2332,15 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "toast_adopt": "Diese Kopie ersetzt jetzt das fehlende Original",
     "original_missing_head": "Die Originaldatei fehlt – diese Kopie ist die letzte und kann hier nicht gelöscht werden",
     "original_unknown_head": "Zielordner nicht erreichbar – das Original kann nicht geprüft werden"
+  },
+  "catchup": {
+    "cancel": "Nachlauf im Hintergrund stoppen",
+    "tip": "Ältere Einträge der Bibliothek werden offline im Hintergrund nachgeholt. Gestoppt geht es beim nächsten Start weiter.",
+    "step": {
+      "festivals": "Festivals zuordnen",
+      "tracklists": "Tracklisten einlesen",
+      "analysis": "Lautheit analysieren",
+      "fingerprints": "Fingerabdrücke"
+    }
   }
 });

@@ -35,6 +35,7 @@ log = logging.getLogger(__name__)
 DATA_FILE = Path(__file__).resolve().parents[1] / "data" / "series.yaml"
 K_BUILTIN_HASH = "series_builtin_hash"
 K_LAST_PASS = "festivals_last_pass"
+K_AUTO_LAST = "festivals_auto_last"  # v0.10.1: last automatic catch-up pass (ISO time)
 LIBRARY_STATUSES = ("done",)
 # statuses whose genre must not change any more (discover.GENRE_LOCKED_STATUSES)
 _GENRE_LOCKED = ("queued", "downloading", "done")
@@ -424,6 +425,43 @@ def detect_and_store(
     return counts
 
 
+def auto_signature(db: Database, settings: Settings) -> str:
+    """v0.10.1: what the automatic pass depends on - the shipped series list (content hash),
+    the user's series (count + last edit) and the detection settings. A new app version with
+    a changed series list, a series edit or a changed threshold gives a new signature, and
+    every unassigned library item is examined once more."""
+    sync_builtin(db)
+    fs = settings.festivals
+    row = db.query_one("SELECT COUNT(*) AS n, MAX(updated) AS u, SUM(hidden) AS h FROM series")
+    parts = [
+        db.get_state(K_BUILTIN_HASH) or "",
+        str(row["n"] if row else 0),
+        str(row["u"] if row else ""),
+        str(row["h"] if row else ""),
+        f"{fs.min_confidence:.4f}",
+        str(bool(fs.match_description)),
+        str(bool(fs.year_from_upload_date)),
+        ",".join(fs.extra_stages),
+    ]
+    return hashlib.sha1("|".join(parts).encode("utf-8")).hexdigest()[:16]
+
+
+def auto_pending(db: Database, settings: Settings, sig: str | None = None) -> list[str]:
+    """Library items the automatic pass still has to examine: done, no assignment, no manual
+    decision, and not yet examined with the current signature. Cheap (one indexed query);
+    empty when `festivals.detect` is off."""
+    if not settings.festivals.detect:
+        return []
+    sig = sig or auto_signature(db, settings)
+    rows = db.query(
+        "SELECT v.id FROM videos v LEFT JOIN festival_checks c ON c.video_id = v.id "
+        "WHERE v.status = 'done' AND v.edition_id IS NULL AND v.festival_manual = 0 "
+        "AND (c.sig IS NULL OR c.sig <> ?) ORDER BY v.downloaded_at DESC, v.id",
+        (sig,),
+    )
+    return [r["id"] for r in rows]
+
+
 def assign_pass(
     db: Database,
     settings: Settings,
@@ -438,9 +476,18 @@ def assign_pass(
     skipped. Runs even when `festivals.detect` is off (explicit user action).
     `progress({done, total, assigned, suggested, none, manual, unchanged})` is called about
     every 25 rows and at the end. Returns {ok, cancelled, total, assigned, suggested, none,
-    manual, unchanged}."""
+    manual, unchanged}.
+
+    `scope="auto"` (v0.10.1, automatic catch-up on GUI start): only `auto_pending` items;
+    an existing suggestion is never replaced by a weaker or empty result, every examined
+    item is remembered with the signature (examined again only when it changes)."""
+    auto = scope == "auto"
+    sig = auto_signature(db, settings) if auto else ""
     cat = catalog(db, settings)
-    if scope == "all":
+    if auto:
+        ids = auto_pending(db, settings, sig)
+        rows = [r for r in (db.get_video(v) for v in ids) if r]
+    elif scope == "all":
         rows = db.query("SELECT * FROM videos ORDER BY first_seen, id")
     else:
         rows = db.query("SELECT * FROM videos WHERE status IN ('done') ORDER BY downloaded_at, id")
@@ -469,7 +516,18 @@ def assign_pass(
             results = []
             for vid, det in batch:
                 cur = db.get_video(vid)
-                results.append(apply_detection(db, cur, det, settings) if cur else "unchanged")
+                results.append(
+                    apply_detection(db, cur, det, settings, keep_stronger=auto)
+                    if cur
+                    else "unchanged"
+                )
+                if auto and cur:
+                    db.execute(
+                        "INSERT INTO festival_checks(video_id, sig, checked) VALUES (?, ?, ?) "
+                        "ON CONFLICT(video_id) DO UPDATE SET sig=excluded.sig, "
+                        "checked=excluded.checked",
+                        (vid, sig, now_iso()),
+                    )
         for outcome in results:
             counts[outcome] += 1
             done += 1
@@ -478,7 +536,7 @@ def assign_pass(
         if cancelled:
             break
     if not cancelled:
-        db.set_state(K_LAST_PASS, now_iso())
+        db.set_state(K_AUTO_LAST if auto else K_LAST_PASS, now_iso())
     if progress is not None and (cancelled or total == 0):
         progress({"done": done, "total": total, **counts})
     return {"ok": True, "cancelled": cancelled, "total": total, "done": done, **counts}
