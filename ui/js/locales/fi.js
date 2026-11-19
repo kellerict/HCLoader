@@ -1495,7 +1495,7 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
       },
       "windows": {
         "label": "Lisäikkunat",
-        "help": "30 sekunnin ikkunoita levitettynä setin loppuosaan. Niiden avulla erotetaan kaksi eri settiä, jotka alkavat samalla kappaleella. 0 = vain alku."
+        "help": "30 sekunnin ikkunat kiinteissä kohdissa: puolet alusta (5, 10, 15 … min), puolet ennen loppua (2, 6, 12 … min), jotta kopio pidemmällä introlla tai outrolla osuu silti kohdalleen. Niillä erotetaan kaksi eri settiä, jotka alkavat samalla kappaleella. 0 = vain alku."
       },
       "min_score": {
         "label": "Osumakynnys",

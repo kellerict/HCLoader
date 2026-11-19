@@ -1495,7 +1495,7 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
       },
       "windows": {
         "label": "Fenêtres supplémentaires",
-        "help": "Fenêtres de 30 secondes réparties sur le reste du set. Elles distinguent deux sets différents qui commencent par le même morceau. 0 = début seulement."
+        "help": "Fenêtres de 30 secondes à des moments fixes : la moitié depuis le début (5, 10, 15 … min), l’autre avant la fin (2, 6, 12 … min), pour qu’une copie avec une intro ou une outro plus longue reste alignée. Elles distinguent deux sets différents qui commencent par le même morceau. 0 = début seulement."
       },
       "min_score": {
         "label": "Seuil de correspondance",

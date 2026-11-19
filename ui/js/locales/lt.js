@@ -1537,7 +1537,7 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
       },
       "windows": {
         "label": "Papildomi langai",
-        "help": "30 sekundžių langai, paskirstyti likusioje seto dalyje. Jais atskiriami du skirtingi setai, prasidedantys tuo pačiu takeliu. 0 = tik pradžia."
+        "help": "30 sekundžių langai fiksuotu laiku: pusė nuo pradžios (5, 10, 15 … min), pusė prieš pabaigą (2, 6, 12 … min), kad kopija su ilgesniu įžanga ar pabaiga vis tiek sutaptų. Jais atskiriami du skirtingi setai, prasidedantys tuo pačiu kūriniu. 0 = tik pradžia."
       },
       "min_score": {
         "label": "Atitikimo slenkstis",

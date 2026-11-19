@@ -1474,7 +1474,7 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
       },
       "windows": {
         "label": "Jendela tambahan",
-        "help": "Jendela 30 detik yang tersebar di sisa set. Dengan ini dua set berbeda yang dimulai dengan trek yang sama bisa dibedakan. 0 = hanya awal."
+        "help": "Jendela 30 detik pada waktu tetap: separuh dari awal (5, 10, 15 … mnt), separuh sebelum akhir (2, 6, 12 … mnt), agar salinan dengan intro atau outro lebih panjang tetap sejajar. Dengan ini dua set berbeda yang dibuka dengan lagu yang sama dapat dibedakan. 0 = hanya awal."
       },
       "min_score": {
         "label": "Ambang kecocokan",

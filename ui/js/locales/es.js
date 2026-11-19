@@ -1495,7 +1495,7 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
       },
       "windows": {
         "label": "Ventanas extra",
-        "help": "Ventanas de 30 segundos repartidas por el resto del set. Con ellas se distinguen dos sets diferentes que empiezan con la misma pista. 0 = solo el inicio."
+        "help": "Ventanas de 30 segundos en tiempos fijos: la mitad desde el inicio (5, 10, 15 … min), la mitad antes del final (2, 6, 12 … min), así una copia con intro u outro más larga sigue alineada. Distinguen dos sets distintos que empiezan con el mismo tema. 0 = solo el inicio."
       },
       "min_score": {
         "label": "Umbral de coincidencia",

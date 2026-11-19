@@ -1495,7 +1495,7 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
       },
       "windows": {
         "label": "Lisaaknad",
-        "help": "30-sekundilised aknad, mis on jaotatud seti ülejäänud osale. Nendega eristatakse kaht eri setti, mis algavad sama looga. 0 = ainult algus."
+        "help": "30-sekundilised aknad kindlatel aegadel: pooled algusest (5, 10, 15 … min), pooled enne lõppu (2, 6, 12 … min), et pikema intro või outroga koopia ikka kattuks. Nende abil eristatakse kahte erinevat setti, mis algavad sama looga. 0 = ainult algus."
       },
       "min_score": {
         "label": "Vaste lävi",

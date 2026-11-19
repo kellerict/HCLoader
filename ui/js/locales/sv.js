@@ -1495,7 +1495,7 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
       },
       "windows": {
         "label": "Extra fönster",
-        "help": "30-sekundersfönster spridda över resten av setet. Med dem skiljs två olika set åt som börjar med samma spår. 0 = bara början."
+        "help": "30-sekundersfönster på fasta tider: hälften från början (5, 10, 15 … min), hälften före slutet (2, 6, 12 … min), så att en kopia med längre intro eller outro ändå matchar. De skiljer två olika set som börjar med samma låt. 0 = bara början."
       },
       "min_score": {
         "label": "Tröskel för träff",

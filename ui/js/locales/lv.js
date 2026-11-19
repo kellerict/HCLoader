@@ -1516,7 +1516,7 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
       },
       "windows": {
         "label": "Papildu logi",
-        "help": "30 sekunžu logi, kas izkliedēti pa pārējo seta daļu. Ar tiem atšķir divus dažādus setus, kas sākas ar vienu un to pašu ierakstu. 0 = tikai sākums."
+        "help": "30 sekunžu logi fiksētos laikos: puse no sākuma (5, 10, 15 … min), puse pirms beigām (2, 6, 12 … min), lai kopija ar garāku ievadu vai nobeigumu tomēr sakristu. Ar tiem atšķir divus dažādus setus, kas sākas ar vienu un to pašu dziesmu. 0 = tikai sākums."
       },
       "min_score": {
         "label": "Atbilstības slieksnis",

@@ -1495,7 +1495,7 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
       },
       "windows": {
         "label": "Ekstra vinduer",
-        "help": "30-sekunders vinduer spredt over resten av settet. Med dem skilles to ulike sett som starter med samme spor. 0 = bare begynnelsen."
+        "help": "30-sekunders vinduer på faste tider: halvparten fra starten (5, 10, 15 … min), halvparten før slutten (2, 6, 12 … min), slik at en kopi med lengre intro eller outro likevel stemmer. De skiller to ulike sett som starter med samme låt. 0 = bare starten."
       },
       "min_score": {
         "label": "Terskel for treff",

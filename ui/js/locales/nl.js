@@ -1495,7 +1495,7 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
       },
       "windows": {
         "label": "Extra vensters",
-        "help": "Vensters van 30 seconden, verdeeld over de rest van de set. Daarmee worden twee verschillende sets die met dezelfde track beginnen uit elkaar gehouden. 0 = alleen het begin."
+        "help": "Vensters van 30 seconden op vaste tijden: de helft vanaf het begin (5, 10, 15 … min), de helft voor het einde (2, 6, 12 … min), zodat een kopie met een langere intro of outro toch overeenkomt. Hiermee worden twee verschillende sets met dezelfde openingstrack onderscheiden. 0 = alleen het begin."
       },
       "min_score": {
         "label": "Drempel voor een treffer",

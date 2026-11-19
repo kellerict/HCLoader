@@ -1495,7 +1495,7 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
       },
       "windows": {
         "label": "Janelas extras",
-        "help": "Janelas de 30 segundos distribuídas pelo resto do set. Com elas, dois sets diferentes que começam com a mesma faixa são distinguidos. 0 = só o início."
+        "help": "Janelas de 30 segundos em tempos fixos: metade a partir do início (5, 10, 15 … min), metade antes do fim (2, 6, 12 … min), para que uma cópia com intro ou outro mais longa continue alinhada. Distinguem dois sets diferentes que começam com a mesma faixa. 0 = só o início."
       },
       "min_score": {
         "label": "Limite de correspondência",
