@@ -1702,6 +1702,9 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
   deaktiviert; angeboten wird `adopt` («Original fehlt – diese Kopie behalten»: das fehlende Original verlässt
   die Bibliothek, die Markierung fällt weg). Verschwindet das Original trotzdem während des Löschens, wird die
   Archivzeile der gelöschten Kopie entfernt, damit sie wieder geladen werden kann.
+- **Entscheid (m4):** Ein HTTP 403 einer API-Anfrage von Mixcloud (`[mixcloud…]`, Cloudflare vor GraphQL/API)
+  oder hearthis.at (`[HearThisAt]`, `[hearthis:…]`) gilt wie bei SoundCloud als Sperre und startet den Backoff
+  der Plattform; ein 403 einer abgelaufenen Medien-URL beim Download (ohne Extraktor-Präfix) nicht.
 - **Grund:** Der Dialog verspricht «Das Original bleibt»; ohne Prüfung konnte die letzte Kopie gelöscht und per
   Archiv für immer gesperrt werden.
 

@@ -67,13 +67,31 @@ _SC_BLOCK_PATTERNS = [
 ]
 
 
+# review v0.10.0 m4: Mixcloud (Cloudflare in front of GraphQL/API) and hearthis.at answer a block
+# with 403; only a 403 of an extractor/API request counts (tagged `[mixcloud…]` / `[HearThisAt]` /
+# our `hearthis:…` extractors), never a 403 of an expired media URL during the download
+_MC_BLOCK_PATTERNS = [
+    re.compile(r"\[mixcloud(?::[\w:-]+)?\][^\n]*http error 403", re.I),
+    re.compile(r"\bcf-mitigated\b|cloudflare[^\n]*challenge", re.I),
+]
+_HT_BLOCK_PATTERNS = [
+    re.compile(r"\[(?:hearthisat|hearthis(?::[\w:-]+)?)\][^\n]*http error 403", re.I),
+]
+_BLOCK_PATTERNS = {
+    "soundcloud": _SC_BLOCK_PATTERNS,
+    "mixcloud": _MC_BLOCK_PATTERNS,
+    "hearthis": _HT_BLOCK_PATTERNS,
+}
+
+
 def is_rate_limit_error(message: object, platform: str = "youtube") -> bool:
     """True for HTTP 429 / 'confirm you're not a bot' style errors; for `platform`
-    'soundcloud' also a SoundCloud API 403 after the client_id refresh (Datadome)."""
+    'soundcloud' also a SoundCloud API 403 after the client_id refresh (Datadome), for
+    'mixcloud' / 'hearthis' a 403 of an API request (Cloudflare block)."""
     text = str(message or "")
     if any(p.search(text) for p in _RATE_LIMIT_PATTERNS):
         return True
-    return platform == "soundcloud" and any(p.search(text) for p in _SC_BLOCK_PATTERNS)
+    return any(p.search(text) for p in _BLOCK_PATTERNS.get(platform, ()))
 
 
 class ThrottleError(Exception):

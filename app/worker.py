@@ -1774,7 +1774,10 @@ class FingerprintQueue:
         self._db = db
         self._settings = settings_provider
         self._bus = bus
-        self._decoder = decoder or fingerprint.decode
+        self._raw_decoder = decoder or fingerprint.decode
+        self._decoder = self._decode
+        self._decoding: str | None = None  # file ffmpeg reads right now (n2)
+        self._drop = threading.Event()
         self._busy = busy or (lambda: False)
         self._name = name
         self._idle_wait = idle_wait
@@ -1842,6 +1845,34 @@ class FingerprintQueue:
     def pass_running(self) -> bool:
         with self._cond:
             return self._pass_running or self._pass_scope is not None
+
+    def drop(self, video_id: str, path: str | None = None, timeout: float = 3.0) -> None:
+        """Review v0.10.0 n2: the item is about to be deleted/moved. Forget a waiting request
+        and stop an ffmpeg that reads its file (Windows: an open file cannot be deleted);
+        waits up to `timeout` s until it let go. A pass continues with the next file."""
+        with self._cond:
+            if video_id in self._items:
+                self._items.remove(video_id)
+            if not path or self._decoding != str(path):
+                return
+            self._drop.set()
+            self._cond.wait_for(lambda: self._decoding != str(path), timeout)
+
+    def _decode(self, path: Any, windows: Any, *, cancel: Any = None) -> Any:
+        with self._cond:
+            self._decoding = str(path)
+            self._drop.clear()
+        try:
+            ev = _AnyEvent(self._drop, *([cancel] if cancel is not None else []))
+            out = self._raw_decoder(path, windows, cancel=ev)
+            if out is None and self._drop.is_set() and not (cancel is not None and cancel.is_set()):
+                raise fingerprint.FingerprintError(tr("library.not_in_library"), permanent=False)
+            return out
+        finally:
+            with self._cond:
+                self._decoding = None
+                self._drop.clear()
+                self._cond.notify_all()
 
     def idle(self) -> bool:
         with self._cond:

@@ -440,8 +440,13 @@ def get(db: Database, video_id: str) -> Fingerprint | None:
     return Fingerprint.unpack(row["hashes"], segs, row["duration"], row["version"])
 
 
-def store(db: Database, video_id: str, fp: Fingerprint) -> None:
+def store(db: Database, video_id: str, fp: Fingerprint) -> bool:
+    """Save print + index rows. False (nothing written) when the item left the library while
+    it was decoded (review v0.10.0 n1: no dead rows for a deleted item)."""
     with db.transaction():
+        row = db.query_one("SELECT status FROM videos WHERE id=?", (video_id,))
+        if not row or row["status"] != "done":
+            return False
         db.execute("DELETE FROM fingerprint_index WHERE video_id=?", (video_id,))
         db.execute(
             "INSERT OR REPLACE INTO fingerprints(video_id, version, created, duration, hashes, "
@@ -453,6 +458,7 @@ def store(db: Database, video_id: str, fp: Fingerprint) -> None:
             "INSERT INTO fingerprint_index(hash, video_id) VALUES (?, ?)",
             [(h, video_id) for h in sample],
         )
+    return True
 
 
 def store_error(db: Database, video_id: str, message: str) -> None:
@@ -609,15 +615,6 @@ def reupload_map(db: Database, ids: Iterable[str] | None = None) -> dict[str, di
     return out
 
 
-def linked_to(db: Database, video_id: str) -> list[str]:
-    """Items linked as «same mix» with `video_id` (either side)."""
-    rows = db.query(
-        "SELECT video_id, of_id FROM reuploads WHERE state='linked' AND (video_id=? OR of_id=?)",
-        (video_id, video_id),
-    )
-    return [r["of_id"] if r["video_id"] == video_id else r["video_id"] for r in rows]
-
-
 def resolve(db: Database, video_id: str, action: str) -> dict[str, Any]:
     """User decision on a mark: keep (dismiss, keep both) | link (same mix) | open (undo).
     Deleting the new file is `library.delete_item` (the API calls both)."""
@@ -671,7 +668,8 @@ def process(
     if not fp.hashes:
         store_error(db, video_id, tr("reupload.no_audio"))
         return {"ok": False, "id": video_id, "error": tr("reupload.no_audio")}
-    store(db, video_id, fp)
+    if not store(db, video_id, fp):
+        return {"ok": False, "id": video_id, "error": tr("library.not_in_library")}
     out: dict[str, Any] = {"ok": True, "id": video_id, "hashes": len(fp.hashes)}
 
     def verify(other: Fingerprint, m: Match) -> Match | None:

@@ -10,7 +10,8 @@
 
 Every platform has its **own throttle**: its own pauses, limits per run/day/hour, counters and
 backoff (Settings › Throttling for YouTube, › SoundCloud, › More sources for Mixcloud and
-hearthis.at). A block (HTTP 429) on one platform never stops the others. Each platform except
+hearthis.at). A block (HTTP 429, or an HTTP 403 of the SoundCloud, Mixcloud or hearthis.at API) on
+one platform never stops the others. Each platform except
 YouTube can be switched off completely; it is then never contacted.
 
 ## YouTube
@@ -53,6 +54,8 @@ Uses yt-dlp as a library, Deno for JavaScript challenges and the bgutil PO-token
   (`keep_original_hearthis`). Lossless originals (WAV) offered by some uploaders are skipped – they
   are huge and cannot be tagged.
 - Ids `ht:<id>`, file names `[ht-<id>]`, tag `TXXX:HEARTHIS_ID`, `SOURCE=hearthis.at`.
+- Private share links (`hearthis.at/<user>/<track>/<key>/`) are not supported: only public track
+  pages (`hearthis.at/<user>/<track>/`) are accepted; such a link is refused as unsupported.
 - Switch it off with `hearthis.enabled: false` (Settings › More sources).
 
 ## Duplicates and re-uploads

@@ -1935,6 +1935,7 @@ class Api:
 
     def delete_library_item(self, video_id: str, delete_file: bool = True) -> dict[str, Any]:
         """Datei + CUE (+ leere Ordner) löschen, Eintrag auf `ignored`. Bestätigung: UI."""
+        self._fp.drop(str(video_id), (self._db.get_video(str(video_id)) or {}).get("file_path"))
         res = library.delete_item(self._db, self._cfg, str(video_id), delete_file=bool(delete_file))
         if res.get("ok"):
             self._forget_item(str(video_id))
@@ -2338,6 +2339,7 @@ class Api:
         present) | adopt (original missing: this copy replaces it) | open (undo keep/link)."""
         vid = str(video_id or "")
         if action == "delete_new":
+            self._fp.drop(vid, (self._db.get_video(vid) or {}).get("file_path"))
             res = library.delete_reupload(self._db, self._cfg, vid)
             if res.get("ok"):
                 self._forget_item(vid)

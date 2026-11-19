@@ -333,7 +333,7 @@ def test_resolve_actions_and_forget(lib):
     assert fingerprint.resolve(db, "mc:DJ_X_reup", "nope")["ok"] is False
     assert fingerprint.resolve(db, "abcdefghijk", "keep")["ok"] is False  # not marked
     res = fingerprint.resolve(db, "mc:DJ_X_reup", "link")
-    assert res["state"] == "linked" and fingerprint.linked_to(db, "abcdefghijk") == ["mc:DJ_X_reup"]
+    assert res["state"] == "linked" and fingerprint.info_of(db, "mc:DJ_X_reup")["state"] == "linked"
     assert fingerprint.resolve(db, "mc:DJ_X_reup", "open")["state"] == "open"
     fingerprint.forget(db, "abcdefghijk")  # the older item was deleted
     assert fingerprint.info_of(db, "mc:DJ_X_reup") is None
@@ -369,6 +369,19 @@ def test_precheck_same_platform_by_duration_and_title(db):
     assert duplicates.find_duplicate(db, {**reup, "duration": 3700}, same_platform=True) is None
     # the item itself is never its own duplicate
     assert duplicates.find_duplicate(db, {**reup, "id": "abcdefghijk"}, same_platform=True) is None
+
+
+def test_precheck_same_platform_needs_the_same_numbers(db):
+    """Review v0.10.0 m6: the next episode of a weekly show (same length, title differs only
+    in the number) is no re-upload on the same platform; leading zeros do not matter."""
+    t = "Rawstyle Hardcore Radio Show Weekly Episode {} (Uptempo Special) Live Mix"
+    db.upsert_video({"id": "abcdefghijk", "title": t.format(101), "duration": 3600})
+    db.set_status("abcdefghijk", "done", file_path="x.mp3")
+    nxt = {"id": "zyxwvutsrqp", "title": t.format(102), "duration": 3600}
+    assert duplicates.title_tokens(nxt["title"]) != duplicates.title_tokens(t.format(101))
+    assert duplicates.find_duplicate(db, nxt, same_platform=True) is None
+    same = {**nxt, "title": t.format("0101")}
+    assert duplicates.find_duplicate(db, same, same_platform=True)["id"] == "abcdefghijk"
 
 
 def test_watchlist_precheck_sends_reupload_to_inbox_not_queue(db):
@@ -486,3 +499,60 @@ def test_fingerprint_queue_waits_while_analysis_busy(lib):
         assert fingerprint.get(db, "abcdefghijk") is not None
     finally:
         q.stop()
+
+
+def test_item_deleted_while_decoding_leaves_no_rows(lib):
+    """Review v0.10.0 n1: the item leaves the library during the decode -> nothing stored."""
+    db, dec = lib
+
+    def deleting(path, windows, *, cancel=None):
+        db.mark_removed("abcdefghijk")
+        return dec(path, windows, cancel=cancel)
+
+    res = fingerprint.process(db, _settings(), "abcdefghijk", decoder=deleting)
+    assert not res["ok"]
+    assert db.query_one("SELECT COUNT(*) AS n FROM fingerprints")["n"] == 0
+    assert db.query_one("SELECT COUNT(*) AS n FROM fingerprint_index")["n"] == 0
+
+
+def test_fingerprint_queue_drop_stops_ffmpeg_of_a_deleted_item(lib):
+    """Review v0.10.0 n2: deleting an item whose file ffmpeg reads stops that decode (the file
+    is free on Windows); a pass goes on with the next file."""
+    from app.worker import EventBus, FingerprintQueue
+
+    db, dec = lib
+    started = threading.Event()
+    stopped = threading.Event()
+    target = db.get_video("abcdefghijk")["file_path"]
+
+    def slow(path, windows, *, cancel=None):
+        if str(path) == target:
+            started.set()
+            while not cancel.is_set():
+                threading.Event().wait(0.01)
+            stopped.set()
+            return None  # what fingerprint.decode returns after killing ffmpeg
+        return dec(path, windows, cancel=cancel)
+
+    bus = EventBus()
+    done = threading.Event()
+    events = []
+    bus.subscribe(
+        lambda t, d: (
+            events.append((t, d)),
+            t == "fingerprint" and d.get("phase") == "done" and done.set(),
+        )
+    )
+    q = FingerprintQueue(db, _settings, bus, decoder=slow)
+    try:
+        assert q.start_pass("new")
+        assert started.wait(30)
+        q.drop("abcdefghijk", target)
+        assert stopped.is_set()  # drop() returned only after the decode let go
+        assert done.wait(60)
+    finally:
+        q.stop()
+    last = [d for t, d in events if t == "fingerprint"][-1]
+    assert not last["cancelled"] and last["failed"] == 1 and last["done"] == 3
+    assert fingerprint.get(db, "abcdefghijk") is None
+    assert fingerprint.get(db, "sc:111") is not None

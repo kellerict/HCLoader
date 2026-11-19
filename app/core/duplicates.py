@@ -106,7 +106,23 @@ def find_duplicate(
         statuses=DUPLICATE_STATUSES,
         **({"same_platform": True} if same_platform else {}),
     )
-    return best_match(video, [c for c in cands if c.get("id") != video.get("id")])
+    cands = [c for c in cands if c.get("id") != video.get("id")]
+    if same_platform:
+        # review v0.10.0 m6: on the same platform, weekly shows with long, mostly equal titles
+        # ("… Radio Episode 101" / "… 102", both 60:00) are no re-upload - numbers must agree
+        nums = number_tokens(video.get("title"))
+        cands = [
+            c
+            for c in cands
+            if (c.get("platform") or platform_of(c.get("id"))) != platform
+            or number_tokens(c.get("title")) == nums
+        ]
+    return best_match(video, cands)
+
+
+def number_tokens(title: str | None) -> set[str]:
+    """Numbers in a title (episode, year, edition), leading zeros ignored."""
+    return {t.lstrip("0") or "0" for t in title_tokens(title) if t.isdigit()}
 
 
 def reason(dup: Mapping[str, Any]) -> str:

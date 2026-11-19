@@ -584,3 +584,21 @@ def test_backoff_writes_run_under_the_cross_process_lock(db, monkeypatch, method
     monkeypatch.setattr(locks, "cross_process_lock", fake_lock)
     getattr(t, method)(*([True] if method == "finish_run" else []))
     assert taken == [locks.THROTTLE_LOCK]
+
+
+@pytest.mark.parametrize(
+    ("message", "platform", "hit"),
+    [
+        ("ERROR: [mixcloud] x: Unable to download JSON metadata: HTTP Error 403", "mixcloud", True),
+        ("ERROR: [mixcloud:user] DJ: HTTP Error 403: Forbidden", "mixcloud", True),
+        ("ERROR: [mixcloud] x: HTTP Error 403", "youtube", False),
+        ("ERROR: unable to download video data: HTTP Error 403: Forbidden", "mixcloud", False),
+        ("ERROR: [HearThisAt] 4001: HTTP Error 403: Forbidden", "hearthis", True),
+        ("ERROR: [hearthis:list:hcloader] x: HTTP Error 403", "hearthis", True),
+        ("ERROR: [HearThisAt] 4001: HTTP Error 404: Not Found", "hearthis", False),
+        ("ERROR: [mixcloud] x: HTTP Error 429: Too Many Requests", "mixcloud", True),
+    ],
+)
+def test_mixcloud_hearthis_403_is_a_block(message, platform, hit):
+    """Review v0.10.0 m4: an API 403 of Mixcloud / hearthis.at starts that platform's backoff."""
+    assert is_rate_limit_error(message, platform) is hit
