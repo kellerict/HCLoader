@@ -246,7 +246,7 @@ Offline audio fingerprints to recognise re-uploads – see [Re-upload detection]
 | `enabled` | `true` | | Fingerprint library items and compare new downloads with the library. |
 | `fingerprint_after_download` | `true` | | Fingerprint every new download (low priority, after the loudness analysis). |
 | `head_minutes` | `3` | 1–10 | Minutes from the start in the fingerprint. |
-| `windows` | `3` | 0–8 | Extra 30-second windows spread over the rest of the set. |
+| `windows` | `3` | 0–8 | Extra 30-second windows at fixed times: half from the start (5, 10, 15 … min), half before the end (2, 6, 12 … min). |
 | `min_score` | `15` | 5–90 (%) | Share of matching hashes from which a set counts as re-upload. |
 | `precheck` | `false` | | Before a download, also compare length (±5 s) and title on the same platform (no request); matches go to the inbox. |
 

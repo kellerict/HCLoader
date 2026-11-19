@@ -1495,7 +1495,7 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
       },
       "windows": {
         "label": "Extra windows",
-        "help": "30-second windows spread over the rest of the set. Two different sets that open with the same track are told apart by these. 0 = start only."
+        "help": "30-second windows at fixed times: half from the start (5, 10, 15 … min), half before the end (2, 6, 12 … min), so a copy with a longer intro or outro still lines up. Two different sets that open with the same track are told apart by these. 0 = start only."
       },
       "min_score": {
         "label": "Match threshold",

@@ -446,7 +446,8 @@ class ReuploadSettings(_Section):
 
     - `fingerprint_after_download`: compute the fingerprint of every new download (low priority)
     - `head_minutes`: fingerprinted minutes from the start of the file
-    - `windows`: extra 30 s windows spread over the rest of the set (0 = start only)
+    - `windows`: extra 30 s windows at fixed times, half from the start (5, 10, 15 … min), half
+      before the end (2, 6, 12 … min), so copies with another intro or ending line up (0 = start only)
     - `min_score`: share of matching hashes (in %) from which a match counts as re-upload
     - `precheck`: before a download, compare duration (+-5 s) and title with the library on
       the same platform too (cheap, no extra request); a hit goes to the inbox, not the queue
@@ -1036,7 +1037,7 @@ COMMENTS = {
     "reupload.enabled": "Re-Uploads erkennen: Audio-Fingerabdruck pro Set offline mit ffmpeg (kein Netz), Vergleich mit der Bibliothek",
     "reupload.fingerprint_after_download": "Fingerabdruck nach jedem Download berechnen (niedrige Priorität)",
     "reupload.head_minutes": "Minuten ab Anfang, die in den Fingerabdruck eingehen (1-10)",
-    "reupload.windows": "Zusätzliche 30-s-Fenster über den Rest des Sets verteilt (0-8)",
+    "reupload.windows": "Zusätzliche 30-s-Fenster an festen Zeiten: halb ab Anfang (5, 10 … Min.), halb vor dem Ende (2, 6 … Min.) (0-8)",
     "reupload.min_score": "Ab diesem Anteil übereinstimmender Hashes (in %) gilt ein Set als Re-Upload (5-90)",
     "reupload.precheck": "Vor dem Download Dauer (+-5 s) und Titel auch auf derselben Plattform vergleichen (kein zusätzlicher Request); Treffer kommen in den Eingang",
     "maintenance.check_updates_on_start": "Beim Start auf yt-dlp-Updates prüfen (max. 1x pro Tag)",

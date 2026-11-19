@@ -1679,6 +1679,32 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
 - **Vor-Prüfung** (`reupload.precheck`, Standard aus): die Phase-7a-Duplikatprüfung (Dauer ±5 s, Titel) gilt dann
   auch auf derselben Plattform, ohne Request; der Fingerabdruck bestätigt erst nach dem Download.
 
+## 2026-11-19 – Re-upload detection: anchored windows, alignment check, safe delete (Review v0.10.0 M1/M2)
+
+- **Entscheid (M2):** Fingerabdruck-Format `VERSION = 2` (alte Abdrücke werden beim nächsten Durchlauf neu
+  berechnet). Fenster an **absoluten** Zeiten statt proportional zur Dauer: Hälfte ab Anfang (5, 10, 15, 25 …
+  Min.), Hälfte vor dem Ende (2, 6, 12, 20 … Min.). Dazu ein **Ausrichtungs-Check**: hat ein Kandidat im
+  gespeicherten Abdruck genug ausgerichtete Treffer (≥ 40 und ≥ ⅓ der Schwelle), wird die neue Datei dort noch
+  einmal dekodiert, wo die Abschnitte des Kandidaten beim gefundenen Versatz liegen (je max. 60 s, höchstens
+  2 Kandidaten). Treffer erst, wenn dieser Abdruck beim selben Versatz die Schwelle erreicht und in ≥ 60 %
+  (und ≥ 2) der abgebildeten Abschnitte trifft. Robustheit (QA): 3 stärkste Spitzen pro 0,25-s-Block (12/s statt
+  7/s pro Sekunde) und Frequenzen im Hash in 2-Bin-Schritten (21,5 Hz).
+- **Grund:** Proportionale Fenster verschoben sich bei Kopien anderer Länge gegeneinander; > ~2 Min. Unterschied
+  wurde nie erkannt (Review-Tabelle). Absolute Anker decken anderes Ende bzw. anderes Intro ab, der
+  Ausrichtungs-Check jede Längendifferenz, solange Kopf oder Anker einmal überlappen, und senkt gleichzeitig
+  Fehltreffer (gemeinsamer Track / gleiches Intro: die übrigen Abschnitte beim selben Versatz passen nicht).
+  Kosten: eine zweite Dekodierung (≤ 5 × 60 s) nur für Kandidaten, die schon teilweise passen. Synthetisch
+  (Tests): +150 s / +10 Min. am Ende, +150 s / +8 Min. Intro, gekürzt, Pegel, tiefe Bitrate, SNR ≈ −8 dB werden
+  erkannt; zufällige Paare bleiben unter ⅓ der Schwelle (keine Zweit-Dekodierung). Grenze: Kopien, die an
+  **beiden** Enden anders sind und deren Intro-Unterschied grösser ist als der Kopf minus ~30 s.
+- **Entscheid (M1):** «Neuere Datei löschen» nur, wenn das Original in der Bibliothek ist und seine Datei
+  existiert und lesbar ist (`library.original_state` = `ok`, geprüft unter `FS_LOCK`). Sonst Fehler und in der UI
+  deaktiviert; angeboten wird `adopt` («Original fehlt – diese Kopie behalten»: das fehlende Original verlässt
+  die Bibliothek, die Markierung fällt weg). Verschwindet das Original trotzdem während des Löschens, wird die
+  Archivzeile der gelöschten Kopie entfernt, damit sie wieder geladen werden kann.
+- **Grund:** Der Dialog verspricht «Das Original bleibt»; ohne Prüfung konnte die letzte Kopie gelöscht und per
+  Archiv für immer gesperrt werden.
+
 ## 2026-11-19 – Mixcloud and hearthis.at (v0.10.0)
 
 - **Entscheid:** Zwei Plattformen wie SoundCloud: IDs `mc:<nutzer>_<slug>` (= yt-dlp-ID, Archivzeile `mixcloud …`)

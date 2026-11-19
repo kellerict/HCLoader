@@ -1495,7 +1495,7 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
       },
       "windows": {
         "label": "Zusätzliche Fenster",
-        "help": "30-Sekunden-Fenster, über den Rest des Sets verteilt. Damit werden zwei verschiedene Sets unterschieden, die mit demselben Track beginnen. 0 = nur der Anfang."
+        "help": "30-Sekunden-Fenster an festen Zeiten: halb ab Anfang (5, 10, 15 … Min.), halb vor dem Ende (2, 6, 12 … Min.), damit auch eine Kopie mit längerem Intro oder Outro übereinanderliegt. Damit werden zwei verschiedene Sets unterschieden, die mit demselben Track beginnen. 0 = nur der Anfang."
       },
       "min_score": {
         "label": "Treffer-Schwelle",

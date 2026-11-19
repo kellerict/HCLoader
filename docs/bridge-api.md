@@ -835,9 +835,11 @@ solange die Lautheitsanalyse dekodiert) – nie im pywebview-Callback-Thread.
 
 **Ablauf.** `Api._after_download(id)` → `FingerprintQueue.request(id)` (mit `reupload.enabled` und
 `fingerprint_after_download`). Pro Datei: Fenster aus der gespeicherten Dauer (`head_minutes` ab Anfang +
-`windows` × 30 s), je Fenster ein ffmpeg-Aufruf (`-ss` vor `-i`, mono, 5512 Hz, s16le, `-threads 1`, niedrige
-Priorität) → Landmark-Hashes → `fingerprints` + Stichprobe in `fingerprint_index` → Kandidaten über den Index →
-Vergleich mit den vollständigen Fingerabdrücken → bei Treffer Markierung des neueren Eintrags. Ein Entscheid
+`windows` × 30 s an festen Zeiten, halb ab Anfang, halb vor dem Ende), je Fenster ein ffmpeg-Aufruf (`-ss` vor
+`-i`, mono, 5512 Hz, s16le, `-threads 1`, niedrige Priorität) → Landmark-Hashes → `fingerprints` + Stichprobe in
+`fingerprint_index` → Kandidaten über den Index → Vergleich mit den vollständigen Fingerabdrücken →
+Ausrichtungs-Check (die Datei wird beim gefundenen Versatz dort erneut dekodiert, wo die Abschnitte des
+Kandidaten liegen) → bei Treffer Markierung des neueren Eintrags. Ein Entscheid
 (`kept`/`linked`) für dasselbe Paar bleibt auch nach «Alle neu abgleichen». Gelöschte Bibliotheks-Einträge
 verlieren Fingerabdruck und Markierungen (`fingerprint.forget`). Der Headless-Lauf dekodiert nicht; die GUI
 holt Downloads seit dem ersten v0.10.0-Start beim nächsten Start nach (`fingerprint.since_pending`).

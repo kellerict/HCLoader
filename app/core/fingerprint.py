@@ -5,18 +5,25 @@ docs/decisions.md «Re-upload detection». Principles:
   the network and nothing passes the throttle. Chromaprint/fpcalc is not bundled (one more
   binary to fetch, pin and update; the decisions note explains the licence check).
 - **Cheap.** Only parts of a set are decoded: the first `reupload.head_minutes` minutes and
-  `reupload.windows` 30-second windows spread over the rest. ffmpeg seeks to each window
-  (`-ss` before `-i`), at lowered priority, one file at a time.
+  `reupload.windows` 30-second windows at absolute anchors - half from the start (5, 10, 15 …
+  min), half before the end (2, 6, 12 … min) - so two copies with another intro or another
+  ending share the windows of the unchanged side at one time offset (review v0.10.0 M2).
+  ffmpeg seeks to each window (`-ss` before `-i`), at lowered priority, one file at a time.
 - **Landmark hashes** (spectral peak pairs, the classic Shazam idea): per frame
   (512-point FFT, hop 256 = 46 ms) the strongest bins in six frequency bands above the frame
-  mean are peaks; each peak is paired with up to FANOUT later peaks within TARGET_FRAMES and
-  the pair is packed into a 24-bit hash (f1, f2, dt). Hashes survive re-encoding, volume
-  changes and noise; a different intro length only shifts all times by the same offset.
+  mean are candidates; the 3 strongest of every 0.25 s block are kept (12 per second). Each
+  peak is paired with up to FANOUT later peaks within TARGET_FRAMES; the pair is packed into
+  a 24-bit hash (f1, f2 in 21.5 Hz steps, dt). Hashes survive re-encoding, low bitrates,
+  volume changes and noise; another intro length only shifts all times by one offset.
 - **Compare** = offset histogram: for the hashes two fingerprints share, the time difference
   of the matching pairs piles up in one bin for the same audio. score = hits in the best bin
-  (+-1) / hashes of the smaller fingerprint. A match also needs hits in at least two of the
-  fingerprinted segments (if both have two), so two different sets that open with the same
-  intro track are no match.
+  (+-1) / hashes of the smaller fingerprint.
+- **Alignment check**: a candidate whose stored print shares enough aligned hits (head or
+  anchors overlap once, MIN_HITS and a third of the threshold) is verified by decoding *this*
+  file again where the candidate's segments lie at the found offset (`aligned_windows`, at
+  most 60 s each). That print must match at the same offset in at least 60 % of the mapped
+  segments (and 2). So a copy with minutes more or less at either end matches, and two sets
+  that only open with the same track or share one track do not.
 - **Fast index**: a deterministic quarter of the hashes (`hash % INDEX_MOD == 0`) goes into
   `fingerprint_index` (SQLite, indexed); candidates come from one indexed query, only the
   best few are verified against their full fingerprint.
@@ -48,7 +55,7 @@ from .i18n import tr
 
 log = logging.getLogger(__name__)
 
-VERSION = 1
+VERSION = 2  # 2: anchored windows, 0.25 s peak blocks, coarser hash bins (review v0.10.0 M2)
 RATE = 5512  # Hz of the decoded mono PCM
 FFT = 512  # samples per frame (93 ms)
 HOP = 256  # frame step (46 ms)
@@ -58,10 +65,22 @@ BANDS = ((3, 10), (10, 20), (20, 40), (40, 80), (80, 160), (160, 256))
 PEAK_FACTOR = 1.6  # a band maximum counts if it is this much above the frame mean
 TARGET_FRAMES = 32  # pair a peak with later peaks up to ~1.5 s
 FANOUT = 3
-MAX_PEAKS_PER_S = 7
+PEAK_BLOCK_S = 0.25  # thinning block: the strongest PEAKS_PER_BLOCK peaks of every block
+PEAKS_PER_BLOCK = 3  # -> 12 peaks per second, evenly spread (robust to noise / low bitrate)
 INDEX_MOD = 4  # one in four hashes goes into the inverted index
 WINDOW_S = 30.0
-MIN_HITS = 20  # hits in the best offset bin, below = never a match
+# absolute window anchors (minutes): from the start (survive another ending) and before the
+# end (survive another intro); identical for every copy, unlike positions spread over the
+# duration of each file (review v0.10.0 M2)
+START_ANCHORS_MIN = (5, 10, 15, 25, 40, 60, 90, 120)
+END_ANCHORS_MIN = (2, 6, 12, 20, 30, 45, 60, 90)
+VERIFY_MAX_S = 60.0  # alignment check: at most this much per mapped segment is decoded
+VERIFY_MIN_S = 10.0  # mapped segments shorter than this are skipped
+VERIFY_SHARE = 0.6  # share of the mapped segments that must match at the found offset
+VERIFY_CANDIDATES = 2  # candidates whose alignment is checked by decoding (per file)
+VERIFY_SCORE_SHARE = 1 / 3  # stored-print score (share of min_score) that triggers the check
+MIN_HITS = 40  # hits in the best offset bin, below = never a match
+SEG_FLOOR = 8  # aligned hits a segment needs to count as hit
 MAX_CANDIDATES = 8  # candidates verified against their full fingerprint
 MAX_HASH_FANIN = 200  # index hashes shared by more items than this say nothing
 FFMPEG_TIMEOUT_S = 10 * 60
@@ -159,14 +178,15 @@ def _frame_peaks(samples: Sequence[float]) -> list[list[tuple[int, float]]]:
 
 
 def _thin(peaks: list[list[tuple[int, float]]]) -> list[list[int]]:
-    """Keep the MAX_PEAKS_PER_S strongest peaks of every second (block of frames): an even
-    density, independent of loudness and of how busy the music is."""
-    block = max(1, round(1.0 / FRAME_S))
+    """Keep the PEAKS_PER_BLOCK strongest peaks of every PEAK_BLOCK_S block of frames: an even
+    density, independent of loudness and of how busy the music is. Short blocks keep peaks
+    in every part of the signal, so noise that masks one moment does not take a whole second."""
+    block = max(1, round(PEAK_BLOCK_S / FRAME_S))
     out: list[list[int]] = [[] for _ in peaks]
     for b0 in range(0, len(peaks), block):
         cand = [(s, t, f) for t in range(b0, min(b0 + block, len(peaks))) for f, s in peaks[t]]
         cand.sort(reverse=True)
-        for _s, t, f in cand[:MAX_PEAKS_PER_S]:
+        for _s, t, f in cand[:PEAKS_PER_BLOCK]:
             out[t].append(f)
     for row in out:
         row.sort()
@@ -174,7 +194,9 @@ def _thin(peaks: list[list[tuple[int, float]]]) -> list[list[int]]:
 
 
 def hash_pair(f1: int, f2: int, dt: int) -> int:
-    return ((f1 & 0x1FF) << 15) | ((f2 & 0x1FF) << 6) | (dt & 0x3F)
+    """24-bit hash of a peak pair; frequencies in 2-bin steps (21.5 Hz), so a peak that moves
+    by one bin after a re-encode (low bitrate, noise) usually keeps its hash."""
+    return (((f1 >> 1) & 0x1FF) << 15) | (((f2 >> 1) & 0x1FF) << 6) | (dt & 0x3F)
 
 
 def compute(segments: Iterable[tuple[float, Sequence[float]]], *, duration: float | None = None):
@@ -203,17 +225,57 @@ def compute(segments: Iterable[tuple[float, Sequence[float]]], *, duration: floa
 def windows_for(
     duration: float | None, head_minutes: int, windows: int
 ) -> list[tuple[float, float]]:
-    """[(start s, length s)] to decode: the head plus `windows` windows of WINDOW_S spread
-    evenly over the rest of the set (unknown duration: head only)."""
+    """[(start s, length s)] to decode, sorted: the head plus `windows` windows of WINDOW_S at
+    absolute anchors - the first half from the start (START_ANCHORS_MIN, after the head), the
+    other half before the end (END_ANCHORS_MIN). Two copies with another intro or ending share
+    the windows of the unchanged side at one time offset (review v0.10.0 M2). Anchors that
+    do not fit the file are skipped (unknown duration: head only)."""
     head = max(1, int(head_minutes)) * 60.0
     out = [(0.0, head if not duration else min(head, float(duration)))]
     if not duration or windows <= 0 or duration <= head + WINDOW_S:
         return out
-    rest = float(duration) - head
-    for i in range(1, int(windows) + 1):
-        start = head + rest * i / (windows + 1) - WINDOW_S / 2
-        start = max(head, min(start, float(duration) - WINDOW_S))
-        out.append((round(start, 2), WINDOW_S))
+    dur = float(duration)
+    n_end = int(windows) // 2
+    n_start = int(windows) - n_end
+    taken: list[tuple[float, float]] = []
+
+    def free(start: float) -> bool:
+        return (
+            start >= head
+            and start + WINDOW_S <= dur
+            and all(abs(start - s0) >= WINDOW_S for s0, _l in taken)
+        )
+
+    for minute in START_ANCHORS_MIN:
+        if len(taken) >= n_start:
+            break
+        if free(minute * 60.0):
+            taken.append((minute * 60.0, WINDOW_S))
+    starts = len(taken)
+    for minute in END_ANCHORS_MIN:
+        if len(taken) - starts >= n_end:
+            break
+        start = round(dur - minute * 60.0, 2)
+        if free(start):
+            taken.append((start, WINDOW_S))
+    return out + sorted(taken)
+
+
+def aligned_windows(
+    other: Fingerprint, offset_s: float, duration: float | None
+) -> list[tuple[float, float]]:
+    """Windows of *this* file that hold the audio of `other`'s segments when this file is
+    `offset_s` ahead (compare(this, other).offset_s): each segment start + offset, at most
+    VERIFY_MAX_S long, clipped to the file; shorter than VERIFY_MIN_S = skipped."""
+    out: list[tuple[float, float]] = []
+    for s0, s1 in other.segments:
+        start = s0 * FRAME_S + offset_s
+        end = start + min((s1 - s0) * FRAME_S, VERIFY_MAX_S)
+        start = max(0.0, start)
+        if duration:
+            end = min(end, float(duration))
+        if end - start >= VERIFY_MIN_S:
+            out.append((round(start, 2), round(end - start, 2)))
     return out
 
 
@@ -252,7 +314,7 @@ def compare(a: Fingerprint, b: Fingerprint) -> Match:
                     if s0 <= t < s1:
                         seg_hits[i] += 1
                         break
-    floor = max(3, hits // 50)
+    floor = max(SEG_FLOOR, hits // 50)
     segs_hit = sum(1 for n in seg_hits.values() if n >= floor)
     score = hits / max(1, min(len(a.hashes), len(b.hashes)))
     return Match(
@@ -269,6 +331,14 @@ def is_match(m: Match, min_score: float) -> bool:
     if m.hits < MIN_HITS or m.score < min_score:
         return False
     return m.segments_hit >= min(2, max(1, m.segments))
+
+
+def is_verified(m: Match, min_score: float, mapped: int) -> bool:
+    """Alignment check (`compare(aligned print, other)`): a match, and at least VERIFY_SHARE of
+    the `mapped` segments carry hits at the offset."""
+    if not is_match(m, min_score):
+        return False
+    return m.segments_hit >= max(min(2, mapped), math.ceil(mapped * VERIFY_SHARE))
 
 
 # --------------------------------------------------------------------------- ffmpeg
@@ -425,11 +495,29 @@ def candidates(db: Database, fp: Fingerprint, *, exclude: str = "") -> list[tupl
     return [(v, n) for v, n in counts.most_common(MAX_CANDIDATES) if n >= floor]
 
 
+Verifier = Callable[[Fingerprint, Match], "Match | None"]
+
+
 def find_match(
-    db: Database, video_id: str, fp: Fingerprint, min_score: float
+    db: Database,
+    video_id: str,
+    fp: Fingerprint,
+    min_score: float,
+    *,
+    verify: Verifier | None = None,
 ) -> tuple[str, Match] | None:
-    """Best library item (status done) the fingerprint matches, else None."""
+    """Best library item (status done) the fingerprint matches, else None.
+
+    Without `verify` the stored prints decide (`is_match`). With `verify(other, m)` (decodes
+    this file again where `other`'s segments lie at the found offset, see `aligned_windows`)
+    the best VERIFY_CANDIDATES with at least MIN_HITS aligned hits (and a third of the
+    threshold score, partial overlap) are checked, so another
+    intro or ending of any length (head or anchors hit once) still matches, and two sets that
+    only share a track or an intro do not. The verified match decides; None = not checkable
+    (cancelled, decode error), then the stored prints decide."""
     best: tuple[str, Match] | None = None
+    checked = 0
+    scored: list[tuple[str, Match, Fingerprint]] = []
     for vid, _n in candidates(db, fp, exclude=video_id):
         row = db.get_video(vid)
         if not row or row.get("status") != "done":
@@ -437,8 +525,17 @@ def find_match(
         other = get(db, vid)
         if other is None:
             continue
-        m = compare(fp, other)
-        if is_match(m, min_score) and (best is None or m.score > best[1].score):
+        scored.append((vid, compare(fp, other), other))
+    scored.sort(key=lambda x: x[1].hits, reverse=True)
+    for vid, m, other in scored:
+        ok = is_match(m, min_score)
+        worth = m.hits >= MIN_HITS and m.score >= min_score * VERIFY_SCORE_SHARE
+        if verify is not None and worth and checked < VERIFY_CANDIDATES:
+            checked += 1
+            mv = verify(other, m)
+            if mv is not None:
+                ok, m = is_verified(mv, min_score, mv.segments), mv
+        if ok and (best is None or m.score > best[1].score):
             best = (vid, m)
     return best
 
@@ -576,7 +673,24 @@ def process(
         return {"ok": False, "id": video_id, "error": tr("reupload.no_audio")}
     store(db, video_id, fp)
     out: dict[str, Any] = {"ok": True, "id": video_id, "hashes": len(fp.hashes)}
-    found = find_match(db, video_id, fp, _min_score(settings))
+
+    def verify(other: Fingerprint, m: Match) -> Match | None:
+        wins = aligned_windows(other, m.offset_s, duration)
+        if not wins:
+            return None
+        try:
+            segs2 = decoder(path, wins, cancel=cancel)
+        except FingerprintError:
+            return None
+        if segs2 is None:
+            return None
+        mv = compare(compute(segs2, duration=duration), other)
+        if abs(mv.offset_s - m.offset_s) > 2 * FRAME_S:
+            return Match(segments=len(wins))  # aligned elsewhere: not the same audio here
+        mv.segments = len(wins)
+        return mv
+
+    found = find_match(db, video_id, fp, _min_score(settings), verify=verify)
     if found:
         other, m = found
         newer, older = _order(db, video_id, other)

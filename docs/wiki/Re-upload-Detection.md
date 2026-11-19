@@ -13,15 +13,19 @@ computer.
 1. After each download the new file is fingerprinted in the background (one file at a time, low
    priority, after the loudness analysis).
 2. HCLoader decodes only parts of the set: the first minutes (*Minutes from the start*, default 3)
-   and a few 30-second windows spread over the rest (*Extra windows*, default 3).
-3. The fingerprint is a list of spectral peak pairs. They survive re-encoding, another bitrate,
-   volume changes and noise; a longer or shorter intro only shifts all of them by the same amount.
-4. The new set is compared with the library through a fast index. If enough of its fingerprint
-   matches one set at the same time offset (*Match threshold*, default 15 %) **in at least two
-   parts of the set**, the newer download is marked **"Probable re-upload of …"**.
+   and a few 30-second windows at **fixed times** (*Extra windows*, default 3): half of them
+   counted from the start (5, 10, 15 … minutes), half counted back from the end (2, 6, 12 …
+   minutes). A copy with a longer or shorter intro still lines up with the windows near the end;
+   a copy with another outro or extra minutes at the end lines up with the windows from the start.
+3. The fingerprint is a list of spectral peak pairs. They survive re-encoding, a low bitrate,
+   volume changes and noise.
+4. The new set is compared with the library through a fast index. When part of it matches a set
+   at one time offset, HCLoader checks the alignment: it decodes the new file again exactly where
+   the other set's parts lie at that offset. If enough matches there (*Match threshold*, default
+   15 %) **in most of these parts**, the newer download is marked **"Probable re-upload of …"**.
 
-Two different sets that open with the same track are not a match: their starts agree, but the
-windows later in the set do not.
+Two different sets that open with the same track (or share one track somewhere) are not a match:
+that part agrees, but the other parts at the same offset do not.
 
 ## What you see
 
@@ -30,7 +34,10 @@ windows later in the set do not.
   - **Link as the same mix** – both stay, the newer one shows **Same mix** (click it to undo).
   - **Show the original** – finds the older set in the library.
   - **Delete this newer file** – deletes the file; the entry is set to *ignored* and is never
-    downloaded again. The original stays.
+    downloaded again. The original stays. Only possible while the original file is there: if it
+    was moved, deleted or is no longer in the library, the menu says so and offers
+    **Original missing – keep this copy** instead (the copy replaces the original, whose entry
+    leaves the library).
 - The chip **Re-uploads (n)** above the list shows only open marks.
 - **Downloads**: a note lists recent downloads that are probable re-uploads, with a link to the
   library.
@@ -44,7 +51,8 @@ Settings › **Re-uploads** › **Fingerprint new files** compares the sets you 
 v0.10.0 (oldest first, so the newer set of a pair is the one that gets marked). It runs offline at
 low priority, shows its progress and can be cancelled at any time; it continues where it stopped
 the next time. **Fingerprint all again** recomputes everything (for example after changing the
-windows) – your decisions stay.
+windows) – your decisions stay. After an update that changes the fingerprint format (v0.10.0 →
+later builds) the next pass recomputes all fingerprints automatically.
 
 Sets downloaded by the scheduled (headless) run are fingerprinted the next time you open the app.
 
@@ -60,8 +68,10 @@ after a download.
 
 - Needs ffmpeg (installed by `setup.ps1` and part of the portable build).
 - Sped-up, pitched or heavily edited versions (nightcore, "sped up") are not recognised.
-- A re-upload with a much longer or shorter intro (several minutes) may be missed when many windows
-  are used; fewer windows or more minutes from the start help.
+- A copy that differs at **both** ends – an intro longer than *Minutes from the start* minus about
+  half a minute **and** another ending – may be missed; more minutes from the start help.
+- Only the windows are compared: two sets that are identical in the first ten minutes and the last
+  minutes but differ in between would count as the same mix.
 - A fingerprint takes a few seconds per set; a large library takes a while the first time.
 
 ## Settings

@@ -151,8 +151,13 @@ def test_pack_roundtrip(prints):
         (None, 3, 3, [(0.0, 180.0)]),
         (120, 3, 3, [(0.0, 120.0)]),  # shorter than the head
         (200, 3, 3, [(0.0, 180.0)]),  # no room for a window
-        (3780, 3, 3, [(0.0, 180.0), (1065.0, 30.0), (1965.0, 30.0), (2865.0, 30.0)]),
+        # anchors: 5 and 10 min from the start, 2 min before the end
+        (3780, 3, 3, [(0.0, 180.0), (300.0, 30.0), (600.0, 30.0), (3660.0, 30.0)]),
         (3780, 1, 0, [(0.0, 60.0)]),
+        (7200, 3, 4, [(0.0, 180.0), (300.0, 30.0), (600.0, 30.0), (6840.0, 30.0), (7080.0, 30.0)]),
+        (600, 3, 3, [(0.0, 180.0), (300.0, 30.0), (480.0, 30.0)]),  # 10 min anchor does not fit
+        (330, 3, 3, [(0.0, 180.0), (210.0, 30.0), (300.0, 30.0)]),
+        (300, 3, 3, [(0.0, 180.0), (180.0, 30.0)]),  # only 2 min before the end fits
     ],
 )
 def test_windows_for(duration, head, windows, expected):
@@ -245,8 +250,8 @@ def test_process_marks_newer_item_as_reupload(lib):
     for vid in ("abcdefghijk", "sc:111"):
         res = fingerprint.process(db, s, vid, decoder=dec)
         assert res["ok"] and "reupload" not in res
-    # windows from the stored duration: head 1 min + 2 windows of 30 s
-    assert dec.calls[0][1] == [(0.0, 60.0), (225.0, 30.0), (405.0, 30.0)]
+    # windows from the stored duration: head 1 min + 30 s at 5 min and 2 min before the end
+    assert dec.calls[0][1] == [(0.0, 60.0), (300.0, 30.0), (480.0, 30.0)]
     res = fingerprint.process(db, s, "mc:DJ_X_reup", decoder=dec)
     mark = res["reupload"]
     assert mark["id"] == "mc:DJ_X_reup" and mark["of"]["id"] == "abcdefghijk"
