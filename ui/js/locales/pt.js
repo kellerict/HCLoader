@@ -2326,6 +2326,10 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "toast_open": "Decisão desfeita",
     "toast_found": "Provável reenvio: “{title}” corresponde a “{of}” – veja a biblioteca",
     "dl_notice": "Downloads recentes que provavelmente são reenvios de sets que você já tem ({n}):",
-    "review": "Revisar na biblioteca"
+    "review": "Revisar na biblioteca",
+    "adopt": "Original em falta – manter esta cópia",
+    "toast_adopt": "Esta cópia substitui agora o original em falta",
+    "original_missing_head": "O ficheiro original está em falta – esta cópia é a última e não pode ser apagada aqui",
+    "original_unknown_head": "Pasta de destino inacessível – não é possível verificar o original"
   }
 });

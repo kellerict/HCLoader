@@ -22,7 +22,7 @@ from typing import Any
 from mutagen import File as MutagenFile
 from mutagen.id3 import ID3, ID3NoHeaderError
 
-from . import paths, platforms, series, sidecar, tagging
+from . import config, fingerprint, paths, platforms, series, sidecar, tagging
 from .config import UNSORTED, Settings
 from .db import Database
 from .filters import normalize
@@ -602,3 +602,154 @@ def _delete_item(
         tr("library.removed", title=video_id, what=", ".join(removed) or tr("library.without_file"))
     )
     return {"ok": True, "deleted": removed}
+
+
+# --------------------------------------------------------------------------- re-uploads (v0.10.0)
+
+ORIGINAL_STATES = ("ok", "missing", "gone", "unknown")
+
+
+def original_state(
+    db: Database, original_id: str, root: Path | str, root_ok: bool | None = None
+) -> str:
+    """State of the original of a re-upload mark (review v0.10.0 M1):
+    `ok` (in the library, file present and readable), `missing` (in the library, file gone or
+    unreadable), `gone` (no longer in the library: deleted, re-queued, failed) or `unknown`
+    (file below the target folder, which is unreachable). `root_ok` = known reachability."""
+    row = db.get_video(original_id)
+    if not row or row.get("status") != "done" or not row.get("file_path"):
+        return "gone"
+    path = Path(row["file_path"])
+    if _under(path, root):
+        reachable = target_reachable(root) if root_ok is None else root_ok
+        if not reachable:
+            return "unknown"
+    try:
+        if path.is_file() and os.access(path, os.R_OK):
+            return "ok"
+    except OSError:
+        pass
+    return "missing"
+
+
+def annotate_reuploads(
+    db: Database,
+    items: list[dict[str, Any]],
+    root: Path | str,
+    root_ok: bool | None = None,
+    *,
+    only_open: bool = False,
+) -> list[dict[str, Any]]:
+    """Set `reupload` (fingerprint.info_of + `of.present`) on library items (one query for the
+    marks, one state check per mark). `only_open`: keep only items with an open mark."""
+    marks = fingerprint.reupload_map(db)
+    present: dict[str, str] = {}
+    for it in items:
+        mark = marks.get(it["id"])
+        if mark is not None:
+            of = mark["of"]["id"]
+            if of not in present:
+                present[of] = original_state(db, of, root, root_ok)
+            mark["of"]["present"] = present[of]
+        it["reupload"] = mark
+    if only_open:
+        items = [it for it in items if it["reupload"] and it["reupload"]["state"] == "open"]
+    return items
+
+
+def list_reuploads(
+    db: Database, root: Path | str, root_ok: bool | None = None, *, state: str = "open"
+) -> list[dict[str, Any]]:
+    """Marked library items (status done), newest download first: [{id, title, platform,
+    channel, file_path, downloaded_at, reupload}]. `state` "open" or "all"."""
+    items = []
+    for vid, mark in fingerprint.reupload_map(db).items():
+        if state != "all" and mark["state"] != "open":
+            continue
+        row = db.get_video(vid) or {}
+        if row.get("status") != "done":
+            continue
+        mark["of"]["present"] = original_state(db, mark["of"]["id"], root, root_ok)
+        items.append(
+            {
+                "id": vid,
+                "title": row.get("title") or "",
+                "platform": row.get("platform") or platforms.platform_of(vid),
+                "channel": row.get("channel_name") or "",
+                "file_path": row.get("file_path"),
+                "downloaded_at": row.get("downloaded_at"),
+                "reupload": mark,
+            }
+        )
+    items.sort(key=lambda x: str(x.get("downloaded_at") or ""), reverse=True)
+    return items
+
+
+def archive_forget(video_id: str) -> bool:
+    """Remove the `archive.txt` line of `video_id` (atomic rewrite). True if one was removed."""
+    archive = config.archive_path()
+    line = platforms.archive_line(video_id)
+    try:
+        lines = archive.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return False
+    keep = [ln for ln in lines if ln.strip() != line]
+    if len(keep) == len(lines):
+        return False
+    tmp = archive.with_name(archive.name + ".tmp")
+    try:
+        tmp.write_text("".join(ln + "\n" for ln in keep), encoding="utf-8", newline="\n")
+        os.replace(tmp, archive)
+    except OSError as exc:
+        log.warning(tr("yt.archive_not_writable", path=archive, error=exc))
+        return False
+    return True
+
+
+def delete_reupload(db: Database, settings: Settings, video_id: str) -> dict[str, Any]:
+    """«Delete this newer file» of a re-upload mark (M1). Allowed only while the original is
+    in the library with its file present and readable; otherwise the copy is the last one and
+    stays (`original: <state>`, the UI offers `adopt_reupload`). Runs under FS_LOCK, so no
+    other library operation can move/delete the original in between. Should the original
+    still vanish meanwhile (Explorer), the deleted item's archive line is removed, so the
+    watchlist/search may fetch it again (`archive_removed: true`)."""
+    with FS_LOCK:
+        info = fingerprint.info_of(db, video_id)
+        if not info:
+            return {"ok": False, "error": tr("reupload.not_marked")}
+        root = settings.target_dir_path()
+        of_id = info["of"]["id"]
+        state = original_state(db, of_id, root)
+        if state != "ok":
+            key = "reupload.original_unknown" if state == "unknown" else "reupload.original_missing"
+            return {"ok": False, "error": tr(key), "original": state}
+        res = _delete_item(db, settings, video_id, delete_file=True)
+        if res.get("ok") and original_state(db, of_id, root) != "ok":
+            res["archive_removed"] = archive_forget(video_id)
+        return res
+
+
+def adopt_reupload(db: Database, settings: Settings, video_id: str) -> dict[str, Any]:
+    """«Original missing – keep this copy» (M1): the marked copy replaces its original. Allowed
+    only when the original is `missing` or `gone`. A `missing` original row leaves the library
+    (`ignored`, no file; its archive line stays because this copy is kept); the mark is
+    dropped. -> {ok, id, removed: original id | None}. Fingerprint/analysis cleanup of the
+    removed original is the caller's (`Api.delete_library_item` path)."""
+    with FS_LOCK:
+        info = fingerprint.info_of(db, video_id)
+        if not info:
+            return {"ok": False, "error": tr("reupload.not_marked")}
+        of_id = info["of"]["id"]
+        state = original_state(db, of_id, settings.target_dir_path())
+        if state == "ok":
+            return {"ok": False, "error": tr("reupload.original_present"), "original": state}
+        if state == "unknown":
+            return {"ok": False, "error": tr("reupload.original_unknown"), "original": state}
+        removed = None
+        if state == "missing":
+            res = _delete_item(db, settings, of_id, delete_file=False)
+            if not res.get("ok"):
+                return res
+            removed = of_id
+        db.execute("DELETE FROM reuploads WHERE video_id=?", (video_id,))
+        return {"ok": True, "id": video_id, "removed": removed, "reupload": None}

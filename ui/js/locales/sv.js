@@ -2326,6 +2326,10 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "toast_open": "Beslutet ångrat",
     "toast_found": "Trolig omuppladdning: ”{title}” matchar ”{of}” – se biblioteket",
     "dl_notice": "Senaste nedladdningar som troligen är omuppladdningar av set du redan har ({n}):",
-    "review": "Granska i biblioteket"
+    "review": "Granska i biblioteket",
+    "adopt": "Originalet saknas – behåll den här kopian",
+    "toast_adopt": "Den här kopian ersätter nu det saknade originalet",
+    "original_missing_head": "Originalfilen saknas – den här kopian är den sista och kan inte raderas här",
+    "original_unknown_head": "Målmappen kan inte nås – originalet kan inte kontrolleras"
   }
 });

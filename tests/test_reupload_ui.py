@@ -182,6 +182,24 @@ def test_reupload_filter_show_original_and_delete_new(page):  # noqa: F811
     page.wait_for_selector("#lib-reup[hidden]", state="attached")
 
 
+def test_reupload_original_missing_blocks_delete_and_offers_adopt(page):  # noqa: F811
+    """M1: with the original file missing «Delete this newer file» is disabled; the menu
+    explains why and offers «keep this copy» (adopt), which drops the missing original."""
+    page.evaluate(f"HC.mock.demo.reuploadOriginal({REUP!r}, 'missing')")
+    _library(page)
+    page.click(f'#lib-body tr[data-id="{REUP}"] .ru-tag')
+    page.wait_for_selector('.menu [data-k="ru-adopt"]')
+    assert page.is_disabled('.menu [data-k="ru-del"]')
+    assert "original file is missing" in page.inner_text(".menu").lower()
+    page.click('.menu [data-k="ru-adopt"]')
+    page.wait_for_function(
+        'id => !document.querySelector(`#lib-body tr[data-id="${id}"] .ru-tag`)', arg=REUP
+    )
+    assert _calls(page, "resolve_reupload") == [[REUP, "adopt"]]
+    page.wait_for_function("!document.querySelector('#lib-body tr[data-id=\"eEuph0ric26\"]')")
+    page.evaluate(f"HC.mock.demo.reuploadOriginal({REUP!r}, 'unknown')")  # no mark left: no-op
+
+
 def test_downloads_notice_links_to_library_filter(page):  # noqa: F811
     page.evaluate(SPY)
     page.click('.nav-item[data-view="downloads"]')

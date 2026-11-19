@@ -804,11 +804,16 @@ solange die Lautheitsanalyse dekodiert) – nie im pywebview-Callback-Thread.
 | `fingerprint_library(opts?)` | `{scope: "new" (Standard) \| "all"}` | `{ok:true, started:true, scope}` \| `{ok:true, started:false, running:true}` \| `{ok:false, error}` (aus, kein ffmpeg). Fortschritt `fingerprint`, Treffer `reupload` (mit `pass:true`) |
 | `cancel_fingerprint_library()` | | `{ok:true, running}` – bricht auch das laufende ffmpeg ab (nichts gespeichert) |
 | `get_reuploads(opts?)` | `{state: "open" (Standard) \| "all"}` | `{ok:true, items:[{id, title, platform, channel, file_path, downloaded_at, reupload: Reupload}]}` – nur Einträge in der Bibliothek, neueste zuerst |
-| `resolve_reupload(id, action)` | `action`: `"keep"` (beide behalten, Markierung weg) \| `"link"` (gleicher Mix, verknüpft) \| `"delete_new"` (diese neuere Datei löschen, Eintrag → `ignored`, wie `delete_library_item`) \| `"open"` (Entscheid rückgängig) | `{ok:true, id, state, reupload}` \| `{ok:true}` (delete_new) \| `{ok:false, error}` (nicht markiert, unbekannte Aktion) |
+| `resolve_reupload(id, action)` | `action`: `"keep"` (beide behalten, Markierung weg) \| `"link"` (gleicher Mix, verknüpft) \| `"delete_new"` (diese neuere Datei löschen, Eintrag → `ignored`, wie `delete_library_item`; **nur wenn `of.present = "ok"`**) \| `"adopt"` (Original fehlt: diese Kopie ersetzt es; nur wenn `of.present` `"missing"`/`"gone"`; ein `missing`-Original wird aus der Bibliothek genommen, Event `video` `ignored`) \| `"open"` (Entscheid rückgängig) | `{ok:true, id, state, reupload}` \| `{ok:true, deleted, archive_removed?}` (delete_new) \| `{ok:true, id, removed: id\|null, reupload:null}` (adopt) \| `{ok:false, error, original?}` (nicht markiert, unbekannte Aktion, Original fehlt/unbekannt bzw. noch da) |
 
 **Datenformen**
 
-- `Reupload` = `{of: {id, title, platform, channel, in_library}, score (0..1), offset_s, state: "open"|"kept"|"linked"}`
+- `Reupload` = `{of: {id, title, platform, channel, in_library, present}, score (0..1), offset_s, state: "open"|"kept"|"linked"}`
+  – `present` (Review v0.10.0 M1, in `get_library`/`get_reuploads`): `"ok"` (Original in der Bibliothek, Datei da
+  und lesbar), `"missing"` (Eintrag da, Datei fehlt), `"gone"` (nicht mehr in der Bibliothek), `"unknown"`
+  (Zielordner nicht erreichbar). «Neuere Datei löschen» nur bei `"ok"`; sonst bietet die UI `adopt` an.
+  Verschwindet das Original trotzdem während des Löschens, wird die Archivzeile der gelöschten Kopie entfernt
+  (`archive_removed`), damit sie wieder geladen werden kann.
   – `of` = der ältere Bibliotheks-Eintrag (früherer `downloaded_at`), markiert ist immer der neuere;
   `offset_s` = Zeitversatz des Audios (positiv: der neue beginnt später, z.B. längeres Intro).
 - `LibraryItem.reupload`: `Reupload | null`; `get_library({reupload: true})` = nur offene Markierungen.
@@ -825,7 +830,7 @@ solange die Lautheitsanalyse dekodiert) – nie im pywebview-Callback-Thread.
 **Events**
 
 - `fingerprint` = `{phase: "start"|"progress"|"done"|"error", scope, done?, total?, found?, failed?, cancelled?, error?}`.
-- `reupload` = `{id, reupload: Reupload | null, deleted?, pass?}` – neue Markierung (nach Download oder im Durchlauf,
+- `reupload` = `{id, reupload: Reupload | null, deleted?, adopted?, pass?}` – neue Markierung (nach Download oder im Durchlauf,
   dann `pass:true`: die UI zeigt keinen Toast pro Treffer), Entscheid (`keep`/`link`/`open`) oder gelöscht.
 
 **Ablauf.** `Api._after_download(id)` → `FingerprintQueue.request(id)` (mit `reupload.enabled` und

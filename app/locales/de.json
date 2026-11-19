@@ -675,7 +675,10 @@
   "reupload": {
     "off": "Re-Upload-Erkennung ist ausgeschaltet (Einstellungen › Re-Uploads)",
     "not_marked": "Dieses Set ist nicht als Re-Upload markiert",
-    "bad_action": "Unbekannte Aktion (erlaubt: keep, link, delete_new, open)",
+    "bad_action": "Unbekannte Aktion (erlaubt: keep, link, delete_new, adopt, open)",
+    "original_missing": "Die Originaldatei fehlt – diese Kopie ist die letzte und wurde nicht gelöscht. Stattdessen «Original fehlt – diese Kopie behalten» wählen.",
+    "original_unknown": "Der Zielordner ist nicht erreichbar – das Original kann nicht geprüft werden, nichts wurde gelöscht",
+    "original_present": "Die Originaldatei ist noch da – nichts zu ersetzen",
     "no_audio": "Kein verwertbares Audio für einen Fingerabdruck (Stille oder zu kurz)",
     "found": "Vermutlich Re-Upload: «{title}» entspricht «{of}» ({score} %)",
     "item_failed": "Fingerabdruck von {id} fehlgeschlagen: {error}",

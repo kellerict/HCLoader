@@ -2370,6 +2370,10 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "toast_open": "Lēmums atsaukts",
     "toast_found": "Iespējama atkārtota augšupielāde: “{title}” atbilst “{of}” – skatiet bibliotēku",
     "dl_notice": "Nesenās lejupielādes, kas, iespējams, ir jau esošu setu atkārtotas augšupielādes ({n}):",
-    "review": "Pārskatīt bibliotēkā"
+    "review": "Pārskatīt bibliotēkā",
+    "adopt": "Oriģināls trūkst – paturēt šo kopiju",
+    "toast_adopt": "Šī kopija tagad aizstāj trūkstošo oriģinālu",
+    "original_missing_head": "Oriģinālais fails trūkst – šī kopija ir pēdējā, un to šeit nevar dzēst",
+    "original_unknown_head": "Mērķa mape nav pieejama – oriģinālu nevar pārbaudīt"
   }
 });

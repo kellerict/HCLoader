@@ -675,7 +675,9 @@
   "reupload": {
     "off": "Gjenkjenning av omopplastinger er slått av (Innstillinger › Omopplastinger)",
     "not_marked": "Dette settet er ikke merket som omopplasting",
-    "bad_action": "Ukjent handling (tillatt: keep, link, delete_new, open)",
+    "bad_action": "Ukjent handling (tillatt: keep, link, delete_new, adopt, open)",
+    "original_missing": "Originalfilen mangler – denne kopien er den siste og kan ikke slettes her",
+    "original_unknown": "Målmappen er ikke tilgjengelig – originalen kan ikke kontrolleres",
     "no_audio": "Ingen brukbar lyd for et fingeravtrykk (stillhet eller for kort)",
     "found": "Trolig omopplasting: «{title}» samsvarer med «{of}» ({score} %)",
     "item_failed": "Fingeravtrykk for {id} mislyktes: {error}",

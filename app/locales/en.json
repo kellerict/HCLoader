@@ -675,7 +675,10 @@
   "reupload": {
     "off": "Re-upload detection is turned off (Settings › Re-uploads)",
     "not_marked": "This set is not marked as a re-upload",
-    "bad_action": "Unknown action (allowed: keep, link, delete_new, open)",
+    "bad_action": "Unknown action (allowed: keep, link, delete_new, adopt, open)",
+    "original_missing": "The original file is missing – this copy is the last one and was not deleted. Use “Original missing – keep this copy” instead.",
+    "original_unknown": "The target folder is not reachable – the original cannot be checked, nothing was deleted",
+    "original_present": "The original file is still there – nothing to replace",
     "no_audio": "No usable audio for a fingerprint (silence or too short)",
     "found": "Probable re-upload: “{title}” matches “{of}” ({score} %)",
     "item_failed": "Fingerprint of {id} failed: {error}",

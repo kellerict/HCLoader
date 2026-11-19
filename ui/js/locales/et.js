@@ -2326,6 +2326,10 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "toast_open": "Otsus võeti tagasi",
     "toast_found": "Tõenäoliselt uuesti üles laaditud: „{title}“ vastab setile „{of}“ – vaata kogu",
     "dl_notice": "Hiljutised allalaadimised, mis on tõenäoliselt juba olemasolevate settide uuesti üleslaadimised ({n}):",
-    "review": "Vaata kogus üle"
+    "review": "Vaata kogus üle",
+    "adopt": "Originaal puudub – hoia see koopia alles",
+    "toast_adopt": "See koopia asendab nüüd puuduvat originaali",
+    "original_missing_head": "Originaalfail puudub – see koopia on viimane ja seda ei saa siin kustutada",
+    "original_unknown_head": "Sihtkaust pole kättesaadav – originaali ei saa kontrollida"
   }
 });

@@ -582,7 +582,7 @@
   const otherLib = (v, dlDays, kbps, ext, platform) => Object.assign(scLib(v, dlDays, kbps), {
     platform, file_path: `${TARGET}\${v.genre}\${v.channel_name}\${v.upload_date.slice(0, 4)}\${v.upload_date} - ${v.title} [${v.id.replace(':', '-')}].${ext}`,
   });
-  const ruOf = (id, score, state) => { const o = LIBRARY.find((x) => x.id === id); return { of: { id, title: o.title, platform: o.platform, channel: o.artist, in_library: true }, score, offset_s: 3.4, state }; };
+  const ruOf = (id, score, state) => { const o = LIBRARY.find((x) => x.id === id); return { of: { id, title: o.title, platform: o.platform, channel: o.artist, in_library: true, present: 'ok' }, score, offset_s: 3.4, state }; };
   const mcReup = byId('mc:rawstyle_radio_euphoric-yearmix-2026-reupload');
   mcReup.status = 'done';
   LIBRARY.splice(0, 0, Object.assign(otherLib(mcReup, 0, 128, 'm4a', 'mixcloud'), { reupload: ruOf('eEuph0ric26', 0.47, 'open') }));
@@ -2392,6 +2392,16 @@
       return later(80, () => {
         const l = LIBRARY.find((x) => x.id === id);
         if (!l || !l.reupload) return { ok: false, error: 'This set is not marked as a re-upload' };
+        const present = l.reupload.of.present || 'ok';
+        if (action === 'delete_new' && present !== 'ok') return { ok: false, error: 'The original file is missing – this copy is the last one and was not deleted.', original: present };
+        if (action === 'adopt') {
+          if (present === 'ok') return { ok: false, error: 'The original file is still there – nothing to replace', original: present };
+          const removed = present === 'missing' ? l.reupload.of.id : null;
+          if (removed) { LIBRARY = LIBRARY.filter((x) => x.id !== removed); emit('video', { id: removed, status: 'ignored', genre: null }); }
+          l.reupload = null;
+          emit('reupload', { id, reupload: null, adopted: true });
+          return { ok: true, id, removed, reupload: null };
+        }
         if (action === 'delete_new') {
           LIBRARY = LIBRARY.filter((x) => x !== l);
           const v = byId(id);
@@ -2402,7 +2412,7 @@
           return { ok: true };
         }
         const st = { keep: 'kept', link: 'linked', open: 'open' }[action];
-        if (!st) return { ok: false, error: 'Unknown action (allowed: keep, link, delete_new, open)' };
+        if (!st) return { ok: false, error: 'Unknown action (allowed: keep, link, delete_new, adopt, open)' };
         l.reupload.state = st;
         emit('reupload', { id, reupload: clone(l.reupload) });
         return { ok: true, id, state: st, reupload: clone(l.reupload) };
@@ -3115,6 +3125,11 @@
         if (state === 'error') base.error = 'Checksum mismatch (HCLoader-0.3.0.zip)';
         Object.assign(base, skipped ? { releases: UPD_RELEASES, published: UPD_RELEASES[0].published } : { releases: null, published: null });
         updSet(Object.assign(base, { state: state || 'idle' }));
+      },
+      /** Re-Upload: Zustand des Originals erzwingen ("ok"|"missing"|"gone"|"unknown"; Review v0.10.0 M1). */
+      reuploadOriginal(id, present) {
+        const l = LIBRARY.find((x) => x.id === id);
+        if (l && l.reupload) l.reupload.of.present = present;
       },
       /** Backoff einer Plattform auslösen (platform: "youtube" (Standard) | "soundcloud"). */
       backoff(hours, platform) {

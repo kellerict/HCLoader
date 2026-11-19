@@ -674,7 +674,9 @@
   "reupload": {
     "off": "A detecção de reenvios está desativada (Configurações › Reenvios)",
     "not_marked": "Este set não está marcado como reenvio",
-    "bad_action": "Ação desconhecida (permitidas: keep, link, delete_new, open)",
+    "bad_action": "Ação desconhecida (permitidas: keep, link, delete_new, adopt, open)",
+    "original_missing": "O ficheiro original está em falta – esta cópia é a última e não pode ser apagada aqui",
+    "original_unknown": "Pasta de destino inacessível – não é possível verificar o original",
     "no_audio": "Nenhum áudio utilizável para uma impressão digital (silêncio ou curto demais)",
     "found": "Provável reenvio: “{title}” corresponde a “{of}” ({score} %)",
     "item_failed": "Falha na impressão digital de {id}: {error}",

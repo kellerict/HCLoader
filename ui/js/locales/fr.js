@@ -2326,6 +2326,10 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
     "toast_open": "Décision annulée",
     "toast_found": "Re-upload probable : « {title} » correspond à « {of} » – voir la bibliothèque",
     "dl_notice": "Téléchargements récents qui sont probablement des re-uploads de sets que vous avez déjà ({n}) :",
-    "review": "Vérifier dans la bibliothèque"
+    "review": "Vérifier dans la bibliothèque",
+    "adopt": "Original manquant – garder cette copie",
+    "toast_adopt": "Cette copie remplace désormais l’original manquant",
+    "original_missing_head": "Le fichier original est manquant – cette copie est la dernière et ne peut pas être supprimée ici",
+    "original_unknown_head": "Dossier cible inaccessible – impossible de vérifier l’original"
   }
 });

@@ -2414,6 +2414,10 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "toast_open": "Sprendimas atšauktas",
     "toast_found": "Tikėtinas pakartotinis įkėlimas: „{title}“ atitinka „{of}“ – žr. biblioteką",
     "dl_notice": "Naujausi atsisiuntimai, kurie tikriausiai yra jau turimų setų pakartotiniai įkėlimai ({n}):",
-    "review": "Peržiūrėti bibliotekoje"
+    "review": "Peržiūrėti bibliotekoje",
+    "adopt": "Originalo nėra – palikti šią kopiją",
+    "toast_adopt": "Ši kopija dabar pakeičia trūkstamą originalą",
+    "original_missing_head": "Originalaus failo nėra – ši kopija yra paskutinė ir jos čia ištrinti negalima",
+    "original_unknown_head": "Paskirties aplankas nepasiekiamas – originalo patikrinti negalima"
   }
 });

@@ -664,7 +664,9 @@
   "reupload": {
     "off": "Deteksi unggahan ulang dinonaktifkan (Pengaturan › Unggahan ulang)",
     "not_marked": "Set ini tidak ditandai sebagai unggahan ulang",
-    "bad_action": "Tindakan tidak dikenal (diizinkan: keep, link, delete_new, open)",
+    "bad_action": "Tindakan tidak dikenal (diizinkan: keep, link, delete_new, adopt, open)",
+    "original_missing": "File asli hilang – salinan ini yang terakhir dan tidak dapat dihapus di sini",
+    "original_unknown": "Folder tujuan tidak dapat dijangkau – file asli tidak dapat diperiksa",
     "no_audio": "Tidak ada audio yang bisa dipakai untuk sidik jari (sunyi atau terlalu pendek)",
     "found": "Kemungkinan unggahan ulang: “{title}” cocok dengan “{of}” ({score} %)",
     "item_failed": "Sidik jari {id} gagal: {error}",

@@ -665,6 +665,8 @@
     "off": "重复上传检测已关闭（设置 › 重复上传）",
     "not_marked": "此 Set 未被标记为重复上传",
     "bad_action": "未知操作（允许：keep、link、delete_new、open）",
+    "original_missing": "原文件缺失 – 这是最后一个副本，无法在此删除",
+    "original_unknown": "目标文件夹无法访问 – 无法检查原文件",
     "no_audio": "没有可用于指纹的音频（静音或过短）",
     "found": "可能是重复上传：“{title}”与“{of}”匹配（{score}%）",
     "item_failed": "{id} 的指纹失败：{error}",

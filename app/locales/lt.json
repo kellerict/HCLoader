@@ -697,7 +697,9 @@
   "reupload": {
     "off": "Pakartotinių įkėlimų atpažinimas išjungtas (Nustatymai › Pakartotiniai įkėlimai)",
     "not_marked": "Šis setas nepažymėtas kaip pakartotinis įkėlimas",
-    "bad_action": "Nežinomas veiksmas (leidžiama: keep, link, delete_new, open)",
+    "bad_action": "Nežinomas veiksmas (leidžiama: keep, link, delete_new, adopt, open)",
+    "original_missing": "Originalaus failo nėra – ši kopija yra paskutinė ir jos čia ištrinti negalima",
+    "original_unknown": "Paskirties aplankas nepasiekiamas – originalo patikrinti negalima",
     "no_audio": "Nėra tinkamo garso piršto atspaudui (tyla arba per trumpa)",
     "found": "Tikėtinas pakartotinis įkėlimas: „{title}“ atitinka „{of}“ ({score} %)",
     "item_failed": "{id} piršto atspaudas nepavyko: {error}",

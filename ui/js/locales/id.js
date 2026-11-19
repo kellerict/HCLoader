@@ -2282,6 +2282,10 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "toast_open": "Keputusan dibatalkan",
     "toast_found": "Kemungkinan unggahan ulang: “{title}” cocok dengan “{of}” – lihat pustaka",
     "dl_notice": "Unduhan terbaru yang kemungkinan unggahan ulang dari set yang sudah Anda miliki ({n}):",
-    "review": "Tinjau di pustaka"
+    "review": "Tinjau di pustaka",
+    "adopt": "Asli hilang – simpan salinan ini",
+    "toast_adopt": "Salinan ini sekarang menggantikan file asli yang hilang",
+    "original_missing_head": "File asli hilang – salinan ini yang terakhir dan tidak dapat dihapus di sini",
+    "original_unknown_head": "Folder tujuan tidak dapat dijangkau – file asli tidak dapat diperiksa"
   }
 });

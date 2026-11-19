@@ -530,6 +530,9 @@
     if (!r) return;
     const vars = { title: r.of.title || r.of.id, p: HC.platform.label(r.of.platform), score: Math.round((r.score || 0) * 100) };
     const open = r.state === 'open';
+    /* present: ok | missing | gone | unknown (Backend); ältere Antworten ohne Feld -> in_library */
+    const present = r.of.present || (r.of.in_library ? 'ok' : 'gone');
+    const lost = present !== 'ok';
     ui.menu(anchor, [
       { head: t(open ? 'reupload.menu_head' : 'reupload.menu_head_linked', vars) },
       ...(open ? [
@@ -538,15 +541,22 @@
       ] : [{ label: t('reupload.undo'), icon: I.retry, key: 'ru-open', onClick: () => resolveReup(l, 'open') }]),
       { label: t('reupload.show_original'), icon: I.search, key: 'ru-show', disabled: !r.of.in_library, onClick: () => showOriginal(r.of) },
       'sep',
-      { label: t('reupload.delete_new'), icon: I.trash, danger: true, key: 'ru-del', disabled: !!(l.unknown || busy.has(l.id)), onClick: () => deleteNew(l) },
+      /* M1: löschen nur, solange das Original als Datei da ist; sonst diese Kopie behalten (adopt). */
+      ...(lost ? [
+        { head: t(present === 'unknown' ? 'reupload.original_unknown_head' : 'reupload.original_missing_head') },
+        ...(present === 'unknown' ? [] : [{ label: t('reupload.adopt'), icon: I.check, key: 'ru-adopt', disabled: busy.has(l.id), onClick: () => resolveReup(l, 'adopt') }]),
+      ] : []),
+      { label: t('reupload.delete_new'), icon: I.trash, danger: true, key: 'ru-del', disabled: !!(lost || l.unknown || busy.has(l.id)), onClick: () => deleteNew(l) },
     ]);
   }
   async function resolveReup(l, action) {
     const r = await HC.bridge.safe('resolve_reupload', l.id, action);
     if (!r || !r.ok) return fail(r);
     l.reupload = r.reupload || null;
+    const dropped = action === 'adopt' && r.removed;
+    if (dropped) { items = items.filter((x) => x.id !== r.removed); fillSelects(); }
     renderStats(false);
-    if (!repaint(l, true) || onlyReup) render();
+    if (dropped || !repaint(l, true) || onlyReup) render();
     ui.toast(t('reupload.toast_' + action), 'ok');
   }
   async function deleteNew(l) {

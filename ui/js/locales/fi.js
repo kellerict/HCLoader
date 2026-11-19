@@ -2326,6 +2326,10 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "toast_open": "Päätös peruttu",
     "toast_found": "Todennäköinen uudelleenlataus: ”{title}” vastaa settiä ”{of}” – katso kirjasto",
     "dl_notice": "Viimeaikaiset lataukset, jotka ovat todennäköisesti uudelleenlatauksia jo omistamistasi seteistä ({n}):",
-    "review": "Tarkista kirjastossa"
+    "review": "Tarkista kirjastossa",
+    "adopt": "Alkuperäinen puuttuu – säilytä tämä kopio",
+    "toast_adopt": "Tämä kopio korvaa nyt puuttuvan alkuperäisen",
+    "original_missing_head": "Alkuperäinen tiedosto puuttuu – tämä kopio on viimeinen eikä sitä voi poistaa täällä",
+    "original_unknown_head": "Kohdekansio ei ole saatavilla – alkuperäistä ei voi tarkistaa"
   }
 });

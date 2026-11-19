@@ -2326,6 +2326,10 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "toast_open": "Decision undone",
     "toast_found": "Probable re-upload: “{title}” matches “{of}” – see Library",
     "dl_notice": "Recent downloads that are probably re-uploads of sets you already have ({n}):",
-    "review": "Review in the library"
+    "review": "Review in the library",
+    "adopt": "Original missing – keep this copy",
+    "toast_adopt": "This copy now replaces the missing original",
+    "original_missing_head": "The original file is missing – this copy is the last one and cannot be deleted here",
+    "original_unknown_head": "Target folder not reachable – the original cannot be checked"
   }
 });

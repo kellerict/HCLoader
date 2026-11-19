@@ -2326,6 +2326,10 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "toast_open": "Beslissing ongedaan gemaakt",
     "toast_found": "Waarschijnlijk herupload: ‘{title}’ komt overeen met ‘{of}’ – zie bibliotheek",
     "dl_notice": "Recente downloads die waarschijnlijk heruploads zijn van sets die je al hebt ({n}):",
-    "review": "Bekijken in de bibliotheek"
+    "review": "Bekijken in de bibliotheek",
+    "adopt": "Origineel ontbreekt – deze kopie houden",
+    "toast_adopt": "Deze kopie vervangt nu het ontbrekende origineel",
+    "original_missing_head": "Het originele bestand ontbreekt – deze kopie is de laatste en kan hier niet worden verwijderd",
+    "original_unknown_head": "Doelmap niet bereikbaar – het origineel kan niet worden gecontroleerd"
   }
 });

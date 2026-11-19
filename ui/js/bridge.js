@@ -281,9 +281,12 @@
      cancel_fingerprint_library()       -> {ok, running}
      get_reuploads(opts?)               -> {ok, items:[{id, title, platform, channel, file_path, downloaded_at,
                                             reupload: Reupload}]}   opts {state:"open" (Standard) | "all"}
-     resolve_reupload(id, action)       -> {ok, id, state, reupload} | {ok:false, error}
+     resolve_reupload(id, action)       -> {ok, id, state, reupload} | {ok, id, removed, reupload:null} (adopt)
+                                           | {ok:false, error, original?}
                                            action "keep" (beide behalten) | "link" (gleicher Mix, verknüpft) |
-                                           "delete_new" (diese neuere Datei löschen, Eintrag -> ignored) | "open" (rückgängig)
+                                           "delete_new" (diese neuere Datei löschen, Eintrag -> ignored; nur wenn
+                                           of.present = "ok") | "adopt" (Original fehlt: diese Kopie ersetzt es;
+                                           nur wenn of.present = "missing"|"gone") | "open" (rückgängig)
 
    Festival-Sammler (v0.5.0; Vertrag, Datenformen, Events: docs/bridge-api.md «Festival collector»)
      get_collector_editions()           -> [CollectorEdition]   Ausgaben mit Checkliste (offline)
@@ -373,7 +376,9 @@
                   v0.3.0: festival (Festival|null), festival_suggestion (Festival ohne manual|null).
                   v0.10.0: reupload (Reupload|null) – «Vermutlich Re-Upload von X»; Filter get_library({reupload:true})
                   = nur offene Markierungen.
-     Reupload    {of: {id, title, platform, channel, in_library}, score (0..1), offset_s, state: "open"|"kept"|"linked"}
+     Reupload    {of: {id, title, platform, channel, in_library, present}, score (0..1), offset_s, state: "open"|"kept"|"linked"}
+                 present: "ok" (Datei da + lesbar) | "missing" (Eintrag da, Datei fehlt) | "gone" (nicht mehr in der
+                 Bibliothek) | "unknown" (Zielordner nicht erreichbar)
                   Festival-Badge (js/festivals.js): Klick -> Formular -> set_festival(id, data), danach retag(id)
                   (bei missing/unknown nur set_festival). Vorschlag: gestrichelt, «Übernehmen» = set_festival
                   mit {edition_id, stage, set_type, episode}. Die Bibliothek gruppiert selbst aus `festival`
@@ -462,7 +467,7 @@
      waveform        {id, ok, peaks?, duration?, loudness?, error?}   v0.7.0 angeforderte Wellenform ist fertig
      fingerprint     {phase, scope, done?, total?, found?, failed?, cancelled?, error?}
                      phase: "start"|"progress"|"done"|"error" (v0.10.0, «Bibliothek abgleichen»)
-     reupload        {id, reupload: Reupload|null, deleted?, pass?}   v0.10.0 Markierung neu/geändert/aufgelöst
+     reupload        {id, reupload: Reupload|null, deleted?, adopted?, pass?}   v0.10.0 Markierung neu/geändert/aufgelöst
                      (pass: true = Treffer des Bibliotheks-Abgleichs, die UI zeigt dafür keinen Toast)
      playlists_synced {synced, failed}                 v0.8.0 gespeicherte Playlists nach Downloads neu geschrieben
      stats_sizes     {phase: "progress"|"done", done, total, missing?}   v0.9.0 Dateigrössen werden gemessen

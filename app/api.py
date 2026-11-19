@@ -1885,12 +1885,10 @@ class Api:
         self._lib_status = {"target_ok": ok, "target": str(root)}
         f = filters if isinstance(filters, dict) else None
         items = library.list_library(self._db, f, root=root, root_ok=ok)
-        marks = fingerprint.reupload_map(self._db)  # v0.10.0: «probable re-upload of X»
-        for it in items:
-            it["reupload"] = marks.get(it["id"])
-        if f and f.get("reupload"):
-            items = [it for it in items if it["reupload"] and it["reupload"]["state"] == "open"]
-        return items
+        # v0.10.0: «probable re-upload of X» (+ state of the original, review M1)
+        return library.annotate_reuploads(
+            self._db, items, root, ok, only_open=bool(f and f.get("reupload"))
+        )
 
     def get_library_status(self) -> dict[str, Any]:
         """{target_ok, target}: result of the last `get_library` check (fresh check if none yet)."""
@@ -1939,12 +1937,16 @@ class Api:
         """Datei + CUE (+ leere Ordner) löschen, Eintrag auf `ignored`. Bestätigung: UI."""
         res = library.delete_item(self._db, self._cfg, str(video_id), delete_file=bool(delete_file))
         if res.get("ok"):
-            analysis.forget(self._db, str(video_id))  # v0.7.0: measurement + waveform cache
-            playback.forget(self._db, str(video_id))
-            fingerprint.forget(self._db, str(video_id))  # v0.10.0: fingerprint + marks
-            self._bus.emit("video", {"id": str(video_id), "status": "ignored", "genre": None})
-            self._push()
+            self._forget_item(str(video_id))
         return res
+
+    def _forget_item(self, video_id: str) -> None:
+        """A library item left the library: caches, fingerprint, marks; tell the UI."""
+        analysis.forget(self._db, video_id)  # v0.7.0: measurement + waveform cache
+        playback.forget(self._db, video_id)
+        fingerprint.forget(self._db, video_id)  # v0.10.0: fingerprint + marks
+        self._bus.emit("video", {"id": video_id, "status": "ignored", "genre": None})
+        self._push()
 
     # ================================================================== festivals & series (v0.3.0)
 
@@ -2326,38 +2328,27 @@ class Api:
         """Marked items: [{id, title, platform, channel, file_path, downloaded_at, reupload}].
         opts {state: "open" (default) | "all"}."""
         o = opts if isinstance(opts, dict) else {}
-        marks = fingerprint.reupload_map(self._db)
-        items = []
-        for vid, mark in marks.items():
-            if o.get("state", "open") != "all" and mark["state"] != "open":
-                continue
-            row = self._db.get_video(vid) or {}
-            if row.get("status") != "done":
-                continue
-            items.append(
-                {
-                    "id": vid,
-                    "title": row.get("title") or "",
-                    "platform": row.get("platform") or platforms.platform_of(vid),
-                    "channel": row.get("channel_name") or "",
-                    "file_path": row.get("file_path"),
-                    "downloaded_at": row.get("downloaded_at"),
-                    "reupload": mark,
-                }
-            )
-        items.sort(key=lambda x: str(x.get("downloaded_at") or ""), reverse=True)
+        state = "all" if o.get("state") == "all" else "open"
+        items = library.list_reuploads(self._db, self._cfg.target_dir_path(), state=state)
         return {"ok": True, "items": items}
 
     def resolve_reupload(self, video_id: str, action: str) -> dict[str, Any]:
         """Decision on «probable re-upload»: keep (keep both) | link (same mix, linked) |
-        delete_new (delete this newer file, entry -> ignored) | open (undo keep/link)."""
+        delete_new (delete this newer file, entry -> ignored; only while the original file is
+        present) | adopt (original missing: this copy replaces it) | open (undo keep/link)."""
         vid = str(video_id or "")
         if action == "delete_new":
-            if not fingerprint.info_of(self._db, vid):
-                return {"ok": False, "error": tr("reupload.not_marked")}
-            res = self.delete_library_item(vid, True)
+            res = library.delete_reupload(self._db, self._cfg, vid)
             if res.get("ok"):
+                self._forget_item(vid)
                 self._bus.emit("reupload", {"id": vid, "reupload": None, "deleted": True})
+            return res
+        if action == "adopt":
+            res = library.adopt_reupload(self._db, self._cfg, vid)
+            if res.get("ok"):
+                if res.get("removed"):
+                    self._forget_item(res["removed"])
+                self._bus.emit("reupload", {"id": vid, "reupload": None, "adopted": True})
             return res
         res = fingerprint.resolve(self._db, vid, str(action or ""))
         if res.get("ok"):

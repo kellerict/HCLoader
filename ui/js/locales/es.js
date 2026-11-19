@@ -2326,6 +2326,10 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
     "toast_open": "Decisión deshecha",
     "toast_found": "Probable resubida: «{title}» coincide con «{of}»; mira la biblioteca",
     "dl_notice": "Descargas recientes que probablemente son resubidas de sets que ya tienes ({n}):",
-    "review": "Revisar en la biblioteca"
+    "review": "Revisar en la biblioteca",
+    "adopt": "Falta el original – conservar esta copia",
+    "toast_adopt": "Esta copia sustituye ahora al original que falta",
+    "original_missing_head": "Falta el archivo original – esta copia es la última y no se puede borrar aquí",
+    "original_unknown_head": "Carpeta de destino no accesible – no se puede comprobar el original"
   }
 });

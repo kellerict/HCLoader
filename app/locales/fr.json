@@ -674,7 +674,9 @@
   "reupload": {
     "off": "La détection des re-uploads est désactivée (Paramètres › Re-uploads)",
     "not_marked": "Ce set n’est pas marqué comme re-upload",
-    "bad_action": "Action inconnue (autorisées : keep, link, delete_new, open)",
+    "bad_action": "Action inconnue (autorisées : keep, link, delete_new, adopt, open)",
+    "original_missing": "Le fichier original est manquant – cette copie est la dernière et ne peut pas être supprimée ici",
+    "original_unknown": "Dossier cible inaccessible – impossible de vérifier l’original",
     "no_audio": "Pas d’audio exploitable pour une empreinte (silence ou trop court)",
     "found": "Re-upload probable : « {title} » correspond à « {of} » ({score} %)",
     "item_failed": "Échec de l’empreinte de {id} : {error}",

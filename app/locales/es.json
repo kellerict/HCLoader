@@ -674,7 +674,9 @@
   "reupload": {
     "off": "La detección de resubidas está desactivada (Ajustes › Resubidas)",
     "not_marked": "Este set no está marcado como resubida",
-    "bad_action": "Acción desconocida (permitidas: keep, link, delete_new, open)",
+    "bad_action": "Acción desconocida (permitidas: keep, link, delete_new, adopt, open)",
+    "original_missing": "Falta el archivo original – esta copia es la última y no se puede borrar aquí",
+    "original_unknown": "Carpeta de destino no accesible – no se puede comprobar el original",
     "no_audio": "No hay audio útil para una huella (silencio o demasiado corto)",
     "found": "Probable resubida: «{title}» coincide con «{of}» ({score} %)",
     "item_failed": "Falló la huella de {id}: {error}",

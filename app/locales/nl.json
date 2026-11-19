@@ -675,7 +675,9 @@
   "reupload": {
     "off": "Herupload-detectie staat uit (Instellingen › Heruploads)",
     "not_marked": "Deze set is niet als herupload gemarkeerd",
-    "bad_action": "Onbekende actie (toegestaan: keep, link, delete_new, open)",
+    "bad_action": "Onbekende actie (toegestaan: keep, link, delete_new, adopt, open)",
+    "original_missing": "Het originele bestand ontbreekt – deze kopie is de laatste en kan hier niet worden verwijderd",
+    "original_unknown": "Doelmap niet bereikbaar – het origineel kan niet worden gecontroleerd",
     "no_audio": "Geen bruikbare audio voor een vingerafdruk (stilte of te kort)",
     "found": "Waarschijnlijk herupload: ‘{title}’ komt overeen met ‘{of}’ ({score} %)",
     "item_failed": "Vingerafdruk van {id} mislukt: {error}",

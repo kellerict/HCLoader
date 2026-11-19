@@ -2326,6 +2326,10 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "toast_open": "Beslutningen angret",
     "toast_found": "Trolig omopplasting: «{title}» samsvarer med «{of}» – se biblioteket",
     "dl_notice": "Nylige nedlastinger som trolig er omopplastinger av sett du allerede har ({n}):",
-    "review": "Se i biblioteket"
+    "review": "Se i biblioteket",
+    "adopt": "Originalen mangler – behold denne kopien",
+    "toast_adopt": "Denne kopien erstatter nå den manglende originalen",
+    "original_missing_head": "Originalfilen mangler – denne kopien er den siste og kan ikke slettes her",
+    "original_unknown_head": "Målmappen er ikke tilgjengelig – originalen kan ikke kontrolleres"
   }
 });

@@ -675,7 +675,9 @@
   "reupload": {
     "off": "Uudelleenlatausten tunnistus on pois päältä (Asetukset › Uudelleenlataukset)",
     "not_marked": "Tätä settiä ei ole merkitty uudelleenlataukseksi",
-    "bad_action": "Tuntematon toiminto (sallitut: keep, link, delete_new, open)",
+    "bad_action": "Tuntematon toiminto (sallitut: keep, link, delete_new, adopt, open)",
+    "original_missing": "Alkuperäinen tiedosto puuttuu – tämä kopio on viimeinen eikä sitä voi poistaa täällä",
+    "original_unknown": "Kohdekansio ei ole saatavilla – alkuperäistä ei voi tarkistaa",
     "no_audio": "Ei käyttökelpoista ääntä sormenjälkeen (hiljaisuus tai liian lyhyt)",
     "found": "Todennäköinen uudelleenlataus: ”{title}” vastaa settiä ”{of}” ({score} %)",
     "item_failed": "Kohteen {id} sormenjälki epäonnistui: {error}",

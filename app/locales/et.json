@@ -675,7 +675,9 @@
   "reupload": {
     "off": "Uuesti üleslaadimiste tuvastus on välja lülitatud (Seaded › Uuesti üleslaadimised)",
     "not_marked": "Seda setti pole märgitud uuesti üleslaadimiseks",
-    "bad_action": "Tundmatu toiming (lubatud: keep, link, delete_new, open)",
+    "bad_action": "Tundmatu toiming (lubatud: keep, link, delete_new, adopt, open)",
+    "original_missing": "Originaalfail puudub – see koopia on viimane ja seda ei saa siin kustutada",
+    "original_unknown": "Sihtkaust pole kättesaadav – originaali ei saa kontrollida",
     "no_audio": "Sõrmejälje jaoks pole kasutatavat heli (vaikus või liiga lühike)",
     "found": "Tõenäoliselt uuesti üles laaditud: „{title}“ vastab setile „{of}“ ({score} %)",
     "item_failed": "{id} sõrmejälg ebaõnnestus: {error}",

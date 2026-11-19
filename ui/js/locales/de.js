@@ -2326,6 +2326,10 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "toast_open": "Entscheid rückgängig gemacht",
     "toast_found": "Vermutlich Re-Upload: «{title}» entspricht «{of}» – siehe Bibliothek",
     "dl_notice": "Neue Downloads, die vermutlich Re-Uploads von Sets sind, die du schon hast ({n}):",
-    "review": "In der Bibliothek ansehen"
+    "review": "In der Bibliothek ansehen",
+    "adopt": "Original fehlt – diese Kopie behalten",
+    "toast_adopt": "Diese Kopie ersetzt jetzt das fehlende Original",
+    "original_missing_head": "Die Originaldatei fehlt – diese Kopie ist die letzte und kann hier nicht gelöscht werden",
+    "original_unknown_head": "Zielordner nicht erreichbar – das Original kann nicht geprüft werden"
   }
 });

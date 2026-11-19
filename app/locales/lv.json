@@ -686,7 +686,9 @@
   "reupload": {
     "off": "Atkārtotu augšupielāžu atpazīšana ir izslēgta (Iestatījumi › Atkārtotas augšupielādes)",
     "not_marked": "Šis sets nav atzīmēts kā atkārtota augšupielāde",
-    "bad_action": "Nezināma darbība (atļauts: keep, link, delete_new, open)",
+    "bad_action": "Nezināma darbība (atļauts: keep, link, delete_new, adopt, open)",
+    "original_missing": "Oriģinālais fails trūkst – šī kopija ir pēdējā, un to šeit nevar dzēst",
+    "original_unknown": "Mērķa mape nav pieejama – oriģinālu nevar pārbaudīt",
     "no_audio": "Nav izmantojama audio pirkstu nospiedumam (klusums vai pārāk īss)",
     "found": "Iespējama atkārtota augšupielāde: “{title}” atbilst “{of}” ({score} %)",
     "item_failed": "{id} pirkstu nospiedums neizdevās: {error}",

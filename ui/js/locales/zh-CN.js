@@ -2282,6 +2282,10 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "toast_open": "决定已撤销",
     "toast_found": "可能是重复上传：“{title}”与“{of}”匹配 – 请查看媒体库",
     "dl_notice": "最近的下载中可能是你已有 Set 的重复上传（{n}）：",
-    "review": "在媒体库中查看"
+    "review": "在媒体库中查看",
+    "adopt": "原文件缺失 – 保留此副本",
+    "toast_adopt": "此副本现已替代缺失的原文件",
+    "original_missing_head": "原文件缺失 – 这是最后一个副本，无法在此删除",
+    "original_unknown_head": "目标文件夹无法访问 – 无法检查原文件"
   }
 });
