@@ -80,6 +80,7 @@ _HTTP_403_RE = re.compile(r"http error 403", re.I)
 METADATA_WAIT_S = 60.0
 # Review Phase 4 m4: hard limit for reading a playlist from the end (`newest_last`); ~20 pages
 NEWEST_LAST_MAX = 2000
+MC_API_PREFIX = "https://api.mixcloud.com/"
 # SoundCloud: transcodings whose stream URL yt-dlp resolves (one API request each, see
 # `SoundcloudBaseIE._extract_info_dict`). Opus (64 kbps) is left out: never better than AAC 160
 # / MP3 128, and every extra transcoding costs a request.
@@ -2118,7 +2119,9 @@ def _extra_extractor_classes(platform: str) -> list[type]:
                             **mixcloud_meta(item),
                         )
                     nxt = ((data or {}).get("paging") or {}).get("next")
-                    url, params = (nxt if isinstance(nxt, str) else None), None
+                    # review v0.10.0 m2: follow only the Mixcloud API itself, else stop
+                    ok = isinstance(nxt, str) and nxt.startswith(MC_API_PREFIX)
+                    url, params = (nxt if ok else None), None
 
         out.append(HcMixcloudSearchIE)
         if problems:
@@ -2147,6 +2150,11 @@ def _extra_extractor_classes(platform: str) -> list[type]:
                     if head and isinstance(object_fields, str):
                         size = max(1, min(100, int(head)))
                         object_fields = object_fields.replace("(first: 100", f"(first: {size}", 1)
+                    elif window and window[0] == "tail":
+                        # review v0.10.0 m1: yt-dlp collects every page before the newest-last
+                        # handler sees one; stop one entry past NEWEST_LAST_MAX, so the handler
+                        # refuses the too long playlist without walking all of it
+                        head = NEWEST_LAST_MAX + 1
                     res = super()._call_api(object_type, object_fields, *args, **kw)  # type: ignore[misc]
                     if head and isinstance(res, dict):
                         try:

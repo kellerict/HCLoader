@@ -573,3 +573,34 @@ def test_id_tag_per_platform(tmp_path):
     tags = ID3(f)
     assert str(tags.getall("TXXX:MIXCLOUD_ID")[0].text[0]) == "DJ_Thera_x"
     assert not tags.getall("TXXX:YOUTUBE_ID")
+
+
+def test_mixcloud_search_follows_only_the_api_host(api, monkeypatch):
+    """Review v0.10.0 m2: a `paging.next` on another host or scheme ends the search."""
+    page = fixture("mixcloud_search")
+    for bad in (
+        "https://evil.example/search/?offset=2",
+        "http://api.mixcloud.com/search/?offset=2",
+        "https://api.mixcloud.com.evil.example/x?offset=2",
+    ):
+        api.clear()
+        data = {**page, "paging": {"next": bad}}
+        monkeypatch.setattr(
+            InfoExtractor,
+            "_download_json",
+            lambda self, url, vid, *a, _d=data, **kw: (api.append((url, kw.get("query"))), _d)[1],
+        )
+        info = _flat(
+            "mcsearch10:hardcore", "mixcloud", "search", ("head", 10), ie_key="HcMixcloudSearch"
+        )
+        assert len(api) == 1 and len(info["entries"]) == 2, bad  # one entry has no url
+
+
+def test_mixcloud_newest_last_listing_stops_past_the_cap(api, monkeypatch):
+    """Review v0.10.0 m1: a `newest_last` (tail) listing stops paging one entry past
+    NEWEST_LAST_MAX instead of walking the whole playlist."""
+    monkeypatch.setattr(ytclient, "NEWEST_LAST_MAX", 2)
+    url = ytclient.normalize_source_url("https://www.mixcloud.com/DJ_Thera/")
+    info = _flat(url, "mixcloud", "list", ("tail", 2))
+    assert len([c for c in api if "graphql" in c[0]]) == 1  # page 2 never requested
+    assert len(info["entries"]) >= 3
