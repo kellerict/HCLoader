@@ -125,7 +125,7 @@ Schlägt etwas fehl: Abschnitt 5 «Fehler melden».
 
 - Installer und Portable sind **nicht signiert**: SmartScreen-Warnung beim ersten Start.
 - Portable kann WebView2 nicht selbst installieren (nur Meldung mit Link); Fixed-Version-Runtime braucht `HCLOADER_SKIP_WEBVIEW2_CHECK=1`.
-- Timetable-Text-Import: Vorschau vor dem Import prüfen (Parser rät nie perfekt).
+- Timetable-Text-Import (Beta): Vorschau vor dem Import prüfen – häufige Formate klappen, exotische (Weiterleitungen, Zeitzonen, umgebrochene PDF-Zeilen) noch nicht immer.
 - Erster YouTube-Zugriff kann durch Bot-Check/429 gebremst werden; das ist gewollt (Backoff statt Wiederholung).
 - Neu taggen/Löschen einer Datei, die gerade analysiert/fingerprintet wird, kann einmalig scheitern; wiederholen.
 - Der Lautstärke-Fallback kann nur absenken, nicht anheben (wenn Web Audio stumm bleibt).
