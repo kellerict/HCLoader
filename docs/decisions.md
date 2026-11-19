@@ -1790,3 +1790,28 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
 - **Grund:** die letzte QA-Runde zeigte vier Familien von Fehlern; bei ≥ 95 % auf neuen Pastes entfällt
   das «Beta» im Dialog. Titel-Case nach einem Imperativ (`Save Me`) bleibt ein Name: lieber ein Artist zu
   viel in der bearbeitbaren Vorschau als ein Name, der im Block «nicht verstanden» verschwindet.
+
+
+## 2026-11-19 – Timetable-Parser: Info-Zeilen, App-Karten, Grossbuchstaben-Bereiche (v0.10.2, QA-Runde 2)
+
+- **Entscheid:** Nach 25/30 in der unabhängigen QA (`docs/qa/v0.10.2.md`) drei allgemeine Regeln statt
+  Sonderfälle: (1) ein Info-Lexikon EN/DE/NL/FR (entry/entrée/Einlass/toegang, doors/Türöffnung/deuren,
+  parking/Parkplatz, tickets/billets/Karten, sponsored/presented/powered, info, lockers, shuttle/navette,
+  Garderobe, 18+ …) mit Füllwörtern (free/gratis/gratuit/kostenlos, last/letzter/laatste/dernière,
+  before/avant/vor/voor …): eine Zeile, die mit einem Info-Nomen beginnt (danach Info-, Füll- oder
+  kleingeschriebene Wörter), mit «sponsored/presented/… by» beginnt oder zu ≥ 60 % aus Info-Wörtern
+  besteht, ist Info und landet in `skipped` – auch mit Uhrzeit (`Last entry 21:30`). Ein Name mit
+  Grossschreibung nach dem Info-Wort (`Age Of Love`, `Parking Lot Pimps`) bleibt ein Artist.
+  (2) App-Karten mit Bühne auf eigener Zeile: ein Vorlauf-Scan teilt die Zeilen in Zeit-, Kurz- und
+  Tageszeilen; hat jede Karte eines Blocks genau zwei zeitlose Zeilen und eine Zeitzeile (≥ 2 Karten),
+  ist die Bühnenzeile vor dem Namen (Muster 2/2/…/0) oder nach der Zeit (Muster 1/2/…/1); sie gilt nur,
+  wenn ihre Werte sich wiederholen (weniger verschiedene als Karten und Namen) oder alle bühnenartig sind.
+  (3) Eine kurze Grossbuchstaben-Zeile, auf die ≥ 2 gemischt geschriebene Namen folgen, ist eine
+  Überschrift, wenn das Muster in der Paste mindestens zweimal vorkommt oder sie direkt nach einer
+  Tagesüberschrift steht; ein einzelnes `B-FRONT` zwischen Namen bleibt ein Artist. Zusätzlich wird ein
+  generisches Bühnenwort vor einem Grossbuchstaben-/Farbnamen entfernt (`Bühne ROT` → `ROT`,
+  `Scène PURPLE` → `PURPLE`).
+- **Grund:** die drei Fehlerfamilien sind Layout- bzw. Wortschatzfragen, keine Einzelfälle; Wiederholung
+  des Layouts als Bedingung hält die Fehlklassifikation einzelner Namen klein. Die 30 QA-Pastes und 20
+  neue Pastes dieser Familien sind Regressionstests (`tests/test_timetable_corpus_qa.py`); «Beta» bleibt
+  entfernt.

@@ -12,11 +12,15 @@
   labelled lists (`FRIDAY: A, B`, `Line-up: A, B, C`), festival-app cards (name line, time line,
   also `MAINSTAGE · 22:00 - 23:00`), a stage in front of the sets of a line (`RED: 18:00 A,
   19:00 B`, `Bühne RED – 18:00 A · 19:00 B`, `[BLUE] 20:00 Angerfist`, `Mainstage 19:00 Name`;
-  only for that line), capital area names between mixed-case names (`UNDERGROUND`).
+  only for that line), capital area names between mixed-case names (`UNDERGROUND`, unknown ones
+  like `ENDSHOW` when the layout repeats or after a day heading), app cards with the stage on its
+  own line before the name or after the time (when the card layout repeats).
   Emoji/symbols and `**bold**` are removed first. Each line is scored (heading, free text,
   title, table cells, stage heading, time only, artist); free text (sentences, URLs, hashtags,
   «tickets», «doors open», UI/marketing lines like «Swipe for more», «Save the date», «Add to
-  favourites», imperatives), titles (also «SET TIMES», «Phase 1», a name with a year) and lines
+  favourites», imperatives), info lines also with a time («Last entry 21:30», «Parking info: see
+  website», «Sponsored by X», «Entrée gratuite avant 17h»; en/de/nl/fr lexicon), titles (also
+  «SET TIMES», «Phase 1», a name with a year) and lines
   without any letter or digit are reported in
   `skipped` (separators like `=====` are dropped), never a stage or an artist.
   Nothing is guessed from websites: the user pastes, the parser only splits
@@ -313,6 +317,20 @@ def _known_stage(text: str, names: dict[str, str]) -> str | None:
     if n.startswith("stage ") and n[6:] in names:
         return names[n[6:]]
     return None
+
+
+_STAGE_LEAD_WORD = re.compile(
+    r"^(?:stage|bühne|buhne|buehne|scène|scene|podium|area)\s+(?P<name>.+)$", re.I
+)
+
+
+def _stage_core(label: str) -> str:
+    """«Bühne ROT» / «Scène PURPLE» / «Stage BLUE» -> «ROT» / «PURPLE» / «BLUE»: the generic
+    stage word in front of a name in capitals or a colour is dropped; anything else is kept."""
+    m = _STAGE_LEAD_WORD.match(label)
+    if m and (_caps_label(m.group("name")) or _colour_label(m.group("name"))):
+        return _clean_stage(m.group("name")) or label
+    return label
 
 
 def _clean_stage(text: str) -> str:
@@ -944,12 +962,86 @@ _LABEL_LIST = re.compile(r"^(?P<label>[^:,]{1,40}?)\s*:\s*(?P<items>\S.*)$")
 _LINEUP_LABEL = re.compile(r"^(?:line[\s-]?up|artists?|acts?|djs?|künstler|artiesten)$", re.I)
 
 
+# info lines of festival posts (en, de, nl, fr): entry, doors, parking, tickets, sponsors, age
+# limits, lockers ... A line led or dominated by these words is information, never an artist -
+# also with a time («Last entry 21:30», «Free entry before 14:00», «Entrée gratuite avant 17h»).
+_INFO_NOUNS = frozenset(
+    "entry entries entrance admission entrée entree entrées einlass eintritt zutritt toegang "
+    "ingang accès acces doors türöffnung turoffnung deuren portes ouverture parking parkplatz "
+    "parkplätze parken parkeren parkeerplaats parkeerplaatsen stationnement ticket tickets "
+    "billet billets billetterie karten kaarten kassa sponsored sponsor sponsors gesponsert "
+    "gesponsord sponsorisé presented präsentiert gepresenteerd présenté powered info infos "
+    "information informations informationen informatie cashless lockers locker schliessfächer "
+    "schließfächer kluisjes consigne consignes shuttle shuttles shuttlebus navette navettes "
+    "pendelbus cloakroom garderobe vestiaire curfew sperrstunde wristband wristbands bändchen "
+    "polsbandje polsbandjes bracelet bracelets website webseite leeftijd altersbeschränkung "
+    "ausweis".split()
+)
+# words that go with the info nouns («free», «last», «before», «see») - never enough alone
+_INFO_FILLER = frozenset(
+    "free gratis gratuit gratuite gratuits kostenlos frei last letzter letzte letzten laatste "
+    "dernière derniere dernier before after avant après apres vor nach voor na until till bis "
+    "tot jusqu jusqu'à from ab vanaf dès des only nur alleen uniquement open opens opening "
+    "geöffnet ouvert ouverts see siehe zie voir available verfügbar beschikbaar disponible by "
+    "von door par and und en et & min minimum required mandatory vereist obligatoire verplicht "
+    "pflicht check our unsere onze nos notre plus and more und mehr en meer here hier ici ab "
+    "le la les du au aux der die das den dem het de van op sur auf at on in im of the to with "
+    "mit met avec per pro pour für for age âge site years jahre jaar ans".split()
+)
+# function words of the filler list that also join the words of a name («Entrance Of The Gods»)
+_INFO_GLUE = frozenset(
+    "le la les du au aux der die das den dem het de van op sur auf at on in im of the to with mit "
+    "met avec per pro pour für for our unsere onze nos notre en et and und &".split()
+)
+_INFO_LEAD = re.compile(
+    r"^(?:sponsored|presented|powered|supported|hosted|brought to you|made possible|"
+    r"gesponsert|präsentiert|unterstützt|mogelijk gemaakt|gepresenteerd|gesponsord|"
+    r"présenté|sponsorisé|en partenariat)\b(?:\s+(?:by|von|door|par|avec|mit)\b|\s*$)",
+    re.I,
+)
+_AGE_TOKEN = re.compile(r"^\d{1,2}\+$")
+_TIME_TOKEN = re.compile(r"^\d{1,2}(?:[:.hH]\d{2})?(?:h|u|uhr|uur|[ap]\.?m\.?)?$", re.I)
+
+
+def _info_line(text: str) -> bool:
+    """«Last entry 21:30», «Parking info: see website», «Sponsored by Monster Energy», «Info &
+    tickets», «Entrée gratuite avant 17h», «18+ only»: led by an info noun (after filler words
+    like «free»/«last») that info words or lower-case words continue, or by «sponsored/presented
+    by», or made of info words for >= 60 %. «Age Of Love» stays a name."""
+    text = text.strip()
+    if _INFO_LEAD.match(text):
+        return True
+    tokens = [t.strip(".,!?:;'\"()[]«»") for t in re.split(r"[\s/]+", text)]
+    tokens = [t for t in tokens if t and not _TIME_TOKEN.match(t)]
+    shown = [t for t in tokens if re.search(r"[^\W\d_]", t) or _AGE_TOKEN.match(t)]
+    words = [t.casefold() for t in shown]
+    if not words:
+        return False
+
+    def noun(w: str) -> bool:
+        return w in _INFO_NOUNS or _AGE_TOKEN.match(w) is not None
+
+    nouns = sum(1 for w in words if noun(w))
+    if not nouns:
+        return False
+    # led by an info noun that the next word continues as information (not «Age Of Love»)
+    lead = next((k for k, w in enumerate(words) if w not in _INFO_FILLER), None)
+    if lead is not None and noun(words[lead]):
+        after = words[lead + 1] if lead + 1 < len(words) else ""
+        if not after or noun(after) or (after in _INFO_FILLER and after not in _INFO_GLUE):
+            return True
+        if all(w[:1].islower() for w in shown[lead + 1 :]):
+            return True  # «Billets en vente sur place»: a sentence, no capitalised name follows
+    known = sum(1 for w in words if noun(w) or (w in _INFO_FILLER and w not in _INFO_GLUE))
+    return known * 5 >= len(words) * 3
+
+
 def _prose(line: str, rest: str) -> bool:
-    """A free-text line (sentence, announcement, URL, hashtags) - reported, never an artist.
-    `rest`: the line without its time."""
+    """A free-text line (sentence, announcement, URL, hashtags, info line) - reported, never an
+    artist. `rest`: the line without its time."""
     if _URL.search(line) or _HASHTAG.search(line) or _PROSE_LEAD.match(line):
         return True
-    if _PROSE_KEYS.search(line):
+    if _PROSE_KEYS.search(line) or _info_line(rest):
         return True
     text = rest.strip()
     words = [w for w in re.split(r"[\s,]+", text) if re.search(r"[^\W\d_]", w)]
@@ -1062,6 +1154,7 @@ def _parse_lines(
         over = (prefix[0], prefix[1]) if prefix else None
         for piece in _split_sets(prefix[2] if prefix else clean):
             expanded.append((ln.strip(), piece, framed, bullet, blank, over))
+    cards = _card_stages([e[1] for e in expanded], names)
     prev_row: dict[str, Any] | None = None  # the row made from the previous entry
     prev_heading = True  # start of the paste or a heading line just above
     pending: tuple[str, str | None, int, str] | None = None  # time-only line waiting for a name
@@ -1092,6 +1185,18 @@ def _parse_lines(
         body = _BULLET.sub("", line) if not _RANGE_RE.match(line) else line
         body = body.strip().strip("=*").strip()
         if not body:
+            continue
+        if i in cards:
+            # the stage line of an app card or an all-caps area heading (_card_stages)
+            card = _stage_core(_known_stage(body, names) or _clean_stage(body))
+            if cards[i] == "after":
+                if rows:
+                    rows[-1]["stage"] = card[:MAX_STAGE]
+                prev_row, prev_heading = None, False
+            else:  # 'before' / 'head': the stage of the following rows
+                stage = card
+                prev_row, prev_heading = None, True
+                block = len(rows)
             continue
         # --- «..., Wildstylez and many more!» / «+ many more»: the tail is reported
         more = None if _CLOCK.search(body) else _MORE_TAIL.search(body)
@@ -1159,7 +1264,7 @@ def _parse_lines(
             ):
                 head = _clean_stage(body)  # «THE GATHERING» above a line-up without times
             if head:
-                stage = head
+                stage = _stage_core(head)
                 prev_row, prev_heading = None, True
                 block = len(rows)
                 continue
@@ -1198,6 +1303,107 @@ def _parse_lines(
     if pending is not None:
         skipped.insert(pending[3], expanded[pending[2]][0])
     return rows, skipped
+
+
+def _card_kind(raw: str, names: dict[str, str]) -> str:
+    """Line kind for the app-card scan: 'T' only a time, 'L' a short time-less line (name or
+    stage), 'D' a day heading, 'I' free text (ignored), 'O' anything else."""
+    line = raw.strip()
+    if not re.search(r"[^\W_]", line):
+        return "I"
+    body = (_BULLET.sub("", line) if not _RANGE_RE.match(line) else line).strip().strip("=*")
+    body = body.strip()
+    if not body:
+        return "I"
+    if _day_heading(body) or (not _CLOCK.search(body) and _combined_heading(body, names)):
+        return "D"
+    if _cells(body) is not None:
+        return "O"
+    start, _end, rest = _find_times(body)
+    if _prose(line, rest) or (start is None and _title(body)):
+        return "I"
+    if start is not None:
+        return "T" if not _has_letter(rest) else "O"
+    if _list_items(body) is not None or len(body) > MAX_ARTIST or len(body.split()) > 4:
+        return "O"
+    return "L"
+
+
+def _card_stages(raws: list[str], names: dict[str, str]) -> dict[int, str]:
+    """Festival-app cards with the stage on its own line: «Mainstage / Frontliner / 22:00 -
+    23:00 / Underground / Ran-D / 21:00 - 22:30» (stage before the name) or «Frontliner / 22:00
+    - 23:00 / Mainstage» (stage after the time). Only when the layout repeats - every card of a
+    block has exactly two time-less lines and one time line, >= 2 cards - and the stage lines
+    look like stages (few distinct values, or all stage-like). {index: 'before' | 'after'}."""
+    kinds = [_card_kind(r, names) for r in raws]
+    marks: dict[int, str] = {}
+    seg: list[int] = []  # indices of 'T' and 'L' lines of the current block
+
+    def flush() -> None:
+        times = [k for k in seg if kinds[k] == "T"]
+        if len(times) < 2:
+            return
+        groups: list[list[int]] = [[]]
+        for k in seg:
+            if kinds[k] == "T":
+                groups.append([])
+            else:
+                groups[-1].append(k)
+        lead, middle, tail = groups[0], groups[1:-1], groups[-1]
+        if any(len(g) != 2 for g in middle):
+            return
+        if len(lead) == 2 and not tail:
+            kind, picks = "before", [g[0] for g in (lead, *middle)]
+            others = [g[1] for g in (lead, *middle)]
+        elif len(lead) == 1 and len(tail) == 1:
+            kind, picks = "after", [g[0] for g in middle] + tail
+            others = lead + [g[1] for g in middle]
+        else:
+            return
+        texts = [_undecorate(raws[k])[0].strip() for k in picks]
+        if any(len(t.split()) > 3 or len(t) > MAX_STAGE for t in texts):
+            return
+        distinct = {fx.norm(t) for t in texts}
+        stagey = all(_known_stage(t, names) or _prefix_stage(t, names, caps=True) for t in texts)
+        names_distinct = {fx.norm(_undecorate(raws[k])[0]) for k in others}
+        if stagey or (len(distinct) < len(texts) and len(distinct) < len(names_distinct)):
+            for k in picks:
+                marks[k] = kind
+
+    for k, kind in enumerate(kinds):
+        if kind in ("T", "L"):
+            seg.append(k)
+        elif kind != "I":
+            flush()
+            seg = []
+    flush()
+    marks.update(_caps_areas(raws, kinds))
+    return marks
+
+
+def _caps_areas(raws: list[str], kinds: list[str]) -> dict[int, str]:
+    """Unknown area names in capitals in a line-up without times («Saturday / ENDSHOW / Dr
+    Phunk / Sub Zero Project / BEYOND / Mc Lean / Sound Rush»): a short all-caps line followed
+    by >= 2 mixed-case name lines is a heading when the layout repeats (>= 2 such lines in the
+    paste) or it directly follows a day heading. A lone «B-FRONT» between names stays an
+    artist. {index: 'head'}."""
+    texts = [_undecorate(r)[0].strip() for r in raws]
+
+    def name_line(k: int) -> bool:
+        return k < len(kinds) and kinds[k] == "L" and not _caps_label(texts[k])
+
+    cands = [
+        k
+        for k, kind in enumerate(kinds)
+        if kind == "L"
+        and _caps_label(texts[k])
+        and len(texts[k]) <= MAX_STAGE
+        and name_line(k + 1)
+        and name_line(k + 2)
+    ]
+    if len(cands) >= 2:
+        return dict.fromkeys(cands, "head")
+    return {k: "head" for k in cands if k > 0 and kinds[k - 1] == "D"}
 
 
 def _caps_heading(

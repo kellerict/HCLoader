@@ -17,16 +17,20 @@ changes». Full rule: `docs/RELEASING.md` › "Writing release notes".
 - More reliable timetable import: the text import is no longer a beta
 - Post lines like «Swipe for more» or «Save the date» are reported, never imported as artists
 - Stages in front of the sets of a line are understood («RED: 18:00 A, 19:00 B», «[BLUE] 20:00 …»)
-- Area names in capitals between artist names («UNDERGROUND») become stages
+- Area names in capitals between artist names («UNDERGROUND», «ENDSHOW») become stages
+- Info lines like «Last entry 21:30» or «Parking info» are reported, never artists
 - Your own maintenance jobs reliably take over from the automatic catch-up
 
 ### Changed
 - Timetable dialog and source menu no longer show «(Beta)»
 - Times followed by «Uhr» or «uur» keep the artist name clean
 - App cards with stage and time on one line («MAINSTAGE · 22:00 - 23:00») are read
+- App cards with an unknown stage on its own line become stages when the layout repeats
+- «Bühne ROT» or «Scène PURPLE» headings give the stage «ROT» or «PURPLE»
 - «Re-measure all» during the automatic loudness or fingerprint pass starts right after it
 
 ### Fixed
+- Entry, parking, ticket and sponsor lines in four languages no longer become artists
 - A user job could wait behind the automatic catch-up pass in a rare case
 - Waiting for the maintenance worker no longer fails with an error after a long job
 - Keyword suggestions no longer repeat a saved keyword in other letter case
