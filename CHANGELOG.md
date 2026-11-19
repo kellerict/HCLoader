@@ -10,6 +10,8 @@ appears after «Show all changes» (`docs/RELEASING.md`).
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-19
+
 ### Highlights
 - **Re-upload detection**: an offline audio fingerprint recognises the same mix uploaded again – another channel, another platform, a new id
 - Probable re-uploads are **marked in the library** with *Keep both*, *Link as the same mix* or *Delete this newer file* – nothing is deleted automatically
@@ -59,6 +61,23 @@ appears after «Show all changes» (`docs/RELEASING.md`).
 ### Changed
 - Settings sections and throttles of all platforms come from one table
   (`config.PLATFORM_SECTIONS`), so a new platform gets its throttle everywhere at once.
+- Re-upload fingerprint windows sit at fixed times – half counted from the start (5, 10, 15 … min),
+  half counted back from the end (2, 6, 12 … min) – and a partial match is confirmed by decoding the
+  new file again where the other set's parts lie at the found offset. Copies with minutes more or less
+  at either end, trimmed copies, low bitrates and noisy copies are recognised; sets that only share
+  a track or the intro are not.
+- An HTTP 403 of the Mixcloud or hearthis.at API starts that platform's backoff (as for SoundCloud).
+- The same-platform pre-check needs equal numbers in both titles, so the next episode of a weekly
+  show is not taken for a re-upload.
+
+### Fixed
+- *Delete this newer file* is only possible while the original file is present and readable;
+  otherwise the menu explains why and offers **Original missing – keep this copy** (the copy replaces
+  the original). The last copy of a mix can no longer be deleted by accident.
+- Deleting a set while its fingerprint is computed no longer fails on Windows (the decode stops
+  first) and leaves no fingerprint rows behind.
+- Mixcloud: playlists read newest-last stop paging past the size limit; search paging only follows
+  Mixcloud's own API.
 
 ### Not included
 - **archive.org** is postponed: yt-dlp only supports single items, not collections or search

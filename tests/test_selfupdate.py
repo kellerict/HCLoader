@@ -211,6 +211,9 @@ def test_parse_version(text, expected):
 
 def test_version_comparison_is_numeric_and_ignores_prereleases():
     assert selfupdate.is_newer("0.10.0", "0.9.9")
+    # numeric, not string comparison: "0.10.0" < "0.9.0" as text (release v0.10.0)
+    assert selfupdate.is_newer("0.10.0", "0.9.0") and not selfupdate.is_newer("0.9.0", "0.10.0")
+    assert selfupdate.is_newer("v0.10.1", "0.10.0") and not selfupdate.is_newer("0.10.0", "v0.10.0")
     assert not selfupdate.is_newer("0.2.0", "0.2.0")
     assert not selfupdate.is_newer("0.1.9", "0.2.0")
     assert not selfupdate.is_newer("0.3.0-rc1", "0.2.0")

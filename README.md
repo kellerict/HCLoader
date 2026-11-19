@@ -237,7 +237,7 @@ decisions, in German).
 
 ## Roadmap
 
-Next up: multilingual UI (v0.2.0), festivals & series (v0.3.0), full back-catalogue import (v0.4.0), festival collector (v0.5.0) and more – see the [Roadmap](https://github.com/kellerict/HCLoader/wiki/Roadmap).
+Released so far: multilingual UI (v0.2.0), festivals & series (v0.3.0), full back-catalogue import (v0.4.0), festival collector (v0.5.0), tracklist search (v0.6.0), loudness normalisation (v0.7.0), playlist export and DJ pages (v0.8.0), statistics and notifications (v0.9.0), re-upload detection with Mixcloud and hearthis.at (v0.10.0). What comes next – see the [Roadmap](https://github.com/kellerict/HCLoader/wiki/Roadmap).
 
 ## Code signing
 
