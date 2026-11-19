@@ -11,6 +11,27 @@ changes». Full rule: `docs/RELEASING.md` › "Writing release notes".
 
 ## [Unreleased]
 
+## [0.10.2] - 2026-11-19
+
+### Highlights
+- More reliable timetable import: the text import is no longer a beta
+- Post lines like «Swipe for more» or «Save the date» are reported, never imported as artists
+- Stages in front of the sets of a line are understood («RED: 18:00 A, 19:00 B», «[BLUE] 20:00 …»)
+- Area names in capitals between artist names («UNDERGROUND») become stages
+- Your own maintenance jobs reliably take over from the automatic catch-up
+
+### Changed
+- Timetable dialog and source menu no longer show «(Beta)»
+- Times followed by «Uhr» or «uur» keep the artist name clean
+- App cards with stage and time on one line («MAINSTAGE · 22:00 - 23:00») are read
+- «Re-measure all» during the automatic loudness or fingerprint pass starts right after it
+
+### Fixed
+- A user job could wait behind the automatic catch-up pass in a rare case
+- Waiting for the maintenance worker no longer fails with an error after a long job
+- Keyword suggestions no longer repeat a saved keyword in other letter case
+- «Undo» after clearing keywords is reachable by keyboard
+
 ## [0.10.1] - 2026-11-19
 
 ### Highlights
