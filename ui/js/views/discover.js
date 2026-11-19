@@ -355,7 +355,9 @@
   /** Vorschläge = gespeicherte Stichwörter (Einstellungen › Filter), die in der Box gerade fehlen. */
   function renderKw(key) {
     const saved = (HC.settings.values.filters[KW[key]] || []).map((k) => String(k).toLowerCase());
-    const miss = saved.filter((k, i) => saved.indexOf(k) === i && !f[key].includes(k));
+    /* Gross-/Kleinschreibung egal: «Defqon» in der Box deckt den Vorschlag «defqon» ab (Review v0.10.1 m6). */
+    const have = f[key].map((k) => String(k).toLowerCase());
+    const miss = saved.filter((k, i) => saved.indexOf(k) === i && !have.includes(k));
     const box = $(`#s-${key}`, el);
     box.hidden = !miss.length;
     box.innerHTML = miss.map((k) => `<button type="button" class="kw-sugg" data-k="${util.esc(k)}" title="${util.esc(t('discover.kw_sugg_title'))}"><i>+</i><span>${util.esc(k)}</span></button>`).join('');
@@ -367,11 +369,12 @@
     renderKw(key);
     renderGrid();
   }
-  function clearKw(key) {
+  /** byKey: per Tastatur ausgelöst (click mit detail 0) – dann bekommt «Rückgängig» im Toast den Fokus. */
+  function clearKw(key, byKey) {
     const before = f[key].slice();
     if (!before.length) return;
     setKw(key, []);
-    ui.toast(t(`discover.kw_cleared_${key}`), 'info', 7000, { label: t('common.undo'), fn: () => setKw(key, before.concat(f[key].filter((k) => !before.includes(k)))) });
+    ui.toast(t(`discover.kw_cleared_${key}`), 'info', 7000, { label: t('common.undo'), focus: !!byKey, fn: () => setKw(key, before.concat(f[key].filter((k) => !before.includes(k)))) });
   }
 
   async function loadBlacklist() {
@@ -480,7 +483,7 @@
     plat.addEventListener('focusout', (e) => { if (menuOpen && e.relatedTarget && !plat.contains(e.relatedTarget)) openMenu(false); });
     $('.filters', el).addEventListener('click', (e) => {
       const c = e.target.closest('[data-kwclear]');
-      if (c) { clearKw(c.dataset.kwclear); return; }
+      if (c) { clearKw(c.dataset.kwclear, e.detail === 0); return; }
       const s = e.target.closest('.kw-sugg');
       if (s) { const key = s.parentElement.dataset.key; setKw(key, f[key].concat(s.dataset.k)); }
     });

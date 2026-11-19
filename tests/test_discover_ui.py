@@ -204,3 +204,24 @@ def test_keyword_boxes_clear_undo_and_suggestions(page):  # noqa: F811
     assert _suggestions(page, "exc") == page.evaluate("HC.settings.values.filters.exclude_keywords")
     # session filter only: the saved settings were never written
     assert page.evaluate("window.__saved") == 0
+
+
+def test_keyword_suggestions_ignore_case_and_undo_by_keyboard(page):  # noqa: F811
+    """Review v0.10.1 m6/m7: «Defqon» (hand-edited config) is no missing «defqon»; clearing
+    by keyboard puts the focus on «Undo», so Enter brings the keywords back."""
+    page.evaluate("HC.settings.values.filters.include_keywords.push('Defqon')")
+    _discover(page)
+    page.wait_for_function("document.querySelectorAll('#t-inc .tag').length > 0")
+    assert page.is_hidden("#s-inc")
+    before = _tags(page, "inc")
+    page.focus("#c-inc")
+    page.keyboard.press("Enter")
+    page.wait_for_selector(".toast .toast-act")
+    page.wait_for_function("document.activeElement?.classList.contains('toast-act')")
+    page.keyboard.press("Enter")
+    page.wait_for_function("document.querySelectorAll('#t-inc .tag').length > 0")
+    assert _tags(page, "inc") == before
+    # by mouse the focus stays where it was (no jump into the toast)
+    page.click("#c-inc")
+    page.wait_for_selector(".toast .toast-act")
+    assert not page.evaluate("document.activeElement?.classList.contains('toast-act')")

@@ -34,6 +34,15 @@
       setTimeout(() => el.remove(), HC.fx.reduced() ? 0 : 190);
     };
     el.addEventListener('click', (e) => { if (action && e.target.closest('.toast-act')) action.fn(); close(); });
+    /* Review v0.10.1 m7: kam die Aktion per Tastatur (Fokus in einem Eingabe-/Knopf-Element), bekommt «Rückgängig»
+       den Fokus, damit Enter/Leertaste ihn erreicht; der Fokus kehrt danach zurück. */
+    const act = action && el.querySelector('.toast-act');
+    if (act && action.focus) {
+      const prev = document.activeElement;
+      act.focus({ preventScroll: true });
+      act.addEventListener('blur', () => { if (!el.isConnected && prev && prev.isConnected && prev.focus) prev.focus(); }, { once: true });
+      act.addEventListener('keydown', (e) => { if (e.key === 'Escape') { close(); if (prev && prev.focus) prev.focus(); } });
+    }
     setTimeout(close, dur);
   };
 

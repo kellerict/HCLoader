@@ -209,12 +209,7 @@ changes». Full rule: `docs/RELEASING.md` › "Writing release notes".
 ### Highlights
 - «Read everything (once)»: fetch the complete back catalogue of a channel, playlist or SoundCloud artist/set into the Inbox
 - Gentle by design: paced page by page through the central throttle with its own hourly budget, automatic pause on backoff
-- Resumable after backoff, restart or pause; progress shown right at the source («Reading … 240 / ~500»)
-- Confirmation with an estimate of requests and time before it starts; adjustable cap (default 2000 entries)
-
-### Highlights
-- Watchlist «Read everything (once)»: read the complete back catalogue of a channel, playlist or SoundCloud profile/set – page by page, gently, into the inbox
-- Confirmation with the estimated number of requests and time before anything starts
+- Confirmation with the estimated number of requests and time before anything starts; adjustable cap (default 2000 entries)
 - Progress right at the source («Reading … 240 / ~486»), pause, resume and cancel
 - Interrupted by a backoff, a restart or an error? It continues automatically where it stopped – also in scheduled runs
 
