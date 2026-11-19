@@ -1773,3 +1773,20 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
   aufgeklappt; der Renderer versteht auch `*kursiv mit **fett***` und `***fett kursiv***`.
 - **Grund:** User-Feedback: der Dialog «Changes in version 0.10.0» war mit langer Prosa schwer lesbar.
 
+
+## 2026-11-19 – Timetable-Parser ohne «Beta» (v0.10.2)
+
+- **Entscheid:** Vor jeder Parser-Änderung wird ein neuer Korpus geschrieben
+  (`tests/test_timetable_corpus_social.py`, 50 Pastes aus Instagram/Facebook, App-Exporten, Website-Kopien;
+  DE/NL/EN), die Quote wird daran gemessen (vorher 18/50, nachher 50/50; alter Korpus weiter 75/75).
+  Neue Zeilenregeln: UI-/Marketing-Zeilen (`Swipe for more`, `Save the date`, `Add to favourites`,
+  `Now playing`, Imperativ am Zeilenanfang gefolgt von Kleinschreibung oder Funktionswort) und Titel
+  (`SET TIMES`, `Phase 1`, Name mit Jahreszahl) landen in `skipped`; eine Bühne vor den Sets einer Zeile
+  (`RED: 18:00 A, 19:00 B`, `Bühne RED – …`, `[BLUE] 20:00 …`, `Mainstage 19:00 …`) gilt **nur für diese
+  Zeile**, sie wird keine Überschrift für die folgenden; eine Grossbuchstaben-Zeile zwischen gemischt
+  geschriebenen Namen ist nur dann eine Bühne, wenn die Paste schon Bühnen hat, mindestens zwei
+  gemischt geschriebene Namen folgen und (bei einem Wort) es nur Buchstaben, ≥ 5 Zeichen und ≥ 2 Namen
+  darüber hat – `TNT`, `B-FRONT`, `MC SYCO` bleiben Artists.
+- **Grund:** die letzte QA-Runde zeigte vier Familien von Fehlern; bei ≥ 95 % auf neuen Pastes entfällt
+  das «Beta» im Dialog. Titel-Case nach einem Imperativ (`Save Me`) bleibt ein Name: lieber ein Artist zu
+  viel in der bearbeitbaren Vorschau als ein Name, der im Block «nicht verstanden» verschwindet.

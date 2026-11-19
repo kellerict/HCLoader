@@ -61,7 +61,7 @@ Schlägt etwas fehl: Abschnitt 5 «Fehler melden».
 - [ ] **Sandbox ohne WebView2, Installer:** Setup mit Internet ausführen → Statustext «WebView2 wird installiert», danach startet die App; ohne Internet: Installation läuft durch, Hinweis mit Download-Seite, `setup.log` nennt jeden Schritt.
 - [ ] **Sandbox ohne WebView2, Portable:** `HCLoader.cmd` starten → verständliche Meldung mit Link zu Microsofts Download-Seite, kein kaputtes Fenster.
 - [ ] Mit WebView2 vorhanden: Installer überspringt die Installation ohne Meldung.
-- [ ] Sammler: Edition (z.B. Defqon.1 2024) anlegen → «Aus Organisator-Playlist füllen» oder **Timetable-Text einfügen (Beta)** mit einem echten Timetable → Vorschau korrekt (Künstler, Bühne, Zeit), erst nach Bestätigung importiert.
+- [ ] Sammler: Edition (z.B. Defqon.1 2024) anlegen → «Aus Organisator-Playlist füllen» oder **Timetable-Text einfügen** mit einem echten Timetable → Vorschau korrekt (Künstler, Bühne, Zeit), erst nach Bestätigung importiert.
 - [ ] Fehlende Sets: zuerst Treffer aus der Bibliothek (kostenlos), danach einzelne Suchen, übers Stundenfenster verteilt; nur angehakte, bestätigte Sets landen in der Warteschlange.
 - [ ] Heruntergeladene Sets tragen Edition, Bühne und Set-Typ aus der Checkliste.
 
@@ -125,7 +125,7 @@ Schlägt etwas fehl: Abschnitt 5 «Fehler melden».
 
 - Installer und Portable sind **nicht signiert**: SmartScreen-Warnung beim ersten Start.
 - Portable kann WebView2 nicht selbst installieren (nur Meldung mit Link); Fixed-Version-Runtime braucht `HCLOADER_SKIP_WEBVIEW2_CHECK=1`.
-- Timetable-Text-Import ist **Beta**: Vorschau immer prüfen.
+- Timetable-Text-Import: Vorschau vor dem Import prüfen (Parser rät nie perfekt).
 - Erster YouTube-Zugriff kann durch Bot-Check/429 gebremst werden; das ist gewollt (Backoff statt Wiederholung).
 - Neu taggen/Löschen einer Datei, die gerade analysiert/fingerprintet wird, kann einmalig scheitern; wiederholen.
 - Der Lautstärke-Fallback kann nur absenken, nicht anheben (wenn Web Audio stumm bleibt).

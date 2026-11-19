@@ -9,10 +9,15 @@
   `SAT | RED STAGE`), `Sat 18.00–19.00 Name @ PURPLE`, CSV without header row (columns told
   apart by content), dated day headings (`Samstag, 12.07.`, `Saturday 12 July`, `12/07 –
   Saturday`), line-ups without times under stage headings (`MAINSTAGE`, `RED`, `THE GATHERING`),
-  labelled lists (`FRIDAY: A, B`, `Line-up: A, B, C`), festival-app cards (name line, time line).
+  labelled lists (`FRIDAY: A, B`, `Line-up: A, B, C`), festival-app cards (name line, time line,
+  also `MAINSTAGE · 22:00 - 23:00`), a stage in front of the sets of a line (`RED: 18:00 A,
+  19:00 B`, `Bühne RED – 18:00 A · 19:00 B`, `[BLUE] 20:00 Angerfist`, `Mainstage 19:00 Name`;
+  only for that line), capital area names between mixed-case names (`UNDERGROUND`).
   Emoji/symbols and `**bold**` are removed first. Each line is scored (heading, free text,
   title, table cells, stage heading, time only, artist); free text (sentences, URLs, hashtags,
-  «tickets», «doors open»), titles and lines without any letter or digit are reported in
+  «tickets», «doors open», UI/marketing lines like «Swipe for more», «Save the date», «Add to
+  favourites», imperatives), titles (also «SET TIMES», «Phase 1», a name with a year) and lines
+  without any letter or digit are reported in
   `skipped` (separators like `=====` are dropped), never a stage or an artist.
   Nothing is guessed from websites: the user pastes, the parser only splits
   (docs/concepts/festivals.md, no scraping).
@@ -972,8 +977,8 @@ def _imperative(words: list[str]) -> bool:
     if first not in _IMPERATIVE:
         return False
     second = words[1].strip(".,!?:;'\"")
-    if not second:
-        return False
+    if not second or (second[0].isupper() and not second.isupper()):
+        return False  # «Save Me», «Kill The Noise»: a title-case name
     return (
         second[0].islower()
         or second.casefold() in _STOPWORDS
