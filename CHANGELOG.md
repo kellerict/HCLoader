@@ -18,8 +18,14 @@ changes». Full rule: `docs/RELEASING.md` › "Writing release notes".
 - Tracklists, loudness and fingerprints of older sets also catch up by themselves
 - The catch-up runs quietly in the background, shown in the status bar, and can be stopped
 - Shorter, readable release notes: highlights first, details on demand
+- Discover: compact source menu with platform icons and a new «All» option
+- Filter keywords: clear a whole box with one click, re-add saved ones as suggestions
 
 ### Added
+- Source menu in Discover: one click shows all platforms with their icons
+- «All» searches every enabled platform one after another, each with its own limits
+- «Remove all» button in the include/exclude keyword boxes, with undo
+- Saved keywords that are not in the box appear as suggestions to re-add
 - Automatic catch-up after the start for sets downloaded with older versions
 - Status bar shows which catch-up pass runs, with progress and a stop button
 - A new festival list in an app update re-checks sets without a festival
