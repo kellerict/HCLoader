@@ -64,7 +64,8 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "clock": "o’clock",
     "req_h": "req./h",
     "lufs": "LUFS",
-    "db": "dB"
+    "db": "dB",
+    "pct": "%"
   },
   "range": {
     "ge_sleep": "≥ minimum",
@@ -96,7 +97,10 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "youtube": "YouTube",
     "soundcloud": "SoundCloud",
     "label": "Platform",
-    "sc_off": "SoundCloud is turned off – turn it on under Settings › SoundCloud."
+    "sc_off": "SoundCloud is turned off – turn it on under Settings › SoundCloud.",
+    "mixcloud": "Mixcloud",
+    "hearthis": "hearthis.at",
+    "p_off": "{p} is turned off – turn it on under Settings › More sources."
   },
   "genre": {
     "change": "Change genre",
@@ -148,7 +152,8 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "sc_today": "{n} / {max}",
     "yt_tip": "YouTube · downloaded today {day}/{day_max} · {s}/{s_max} searches this hour",
     "sc_tip": "SoundCloud · downloaded today {day}/{day_max} · {s}/{s_max} searches this hour",
-    "backoff_tip": "{p}: backoff until {t} ({rest} left)"
+    "backoff_tip": "{p}: backoff until {t} ({rest} left)",
+    "p_tip": "{p} · downloaded today {day}/{day_max} · {s}/{s_max} searches this hour"
   },
   "schedule": {
     "due": "due",
@@ -162,7 +167,7 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
   },
   "card": {
     "source": "Found via the watchlist source “{name}”",
-    "select": "Select",
+    "select": "Subscribers only (Select)",
     "open": "Open on {p}",
     "ignore": "Ignore",
     "unignore": "Stop ignoring",
@@ -176,7 +181,8 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "duplicate": "Probably already downloaded ({p})",
     "duplicate_title": "Very similar title and same duration as “{title}” from {p} – already downloaded or queued there. You can still download it.",
     "preview": "Preview only (Go+) – cannot be downloaded",
-    "preview_title": "SoundCloud only provides a 30-second preview (Go+) for this track. It cannot be downloaded."
+    "preview_title": "SoundCloud only provides a 30-second preview (Go+) for this track. It cannot be downloaded.",
+    "select_title": "This Mixcloud upload is only available to subscribers of the creator (Mixcloud Select). It cannot be downloaded."
   },
   "discover": {
     "placeholder": "Search for mix, live set, DJ, event …",
@@ -234,7 +240,13 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "ready_text": "Enter a search term and press Enter.",
     "none_title": "Nothing found",
     "none_text": "Loosen the filters or try other search terms.",
-    "none_year": "No result from {year}. Search again so the year is included in the search term – or change the year."
+    "none_year": "No result from {year}. Search again so the year is included in the search term – or change the year.",
+    "quota_p": "{p} searches this hour: {n} / {max}",
+    "placeholder_p": "Search {p}: mix, set, DJ, podcast …",
+    "searching_p": "Searching – flat query, easy on {p} …",
+    "ready_text_p": "Enter a search term and press Enter to search {p}.",
+    "previews_mc": "{n} subscribers only (Select)",
+    "previews_mc_title": "Mixcloud Select uploads are only for paying subscribers and can never be downloaded. Visible when “Hide downloaded & ignored” is off."
   },
   "inbox": {
     "title": "Inbox",
@@ -325,8 +337,8 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "hits_auto": "Download automatically",
     "hint_inbox": "Hits wait in the inbox until you download or ignore them.",
     "hint_auto": "Hits that pass all filters go straight to the queue.",
-    "hint_channel": "YouTube channel (…/@name or …/channel/UC…, optionally /videos or /streams) or SoundCloud profile (soundcloud.com/name).",
-    "hint_playlist": "YouTube playlist with “list=…” or SoundCloud set (soundcloud.com/name/sets/set). The newest entries are checked.",
+    "hint_channel": "YouTube channel (…/@name or …/channel/UC…, optionally /videos or /streams), SoundCloud profile (soundcloud.com/name), Mixcloud user (mixcloud.com/name) or hearthis.at user (hearthis.at/name).",
+    "hint_playlist": "YouTube playlist with “list=…”, SoundCloud set (soundcloud.com/name/sets/set), Mixcloud playlist (mixcloud.com/name/playlists/list) or hearthis.at set (hearthis.at/name/set/set). The newest entries are checked.",
     "f_platform": "Search on",
     "detected": "detected: {p} · {type}",
     "not_detected": "URL not recognized",
@@ -345,7 +357,9 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "ph_channel": "https://www.youtube.com/@channel  or  https://soundcloud.com/name",
     "ph_playlist": "https://www.youtube.com/playlist?list=…  or  https://soundcloud.com/name/sets/…",
     "ph_search": "e.g. frenchcore liveset",
-    "form_error": "The source could not be saved."
+    "form_error": "The source could not be saved.",
+    "backoff_link_p": "Open {p}",
+    "why_p_off": "{p} is turned off"
   },
   "downloads": {
     "title": "Downloads",
@@ -422,7 +436,8 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     },
     "local_link_pot": "Network settings",
     "local_link_target": "Change storage location",
-    "local_link_error": "Maintenance"
+    "local_link_error": "Maintenance",
+    "summary_p": "{p} {day}/{day_max}"
   },
   "library": {
     "title": "Library",
@@ -631,7 +646,9 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "festivals": "Festivals & series",
     "playback": "Playback",
     "notifications": "Notifications",
-    "mediaserver": "Media server"
+    "mediaserver": "Media server",
+    "sources": "More sources",
+    "reupload": "Re-uploads"
   },
   "tabs_hint": {
     "general": "Basic app behaviour.",
@@ -639,7 +656,7 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "genres": "Order = priority. The first genre whose keyword appears in the title wins. Manually set genres and a source’s default genre take precedence.",
     "download": "YouTube usually delivers Opus at about 130–160 kbps. MP3 is a conversion and does not sound better than the source – but it plays everywhere.",
     "storage": "Where the files go and how they are named. The structure is designed for media servers such as Plex or Jellyfin.",
-    "throttle": "Limits the load on YouTube. These values apply to search, watchlist and downloads together. SoundCloud has its own values in the “SoundCloud” tab.",
+    "throttle": "Limits the load on YouTube. These values apply to search, watchlist and downloads together. SoundCloud has its own values in the “SoundCloud” tab, Mixcloud and hearthis.at in “More sources”.",
     "soundcloud": "SoundCloud as a second source for search, watchlist and downloads – with its own limits, counters and backoff, independent of YouTube.",
     "network": "The PO token identifies requests as a real browser and lowers the risk of bot blocks.",
     "schedule": "When the watchlist is checked automatically – in the app and via the Windows Task Scheduler.",
@@ -648,7 +665,9 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "festivals": "Recognizes festival or series, year, stage and set type from the stored titles – offline, without a single extra request.",
     "playback": "Built-in player, loudness normalisation, remembered positions and the offline analysis of your files.",
     "notifications": "Windows notifications for new sets in the inbox and finished or failed downloads – bundled into one message, never a flood. A click opens the app at the right view.",
-    "mediaserver": "After downloads, ask your Plex or Jellyfin server to scan its library – bundled, local network only. The token is stored in the Windows Credential Manager, never in config.yaml."
+    "mediaserver": "After downloads, ask your Plex or Jellyfin server to scan its library – bundled, local network only. The token is stored in the Windows Credential Manager, never in config.yaml.",
+    "sources": "Mixcloud and hearthis.at as further sources for search, watchlist and downloads – each with its own limits, counters and backoff, independent of YouTube and SoundCloud.",
+    "reupload": "Recognises the same mix uploaded again (another channel, another platform, a new id) by a compact audio fingerprint – computed offline from your files, no network."
   },
   "set": {
     "default": "Default",
@@ -700,7 +719,9 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
       "playlists": "Playlists (M3U8)",
       "notify_events": "Notify me about",
       "quiet": "Quiet hours",
-      "ms_paths": "Paths & timing"
+      "ms_paths": "Paths & timing",
+      "more_sources": "Mixcloud & hearthis.at",
+      "fingerprint": "Fingerprint"
     },
     "general": {
       "language": {
@@ -846,6 +867,14 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
       "keep_original_soundcloud": {
         "label": "Keep SoundCloud original",
         "help": "Save SoundCloud audio unchanged (AAC 160 kbps as .m4a, MP3 128 kbps as .mp3) – no second lossy conversion. Off: like “Output format”."
+      },
+      "keep_original_mixcloud": {
+        "label": "Keep Mixcloud original",
+        "help": "Save Mixcloud audio unchanged (AAC, usually 64–128 kbps, as .m4a) – no second lossy conversion. Off: like “Output format”."
+      },
+      "keep_original_hearthis": {
+        "label": "Keep hearthis.at original",
+        "help": "Save the hearthis.at stream unchanged (MP3) – no second lossy conversion. Off: like “Output format”."
       }
     },
     "storage": {
@@ -930,7 +959,9 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
       "blocked": "{p} signalled a block. Search, watchlist and downloads from {p} are blocked until the time has expired.",
       "clear": "Lift manually",
       "sc_off": "SoundCloud is turned off",
-      "sc_off_detail": "No SoundCloud search, no watchlist checks and no downloads from SoundCloud."
+      "sc_off_detail": "No SoundCloud search, no watchlist checks and no downloads from SoundCloud.",
+      "p_off": "{p} is turned off",
+      "p_off_detail": "No {p} search, no watchlist checks and no downloads from {p}."
     },
     "soundcloud": {
       "enabled": {
@@ -1402,6 +1433,84 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
         "help": "Which library to scan. “All libraries” scans everything (slower on big servers)."
       },
       "lib_paths": "Folders on the server: {p}"
+    },
+    "platform": {
+      "enabled": {
+        "label": "Use {p}",
+        "help": "Off: no {p} search, no checks of {p} sources and no {p} downloads. Already downloaded items stay in the library."
+      },
+      "sleep_requests": {
+        "label": "Pause between requests",
+        "help": "Waiting time between metadata queries to {p} (search, watchlist)."
+      },
+      "sleep_interval": {
+        "label": "Download pause – minimum",
+        "help": "After each {p} download, a random pause between minimum and maximum follows."
+      },
+      "max_sleep_interval": {
+        "label": "Download pause – maximum",
+        "help": "Upper bound of the random pause."
+      },
+      "limit_rate_mb": {
+        "label": "Download rate",
+        "help": "Maximum bandwidth. 0 = unlimited (not recommended)."
+      },
+      "max_downloads_per_run": {
+        "label": "Max. downloads per run",
+        "help": "Separate counter for {p}. The rest stays in the queue."
+      },
+      "max_downloads_per_day": {
+        "label": "Max. downloads per day",
+        "help": "Separate counter for {p}, manual and automatic downloads together."
+      },
+      "max_searches_per_hour": {
+        "label": "Max. searches per hour",
+        "help": "Separate counter for {p}."
+      },
+      "backoff_initial_hours": {
+        "label": "Backoff – initial value",
+        "help": "Block time after {p} reported too many requests (HTTP 429)."
+      },
+      "backoff_max_hours": {
+        "label": "Backoff – maximum",
+        "help": "The block time doubles with each further block up to this value."
+      }
+    },
+    "reupload": {
+      "enabled": {
+        "label": "Detect re-uploads",
+        "help": "Computes a compact audio fingerprint per set offline with ffmpeg and compares new downloads with your library. A match is marked “Probable re-upload of …” – nothing is deleted automatically."
+      },
+      "fingerprint_after_download": {
+        "label": "Fingerprint after each download",
+        "help": "One file at a time at low priority, after the loudness analysis. Off: only the library pass below."
+      },
+      "precheck": {
+        "label": "Check before downloading",
+        "help": "Also compares duration (±5 s) and title with the library on the same platform before a download – no extra request. Hits go to the inbox instead of the queue and show “Probably already downloaded”."
+      },
+      "head_minutes": {
+        "label": "Minutes from the start",
+        "help": "How much of the beginning goes into the fingerprint. More = safer for sets with a long identical intro, a little slower."
+      },
+      "windows": {
+        "label": "Extra windows",
+        "help": "30-second windows spread over the rest of the set. Two different sets that open with the same track are told apart by these. 0 = start only."
+      },
+      "min_score": {
+        "label": "Match threshold",
+        "help": "Share of matching fingerprint hashes from which a set counts as re-upload. Lower = finds more, but more false hits."
+      },
+      "title": "{done} of {total} files fingerprinted",
+      "marks": "{open} open · {linked} linked · {kept} kept",
+      "help": "Runs offline over the library, one file at a time at low priority – no network, the audio stays untouched. Can be cancelled at any time.",
+      "button": "Fingerprint new files",
+      "button_n": "Fingerprint {n} new",
+      "all": "Fingerprint all again",
+      "all_title": "Compute every fingerprint again (e.g. after changing the windows) – your decisions stay",
+      "running": "Comparing … {done} / {total} · {found} found",
+      "show": "Show {n} in the library",
+      "no_ffmpeg": "Fingerprints need ffmpeg (bin\\ffmpeg.exe, installed by setup.ps1). Settings › Maintenance shows its status."
     }
   },
   "opt": {
@@ -1518,6 +1627,12 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
       "title": "Reset built-in series?",
       "text": "All built-in series return to their original state, hidden ones come back. Your own series stay.",
       "ok": "Reset"
+    },
+    "reupload_del": {
+      "title": "Delete re-upload?",
+      "ok": "Delete file",
+      "text": "“{title}” is probably the same mix as “{of}”. Delete this newer file?",
+      "note": "The original stays. The entry is set to “ignored” and is not downloaded again."
     }
   },
   "toast": {
@@ -1603,7 +1718,9 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "assign_done": "Festivals assigned: {assigned} new, {suggested} suggestions",
     "assign_cancelled": "Assignment cancelled: {assigned} new, {suggested} suggestions",
     "analysis_done": "Loudness analysed: {n} files ({failed} failed)",
-    "analysis_cancelled": "Analysis cancelled after {n} files"
+    "analysis_cancelled": "Analysis cancelled after {n} files",
+    "fp_done": "Library compared: {n} files, {found} probable re-uploads",
+    "fp_cancelled": "Comparison cancelled after {n} files"
   },
   "upd": {
     "available": "Version {v} available",
@@ -2189,5 +2306,26 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "empty_title": "No sets yet",
     "empty_text": "As soon as the first sets are in your library, you will see here what you collect – genres, festivals, DJs, hours.",
     "empty_go": "Discover sets"
+  },
+  "reupload": {
+    "tag": "Re-upload?",
+    "tag_title": "Probably a re-upload of “{title}” ({p}, {score} % match) – click to decide",
+    "linked": "Same mix",
+    "linked_title": "Linked as the same mix as “{title}” ({p})",
+    "chip": "Re-uploads ({n})",
+    "chip_title": "Show only sets marked as probable re-upload",
+    "menu_head": "Probable re-upload of “{title}” · {score} %",
+    "menu_head_linked": "Same mix as “{title}”",
+    "keep": "Keep both",
+    "link": "Link as the same mix",
+    "undo": "Undo decision",
+    "show_original": "Show the original",
+    "delete_new": "Delete this newer file",
+    "toast_keep": "Both kept – the mark is gone",
+    "toast_link": "Linked as the same mix",
+    "toast_open": "Decision undone",
+    "toast_found": "Probable re-upload: “{title}” matches “{of}” – see Library",
+    "dl_notice": "{n} recent downloads are probably re-uploads of sets you already have:",
+    "review": "Review in the library"
   }
 });

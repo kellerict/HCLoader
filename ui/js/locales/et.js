@@ -64,7 +64,8 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "clock": "kell",
     "req_h": "päring./h",
     "lufs": "LUFS",
-    "db": "dB"
+    "db": "dB",
+    "pct": "%"
   },
   "range": {
     "ge_sleep": "≥ miinimum",
@@ -96,7 +97,10 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "youtube": "YouTube",
     "soundcloud": "SoundCloud",
     "label": "Platvorm",
-    "sc_off": "SoundCloud on välja lülitatud – lülita sisse jaotises Seaded › SoundCloud."
+    "sc_off": "SoundCloud on välja lülitatud – lülita sisse jaotises Seaded › SoundCloud.",
+    "mixcloud": "Mixcloud",
+    "hearthis": "hearthis.at",
+    "p_off": "{p} on välja lülitatud – lülita sisse jaotises Seaded › Rohkem allikaid."
   },
   "genre": {
     "change": "Muuda žanrit",
@@ -148,7 +152,8 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "sc_today": "{n} / {max}",
     "yt_tip": "YouTube · täna allalaaditud {day}/{day_max} · selle tunni otsinguid {s}/{s_max}",
     "sc_tip": "SoundCloud · täna allalaaditud {day}/{day_max} · selle tunni otsinguid {s}/{s_max}",
-    "backoff_tip": "{p}: paus kuni {t} (jäänud {rest})"
+    "backoff_tip": "{p}: paus kuni {t} (jäänud {rest})",
+    "p_tip": "{p} · täna allalaaditud {day}/{day_max} · selle tunni otsinguid {s}/{s_max}"
   },
   "schedule": {
     "due": "on aeg",
@@ -162,7 +167,7 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
   },
   "card": {
     "source": "Leitud jälgitavast allikast „{name}“",
-    "select": "Vali",
+    "select": "Ainult tellijatele (Select)",
     "open": "Ava platvormil {p}",
     "ignore": "Eira",
     "unignore": "Ära eira enam",
@@ -176,7 +181,8 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "duplicate": "Tõenäoliselt juba alla laaditud ({p})",
     "duplicate_title": "Väga sarnane pealkiri ja sama kestus nagu „{title}” ({p}) – seal juba allalaaditud või järjekorras. Saad selle siiski alla laadida.",
     "preview": "Ainult eelvaade (Go+) – allalaadimine pole võimalik",
-    "preview_title": "SoundCloud pakub sellele loole ainult 30-sekundilist eelvaadet (Go+). Seda ei saa alla laadida."
+    "preview_title": "SoundCloud pakub sellele loole ainult 30-sekundilist eelvaadet (Go+). Seda ei saa alla laadida.",
+    "select_title": "See Mixcloudi üleslaadimine on saadaval ainult looja tellijatele (Mixcloud Select). Seda ei saa alla laadida."
   },
   "discover": {
     "placeholder": "Otsi miksi, live-sette, DJ-sid, üritusi …",
@@ -234,7 +240,13 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "ready_text": "Sisesta otsingufraas ja vajuta Enter.",
     "none_title": "Midagi ei leitud",
     "none_text": "Lõdvenda filtreid või proovi muid otsingufraase.",
-    "none_year": "{year}. aasta tulemusi pole. Otsi uuesti, et aasta oleks otsinguterminis sees, või muuda aastat."
+    "none_year": "{year}. aasta tulemusi pole. Otsi uuesti, et aasta oleks otsinguterminis sees, või muuda aastat.",
+    "quota_p": "Otsinguid teenuses {p} selle tunni jooksul: {n} / {max}",
+    "placeholder_p": "Otsi teenusest {p}: miksid, setid, DJ-d, podcastid …",
+    "searching_p": "Otsimine – lihtne päring, teenust {p} säästev …",
+    "ready_text_p": "Sisesta otsingufraas ja vajuta Enter, et teenusest {p} otsida.",
+    "previews_mc": "ainult tellijatele (Select): {n}",
+    "previews_mc_title": "Mixcloud Selecti üleslaadimised on ainult maksvatele tellijatele ja neid ei saa kunagi alla laadida. Nähtavad, kui „Peida allalaaditud ja eiratud“ on väljas."
   },
   "inbox": {
     "title": "Saabunud",
@@ -325,8 +337,8 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "hits_auto": "Laadi automaatselt alla",
     "hint_inbox": "Leiud ootavad saabunutes, kuni need alla laed või eirad.",
     "hint_auto": "Kõik filtrid läbivad leiud lähevad otse järjekorda.",
-    "hint_channel": "YouTube'i kanal (…/@nimi või …/channel/UC…, soovi korral /videos või /streams) või SoundCloudi profiil (soundcloud.com/nimi).",
-    "hint_playlist": "YouTube'i esitusloend, milles on „list=…”, või SoundCloudi komplekt (soundcloud.com/nimi/sets/komplekt). Kontrollitakse uusimaid kirjeid.",
+    "hint_channel": "YouTube’i kanal (…/@nimi või …/channel/UC…, soovi korral /videos või /streams), SoundCloudi profiil (soundcloud.com/nimi), Mixcloudi kasutaja (mixcloud.com/nimi) või hearthis.at kasutaja (hearthis.at/nimi).",
+    "hint_playlist": "YouTube’i esitusloend „list=…“-ga, SoundCloudi komplekt (soundcloud.com/nimi/sets/komplekt), Mixcloudi esitusloend (mixcloud.com/nimi/playlists/loend) või hearthis.at komplekt (hearthis.at/nimi/set/komplekt). Kontrollitakse uusimaid kirjeid.",
     "f_platform": "Otsi platvormilt",
     "detected": "tuvastatud: {p} · {type}",
     "not_detected": "URL-i ei tuvastatud",
@@ -345,7 +357,9 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "ph_channel": "https://www.youtube.com/@kanal  või  https://soundcloud.com/nimi",
     "ph_playlist": "https://www.youtube.com/playlist?list=…  või  https://soundcloud.com/nimi/sets/…",
     "ph_search": "nt frenchcore liveset",
-    "form_error": "Allikat ei õnnestunud salvestada."
+    "form_error": "Allikat ei õnnestunud salvestada.",
+    "backoff_link_p": "Ava {p}",
+    "why_p_off": "{p} on välja lülitatud"
   },
   "downloads": {
     "title": "Allalaadimised",
@@ -422,7 +436,8 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     },
     "local_link_pot": "Võrguseaded",
     "local_link_target": "Muuda salvestuskohta",
-    "local_link_error": "Hooldus"
+    "local_link_error": "Hooldus",
+    "summary_p": "{p} {day}/{day_max}"
   },
   "library": {
     "title": "Kogu",
@@ -631,7 +646,9 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "festivals": "Festivalid ja sarjad",
     "playback": "Taasesitus",
     "notifications": "Teavitused",
-    "mediaserver": "Meediaserver"
+    "mediaserver": "Meediaserver",
+    "sources": "Rohkem allikaid",
+    "reupload": "Uuesti üleslaadimised"
   },
   "tabs_hint": {
     "general": "Rakenduse põhikäitumine.",
@@ -639,7 +656,7 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "genres": "Järjekord = prioriteet. Võidab esimene žanr, mille märksõna pealkirjas esineb. Käsitsi määratud žanrid ja allika vaikimisi žanr on eelisjärjekorras.",
     "download": "YouTube pakub tavaliselt Opust umbes 130–160 kbps. MP3 on teisendus ega kõla allikast paremini – kuid mängib igal pool.",
     "storage": "Kuhu failid lähevad ja kuidas neid nimetatakse. Struktuur on mõeldud meediaserveritele nagu Plex või Jellyfin.",
-    "throttle": "Piirab YouTube'i koormust. Need väärtused kehtivad otsingule, jälgitavatele allikatele ja allalaadimistele koos. SoundCloudil on oma väärtused vahekaardil „SoundCloud”.",
+    "throttle": "Piirab YouTube'i koormust. Need väärtused kehtivad otsingule, jälgitavatele allikatele ja allalaadimistele koos. SoundCloudil on oma väärtused vahekaardil „SoundCloud”. Mixcloudil ja hearthis.at-il on oma väärtused jaotises „Rohkem allikaid“.",
     "soundcloud": "SoundCloud teise allikana otsingu, jälgitavate allikate ja allalaadimiste jaoks – oma limiitide, loendurite ja pausiga, YouTube'ist sõltumatult.",
     "network": "PO-Token tuvastab päringud päris brauseri omadena ja vähendab robotiblokeeringu riski.",
     "schedule": "Millal jälgitavaid allikaid automaatselt kontrollitakse – rakenduses ja Windowsi tegumiplaanija kaudu.",
@@ -648,7 +665,9 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "festivals": "Tuvastab salvestatud pealkirjadest festivali või sarja, aasta, lava ja seti liigi – võrguühenduseta, ilma ühegi lisapäringuta.",
     "playback": "Sisseehitatud mängija, valjuse ühtlustamine, meelde jäetud asukohad ja failide võrguta analüüs.",
     "notifications": "Windowsi teavitused uute settide kohta postkastis ning lõpetatud või ebaõnnestunud allalaadimiste kohta – koondatud üheks sõnumiks, mitte kunagi tulvana. Klõps avab rakenduse õiges kohas.",
-    "mediaserver": "Palu pärast allalaadimisi oma Plex- või Jellyfin-serveril teek uuesti skannida – koondatult, ainult koduvõrgus. Luba hoitakse Windowsi mandaadihalduris, mitte kunagi config.yaml-is."
+    "mediaserver": "Palu pärast allalaadimisi oma Plex- või Jellyfin-serveril teek uuesti skannida – koondatult, ainult koduvõrgus. Luba hoitakse Windowsi mandaadihalduris, mitte kunagi config.yaml-is.",
+    "sources": "Mixcloud ja hearthis.at lisaallikatena otsingu, jälgimisloendi ja allalaadimiste jaoks – igaühel oma piirangud, loendurid ja paus (backoff), YouTube’ist ja SoundCloudist sõltumatult.",
+    "reupload": "Tunneb ära sama miksi, mis on uuesti üles laaditud (teine kanal, teine platvorm, uus id), kompaktse helisõrmejälje järgi – arvutatakse võrguühenduseta sinu failidest, ilma võrguta."
   },
   "set": {
     "default": "Vaikimisi",
@@ -700,7 +719,9 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
       "playlists": "Esitusloendid (M3U8)",
       "notify_events": "Teavita, kui",
       "quiet": "Vaiksed tunnid",
-      "ms_paths": "Teed ja ajastus"
+      "ms_paths": "Teed ja ajastus",
+      "more_sources": "Mixcloud & hearthis.at",
+      "fingerprint": "Sõrmejälg"
     },
     "general": {
       "language": {
@@ -846,6 +867,14 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
       "keep_original_soundcloud": {
         "label": "Säilita SoundCloudi originaal",
         "help": "Salvesta SoundCloudi heli muutmata kujul (AAC 160 kbps .m4a-na, MP3 128 kbps .mp3-na) – ilma teise kadudega teisenduseta. Väljas: nagu „Väljundvorming”."
+      },
+      "keep_original_mixcloud": {
+        "label": "Hoia Mixcloudi originaal",
+        "help": "Salvesta Mixcloudi heli muutmata kujul (AAC, tavaliselt 64–128 kbps, .m4a-na) – ilma teise kadudega teisenduseta. Väljas: nagu „Väljundvorming“."
+      },
+      "keep_original_hearthis": {
+        "label": "Hoia hearthis.at originaal",
+        "help": "Salvesta hearthis.at voog muutmata kujul (MP3) – ilma teise kadudega teisenduseta. Väljas: nagu „Väljundvorming“."
       }
     },
     "storage": {
@@ -930,7 +959,9 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
       "blocked": "{p} andis märku blokeeringust. Otsing, jälgitavad allikad ja allalaadimised platvormilt {p} on blokeeritud, kuni aeg lõpeb.",
       "clear": "Tühista käsitsi",
       "sc_off": "SoundCloud on välja lülitatud",
-      "sc_off_detail": "SoundCloudi otsingut, jälgitavate allikate kontrolle ega SoundCloudi allalaadimisi pole."
+      "sc_off_detail": "SoundCloudi otsingut, jälgitavate allikate kontrolle ega SoundCloudi allalaadimisi pole.",
+      "p_off": "{p} on välja lülitatud",
+      "p_off_detail": "Teenuse {p} otsingut, jälgitavate allikate kontrolle ega allalaadimisi teenusest {p} pole."
     },
     "soundcloud": {
       "enabled": {
@@ -1402,6 +1433,84 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
         "help": "Millist teeki skannida. „Kõik teegid“ skannib kõike (suurtes serverites aeglasem)."
       },
       "lib_paths": "Kaustad serveris: {p}"
+    },
+    "platform": {
+      "enabled": {
+        "label": "Kasuta teenust {p}",
+        "help": "Väljas: teenuse {p} otsingut, allikate kontrolli ega allalaadimisi pole. Juba allalaaditud kirjed jäävad kogusse."
+      },
+      "sleep_requests": {
+        "label": "Paus päringute vahel",
+        "help": "Ooteaeg metaandmete päringute vahel teenusele {p} (otsing, jälgitavad allikad)."
+      },
+      "sleep_interval": {
+        "label": "Allalaadimise paus – miinimum",
+        "help": "Pärast iga allalaadimist teenusest {p} järgneb juhuslik paus miinimumi ja maksimumi vahel."
+      },
+      "max_sleep_interval": {
+        "label": "Allalaadimise paus – maksimum",
+        "help": "Juhusliku pausi ülempiir."
+      },
+      "limit_rate_mb": {
+        "label": "Allalaadimiskiirus",
+        "help": "Maksimaalne ribalaius. 0 = piiranguta (ei soovitata)."
+      },
+      "max_downloads_per_run": {
+        "label": "Maks. allalaadimisi käivituse kohta",
+        "help": "Teenuse {p} eraldi loendur. Ülejäänud jäävad järjekorda."
+      },
+      "max_downloads_per_day": {
+        "label": "Maks. allalaadimisi päevas",
+        "help": "Teenuse {p} eraldi loendur, käsitsi ja automaatsed allalaadimised koos."
+      },
+      "max_searches_per_hour": {
+        "label": "Maks. otsinguid tunnis",
+        "help": "Teenuse {p} eraldi loendur."
+      },
+      "backoff_initial_hours": {
+        "label": "Paus – algväärtus",
+        "help": "Blokeerimise aeg pärast seda, kui {p} teatas liiga paljudest päringutest (HTTP 429)."
+      },
+      "backoff_max_hours": {
+        "label": "Paus – maksimum",
+        "help": "Blokeerimisaeg kahekordistub iga järgmise blokeeringuga kuni selle väärtuseni."
+      }
+    },
+    "reupload": {
+      "enabled": {
+        "label": "Tuvasta uuesti üleslaadimised",
+        "help": "Arvutab võrguühenduseta ffmpegiga iga seti kompaktse helisõrmejälje ja võrdleb uusi allalaadimisi sinu koguga. Vaste märgitakse „Tõenäoliselt uuesti üles laaditud: …“ – midagi ei kustutata automaatselt."
+      },
+      "fingerprint_after_download": {
+        "label": "Sõrmejälg pärast iga allalaadimist",
+        "help": "Üks fail korraga madala prioriteediga, pärast valjususe analüüsi. Väljas: ainult allpool olev kogu võrdlus."
+      },
+      "precheck": {
+        "label": "Kontrolli enne allalaadimist",
+        "help": "Võrdleb enne allalaadimist ka kestust (±5 s) ja pealkirja koguga samal platvormil – ilma lisapäringuta. Vasted lähevad postkasti, mitte järjekorda, ja näitavad „Tõenäoliselt juba alla laaditud“."
+      },
+      "head_minutes": {
+        "label": "Minutit algusest",
+        "help": "Kui suur osa algusest läheb sõrmejälje sisse. Rohkem = kindlam pika ühesuguse sissejuhatusega settide puhul, veidi aeglasem."
+      },
+      "windows": {
+        "label": "Lisaaknad",
+        "help": "30-sekundilised aknad, mis on jaotatud seti ülejäänud osale. Nendega eristatakse kaht eri setti, mis algavad sama looga. 0 = ainult algus."
+      },
+      "min_score": {
+        "label": "Vaste lävi",
+        "help": "Kattuvate sõrmejälje räsiväärtuste osa, millest alates loetakse sett uuesti üleslaadimiseks. Madalam = leiab rohkem, kuid rohkem valevasteid."
+      },
+      "title": "Sõrmejälg on {done} failil {total}-st",
+      "marks": "avatud: {open} · seotud: {linked} · hoitud: {kept}",
+      "help": "Töötab võrguühenduseta üle kogu, üks fail korraga madala prioriteediga – ilma võrguta, heli jääb muutmata. Saab igal ajal katkestada.",
+      "button": "Võrdle uusi faile",
+      "button_n": "Võrdle uusi ({n})",
+      "all": "Võrdle kõik uuesti",
+      "all_title": "Arvuta iga sõrmejälg uuesti (nt pärast akende muutmist) – sinu otsused jäävad",
+      "running": "Võrdlemine … {done} / {total} · leitud: {found}",
+      "show": "Näita kogus ({n})",
+      "no_ffmpeg": "Sõrmejäljed vajavad ffmpegi (bin\\ffmpeg.exe, paigaldab setup.ps1). Olekut näitab Seaded › Hooldus."
     }
   },
   "opt": {
@@ -1518,6 +1627,12 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
       "title": "Kas lähtestada sisseehitatud sarjad?",
       "text": "Kõik sisseehitatud sarjad naasevad algseisu ja peidetud tulevad tagasi. Sinu enda sarjad jäävad alles.",
       "ok": "Lähtesta"
+    },
+    "reupload_del": {
+      "title": "Kustutada uuesti üleslaadimine?",
+      "ok": "Kustuta fail",
+      "text": "„{title}“ on tõenäoliselt sama miks nagu „{of}“. Kas kustutada see uuem fail?",
+      "note": "Originaal jääb alles. Kirje märgitakse „eiratud“ ja seda enam alla ei laadita."
     }
   },
   "toast": {
@@ -1603,7 +1718,9 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "assign_done": "Festivalid määratud: {assigned} uut, {suggested} soovitust",
     "assign_cancelled": "Määramine katkestati: {assigned} uut, {suggested} soovitust",
     "analysis_done": "Valjus analüüsitud: {n} faili ({failed} ebaõnnestus)",
-    "analysis_cancelled": "Analüüs katkestati pärast {n} faili"
+    "analysis_cancelled": "Analüüs katkestati pärast {n} faili",
+    "fp_done": "Kogu võrreldud: faile {n}, tõenäolisi uuesti üleslaadimisi {found}",
+    "fp_cancelled": "Võrdlemine katkestatud, töödeldud faile: {n}"
   },
   "upd": {
     "available": "Saadaval on versioon {v}",
@@ -2189,5 +2306,26 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "empty_title": "Sette veel pole",
     "empty_text": "Niipea kui teegis on esimesed setid, näed siin, mida kogud – žanrid, festivalid, DJ-d, tunnid.",
     "empty_go": "Avasta sette"
+  },
+  "reupload": {
+    "tag": "Uuesti üles laaditud?",
+    "tag_title": "Tõenäoliselt seti „{title}“ uuesti üleslaadimine ({p}, {score} % vastavus) – klõpsa, et otsustada",
+    "linked": "Sama miks",
+    "linked_title": "Seotud sama miksina nagu „{title}“ ({p})",
+    "chip": "Uuesti üleslaadimised ({n})",
+    "chip_title": "Näita ainult sette, mis on märgitud tõenäoliseks uuesti üleslaadimiseks",
+    "menu_head": "Tõenäoliselt seti „{title}“ uuesti üleslaadimine · {score} %",
+    "menu_head_linked": "Sama miks nagu „{title}“",
+    "keep": "Hoia mõlemad",
+    "link": "Seo sama miksina",
+    "undo": "Võta otsus tagasi",
+    "show_original": "Näita originaali",
+    "delete_new": "Kustuta see uuem fail",
+    "toast_keep": "Mõlemad hoitud – märge eemaldatud",
+    "toast_link": "Seotud sama miksina",
+    "toast_open": "Otsus võeti tagasi",
+    "toast_found": "Tõenäoliselt uuesti üles laaditud: „{title}“ vastab setile „{of}“ – vaata kogu",
+    "dl_notice": "Hiljutised allalaadimised, mis on tõenäoliselt juba olemasolevate settide uuesti üleslaadimised ({n}):",
+    "review": "Vaata kogus üle"
   }
 });

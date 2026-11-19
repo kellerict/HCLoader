@@ -209,7 +209,8 @@
     "outside_period": "不在时间段内",
     "preview": "仅试听（Go+）",
     "too_long": "过长",
-    "too_short": "过短"
+    "too_short": "过短",
+    "select_only": "仅限订阅者（Mixcloud Select）"
   },
   "genre": {
     "unknown": "未知流派：{genre}"

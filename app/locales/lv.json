@@ -211,7 +211,8 @@
     "outside_period": "Ārpus perioda",
     "preview": "Tikai priekšskatījums (Go+)",
     "too_long": "Pārāk garš",
-    "too_short": "Pārāk īss"
+    "too_short": "Pārāk īss",
+    "select_only": "Tikai abonentiem (Mixcloud Select)"
   },
   "genre": {
     "unknown": "Nezināms žanrs: {genre}"

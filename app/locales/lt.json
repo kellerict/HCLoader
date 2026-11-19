@@ -212,7 +212,8 @@
     "outside_period": "Ne laikotarpyje",
     "preview": "Tik peržiūra (Go+)",
     "too_long": "Per ilgas",
-    "too_short": "Per trumpas"
+    "too_short": "Per trumpas",
+    "select_only": "Tik prenumeratoriams (Mixcloud Select)"
   },
   "genre": {
     "unknown": "Nežinomas žanras: {genre}"

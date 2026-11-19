@@ -230,7 +230,7 @@
     const h = HC.util.hash(v.id);
     const bars = Array.from({ length: 34 }, (_, i) => `<i style="height:${Math.round((Math.abs(Math.sin(i * 0.7 + h)) * 0.8 + 0.15) * 100)}%;--n:${(i * 7 + h) % 11}"></i>`).join('');
     const art = `<div class="art" style="background:linear-gradient(${h % 360}deg,#000 15%,${g}55 60%,#000),radial-gradient(circle at ${h % 100}% 30%,${g}aa,transparent 45%)"></div><div class="wave">${bars}</div>`;
-    /* Bild nur von den Bild-CDNs von YouTube/SoundCloud (m10); alles andere zeigt den generierten Platzhalter. */
+    /* Bild nur von den Bild-CDNs von YouTube/SoundCloud/Mixcloud/hearthis.at (m10); alles andere zeigt den generierten Platzhalter. */
     const src = HC.util.safeThumb(v.thumbnail);
     const img = src ? `<img src="${esc(src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">` : '';
     return `<div class="thumb ${cls || ''}">${art}${img}`;
@@ -250,11 +250,12 @@
   /** Auswahl aller Genres aus den Einstellungen (Farbpunkt + Name, aktuelles markiert). */
   ui.genreMenu = (anchor, current, onPick) => ui.menu(anchor, [{ head: t('card.set_genre') }]
     .concat(HC.genres.list().map((g) => ({ label: g.name, dot: g.color, current: g.name === current, key: `genre-${g.name}`, onClick: () => { if (g.name !== current) onPick(g.name); } }))), { align: 'left' });
-  /** Kleines Plattform-Badge. YouTube nur, solange SoundCloud eingeschaltet ist (sonst wäre es überall dasselbe). */
+  /** Kleines Plattform-Badge. YouTube nur, solange eine weitere Plattform eingeschaltet ist (sonst wäre es überall dasselbe). */
+  const PCLS = { youtube: 'yt', soundcloud: 'sc', mixcloud: 'mc', hearthis: 'ht' };
   ui.pbadge = (x, force) => {
     const p = typeof x === 'string' ? x : HC.platform.of(x);
-    if (p === 'youtube' && !force && !HC.platform.scEnabled()) return '';
-    return `<span class="pbadge ${p === 'soundcloud' ? 'sc' : 'yt'}" title="${esc(HC.platform.label(p))}">${p === 'soundcloud' ? `${I.wave}SC` : 'YT'}</span>`;
+    if (p === 'youtube' && !force && !HC.platform.anyOther()) return '';
+    return `<span class="pbadge ${PCLS[p] || 'yt'}" title="${esc(HC.platform.label(p))}">${p === 'youtube' ? '' : I.wave}${HC.platform.short(p)}</span>`;
   };
   /** Kleine Equalizer-Balken (laufende Wiedergabe). */
   ui.eq = (cls) => `<span class="eqb ${cls || ''}" aria-hidden="true"><i></i><i></i><i></i></span>`;
@@ -266,6 +267,7 @@
   ui.canLoad = (v) => !!v && CAN_LOAD.includes(v.status) && !v.preview;
   /** Hinweiszeile einer Karte: Go+-Vorschau bzw. vermutlich schon von der anderen Plattform geladen. */
   function cardNote(v) {
+    if (v.preview && v.platform === 'mixcloud') return `<div class="cnote prev" title="${esc(t('card.select_title'))}">${I.ban}<span>${esc(t('card.select'))}</span></div>`;
     if (v.preview) return `<div class="cnote prev" title="${esc(t('card.preview_title'))}">${I.ban}<span>${esc(t('card.preview'))}</span></div>`;
     const d = v.duplicate_of;
     if (d) return `<div class="cnote dup" title="${esc(t('card.duplicate_title', { title: d.title || '', p: HC.platform.label(d.platform) }))}">${I.copy}<span>${esc(t('card.duplicate', { p: HC.platform.label(d.platform) }))}</span></div>`;

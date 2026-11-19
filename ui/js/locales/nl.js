@@ -64,7 +64,8 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "clock": "uur",
     "req_h": "verz./u",
     "lufs": "LUFS",
-    "db": "dB"
+    "db": "dB",
+    "pct": "%"
   },
   "range": {
     "ge_sleep": "≥ minimum",
@@ -96,7 +97,10 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "youtube": "YouTube",
     "soundcloud": "SoundCloud",
     "label": "Platform",
-    "sc_off": "SoundCloud staat uit – zet het aan onder Instellingen › SoundCloud."
+    "sc_off": "SoundCloud staat uit – zet het aan onder Instellingen › SoundCloud.",
+    "mixcloud": "Mixcloud",
+    "hearthis": "hearthis.at",
+    "p_off": "{p} staat uit – zet het aan onder Instellingen › Meer bronnen."
   },
   "genre": {
     "change": "Genre wijzigen",
@@ -148,7 +152,8 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "sc_today": "{n} / {max}",
     "yt_tip": "YouTube · vandaag gedownload {day}/{day_max} · {s}/{s_max} zoekopdrachten dit uur",
     "sc_tip": "SoundCloud · vandaag gedownload {day}/{day_max} · {s}/{s_max} zoekopdrachten dit uur",
-    "backoff_tip": "{p}: backoff tot {t} (nog {rest})"
+    "backoff_tip": "{p}: backoff tot {t} (nog {rest})",
+    "p_tip": "{p} · vandaag gedownload {day}/{day_max} · {s}/{s_max} zoekopdrachten dit uur"
   },
   "schedule": {
     "due": "aan de beurt",
@@ -162,7 +167,7 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
   },
   "card": {
     "source": "Gevonden via volglijstbron “{name}”",
-    "select": "Selecteren",
+    "select": "Alleen abonnees (Select)",
     "open": "Openen op {p}",
     "ignore": "Negeren",
     "unignore": "Niet meer negeren",
@@ -176,7 +181,8 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "duplicate": "Waarschijnlijk al gedownload ({p})",
     "duplicate_title": "Zeer vergelijkbare titel en dezelfde duur als “{title}” van {p} – daar al gedownload of in de wachtrij. Je kunt het toch downloaden.",
     "preview": "Alleen preview (Go+) – kan niet worden gedownload",
-    "preview_title": "SoundCloud levert voor deze track alleen een preview van 30 seconden (Go+). Hij kan niet worden gedownload."
+    "preview_title": "SoundCloud levert voor deze track alleen een preview van 30 seconden (Go+). Hij kan niet worden gedownload.",
+    "select_title": "Deze Mixcloud-upload is alleen beschikbaar voor abonnees van de maker (Mixcloud Select). Hij kan niet worden gedownload."
   },
   "discover": {
     "placeholder": "Zoek naar mix, liveset, dj, evenement …",
@@ -234,7 +240,13 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "ready_text": "Voer een zoekterm in en druk op Enter.",
     "none_title": "Niets gevonden",
     "none_text": "Versoepel de filters of probeer andere zoektermen.",
-    "none_year": "Geen resultaat uit {year}. Zoek opnieuw zodat het jaar in de zoekterm wordt opgenomen – of wijzig het jaar."
+    "none_year": "Geen resultaat uit {year}. Zoek opnieuw zodat het jaar in de zoekterm wordt opgenomen – of wijzig het jaar.",
+    "quota_p": "{p}-zoekopdrachten dit uur: {n} / {max}",
+    "placeholder_p": "Zoek op {p}: mix, set, dj, podcast …",
+    "searching_p": "Zoeken – lichte zoekopdracht, spaarzaam voor {p} …",
+    "ready_text_p": "Voer een zoekterm in en druk op Enter om op {p} te zoeken.",
+    "previews_mc": "{n} alleen voor abonnees (Select)",
+    "previews_mc_title": "Mixcloud Select-uploads zijn alleen voor betalende abonnees en kunnen nooit worden gedownload. Zichtbaar als ‘Gedownloade & genegeerde verbergen’ uit staat."
   },
   "inbox": {
     "title": "Inbox",
@@ -325,8 +337,8 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "hits_auto": "Automatisch downloaden",
     "hint_inbox": "Treffers wachten in de inbox tot je ze downloadt of negeert.",
     "hint_auto": "Treffers die alle filters doorstaan, gaan direct naar de wachtrij.",
-    "hint_channel": "YouTube-kanaal (…/@naam of …/channel/UC…, eventueel /videos of /streams) of SoundCloud-profiel (soundcloud.com/naam).",
-    "hint_playlist": "YouTube-afspeellijst met “list=…” of SoundCloud-set (soundcloud.com/naam/sets/set). De nieuwste items worden gecontroleerd.",
+    "hint_channel": "YouTube-kanaal (…/@naam of …/channel/UC…, eventueel /videos of /streams), SoundCloud-profiel (soundcloud.com/naam), Mixcloud-gebruiker (mixcloud.com/naam) of hearthis.at-gebruiker (hearthis.at/naam).",
+    "hint_playlist": "YouTube-playlist met ‘list=…’, SoundCloud-set (soundcloud.com/naam/sets/set), Mixcloud-playlist (mixcloud.com/naam/playlists/lijst) of hearthis.at-set (hearthis.at/naam/set/set). De nieuwste items worden gecontroleerd.",
     "f_platform": "Zoeken op",
     "detected": "herkend: {p} · {type}",
     "not_detected": "URL niet herkend",
@@ -345,7 +357,9 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "ph_channel": "https://www.youtube.com/@kanaal  of  https://soundcloud.com/naam",
     "ph_playlist": "https://www.youtube.com/playlist?list=…  of  https://soundcloud.com/naam/sets/…",
     "ph_search": "bijv. frenchcore liveset",
-    "form_error": "De bron kon niet worden opgeslagen."
+    "form_error": "De bron kon niet worden opgeslagen.",
+    "backoff_link_p": "{p} openen",
+    "why_p_off": "{p} staat uit"
   },
   "downloads": {
     "title": "Downloads",
@@ -422,7 +436,8 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     },
     "local_link_pot": "Netwerkinstellingen",
     "local_link_target": "Opslaglocatie wijzigen",
-    "local_link_error": "Onderhoud"
+    "local_link_error": "Onderhoud",
+    "summary_p": "{p} {day}/{day_max}"
   },
   "library": {
     "title": "Bibliotheek",
@@ -631,7 +646,9 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "festivals": "Festivals & reeksen",
     "playback": "Afspelen",
     "notifications": "Meldingen",
-    "mediaserver": "Mediaserver"
+    "mediaserver": "Mediaserver",
+    "sources": "Meer bronnen",
+    "reupload": "Heruploads"
   },
   "tabs_hint": {
     "general": "Basisgedrag van de app.",
@@ -639,7 +656,7 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "genres": "Volgorde = prioriteit. Het eerste genre waarvan een trefwoord in de titel voorkomt, wint. Handmatig ingestelde genres en het standaardgenre van een bron gaan voor.",
     "download": "YouTube levert meestal Opus met ongeveer 130–160 kbps. MP3 is een conversie en klinkt niet beter dan de bron – maar speelt overal af.",
     "storage": "Waar de bestanden komen en hoe ze heten. De structuur is ontworpen voor mediaservers zoals Plex of Jellyfin.",
-    "throttle": "Beperkt de belasting van YouTube. Deze waarden gelden samen voor zoeken, volglijst en downloads. SoundCloud heeft eigen waarden op het tabblad “SoundCloud”.",
+    "throttle": "Beperkt de belasting van YouTube. Deze waarden gelden samen voor zoeken, volglijst en downloads. SoundCloud heeft eigen waarden op het tabblad “SoundCloud”. Mixcloud en hearthis.at hebben hun eigen waarden onder ‘Meer bronnen’.",
     "soundcloud": "SoundCloud als tweede bron voor zoeken, volglijst en downloads – met eigen limieten, tellers en backoff, onafhankelijk van YouTube.",
     "network": "Het PO-Token laat verzoeken eruitzien als van een echte browser en verkleint het risico op botblokkades.",
     "schedule": "Wanneer de volglijst automatisch wordt gecontroleerd – in de app en via de Windows-taakplanner.",
@@ -648,7 +665,9 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "festivals": "Herkent festival of reeks, jaar, stage en soort set uit de opgeslagen titels – offline, zonder één extra verzoek.",
     "playback": "Ingebouwde speler, luidheidsnormalisatie, onthouden posities en de offline analyse van je bestanden.",
     "notifications": "Windows-meldingen voor nieuwe sets in de inbox en voltooide of mislukte downloads – gebundeld tot één melding, nooit een stortvloed. Een klik opent de app op de juiste plek.",
-    "mediaserver": "Laat na downloads je Plex- of Jellyfin-server de bibliotheek opnieuw scannen – gebundeld, alleen in het thuisnetwerk. De token staat in Windows Referentiebeheer, nooit in config.yaml."
+    "mediaserver": "Laat na downloads je Plex- of Jellyfin-server de bibliotheek opnieuw scannen – gebundeld, alleen in het thuisnetwerk. De token staat in Windows Referentiebeheer, nooit in config.yaml.",
+    "sources": "Mixcloud en hearthis.at als extra bronnen voor zoeken, watchlist en downloads – elk met eigen limieten, tellers en backoff, los van YouTube en SoundCloud.",
+    "reupload": "Herkent dezelfde mix die opnieuw is geüpload (ander kanaal, ander platform, nieuwe id) aan een compacte audiovingerafdruk – offline berekend uit je bestanden, zonder netwerk."
   },
   "set": {
     "default": "Standaard",
@@ -700,7 +719,9 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
       "playlists": "Playlists (M3U8)",
       "notify_events": "Meld me bij",
       "quiet": "Stille uren",
-      "ms_paths": "Paden & moment"
+      "ms_paths": "Paden & moment",
+      "more_sources": "Mixcloud & hearthis.at",
+      "fingerprint": "Vingerafdruk"
     },
     "general": {
       "language": {
@@ -846,6 +867,14 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
       "keep_original_soundcloud": {
         "label": "SoundCloud-origineel behouden",
         "help": "SoundCloud-audio ongewijzigd opslaan (AAC 160 kbps als .m4a, MP3 128 kbps als .mp3) – geen tweede lossy conversie. Uit: zoals “Uitvoerformaat”."
+      },
+      "keep_original_mixcloud": {
+        "label": "Mixcloud-origineel behouden",
+        "help": "Mixcloud-audio ongewijzigd opslaan (AAC, meestal 64–128 kbps, als .m4a) – geen tweede verliesgevende conversie. Uit: zoals ‘Uitvoerformaat’."
+      },
+      "keep_original_hearthis": {
+        "label": "hearthis.at-origineel behouden",
+        "help": "De hearthis.at-stream ongewijzigd opslaan (MP3) – geen tweede verliesgevende conversie. Uit: zoals ‘Uitvoerformaat’."
       }
     },
     "storage": {
@@ -930,7 +959,9 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
       "blocked": "{p} meldde een blokkade. Zoeken, volglijst en downloads van {p} zijn geblokkeerd tot de tijd is verstreken.",
       "clear": "Handmatig opheffen",
       "sc_off": "SoundCloud staat uit",
-      "sc_off_detail": "Geen SoundCloud-zoekopdrachten, geen volglijstcontroles en geen downloads van SoundCloud."
+      "sc_off_detail": "Geen SoundCloud-zoekopdrachten, geen volglijstcontroles en geen downloads van SoundCloud.",
+      "p_off": "{p} staat uit",
+      "p_off_detail": "Geen {p}-zoekopdrachten, geen volglijstcontroles en geen downloads van {p}."
     },
     "soundcloud": {
       "enabled": {
@@ -1402,6 +1433,84 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
         "help": "Welke bibliotheek gescand wordt. “Alle bibliotheken” scant alles (trager op grote servers)."
       },
       "lib_paths": "Mappen op de server: {p}"
+    },
+    "platform": {
+      "enabled": {
+        "label": "{p} gebruiken",
+        "help": "Uit: geen {p}-zoekopdrachten, geen controle van {p}-bronnen en geen {p}-downloads. Reeds gedownloade items blijven in de bibliotheek."
+      },
+      "sleep_requests": {
+        "label": "Pauze tussen verzoeken",
+        "help": "Wachttijd tussen metadataverzoeken aan {p} (zoeken, volglijst)."
+      },
+      "sleep_interval": {
+        "label": "Downloadpauze – minimum",
+        "help": "Na elke {p}-download volgt een willekeurige pauze tussen minimum en maximum."
+      },
+      "max_sleep_interval": {
+        "label": "Downloadpauze – maximum",
+        "help": "Bovengrens van de willekeurige pauze."
+      },
+      "limit_rate_mb": {
+        "label": "Downloadsnelheid",
+        "help": "Maximale bandbreedte. 0 = onbeperkt (niet aanbevolen)."
+      },
+      "max_downloads_per_run": {
+        "label": "Max. downloads per run",
+        "help": "Aparte teller voor {p}. De rest blijft in de wachtrij."
+      },
+      "max_downloads_per_day": {
+        "label": "Max. downloads per dag",
+        "help": "Aparte teller voor {p}, handmatige en automatische downloads samen."
+      },
+      "max_searches_per_hour": {
+        "label": "Max. zoekopdrachten per uur",
+        "help": "Aparte teller voor {p}."
+      },
+      "backoff_initial_hours": {
+        "label": "Backoff – beginwaarde",
+        "help": "Blokkeertijd nadat {p} te veel verzoeken meldde (HTTP 429)."
+      },
+      "backoff_max_hours": {
+        "label": "Backoff – maximum",
+        "help": "De blokkeertijd verdubbelt bij elke volgende blokkade tot deze waarde."
+      }
+    },
+    "reupload": {
+      "enabled": {
+        "label": "Heruploads herkennen",
+        "help": "Berekent offline met ffmpeg een compacte audiovingerafdruk per set en vergelijkt nieuwe downloads met je bibliotheek. Een treffer wordt gemarkeerd als ‘Waarschijnlijk herupload van …’ – er wordt niets automatisch verwijderd."
+      },
+      "fingerprint_after_download": {
+        "label": "Vingerafdruk na elke download",
+        "help": "Eén bestand tegelijk met lage prioriteit, na de luidheidsanalyse. Uit: alleen de bibliotheekvergelijking hieronder."
+      },
+      "precheck": {
+        "label": "Vóór het downloaden controleren",
+        "help": "Vergelijkt vóór een download ook duur (±5 s) en titel met de bibliotheek op hetzelfde platform – zonder extra verzoek. Treffers gaan naar de inbox in plaats van de wachtrij en tonen ‘Waarschijnlijk al gedownload’."
+      },
+      "head_minutes": {
+        "label": "Minuten vanaf het begin",
+        "help": "Hoeveel van het begin in de vingerafdruk gaat. Meer = veiliger bij sets met een lange identieke intro, iets trager."
+      },
+      "windows": {
+        "label": "Extra vensters",
+        "help": "Vensters van 30 seconden, verdeeld over de rest van de set. Daarmee worden twee verschillende sets die met dezelfde track beginnen uit elkaar gehouden. 0 = alleen het begin."
+      },
+      "min_score": {
+        "label": "Drempel voor een treffer",
+        "help": "Aandeel overeenkomende vingerafdruk-hashes vanaf wanneer een set als herupload telt. Lager = vindt meer, maar meer valse treffers."
+      },
+      "title": "{done} van {total} bestanden met vingerafdruk",
+      "marks": "{open} open · {linked} gekoppeld · {kept} behouden",
+      "help": "Loopt offline door de bibliotheek, één bestand tegelijk met lage prioriteit – zonder netwerk, de audio blijft onveranderd. Altijd te annuleren.",
+      "button": "Nieuwe bestanden vergelijken",
+      "button_n": "{n} nieuwe vergelijken",
+      "all": "Alles opnieuw vergelijken",
+      "all_title": "Elke vingerafdruk opnieuw berekenen (bv. na gewijzigde vensters) – je beslissingen blijven",
+      "running": "Vergelijken … {done} / {total} · {found} gevonden",
+      "show": "{n} tonen in de bibliotheek",
+      "no_ffmpeg": "Vingerafdrukken hebben ffmpeg nodig (bin\\ffmpeg.exe, geïnstalleerd door setup.ps1). Instellingen › Onderhoud toont de status."
     }
   },
   "opt": {
@@ -1518,6 +1627,12 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
       "title": "Ingebouwde reeksen herstellen?",
       "text": "Alle ingebouwde reeksen keren terug naar de oorspronkelijke staat, verborgen reeksen komen terug. Je eigen reeksen blijven.",
       "ok": "Herstellen"
+    },
+    "reupload_del": {
+      "title": "Herupload verwijderen?",
+      "ok": "Bestand verwijderen",
+      "text": "‘{title}’ is waarschijnlijk dezelfde mix als ‘{of}’. Dit nieuwere bestand verwijderen?",
+      "note": "Het origineel blijft. Het item wordt op ‘genegeerd’ gezet en niet opnieuw gedownload."
     }
   },
   "toast": {
@@ -1603,7 +1718,9 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "assign_done": "Festivals toegewezen: {assigned} nieuw, {suggested} suggesties",
     "assign_cancelled": "Toewijzen afgebroken: {assigned} nieuw, {suggested} suggesties",
     "analysis_done": "Luidheid geanalyseerd: {n} bestanden ({failed} mislukt)",
-    "analysis_cancelled": "Analyse geannuleerd na {n} bestanden"
+    "analysis_cancelled": "Analyse geannuleerd na {n} bestanden",
+    "fp_done": "Bibliotheek vergeleken: {n} bestanden, {found} waarschijnlijke heruploads",
+    "fp_cancelled": "Vergelijken geannuleerd na {n} bestanden"
   },
   "upd": {
     "available": "Versie {v} beschikbaar",
@@ -2189,5 +2306,26 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "empty_title": "Nog geen sets",
     "empty_text": "Zodra de eerste sets in je bibliotheek staan, zie je hier wat je verzamelt – genres, festivals, dj's, uren.",
     "empty_go": "Sets ontdekken"
+  },
+  "reupload": {
+    "tag": "Herupload?",
+    "tag_title": "Waarschijnlijk een herupload van ‘{title}’ ({p}, {score} % overeenkomst) – klik om te beslissen",
+    "linked": "Zelfde mix",
+    "linked_title": "Gekoppeld als dezelfde mix als ‘{title}’ ({p})",
+    "chip": "Heruploads ({n})",
+    "chip_title": "Alleen sets tonen die als waarschijnlijke herupload zijn gemarkeerd",
+    "menu_head": "Waarschijnlijk herupload van ‘{title}’ · {score} %",
+    "menu_head_linked": "Zelfde mix als ‘{title}’",
+    "keep": "Beide behouden",
+    "link": "Koppelen als dezelfde mix",
+    "undo": "Beslissing ongedaan maken",
+    "show_original": "Origineel tonen",
+    "delete_new": "Dit nieuwere bestand verwijderen",
+    "toast_keep": "Beide behouden – de markering is weg",
+    "toast_link": "Gekoppeld als dezelfde mix",
+    "toast_open": "Beslissing ongedaan gemaakt",
+    "toast_found": "Waarschijnlijk herupload: ‘{title}’ komt overeen met ‘{of}’ – zie bibliotheek",
+    "dl_notice": "Recente downloads die waarschijnlijk heruploads zijn van sets die je al hebt ({n}):",
+    "review": "Bekijken in de bibliotheek"
   }
 });

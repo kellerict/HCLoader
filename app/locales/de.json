@@ -210,7 +210,8 @@
     "outside_period": "Ausserhalb des Zeitraums",
     "preview": "Nur Vorschau (Go+)",
     "too_long": "Zu lang",
-    "too_short": "Zu kurz"
+    "too_short": "Zu kurz",
+    "select_only": "Nur für Abonnenten (Mixcloud Select)"
   },
   "genre": {
     "unknown": "Unbekanntes Genre: {genre}"

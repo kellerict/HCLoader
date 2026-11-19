@@ -187,6 +187,9 @@ def passes(
     if is_geo_blocked(video):
         return False, tr(GEO_REASON)
     if is_preview(video):
+        # v0.10.0: Mixcloud Select uploads (subscribers only) are never loadable either
+        if video.get("platform") == "mixcloud":
+            return False, tr("filter.select_only")
         return False, tr(PREVIEW_REASON)
     reason = check_duration(video.get("duration"), settings.min_duration, settings.max_duration)
     if reason:

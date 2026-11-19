@@ -170,14 +170,14 @@
   function renderQuota() {
     if (!HC.status) return;
     const st = HC.platform.state(platform);
-    $('#quota', el).innerHTML = t(platform === 'soundcloud' ? 'discover.quota_sc' : 'discover.quota', { n: `<b>${util.esc(st.counters.searches_hour || 0)}</b>`, max: util.esc(st.limits.searches_hour) });
+    $('#quota', el).innerHTML = t(pkey('discover.quota'), { p: util.esc(HC.platform.label(platform)), n: `<b>${util.esc(st.counters.searches_hour || 0)}</b>`, max: util.esc(st.limits.searches_hour) });
   }
   function renderCount(list) {
     const n = list.length, hidden = results ? results.length - n : 0;
     const prev = results ? results.filter((v) => v.preview).length : 0;
-    $('#count', el).innerHTML = searching ? t(platform === 'soundcloud' ? 'discover.searching_sc' : 'discover.searching')
+    $('#count', el).innerHTML = searching ? t(pkey('discover.searching'), { p: HC.platform.label(platform) })
       : !results ? ''
-        : t('discover.count', { n: `<b>${util.fmtNum(n)}</b>`, count: n, hidden }) + (prev ? ` · <span class="prevcount" title="${util.esc(t('discover.previews_title'))}">${t('discover.previews', { n: prev })}</span>` : '')
+        : t('discover.count', { n: `<b>${util.fmtNum(n)}</b>`, count: n, hidden }) + (prev ? ` · <span class="prevcount" title="${util.esc(t(platform === 'mixcloud' ? 'discover.previews_mc_title' : 'discover.previews_title'))}">${t(platform === 'mixcloud' ? 'discover.previews_mc' : 'discover.previews', { n: prev })}</span>` : '')
           + (sel.size ? ` · ${t('discover.selected', { n: `<b>${sel.size}</b>` })}` : '');
     $('#dl-sel', el).disabled = !sel.size;
     $('#dl-sel-n', el).textContent = sel.size ? ` (${sel.size})` : '';
@@ -192,7 +192,7 @@
     }
     const list = visible();
     [...sel].forEach((id) => { const v = HC.store.get(id); if (!ui.canLoad(v) || !list.includes(v)) sel.delete(id); });
-    if (!results) grid.innerHTML = `<div class="empty">${platform === 'soundcloud' ? I.wave : I.search}<h4>${t('discover.ready_title')}</h4>${t(platform === 'soundcloud' ? 'discover.ready_text_sc' : 'discover.ready_text')}</div>`;
+    if (!results) grid.innerHTML = `<div class="empty">${platform !== 'youtube' ? I.wave : I.search}<h4>${t('discover.ready_title')}</h4>${t(pkey('discover.ready_text'), { p: util.esc(HC.platform.label(platform)) })}</div>`;
     else if (!list.length) grid.innerHTML = `<div class="empty">${I.filter}<h4>${t('discover.none_title')}</h4>${f.period === 'year' ? t('discover.none_year', { year: f.year }) : t('discover.none_text')}</div>`;
     else grid.innerHTML = list.map((v) => ui.card(v, { selected: sel.has(v.id) })).join('');
     renderCount(list);
@@ -224,22 +224,24 @@
   }
 
   /* ---------- Plattform-Umschalter ---------- */
+  /** Text-Schlüssel je Plattform: YouTube ohne Zusatz, SoundCloud «_sc» (Phase 7a), Mixcloud/hearthis.at «_p» mit {p}. */
+  const pkey = (base) => (platform === 'youtube' ? base : platform === 'soundcloud' ? `${base}_sc` : `${base}_p`);
+  const offText = (p) => (p === 'soundcloud' ? t('platform.sc_off') : t('platform.p_off', { p: HC.platform.label(p) }));
   function paintPlatform() {
-    const scOn = HC.platform.scEnabled();
     $$('#plat button', el).forEach((b) => {
-      const on = b.dataset.p === platform, off = b.dataset.p === 'soundcloud' && !scOn;
+      const on = b.dataset.p === platform, off = !HC.platform.enabled(b.dataset.p);
       b.classList.toggle('on', on);
       b.classList.toggle('off', off);
       b.setAttribute('aria-pressed', on);
       b.setAttribute('aria-disabled', off);
-      b.title = off ? t('platform.sc_off') : t('discover.platform_title');
+      b.title = off ? offText(b.dataset.p) : t('discover.platform_title');
       b.disabled = searching && !on;
     });
-    $('#q', el).placeholder = t(platform === 'soundcloud' ? 'discover.placeholder_sc' : 'discover.placeholder');
+    $('#q', el).placeholder = t(pkey('discover.placeholder'), { p: HC.platform.label(platform) });
     el.dataset.platform = platform;
   }
   function setPlatform(p) {
-    if (p === 'soundcloud' && !HC.platform.scEnabled()) p = 'youtube';
+    if (!HC.platform.enabled(p)) p = 'youtube';
     if (p === platform || searching) { paintPlatform(); return; }
     stash[platform] = { results, last, q: $('#q', el).value };
     platform = p;
@@ -265,7 +267,7 @@
     el.innerHTML = `
       <div class="searchbar">
         <div class="seg pseg" id="plat" role="group" aria-label="${util.esc(t('platform.label'))}">
-          <button type="button" data-p="youtube">${t('platform.youtube')}</button><button type="button" data-p="soundcloud">${I.wave}${t('platform.soundcloud')}</button>
+          ${HC.platform.all.map((p) => `<button type="button" data-p="${p}">${p === 'youtube' ? '' : I.wave}${t('platform.' + p)}</button>`).join('')}
         </div>
         <div class="search-wrap">${I.search}
           <input class="input" id="q" placeholder="${util.esc(t('discover.placeholder'))}" spellcheck="false" autocomplete="off">
@@ -330,7 +332,7 @@
     $('#plat', el).addEventListener('click', (e) => {
       const b = e.target.closest('button[data-p]');
       if (!b) return;
-      if (b.classList.contains('off')) { ui.toast(t('platform.sc_off'), 'info'); return; }
+      if (b.classList.contains('off')) { ui.toast(offText(b.dataset.p), 'info'); return; }
       setPlatform(b.dataset.p);
       $('#q', el).focus();
     });
@@ -420,7 +422,7 @@
       const prev = await HC.bridge.safe('get_last_search');
       if (prev && prev.results && !results) {
         /* Die letzte Suche bestimmt die Plattform beim Start (SoundCloud nur, wenn eingeschaltet). */
-        const pp = prev.platform === 'soundcloud' ? 'soundcloud' : 'youtube';
+        const pp = HC.platform.all.includes(prev.platform) ? prev.platform : 'youtube';
         if (HC.platform.enabled(pp)) platform = pp;
         else { stash[pp] = { results: HC.store.put(prev.results), last: null, q: prev.query || '' }; prev.results = null; }
         paintPlatform();

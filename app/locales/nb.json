@@ -210,7 +210,8 @@
     "outside_period": "Utenfor perioden",
     "preview": "Bare forhåndsvisning (Go+)",
     "too_long": "For lang",
-    "too_short": "For kort"
+    "too_short": "For kort",
+    "select_only": "Bare abonnenter (Mixcloud Select)"
   },
   "genre": {
     "unknown": "Ukjent sjanger: {genre}"

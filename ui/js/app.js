@@ -181,18 +181,24 @@
     led($('#sb-backoff-led'), bo.active ? 'warn blink' : 'off');
     $('#sb-backoff-it').classList.toggle('alert', !!bo.active);
 
-    /* Pro Plattform (Phase 7a): «Backoff» oben = YouTube; SoundCloud bekommt einen eigenen, kompakten Punkt – nur wenn eingeschaltet. */
-    const tip = (p, key) => { const x = HC.platform.state(p); return t(key, { day: x.counters.downloads_day || 0, day_max: x.limits.downloads_day, s: x.counters.searches_hour || 0, s_max: x.limits.searches_hour }); };
-    const scOn = HC.platform.scEnabled();
-    $('#sb-backoff-it').title = scOn ? tip('youtube', 'statusbar.yt_tip') : '';
-    $('#sb-sc-it').hidden = !scOn;
-    if (scOn) {
-      const sc = HC.platform.state('soundcloud'), sbo = sc.backoff && sc.backoff.active ? sc.backoff : null;
-      $('#sb-sc').textContent = sbo ? t('statusbar.sc_backoff', { t: util.parseDate(sbo.until) && util.parseDate(sbo.until).toDateString() === new Date().toDateString() ? util.fmtTime(sbo.until) : util.fmtWhen(sbo.until) }) : t('statusbar.sc_today', { n: sc.counters.downloads_day || 0, max: sc.limits.downloads_day });
-      led($('#sb-sc-led'), sbo ? 'warn blink' : 'sc');
-      $('#sb-sc-it').classList.toggle('alert', !!sbo);
-      $('#sb-sc-it').title = tip('soundcloud', 'statusbar.sc_tip') + (sbo ? ` · ${t('statusbar.backoff_tip', { p: HC.platform.label('soundcloud'), t: util.fmtWhen(sbo.until), rest: util.fmtSpan(sbo.remaining_s) })}` : '');
-    }
+    /* Pro Plattform (Phase 7a, v0.10.0): «Backoff» oben = YouTube; SoundCloud, Mixcloud und hearthis.at bekommen je
+       einen eigenen, kompakten Punkt – nur wenn eingeschaltet. */
+    const tip = (p, key) => { const x = HC.platform.state(p); return t(key, { p: HC.platform.label(p), day: x.counters.downloads_day || 0, day_max: x.limits.downloads_day, s: x.counters.searches_hour || 0, s_max: x.limits.searches_hour }); };
+    $('#sb-backoff-it').title = HC.platform.anyOther() ? tip('youtube', 'statusbar.yt_tip') : '';
+    HC.platform.others.forEach((p) => {
+      const cls = { soundcloud: 'sc', mixcloud: 'mc', hearthis: 'ht' }[p];
+      const it = $(`#sb-${cls}-it`);
+      if (!it) return;
+      const x = HC.platform.state(p), pbo = x.backoff && x.backoff.active ? x.backoff : null;
+      /* SoundCloud wie bisher, sobald eingeschaltet; Mixcloud/hearthis.at nur bei Aktivität heute oder Backoff (Platz). */
+      const on = HC.platform.enabled(p) && (p === 'soundcloud' || !!pbo || (x.counters.downloads_day || 0) > 0 || (x.counters.searches_hour || 0) > 0);
+      it.hidden = !on;
+      if (!on) return;
+      $(`#sb-${cls}`).textContent = pbo ? t('statusbar.sc_backoff', { t: util.parseDate(pbo.until) && util.parseDate(pbo.until).toDateString() === new Date().toDateString() ? util.fmtTime(pbo.until) : util.fmtWhen(pbo.until) }) : t('statusbar.sc_today', { n: x.counters.downloads_day || 0, max: x.limits.downloads_day });
+      led($(`#sb-${cls}-led`), pbo ? 'warn blink' : cls);
+      it.classList.toggle('alert', !!pbo);
+      it.title = tip(p, p === 'soundcloud' ? 'statusbar.sc_tip' : 'statusbar.p_tip') + (pbo ? ` · ${t('statusbar.backoff_tip', { p: HC.platform.label(p), t: util.fmtWhen(pbo.until), rest: util.fmtSpan(pbo.remaining_s) })}` : '');
+    });
 
     const qn = s.queue_length || 0;
     fx.count($('#sb-queue'), qn);
@@ -232,6 +238,12 @@
     B.on('done', (d) => HC.ui.toast(t('toast.done', { title: d.title })));
     B.on('failed', (d) => HC.ui.toast(t('toast.failed', { title: d.title, error: d.error }), 'err'));
     B.on('toast', (d) => HC.ui.toast(d.msg, d.kind));
+    /* v0.10.0: Re-Upload nach einem Download erkannt (nicht während des Abgleichs der ganzen Bibliothek) */
+    B.on('reupload', (d) => {
+      const r = d && d.reupload;
+      if (!r || r.state !== 'open' || d.pass) return;
+      HC.ui.toast(t('reupload.toast_found', { title: (HC.store.get(d.id) || {}).title || d.id, of: r.of.title || r.of.id }), 'warn', 7000);
+    });
     /* v0.9.0: zweiter Start mit --open bzw. Klick auf eine Windows-Benachrichtigung */
     B.on('navigate', (d) => { if (d && VIEWS.includes(d.view)) go(d.view); });
     /* Watchlist-Lauf: Fehler pro Quelle mitzählen, am Ende eine Zusammenfassung. */

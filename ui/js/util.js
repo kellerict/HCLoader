@@ -101,12 +101,13 @@
       const days = { '7d': 7, '30d': 30, '1y': 365 }[p.period];
       return days ? util.daysAgo(v.upload_date) <= days : true;
     },
-    /** Thumbnails nur von den Bild-CDNs von YouTube (https://*.ytimg.com) und SoundCloud (https://*.sndcdn.com) – sonst Platzhalter. */
+    /** Thumbnails nur von den Bild-CDNs von YouTube (https://*.ytimg.com), SoundCloud (https://*.sndcdn.com),
+        Mixcloud (https://thumbnailer.mixcloud.com) und hearthis.at (https://*.hearthis.at) – sonst Platzhalter. */
     safeThumb(url) {
       if (typeof url !== 'string' || !url) return null;
       try {
         const u = new URL(url);
-        return u.protocol === 'https:' && !u.username && !u.port && /(^|\.)(ytimg|sndcdn)\.com$/i.test(u.hostname) ? u.href : null;
+        return u.protocol === 'https:' && !u.username && !u.port && (/(^|\.)(ytimg|sndcdn)\.com$/i.test(u.hostname) || /^thumbnailer\.mixcloud\.com$/i.test(u.hostname) || /(^|\.)hearthis\.at$/i.test(u.hostname)) ? u.href : null;
       } catch (e) {
         return null;
       }
@@ -280,25 +281,38 @@
     mic: svg('<path d="M12 3a3 3 0 00-3 3v5a3 3 0 006 0V6a3 3 0 00-3-3z"/><path d="M5.5 11a6.5 6.5 0 0013 0"/><path d="M12 17.5V21"/>'),
   };
 
-  /* ---------- Plattformen (Phase 7a): YouTube | SoundCloud ---------- */
-  const PLATFORMS = ['youtube', 'soundcloud'];
+  /* ---------- Plattformen (Phase 7a, v0.10.0): YouTube | SoundCloud | Mixcloud | hearthis.at ---------- */
+  const PLATFORMS = ['youtube', 'soundcloud', 'mixcloud', 'hearthis'];
+  /* Einstellungs-Abschnitt mit enabled + Schonungs-Grenzen (YouTube: throttle, immer an) */
+  const SECTION = { youtube: 'throttle', soundcloud: 'soundcloud', mixcloud: 'mixcloud', hearthis: 'hearthis' };
   HC.platform = {
     all: PLATFORMS,
-    of: (x) => (x && x.platform === 'soundcloud' ? 'soundcloud' : 'youtube'),
-    label: (p) => HC.t(`platform.${p === 'soundcloud' ? 'soundcloud' : 'youtube'}`),
-    /** SoundCloud eingeschaltet? (gespeicherte Einstellung, sonst der Status) */
-    scEnabled() {
-      const s = HC.settings && HC.settings.values && HC.settings.values.soundcloud;
+    others: PLATFORMS.slice(1),
+    section: (p) => SECTION[p] || 'throttle',
+    of: (x) => (x && PLATFORMS.includes(x.platform) ? x.platform : 'youtube'),
+    label: (p) => HC.t(`platform.${PLATFORMS.includes(p) ? p : 'youtube'}`),
+    /** Kurzzeichen fürs Badge (YT/SC/MC/HT) */
+    short: (p) => ({ soundcloud: 'SC', mixcloud: 'MC', hearthis: 'HT' })[p] || 'YT',
+    /** Plattform eingeschaltet? (gespeicherte Einstellung, sonst der Status) – YouTube immer. */
+    enabled(p) {
+      if (!PLATFORMS.includes(p)) return false;
+      if (p === 'youtube') return true;
+      const s = HC.settings && HC.settings.values && HC.settings.values[SECTION[p]];
       if (s) return s.enabled !== false;
-      const st = HC.status && HC.status.platforms && HC.status.platforms.soundcloud;
+      const st = HC.status && HC.status.platforms && HC.status.platforms[p];
       return !!(st && st.enabled);
     },
-    enabled: (p) => p !== 'soundcloud' || HC.platform.scEnabled(),
+    /** SoundCloud eingeschaltet? (Phase 7a, bleibt für bestehende Aufrufer) */
+    scEnabled: () => HC.platform.enabled('soundcloud'),
+    /** Mindestens eine weitere Plattform ausser YouTube eingeschaltet (dann zeigen Badges auch «YT»). */
+    anyOther: () => PLATFORMS.slice(1).some((p) => HC.platform.enabled(p)),
+    /** Eingeschaltete Plattformen in fester Reihenfolge. */
+    active: () => PLATFORMS.filter((p) => HC.platform.enabled(p)),
     /** -> {enabled, backoff, counters, limits} – Status.platforms, für YouTube ersatzweise die alten Felder. */
     state(p) {
       const st = HC.status || {}, v = (HC.settings && HC.settings.values) || {};
       const x = st.platforms && st.platforms[p];
-      const th = (p === 'soundcloud' ? v.soundcloud : v.throttle) || {};
+      const th = v[SECTION[p] || 'throttle'] || {};
       const limits = { downloads_run: th.max_downloads_per_run, downloads_day: th.max_downloads_per_day, searches_hour: th.max_searches_per_hour };
       if (x) return { enabled: x.enabled !== false, backoff: x.backoff || {}, counters: x.counters || {}, limits: Object.assign(limits, x.limits) };
       if (p === 'youtube') return { enabled: true, backoff: st.backoff || {}, counters: st.counters || {}, limits };

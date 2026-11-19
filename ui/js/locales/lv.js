@@ -65,7 +65,8 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "clock": "st.",
     "req_h": "piepr./h",
     "lufs": "LUFS",
-    "db": "dB"
+    "db": "dB",
+    "pct": "%"
   },
   "range": {
     "ge_sleep": "≥ minimums",
@@ -97,7 +98,10 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "youtube": "YouTube",
     "soundcloud": "SoundCloud",
     "label": "Platforma",
-    "sc_off": "SoundCloud ir izslēgts – ieslēdziet sadaļā Iestatījumi › SoundCloud."
+    "sc_off": "SoundCloud ir izslēgts – ieslēdziet sadaļā Iestatījumi › SoundCloud.",
+    "mixcloud": "Mixcloud",
+    "hearthis": "hearthis.at",
+    "p_off": "{p} ir izslēgta – ieslēdziet sadaļā Iestatījumi › Citi avoti."
   },
   "genre": {
     "change": "Mainīt žanru",
@@ -149,7 +153,8 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "sc_today": "{n} / {max}",
     "yt_tip": "YouTube · šodien lejupielādēts {day}/{day_max} · šajā stundā meklējumu {s}/{s_max}",
     "sc_tip": "SoundCloud · šodien lejupielādēts {day}/{day_max} · šajā stundā meklējumu {s}/{s_max}",
-    "backoff_tip": "{p}: pauze līdz {t} (atlicis {rest})"
+    "backoff_tip": "{p}: pauze līdz {t} (atlicis {rest})",
+    "p_tip": "{p} · šodien lejupielādēts {day}/{day_max} · šajā stundā meklējumu {s}/{s_max}"
   },
   "schedule": {
     "due": "jāpārbauda",
@@ -163,7 +168,7 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
   },
   "card": {
     "source": "Atrasts vērojamajā avotā “{name}”",
-    "select": "Atlasīt",
+    "select": "Tikai abonentiem (Select)",
     "open": "Atvērt vietnē {p}",
     "ignore": "Ignorēt",
     "unignore": "Pārstāt ignorēt",
@@ -177,7 +182,8 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "duplicate": "Iespējams, jau lejupielādēts ({p})",
     "duplicate_title": "Ļoti līdzīgs nosaukums un tāds pats garums kā “{title}” ({p}) – tur jau lejupielādēts vai ielikts rindā. Joprojām varat lejupielādēt.",
     "preview": "Tikai priekšskatījums (Go+) – nevar lejupielādēt",
-    "preview_title": "SoundCloud šim ierakstam nodrošina tikai 30 sekunžu priekšskatījumu (Go+). To nevar lejupielādēt."
+    "preview_title": "SoundCloud šim ierakstam nodrošina tikai 30 sekunžu priekšskatījumu (Go+). To nevar lejupielādēt.",
+    "select_title": "Šī Mixcloud augšupielāde ir pieejama tikai autora abonentiem (Mixcloud Select). To nevar lejupielādēt."
   },
   "discover": {
     "placeholder": "Meklējiet miksus, dzīvos setus, DJ, pasākumus …",
@@ -236,7 +242,13 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "ready_text": "Ievadiet meklēšanas frāzi un nospiediet Enter.",
     "none_title": "Nekas nav atrasts",
     "none_text": "Atslābiniet filtrus vai izmēģiniet citas meklēšanas frāzes.",
-    "none_year": "Nav rezultātu no {year}. gada. Meklējiet vēlreiz, lai gads tiktu iekļauts meklēšanas frāzē, vai nomainiet gadu."
+    "none_year": "Nav rezultātu no {year}. gada. Meklējiet vēlreiz, lai gads tiktu iekļauts meklēšanas frāzē, vai nomainiet gadu.",
+    "quota_p": "{p} meklējumi šajā stundā: {n} / {max}",
+    "placeholder_p": "Meklēt {p}: miksi, seti, DJ, podkāsti …",
+    "searching_p": "Meklē – vienkāršs vaicājums, saudzīgs pret {p} …",
+    "ready_text_p": "Ievadiet meklēšanas frāzi un nospiediet Enter, lai meklētu {p}.",
+    "previews_mc": "tikai abonentiem (Select): {n}",
+    "previews_mc_title": "Mixcloud Select augšupielādes ir tikai maksājošiem abonentiem, un tās nekad nevar lejupielādēt. Redzamas, kad “Slēpt lejupielādētos un ignorētos” ir izslēgts."
   },
   "inbox": {
     "title": "Ienākošie",
@@ -330,8 +342,8 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "hits_auto": "Lejupielādēt automātiski",
     "hint_inbox": "Atradumi gaida ienākošajos, līdz tos lejupielādēsiet vai ignorēsiet.",
     "hint_auto": "Atradumi, kas atbilst visiem filtriem, uzreiz nonāk rindā.",
-    "hint_channel": "YouTube kanāls (…/@nosaukums vai …/channel/UC…, pēc izvēles /videos vai /streams) vai SoundCloud profils (soundcloud.com/nosaukums).",
-    "hint_playlist": "YouTube atskaņošanas saraksts ar “list=…” vai SoundCloud komplekts (soundcloud.com/nosaukums/sets/komplekts). Tiek pārbaudīti jaunākie ieraksti.",
+    "hint_channel": "YouTube kanāls (…/@vārds vai …/channel/UC…, pēc izvēles /videos vai /streams), SoundCloud profils (soundcloud.com/vārds), Mixcloud lietotājs (mixcloud.com/vārds) vai hearthis.at lietotājs (hearthis.at/vārds).",
+    "hint_playlist": "YouTube atskaņošanas saraksts ar “list=…”, SoundCloud komplekts (soundcloud.com/vārds/sets/komplekts), Mixcloud atskaņošanas saraksts (mixcloud.com/vārds/playlists/saraksts) vai hearthis.at komplekts (hearthis.at/vārds/set/komplekts). Tiek pārbaudīti jaunākie ieraksti.",
     "f_platform": "Meklēt vietnē",
     "detected": "atpazīts: {p} · {type}",
     "not_detected": "URL nav atpazīts",
@@ -350,7 +362,9 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "ph_channel": "https://www.youtube.com/@kanals  vai  https://soundcloud.com/nosaukums",
     "ph_playlist": "https://www.youtube.com/playlist?list=…  vai  https://soundcloud.com/nosaukums/sets/…",
     "ph_search": "piem., frenchcore liveset",
-    "form_error": "Avotu nevarēja saglabāt."
+    "form_error": "Avotu nevarēja saglabāt.",
+    "backoff_link_p": "Atvērt {p}",
+    "why_p_off": "{p} ir izslēgts"
   },
   "downloads": {
     "title": "Lejupielādes",
@@ -433,7 +447,8 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     },
     "local_link_pot": "Tīkla iestatījumi",
     "local_link_target": "Mainīt glabāšanas vietu",
-    "local_link_error": "Apkope"
+    "local_link_error": "Apkope",
+    "summary_p": "{p} {day}/{day_max}"
   },
   "library": {
     "title": "Bibliotēka",
@@ -649,7 +664,9 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "festivals": "Festivāli un sērijas",
     "playback": "Atskaņošana",
     "notifications": "Paziņojumi",
-    "mediaserver": "Multivides serveris"
+    "mediaserver": "Multivides serveris",
+    "sources": "Citi avoti",
+    "reupload": "Atkārtotas augšupielādes"
   },
   "tabs_hint": {
     "general": "Lietotnes pamatuzvedība.",
@@ -657,7 +674,7 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "genres": "Secība = prioritāte. Uzvar pirmais žanrs, kura atslēgvārds ir nosaukumā. Manuāli iestatīti žanri un avota noklusējuma žanrs ir svarīgāki.",
     "download": "YouTube parasti piegādā Opus ar aptuveni 130–160 kbps. MP3 ir konvertēšana un neskan labāk par avotu – bet atskaņojas visur.",
     "storage": "Kur nonāk faili un kā tie tiek nosaukti. Struktūra paredzēta multivides serveriem, piemēram, Plex vai Jellyfin.",
-    "throttle": "Ierobežo slodzi uz YouTube. Šīs vērtības attiecas uz meklēšanu, vērojamajiem avotiem un lejupielādēm kopā. SoundCloud ir savas vērtības cilnē “SoundCloud”.",
+    "throttle": "Ierobežo slodzi uz YouTube. Šīs vērtības attiecas uz meklēšanu, vērojamajiem avotiem un lejupielādēm kopā. SoundCloud ir savas vērtības cilnē “SoundCloud”. Mixcloud un hearthis.at vērtības ir sadaļā “Citi avoti”.",
     "soundcloud": "SoundCloud kā otrs avots meklēšanai, vērojamajiem avotiem un lejupielādēm – ar saviem limitiem, skaitītājiem un pauzi, neatkarīgi no YouTube.",
     "network": "PO-Token identificē pieprasījumus kā īstas pārlūkprogrammas pieprasījumus un samazina robotu bloķēšanas risku.",
     "schedule": "Kad vērojamie avoti tiek pārbaudīti automātiski – lietotnē un ar Windows uzdevumu plānotāju.",
@@ -666,7 +683,9 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "festivals": "Atpazīst festivālu vai sēriju, gadu, skatuvi un seta veidu pēc saglabātajiem nosaukumiem – bezsaistē, bez neviena papildu pieprasījuma.",
     "playback": "Iebūvētais atskaņotājs, skaļuma izlīdzināšana, atcerētas pozīcijas un jūsu failu bezsaistes analīze.",
     "notifications": "Windows paziņojumi par jauniem setiem iesūtnē un pabeigtām vai neizdevušām lejupielādēm – apvienoti vienā ziņā, nekad plūdos. Klikšķis atver lietotni pareizajā vietā.",
-    "mediaserver": "Pēc lejupielādēm lūgt jūsu Plex vai Jellyfin serverim atkārtoti skenēt bibliotēku – apvienoti, tikai mājas tīklā. Pilnvara glabājas Windows akreditācijas datu pārvaldniekā, nekad config.yaml."
+    "mediaserver": "Pēc lejupielādēm lūgt jūsu Plex vai Jellyfin serverim atkārtoti skenēt bibliotēku – apvienoti, tikai mājas tīklā. Pilnvara glabājas Windows akreditācijas datu pārvaldniekā, nekad config.yaml.",
+    "sources": "Mixcloud un hearthis.at kā papildu avoti meklēšanai, novērošanas sarakstam un lejupielādēm – katram savi ierobežojumi, skaitītāji un pauze (backoff), neatkarīgi no YouTube un SoundCloud.",
+    "reupload": "Atpazīst to pašu miksu, kas augšupielādēts vēlreiz (cits kanāls, cita platforma, jauns id), pēc kompakta audio pirkstu nospieduma – aprēķināts bezsaistē no jūsu failiem, bez tīkla."
   },
   "set": {
     "default": "Noklusējums",
@@ -720,7 +739,9 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
       "playlists": "Atskaņošanas saraksti (M3U8)",
       "notify_events": "Paziņot par",
       "quiet": "Klusuma stundas",
-      "ms_paths": "Ceļi un laiks"
+      "ms_paths": "Ceļi un laiks",
+      "more_sources": "Mixcloud & hearthis.at",
+      "fingerprint": "Pirkstu nospiedums"
     },
     "general": {
       "language": {
@@ -866,6 +887,14 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
       "keep_original_soundcloud": {
         "label": "Saglabāt SoundCloud oriģinālu",
         "help": "Saglabāt SoundCloud audio nemainītu (AAC 160 kbps kā .m4a, MP3 128 kbps kā .mp3) – bez otras zudumu konvertēšanas. Izslēgts: kā “Izvades formāts”."
+      },
+      "keep_original_mixcloud": {
+        "label": "Saglabāt Mixcloud oriģinālu",
+        "help": "Saglabāt Mixcloud audio nemainītu (AAC, parasti 64–128 kbps, kā .m4a) – bez otras zudumradošas konvertēšanas. Izslēgts: kā “Izvades formāts”."
+      },
+      "keep_original_hearthis": {
+        "label": "Saglabāt hearthis.at oriģinālu",
+        "help": "Saglabāt hearthis.at straumi nemainītu (MP3) – bez otras zudumradošas konvertēšanas. Izslēgts: kā “Izvades formāts”."
       }
     },
     "storage": {
@@ -950,7 +979,9 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
       "blocked": "{p} signalizēja par bloķēšanu. Meklēšana, vērojamie avoti un lejupielādes no {p} ir bloķētas, līdz laiks beigsies.",
       "clear": "Atcelt manuāli",
       "sc_off": "SoundCloud ir izslēgts",
-      "sc_off_detail": "Nav SoundCloud meklēšanas, vērojamo avotu pārbaužu un lejupielāžu no SoundCloud."
+      "sc_off_detail": "Nav SoundCloud meklēšanas, vērojamo avotu pārbaužu un lejupielāžu no SoundCloud.",
+      "p_off": "{p} ir izslēgts",
+      "p_off_detail": "Nav {p} meklēšanas, vērojamo avotu pārbaužu un lejupielāžu no {p}."
     },
     "soundcloud": {
       "enabled": {
@@ -1423,6 +1454,84 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
         "help": "Kuru bibliotēku skenēt. “Visas bibliotēkas” skenē visu (lēnāk lielos serveros)."
       },
       "lib_paths": "Mapes serverī: {p}"
+    },
+    "platform": {
+      "enabled": {
+        "label": "Izmantot {p}",
+        "help": "Izslēgts: nav {p} meklēšanas, {p} avotu pārbaužu un {p} lejupielāžu. Jau lejupielādētie ieraksti paliek bibliotēkā."
+      },
+      "sleep_requests": {
+        "label": "Pauze starp pieprasījumiem",
+        "help": "Gaidīšanas laiks starp metadatu vaicājumiem uz {p} (meklēšana, vērojamie avoti)."
+      },
+      "sleep_interval": {
+        "label": "Lejupielādes pauze – minimums",
+        "help": "Pēc katras {p} lejupielādes seko nejauša pauze starp minimumu un maksimumu."
+      },
+      "max_sleep_interval": {
+        "label": "Lejupielādes pauze – maksimums",
+        "help": "Nejaušās pauzes augšējā robeža."
+      },
+      "limit_rate_mb": {
+        "label": "Lejupielādes ātrums",
+        "help": "Maksimālais joslas platums. 0 = neierobežots (nav ieteicams)."
+      },
+      "max_downloads_per_run": {
+        "label": "Maks. lejupielāžu uz palaišanu",
+        "help": "Atsevišķs {p} skaitītājs. Atlikušie paliek rindā."
+      },
+      "max_downloads_per_day": {
+        "label": "Maks. lejupielāžu dienā",
+        "help": "Atsevišķs {p} skaitītājs, manuālās un automātiskās lejupielādes kopā."
+      },
+      "max_searches_per_hour": {
+        "label": "Maks. meklējumu stundā",
+        "help": "Atsevišķs {p} skaitītājs."
+      },
+      "backoff_initial_hours": {
+        "label": "Pauze – sākuma vērtība",
+        "help": "Bloķēšanas laiks pēc tam, kad {p} ziņoja par pārāk daudziem pieprasījumiem (HTTP 429)."
+      },
+      "backoff_max_hours": {
+        "label": "Pauze – maksimums",
+        "help": "Bloķēšanas laiks dubultojas ar katru nākamo bloķēšanu līdz šai vērtībai."
+      }
+    },
+    "reupload": {
+      "enabled": {
+        "label": "Atpazīt atkārtotas augšupielādes",
+        "help": "Bezsaistē ar ffmpeg aprēķina kompaktu audio pirkstu nospiedumu katram setam un salīdzina jaunās lejupielādes ar jūsu bibliotēku. Atbilstība tiek atzīmēta “Iespējama atkārtota augšupielāde: …” – nekas netiek dzēsts automātiski."
+      },
+      "fingerprint_after_download": {
+        "label": "Pirkstu nospiedums pēc katras lejupielādes",
+        "help": "Pa vienam failam ar zemu prioritāti, pēc skaļuma analīzes. Izslēgts: tikai zemāk esošā bibliotēkas salīdzināšana."
+      },
+      "precheck": {
+        "label": "Pārbaudīt pirms lejupielādes",
+        "help": "Pirms lejupielādes salīdzina arī ilgumu (±5 s) un nosaukumu ar bibliotēku tajā pašā platformā – bez papildu pieprasījuma. Atbilstības nonāk iesūtnē, nevis rindā, un rāda “Iespējams, jau lejupielādēts”."
+      },
+      "head_minutes": {
+        "label": "Minūtes no sākuma",
+        "help": "Cik daudz no sākuma ietver pirkstu nospiedums. Vairāk = drošāk setiem ar garu vienādu ievadu, nedaudz lēnāk."
+      },
+      "windows": {
+        "label": "Papildu logi",
+        "help": "30 sekunžu logi, kas izkliedēti pa pārējo seta daļu. Ar tiem atšķir divus dažādus setus, kas sākas ar vienu un to pašu ierakstu. 0 = tikai sākums."
+      },
+      "min_score": {
+        "label": "Atbilstības slieksnis",
+        "help": "Sakrītošo pirkstu nospieduma jaucējvērtību daļa, no kuras sets tiek uzskatīts par atkārtotu augšupielādi. Zemāks = atrod vairāk, bet vairāk kļūdainu atbilstību."
+      },
+      "title": "Pirkstu nospiedums: {done} no {total} failiem",
+      "marks": "atvērti: {open} · saistīti: {linked} · paturēti: {kept}",
+      "help": "Darbojas bezsaistē pa bibliotēku, pa vienam failam ar zemu prioritāti – bez tīkla, audio paliek nemainīts. Var atcelt jebkurā brīdī.",
+      "button": "Salīdzināt jaunos failus",
+      "button_n": "Salīdzināt jaunos ({n})",
+      "all": "Salīdzināt visu no jauna",
+      "all_title": "Aprēķināt katru pirkstu nospiedumu no jauna (piem., pēc logu maiņas) – jūsu lēmumi saglabājas",
+      "running": "Salīdzina … {done} / {total} · atrasti: {found}",
+      "show": "Rādīt bibliotēkā ({n})",
+      "no_ffmpeg": "Pirkstu nospiedumiem vajag ffmpeg (bin\\ffmpeg.exe, instalē setup.ps1). Stāvokli rāda Iestatījumi › Uzturēšana."
     }
   },
   "opt": {
@@ -1541,6 +1650,12 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
       "title": "Atiestatīt iebūvētās sērijas?",
       "text": "Visas iebūvētās sērijas atgriežas sākotnējā stāvoklī, paslēptās parādās atkal. Jūsu pašu sērijas paliek.",
       "ok": "Atiestatīt"
+    },
+    "reupload_del": {
+      "title": "Dzēst atkārtoto augšupielādi?",
+      "ok": "Dzēst failu",
+      "text": "“{title}”, iespējams, ir tas pats mikss, kas “{of}”. Dzēst šo jaunāko failu?",
+      "note": "Oriģināls paliek. Ieraksts tiek iestatīts kā “ignorēts” un vairs netiek lejupielādēts."
     }
   },
   "toast": {
@@ -1634,7 +1749,9 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "assign_done": "Festivāli piešķirti: jauni {assigned}, ieteikumi {suggested}",
     "assign_cancelled": "Piešķiršana pārtraukta: jauni {assigned}, ieteikumi {suggested}",
     "analysis_done": "Skaļums analizēts: {n} faili ({failed} neizdevās)",
-    "analysis_cancelled": "Analīze atcelta pēc {n} failiem"
+    "analysis_cancelled": "Analīze atcelta pēc {n} failiem",
+    "fp_done": "Bibliotēka salīdzināta: faili {n}, iespējamas atkārtotas augšupielādes {found}",
+    "fp_cancelled": "Salīdzināšana atcelta, apstrādāti faili: {n}"
   },
   "upd": {
     "available": "Pieejama versija {v}",
@@ -2233,5 +2350,26 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "empty_title": "Vēl nav setu",
     "empty_text": "Tiklīdz bibliotēkā būs pirmie seti, šeit redzēsiet, ko krājat – žanrus, festivālus, DJ, stundas.",
     "empty_go": "Atklāt setus"
+  },
+  "reupload": {
+    "tag": "Atkārtota augšupielāde?",
+    "tag_title": "Iespējams, “{title}” atkārtota augšupielāde ({p}, {score} % atbilstība) – noklikšķiniet, lai izlemtu",
+    "linked": "Tas pats mikss",
+    "linked_title": "Saistīts kā tas pats mikss, kas “{title}” ({p})",
+    "chip": "Atkārtotas augšupielādes ({n})",
+    "chip_title": "Rādīt tikai setus, kas atzīmēti kā iespējama atkārtota augšupielāde",
+    "menu_head": "Iespējama “{title}” atkārtota augšupielāde · {score} %",
+    "menu_head_linked": "Tas pats mikss, kas “{title}”",
+    "keep": "Paturēt abus",
+    "link": "Saistīt kā to pašu miksu",
+    "undo": "Atsaukt lēmumu",
+    "show_original": "Rādīt oriģinālu",
+    "delete_new": "Dzēst šo jaunāko failu",
+    "toast_keep": "Abi paturēti – atzīme noņemta",
+    "toast_link": "Saistīts kā tas pats mikss",
+    "toast_open": "Lēmums atsaukts",
+    "toast_found": "Iespējama atkārtota augšupielāde: “{title}” atbilst “{of}” – skatiet bibliotēku",
+    "dl_notice": "Nesenās lejupielādes, kas, iespējams, ir jau esošu setu atkārtotas augšupielādes ({n}):",
+    "review": "Pārskatīt bibliotēkā"
   }
 });

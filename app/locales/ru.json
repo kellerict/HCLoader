@@ -212,7 +212,8 @@
     "outside_period": "Вне периода",
     "preview": "Только фрагмент (Go+)",
     "too_long": "Слишком длинное",
-    "too_short": "Слишком короткое"
+    "too_short": "Слишком короткое",
+    "select_only": "Только подписчикам (Mixcloud Select)"
   },
   "genre": {
     "unknown": "Неизвестный жанр: {genre}"

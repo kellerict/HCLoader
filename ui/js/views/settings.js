@@ -28,6 +28,27 @@
      {h: key} = Zwischenüberschrift, {custom: name, arg} = Sonderblock
      Felder, die das Backend (noch) nicht kennt (kein Standardwert), werden nicht gezeigt.          */
   const SC_ON = (w) => !!(w.soundcloud && w.soundcloud.enabled);
+  const RU_ON = (w) => !!(w.reupload && w.reupload.enabled);
+  /* v0.10.0: Mixcloud / hearthis.at – dieselben Felder wie SoundCloud, Texte generisch (set.platform.*, {p}). */
+  const platformFields = (p) => {
+    const on = (w) => !!(w[p] && w[p].enabled), lp = () => ({ p: HC.platform.label(p) });
+    const f = (name, extra) => Object.assign({ k: `${p}.${name}`, lk: `platform.${name}`, lp }, extra);
+    return [
+      { h: `platform.${p}` },
+      { custom: 'backoff', arg: p },
+      f('enabled', { type: 'bool' }),
+      f('sleep_requests', { type: 'float', min: 0, max: 60, unit: 'unit.s', enabled: on }),
+      f('sleep_interval', { type: 'int', min: 0, max: 3600, unit: 'unit.s', enabled: on }),
+      f('max_sleep_interval', { type: 'int', min: 0, unit: 'unit.s', rangeKey: 'range.ge_sleep', enabled: on }),
+      f('limit_rate_mb', { type: 'float', min: 0, unit: 'unit.mbs', enabled: on }),
+      f('max_downloads_per_run', { type: 'int', min: 1, max: 100, enabled: on }),
+      f('max_downloads_per_day', { type: 'int', min: 1, max: 500, enabled: on }),
+      f('max_searches_per_hour', { type: 'int', min: 1, max: 200, enabled: on }),
+      f('backoff_initial_hours', { type: 'float', min: 0.5, max: 168, unit: 'unit.h', enabled: on }),
+      f('backoff_max_hours', { type: 'float', min: 0.5, unit: 'unit.h', rangeKey: 'range.ge_initial', enabled: on }),
+      { custom: 'ladder', arg: p },
+    ];
+  };
   const NT_ON = (w) => !!(w.notifications && w.notifications.enabled);
   const MS_ON = (w) => !!(w.media_server && w.media_server.type !== 'off');
   const PL_IN = (w) => !w.player || w.player.mode !== 'external';
@@ -108,6 +129,9 @@
       { k: 'download.write_id3_chapters', type: 'bool', enabled: (w) => w.download.audio_format === 'mp3' },
       { h: 'set.h.soundcloud' },
       { k: 'download.keep_original_soundcloud', type: 'bool' },
+      { h: 'set.h.more_sources' },
+      { k: 'download.keep_original_mixcloud', type: 'bool' },
+      { k: 'download.keep_original_hearthis', type: 'bool' },
     ] },
     { id: 'storage', fields: [
       { k: 'storage.target_dir', type: 'text', mono: true, wide: true, browse: true },
@@ -158,6 +182,19 @@
       { k: 'soundcloud.backoff_initial_hours', type: 'float', min: 0.5, max: 168, unit: 'unit.h', enabled: SC_ON },
       { k: 'soundcloud.backoff_max_hours', type: 'float', min: 0.5, unit: 'unit.h', rangeKey: 'range.ge_initial', enabled: SC_ON },
       { custom: 'ladder', arg: 'soundcloud' },
+    ] },
+    /* v0.10.0: weitere Quellen mit eigener Schonung (Zähler und Backoff pro Plattform) */
+    { id: 'sources', fields: [...platformFields('mixcloud'), ...platformFields('hearthis')] },
+    /* v0.10.0: Re-Uploads per Audio-Fingerabdruck (offline) */
+    { id: 'reupload', fields: [
+      { custom: 'reuploadStatus' },
+      { k: 'reupload.enabled', type: 'bool' },
+      { k: 'reupload.fingerprint_after_download', type: 'bool', enabled: RU_ON },
+      { k: 'reupload.precheck', type: 'bool', enabled: RU_ON },
+      { h: 'set.h.fingerprint' },
+      { k: 'reupload.head_minutes', type: 'int', min: 1, max: 10, unit: 'unit.minutes', enabled: RU_ON },
+      { k: 'reupload.windows', type: 'int', min: 0, max: 8, enabled: RU_ON },
+      { k: 'reupload.min_score', type: 'int', min: 5, max: 90, unit: 'unit.pct', enabled: RU_ON },
     ] },
     { id: 'network', fields: [
       { custom: 'poStatus' },
@@ -241,7 +278,7 @@
   let genreKeys = []; // stabile Schlüssel für die Genre-Zeilen (FLIP)
   let gk = 0;
   let plReload = null; // «Gespeicherte Playlists» neu laden (ein Listener aus init, Review m10)
-  const cache = { notify: null, ms: null, msTest: null, msLibs: null, task: null, versions: null, blacklist: null, poTest: null, update: null, before: null, restart: false, backups: [], freshBackup: '', fest: null, assign: null, series: null, seriesHidden: false, analysis: null, anRun: null, playlists: null };
+  const cache = { notify: null, ms: null, msTest: null, msLibs: null, task: null, versions: null, blacklist: null, poTest: null, update: null, before: null, restart: false, backups: [], freshBackup: '', fest: null, assign: null, series: null, seriesHidden: false, analysis: null, anRun: null, playlists: null, reupload: null, fpRun: null };
 
   const isDirtyKey = (k) => !eq(get(work, k), get(saved, k));
   const dirtyKeys = () => [...new Set(TABS.flatMap(tabKeys))].filter(isDirtyKey); // ein Feld kann in zwei Tabs stehen
@@ -297,7 +334,7 @@
     d.dataset.k = def.k;
     const range = rangeText(def);
     d.innerHTML = `
-      <div class="fl"><b>${esc(t(`set.${def.k}.label`))}</b><span class="help">${t(`set.${def.k}.help`)}</span>
+      <div class="fl"><b>${esc(t(`set.${def.lk || def.k}.label`, def.lp && def.lp()))}</b><span class="help">${t(`set.${def.lk || def.k}.help`, def.lp && def.lp())}</span>
         <em>${t('set.default')}: ${esc(fmtValue(def, get(defaults, def.k)))}${range ? ` · <span class="nw">${t('set.range')} ${esc(range)}</span>` : ''}</em></div>
       <div class="fc"><div class="fc-main">${controlHtml(def)}</div>
         <button type="button" class="linkbtn reset" data-reset>${t('common.reset')}</button>
@@ -649,6 +686,8 @@
         const bo = HC.platform.backoff(p);
         const html = p === 'soundcloud' && !HC.platform.scEnabled()
           ? box('off', t('set.backoff.sc_off'), t('set.backoff.sc_off_detail'), '', '', 'off')
+          : p !== 'youtube' && !HC.platform.enabled(p)
+            ? box('off', t('set.backoff.p_off', { p: name }), t('set.backoff.p_off_detail', { p: name }), '', '', 'off')
           : bo
             ? box('warn', t('set.backoff.active', { p: name }), t('set.backoff.active_detail', { t: `<b>${esc(util.fmtWhen(bo.until))}</b>`, rest: `<b>${esc(util.fmtSpan(bo.remaining_s))}</b>`, level: `<b>${esc(bo.level)}</b>` }) + (bo.reason ? ` · ${esc(bo.reason)}` : ''),
               `<button class="btn sm danger" data-clear>${I.bolt}${t('set.backoff.clear')}</button>`, ui.notice('warn', t('set.backoff.blocked', { p: name })), 'warn blink')
@@ -668,9 +707,9 @@
       });
       host._update();
     },
-    /* Backoff-Stufen als Leiter (section: "throttle" = YouTube | "soundcloud") */
+    /* Backoff-Stufen als Leiter (section: "throttle" = YouTube | "soundcloud" | "mixcloud" | "hearthis") */
     ladder(host, section) {
-      const sec = section || 'throttle', p = sec === 'soundcloud' ? 'soundcloud' : 'youtube';
+      const sec = section || 'throttle', p = sec === 'throttle' ? 'youtube' : sec;
       host._update = () => {
         const a = +work[sec].backoff_initial_hours, m = +work[sec].backoff_max_hours;
         const steps = [];
@@ -964,6 +1003,56 @@
         ui.busy(b, true);
         const r = await HC.bridge.safe('analyse_library', { scope: b.dataset.an });
         if (r && r.ok) { if (!cache.anRun || !cache.anRun.running) cache.anRun = { running: true, done: 0, total: 0 }; }
+        else if (r) ui.toast(r.error || t('err.generic'), 'err');
+        paint();
+      });
+      paint();
+      load();
+    },
+
+    /* ---------- Re-Uploads (v0.10.0) ---------- */
+    /* fingerprint_library / cancel_fingerprint_library, Fortschritt: Event fingerprint, Treffer: Event reupload */
+    reuploadStatus(host) {
+      const paint = () => {
+        const s = cache.reupload, a = cache.fpRun;
+        if (!s) { host.innerHTML = box('off', t('common.loading'), '&nbsp;', '', '', 'off'); return; }
+        if (!s.ffmpeg) {
+          host.innerHTML = box('warn', esc(t('set.analysis.no_ffmpeg_title')), esc(t('set.reupload.no_ffmpeg')), '', '', 'warn');
+          return;
+        }
+        const running = a ? !!a.running : !!s.running;
+        const pct = a && a.total ? Math.round(((a.done || 0) / a.total) * 100) : 0;
+        const on = !!(work && work.reupload && work.reupload.enabled) && s.enabled !== false;
+        const marks = `${esc(t('set.reupload.marks', { open: util.fmtNum(s.open || 0), linked: util.fmtNum(s.linked || 0), kept: util.fmtNum(s.kept || 0) }))}`;
+        const detail = `${marks} · ${t('set.fest_status.last')}: <b>${esc(s.last_pass ? util.fmtWhen(s.last_pass) : t('fmt.never'))}</b><br>${esc(t('set.reupload.help'))}`;
+        const actions = running
+          ? `<button class="btn sm danger" data-fp="cancel"${a && a.cancelling ? ' disabled' : ''}>${I.x}${t('common.cancel')}</button>`
+          : `<button class="btn sm primary" data-fp="new"${s.total && on ? '' : ' disabled'}>${I.wave}${esc(s.pending ? t('set.reupload.button_n', { n: util.fmtNum(s.pending) }) : t('set.reupload.button'))}</button>
+             <button class="btn sm ghost" data-fp="all"${s.total && on ? '' : ' disabled'} title="${esc(t('set.reupload.all_title'))}">${esc(t('set.reupload.all'))}</button>
+             ${s.open ? `<button class="btn sm" data-fp="show">${I.copy}${esc(t('set.reupload.show', { n: util.fmtNum(s.open) }))}</button>` : ''}`;
+        const res = a && a.result;
+        const extra = running
+          ? `<div class="fest-prog"><div class="progress${a && a.total ? '' : ' indet'}"><div class="bar kick" style="width:${pct}%;--p:${pct}"></div></div><span class="unit">${esc(t('set.reupload.running', { done: util.fmtNum((a && a.done) || 0), total: a && a.total ? util.fmtNum(a.total) : '…', found: util.fmtNum((a && a.found) || 0) }))}</span></div>`
+          : res ? ui.notice(res.ok === false ? 'error' : res.cancelled ? 'warn' : 'ok', esc(res.ok === false ? res.error || t('err.generic') : t(res.cancelled ? 'toast.fp_cancelled' : 'toast.fp_done', { n: res.done || 0, found: res.found || 0 }))) : '';
+        host.innerHTML = box(running ? 'warn' : s.pending ? 'off' : 'ok', esc(t('set.reupload.title', { done: util.fmtNum(s.fingerprinted || 0), total: util.fmtNum(s.total || 0) })), detail, actions, extra, running ? 'warn blink' : s.pending ? 'off' : '');
+      };
+      const load = async () => { const s = await HC.bridge.safe('get_reupload_status'); if (s) { cache.reupload = s; if (!s.running && cache.fpRun && cache.fpRun.running) cache.fpRun = null; if (host.isConnected) paint(); } };
+      host._paint = paint;
+      host._load = load;
+      host._update = paint;
+      host.addEventListener('click', async (e) => {
+        const b = e.target.closest('[data-fp]');
+        if (!b || b.disabled) return;
+        if (b.dataset.fp === 'show') { location.hash = '#library/reuploads'; return; }
+        if (b.dataset.fp === 'cancel') {
+          if (cache.fpRun) cache.fpRun.cancelling = true;
+          paint();
+          await HC.bridge.safe('cancel_fingerprint_library');
+          return;
+        }
+        ui.busy(b, true);
+        const r = await HC.bridge.safe('fingerprint_library', { scope: b.dataset.fp });
+        if (r && r.ok) { if (!cache.fpRun || !cache.fpRun.running) cache.fpRun = { running: true, done: 0, total: 0, found: 0 }; }
         else if (r) ui.toast(r.error || t('err.generic'), 'err');
         paint();
       });
@@ -1399,6 +1488,19 @@
       }
       if (host && host._paint) host._paint();
     });
+    /* v0.10.0 «Bibliothek abgleichen» (Fingerabdrücke): Fortschritt in den Tab, Ergebnis als Toast. */
+    HC.bridge.on('fingerprint', (d) => {
+      const host = $('[data-custom=reuploadStatus]', el);
+      if (d.phase === 'start' || d.phase === 'progress') cache.fpRun = Object.assign(cache.fpRun && cache.fpRun.running ? cache.fpRun : { running: true, done: 0, total: 0, found: 0 }, d.done != null ? { done: d.done } : {}, d.total != null ? { total: d.total } : {}, d.found != null ? { found: d.found } : {});
+      else {
+        cache.fpRun = { running: false, result: d };
+        if (d.phase === 'error' || d.ok === false) ui.toast(d.error || t('err.generic'), 'err');
+        else ui.toast(t(d.cancelled ? 'toast.fp_cancelled' : 'toast.fp_done', { n: d.done || 0, found: d.found || 0 }), d.cancelled ? 'warn' : 'ok', 5000);
+        if (host && host._load) host._load();
+      }
+      if (host && host._paint) host._paint();
+    });
+    HC.bridge.on('reupload', () => { const host = $('[data-custom=reuploadStatus]', el); if (host && host._load) host._load(); });
     /* «Festivals zuordnen»: Fortschritt in den Tab, Ergebnis als Toast (auch wenn ein anderer Tab offen ist). */
     HC.bridge.on('festival_assign', (d) => {
       const host = $('[data-custom=festStatus]', el);

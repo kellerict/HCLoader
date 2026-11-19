@@ -1890,10 +1890,13 @@ class FingerprintQueue:
                 with self._cond:
                     self.current = None
 
-    def _emit_match(self, res: dict[str, Any]) -> None:
+    def _emit_match(self, res: dict[str, Any], from_pass: bool = False) -> None:
         mark = res.get("reupload")
         if mark:
-            self._bus.emit("reupload", {"id": mark.get("id"), "reupload": mark})
+            data = {"id": mark.get("id"), "reupload": mark}
+            if from_pass:
+                data["pass"] = True  # the UI shows no toast per match of a library pass
+            self._bus.emit("reupload", data)
 
     def _item(self, vid: str) -> None:
         if not self._settings().reupload.enabled:
@@ -1930,7 +1933,7 @@ class FingerprintQueue:
                 progress=progress,
                 cancel=_AnyEvent(self._pass_cancel, self._stop),
                 between=between,
-                item_done=self._emit_match,
+                item_done=lambda r: self._emit_match(r, True),
                 decoder=self._decoder,
             )
         except Exception as exc:

@@ -39,6 +39,14 @@
   const payload = (s) => FIELDS.reduce((o, k) => { o[k] = k === 'newest_last' ? reversed(s) : k === 'platform' ? HC.platform.of(s) : k === 'name_auto' ? !!s.name_auto : s[k]; return o; }, s.id != null ? { id: s.id } : {});
   /** Backoff der Plattform dieser Quelle (oder null). */
   const boOf = (s) => HC.platform.backoff(HC.platform.of(s));
+  /** «SoundCloud ist ausgeschaltet» bzw. v0.10.0 «Mixcloud/hearthis.at ist ausgeschaltet». */
+  const offWhy = (s) => { const p = HC.platform.of(s); return p === 'soundcloud' ? t('watchlist.why_sc_off') : t('watchlist.why_p_off', { p: HC.platform.label(p) }); };
+  /** Einstellungs-Tab und Linktext zur Schonung einer Plattform. */
+  const setLink = (p) => {
+    const tab = { youtube: 'throttle', soundcloud: 'soundcloud' }[p] || 'sources';
+    const text = p === 'youtube' ? t('watchlist.backoff_link') : p === 'soundcloud' ? t('watchlist.backoff_link_sc') : t('watchlist.backoff_link_p', { p: esc(HC.platform.label(p)) });
+    return `<button class="linkbtn" data-goto="settings/${tab}">${text}</button>`;
+  };
   /** Jede Plattform mit aktiver Quelle ist im Backoff -> es gibt nichts zu prüfen. */
   const allBlocked = () => { const act = sources.filter((s) => s.enabled); return act.length > 0 && act.every(boOf); };
   const busy = () => checking.size > 0 || pending.size > 0;
@@ -80,7 +88,7 @@
     if (!canBackfill(s)) return `<button class="iconbtn" data-act="bf" title="${esc(t('backfill.search_title'))}" disabled>${I.layers}</button>`;
     const b = bfOf(s);
     const open = b && (BF_OPEN.includes(b.state) || b.state === 'paused');
-    const why = open ? t('backfill.why_open') : HC.platform.enabled(HC.platform.of(s)) ? '' : t('watchlist.why_sc_off');
+    const why = open ? t('backfill.why_open') : HC.platform.enabled(HC.platform.of(s)) ? '' : offWhy(s);
     const title = why || t(b && b.state === 'done' ? 'backfill.again_title' : 'backfill.action_title');
     return `<button class="iconbtn${open ? ' on' : ''}" data-act="bf" title="${esc(title)}" aria-label="${esc(t('backfill.action'))}"${why ? ' disabled' : ''}>${I.layers}</button>`;
   }
@@ -90,7 +98,7 @@
     if (boOf(s)) return t('watchlist.why_backoff_p', { p: HC.platform.label(HC.platform.of(s)) });
     if (busy()) return t('watchlist.why_running');
     if (!s.enabled) return t('watchlist.why_off');
-    return HC.platform.enabled(HC.platform.of(s)) ? '' : t('watchlist.why_sc_off');
+    return HC.platform.enabled(HC.platform.of(s)) ? '' : offWhy(s);
   }
 
   function lastCell(s) {
@@ -128,7 +136,7 @@
     const nx = HC.schedule.next();
     /* Backoff nur melden, wenn es die Plattform betrifft: YouTube immer, SoundCloud sobald es Quellen dafür gibt. */
     const bos = HC.platform.backoffs().filter(([p]) => p === 'youtube' || sources.some((s) => HC.platform.of(s) === p));
-    const key = [sources.length, active, bos.map(([p, b]) => `${p}:${b.until}:${Math.round(b.remaining_s / 60)}`).join(','), allBlocked(), HC.platform.scEnabled(), nx.at, nx.kind, nx.due, busy(), run ? `${run.done}/${run.total}` : ''].join('|');
+    const key = [sources.length, active, bos.map(([p, b]) => `${p}:${b.until}:${Math.round(b.remaining_s / 60)}`).join(','), allBlocked(), HC.platform.active().join(','), nx.at, nx.kind, nx.due, busy(), run ? `${run.done}/${run.total}` : ''].join('|');
     if (key === headKey) return;
     headKey = key;
     $('#wl-sub', el).textContent = t('watchlist.sub_n', { n: sources.length, active }) + (nx.at && !allBlocked() ? ` · ${t('watchlist.sub_next', { t: HC.schedule.label(nx) })}` : '');
@@ -145,8 +153,9 @@
     const mixed = HC.platform.all.filter((p) => sources.some((s) => HC.platform.of(s) === p)).length > 1;
     box.hidden = !bos.length;
     box.innerHTML = bos.map(([p, bo]) => {
-      const v = { t: esc(util.fmtWhen(bo.until)), rest: esc(util.fmtSpan(bo.remaining_s)), p: HC.platform.label(p), other: HC.platform.label(p === 'youtube' ? 'soundcloud' : 'youtube') };
-      const link = `<button class="linkbtn" data-goto="settings/${p === 'soundcloud' ? 'soundcloud' : 'throttle'}">${t(p === 'soundcloud' ? 'watchlist.backoff_link_sc' : 'watchlist.backoff_link')}</button>`;
+      const otherP = HC.platform.all.find((o) => o !== p && sources.some((x) => HC.platform.of(x) === o)) || 'youtube';
+      const v = { t: esc(util.fmtWhen(bo.until)), rest: esc(util.fmtSpan(bo.remaining_s)), p: HC.platform.label(p), other: HC.platform.label(otherP) };
+      const link = setLink(p);
       return ui.notice(mixed && !allBlocked() ? 'warn' : 'error', `${t(mixed ? 'watchlist.backoff_p' : 'watchlist.backoff', v)} ${link}`);
     }).join('');
   }
@@ -199,8 +208,8 @@
     const genres = HC.genres.names().filter((g) => g !== 'Unsortiert');
     if (s.default_genre && !genres.includes(s.default_genre)) genres.push(s.default_genre);
     const err = (k) => `<div class="field-error" data-e="${k}" hidden></div>`;
-    const scOn = HC.platform.scEnabled();
     const plat = HC.platform.of(s);
+    const offP = (k) => (k === 'soundcloud' ? t('platform.sc_off') : t('platform.p_off', { p: HC.platform.label(k) }));
     const body = `
       <div data-form-error hidden></div>
       <div class="frow"><label class="lbl">${t('watchlist.f_type')}</label>
@@ -209,7 +218,7 @@
         <input class="input mono" data-f="url_or_query" value="${esc(s.url_or_query)}" spellcheck="false" autocomplete="off">
         <div class="fhint" data-h="url"></div>${err('url_or_query')}</div>
       <div class="frow" data-only="search" hidden><label class="lbl">${t('watchlist.f_platform')}</label>
-        <div class="seg wide pseg" data-seg="platform">${HC.platform.all.map((k) => `<button type="button" data-v="${k}" data-p="${k}" class="${plat === k ? 'on' : ''}" aria-pressed="${plat === k}"${k === 'soundcloud' && !scOn && plat !== k ? ` disabled title="${esc(t('platform.sc_off'))}"` : ''}>${k === 'soundcloud' ? I.wave : ''}${HC.platform.label(k)}</button>`).join('')}</div>${err('platform')}</div>
+        <div class="seg wide pseg" data-seg="platform">${HC.platform.all.map((k) => `<button type="button" data-v="${k}" data-p="${k}" class="${plat === k ? 'on' : ''}" aria-pressed="${plat === k}"${!HC.platform.enabled(k) && plat !== k ? ` disabled title="${esc(offP(k))}"` : ''}>${k !== 'youtube' ? I.wave : ''}${HC.platform.label(k)}</button>`).join('')}</div>${err('platform')}</div>
       <div class="frow"><div class="lblrow"><label class="lbl">${t('watchlist.f_name')}</label><span class="sugg-tag" data-sugg title="${esc(t('watchlist.suggested_title'))}" hidden>${t('watchlist.suggested')}</span></div>
         <input class="input" data-f="name" value="${esc(s.name)}" placeholder="${esc(t('watchlist.ph_name'))}" maxlength="120" autocomplete="off">
         <div class="fhint" data-h="name" hidden></div>${err('name')}</div>

@@ -74,6 +74,8 @@ SETTINGS_TABS = [
     "storage",
     "throttle",
     "soundcloud",
+    "sources",
+    "reupload",
     "network",
     "schedule",
     "notifications",
@@ -692,6 +694,60 @@ class Shooter:
         page.keyboard.press("Escape")
         self.clear_toasts()
 
+    def sources_scenes(self) -> None:
+        """v0.10.0: Mixcloud/hearthis.at search, re-upload marks in library and downloads, the
+        library pass with progress."""
+        page = self.page
+        page.evaluate("HC.mock.api.clear_backoff(); HC.mock.demo.local(null)")
+        self.go("discover")
+        page.click("#f-reset")
+        for plat in ("mixcloud", "hearthis"):
+            page.click(f'#plat [data-p="{plat}"]')
+            self.settle()
+            page.fill("#q", "hardcore mix")
+            page.click("#btn-search")
+            page.wait_for_function(
+                "document.querySelector('#grid .card:not(.skeleton)')"
+                f" && document.querySelector('#v-discover').dataset.platform"
+                f" === '{plat}'"
+            )
+            page.wait_for_selector("#grid .card:not(.skeleton)")
+            self.settle()
+            self.shot(f"discover-{plat}")
+        page.click('#plat [data-p="youtube"]')
+        self.settle()
+
+        self.go("library")
+        page.wait_for_selector("#lib-body .ru-tag")
+        self.settle()
+        self.shot("library-reupload")
+        page.click("#lib-body .ru-tag:not(.linked)")
+        page.wait_for_selector('.menu [data-k="ru-keep"]')
+        self.settle()
+        self.shot("library-reupload-menu")
+        page.keyboard.press("Escape")
+        page.click("#lib-reup")
+        page.wait_for_selector("#lib-reup.on")
+        self.settle()
+        self.shot("library-reuploads")
+        page.click("#lib-reup")
+
+        self.go("downloads")
+        page.wait_for_selector("#q-reup:not([hidden])")
+        self.settle()
+        self.shot("downloads-reupload")
+
+        self.go("settings")
+        self.tab("reupload")
+        page.click('[data-fp="new"]')
+        page.wait_for_selector('[data-fp="cancel"]')
+        page.wait_for_selector("[data-custom=reuploadStatus] .progress .bar")
+        self.settle(700)
+        self.shot("settings-reupload-running")
+        page.click('[data-fp="cancel"]')
+        page.wait_for_selector('[data-fp="new"]')
+        self.settle()
+
     def stats_scenes(self) -> None:
         """v0.9.0 statistics view (all time, 12 months, custom range without downloads, empty
         library), notifications and media server settings (test result, stored token)."""
@@ -1074,6 +1130,7 @@ class Shooter:
         self.collector_scenes()
         self.tracks_scenes()
         self.djs_scenes()
+        self.sources_scenes()
         self.stats_scenes()
 
         # m9: in pywebview gestartet, Backend antwortet nicht -> Fehlerzustand statt Mock

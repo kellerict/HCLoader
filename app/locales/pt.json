@@ -209,7 +209,8 @@
     "outside_period": "Fora do período",
     "preview": "Somente prévia (Go+)",
     "too_long": "Longo demais",
-    "too_short": "Curto demais"
+    "too_short": "Curto demais",
+    "select_only": "Só assinantes (Mixcloud Select)"
   },
   "genre": {
     "unknown": "Gênero desconhecido: {genre}"

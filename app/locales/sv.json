@@ -210,7 +210,8 @@
     "outside_period": "Utanför perioden",
     "preview": "Endast förhandslyssning (Go+)",
     "too_long": "För lång",
-    "too_short": "För kort"
+    "too_short": "För kort",
+    "select_only": "Bara prenumeranter (Mixcloud Select)"
   },
   "genre": {
     "unknown": "Okänd genre: {genre}"

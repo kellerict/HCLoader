@@ -64,7 +64,8 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "clock": "Uhr",
     "req_h": "Anfr./h",
     "lufs": "LUFS",
-    "db": "dB"
+    "db": "dB",
+    "pct": "%"
   },
   "range": {
     "ge_sleep": "≥ Minimum",
@@ -96,7 +97,10 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "youtube": "YouTube",
     "soundcloud": "SoundCloud",
     "label": "Plattform",
-    "sc_off": "SoundCloud ist ausgeschaltet – einschalten unter Einstellungen › SoundCloud."
+    "sc_off": "SoundCloud ist ausgeschaltet – einschalten unter Einstellungen › SoundCloud.",
+    "mixcloud": "Mixcloud",
+    "hearthis": "hearthis.at",
+    "p_off": "{p} ist ausgeschaltet – einschalten unter Einstellungen › Weitere Quellen."
   },
   "genre": {
     "change": "Genre ändern",
@@ -148,7 +152,8 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "sc_today": "{n} / {max}",
     "yt_tip": "YouTube · heute {day}/{day_max} geladen · {s}/{s_max} Suchen diese Stunde",
     "sc_tip": "SoundCloud · heute {day}/{day_max} geladen · {s}/{s_max} Suchen diese Stunde",
-    "backoff_tip": "{p}: Backoff bis {t} (noch {rest})"
+    "backoff_tip": "{p}: Backoff bis {t} (noch {rest})",
+    "p_tip": "{p} · heute geladen {day}/{day_max} · {s}/{s_max} Suchen in dieser Stunde"
   },
   "schedule": {
     "due": "fällig",
@@ -162,7 +167,7 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
   },
   "card": {
     "source": "Gefunden über die Watchlist-Quelle «{name}»",
-    "select": "Auswählen",
+    "select": "Nur für Abonnenten (Select)",
     "open": "Auf {p} öffnen",
     "ignore": "Ignorieren",
     "unignore": "Nicht mehr ignorieren",
@@ -176,7 +181,8 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "duplicate": "Vermutlich bereits geladen ({p})",
     "duplicate_title": "Sehr ähnlicher Titel und gleiche Dauer wie «{title}» von {p} – dort schon geladen oder eingereiht. Laden ist trotzdem möglich.",
     "preview": "Nur Vorschau (Go+) – nicht ladbar",
-    "preview_title": "SoundCloud liefert für diesen Track nur eine 30-Sekunden-Vorschau (Go+). Er kann nicht geladen werden."
+    "preview_title": "SoundCloud liefert für diesen Track nur eine 30-Sekunden-Vorschau (Go+). Er kann nicht geladen werden.",
+    "select_title": "Dieser Mixcloud-Upload ist nur für Abonnenten des Erstellers verfügbar (Mixcloud Select). Er lässt sich nicht laden."
   },
   "discover": {
     "placeholder": "Suche nach Mix, Liveset, DJ, Event …",
@@ -234,7 +240,13 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "ready_text": "Suchbegriff eingeben und mit Enter starten.",
     "none_title": "Nichts gefunden",
     "none_text": "Filter lockern oder andere Suchbegriffe probieren.",
-    "none_year": "Kein Treffer aus {year}. Neu suchen, damit die Jahreszahl in den Suchbegriff einfliesst – oder das Jahr ändern."
+    "none_year": "Kein Treffer aus {year}. Neu suchen, damit die Jahreszahl in den Suchbegriff einfliesst – oder das Jahr ändern.",
+    "quota_p": "{p}-Suchen in dieser Stunde: {n} / {max}",
+    "placeholder_p": "{p} durchsuchen: Mix, Set, DJ, Podcast …",
+    "searching_p": "Suche läuft – flache Abfrage, schonend für {p} …",
+    "ready_text_p": "Suchbegriff eingeben und mit Enter auf {p} suchen.",
+    "previews_mc": "{n} nur für Abonnenten (Select)",
+    "previews_mc_title": "Mixcloud-Select-Uploads gibt es nur für zahlende Abonnenten, sie lassen sich nie laden. Sichtbar, wenn «Geladene & ignorierte ausblenden» aus ist."
   },
   "inbox": {
     "title": "Eingang",
@@ -325,8 +337,8 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "hits_auto": "Automatisch laden",
     "hint_inbox": "Treffer warten im Eingang, bis du sie lädst oder ignorierst.",
     "hint_auto": "Treffer, die alle Filter bestehen, gehen direkt in die Warteschlange.",
-    "hint_channel": "YouTube-Kanal (…/@name oder …/channel/UC…, wahlweise /videos oder /streams) oder SoundCloud-Profil (soundcloud.com/name).",
-    "hint_playlist": "YouTube-Playlist mit «list=…» oder SoundCloud-Set (soundcloud.com/name/sets/set). Geprüft werden die neuesten Einträge.",
+    "hint_channel": "YouTube-Kanal (…/@name oder …/channel/UC…, wahlweise /videos oder /streams), SoundCloud-Profil (soundcloud.com/name), Mixcloud-Nutzer (mixcloud.com/name) oder hearthis.at-Nutzer (hearthis.at/name).",
+    "hint_playlist": "YouTube-Playlist mit «list=…», SoundCloud-Set (soundcloud.com/name/sets/set), Mixcloud-Playlist (mixcloud.com/name/playlists/liste) oder hearthis.at-Set (hearthis.at/name/set/set). Geprüft werden die neuesten Einträge.",
     "f_platform": "Suchen auf",
     "detected": "erkannt: {p} · {type}",
     "not_detected": "URL nicht erkannt",
@@ -345,7 +357,9 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "ph_channel": "https://www.youtube.com/@kanal  oder  https://soundcloud.com/name",
     "ph_playlist": "https://www.youtube.com/playlist?list=…  oder  https://soundcloud.com/name/sets/…",
     "ph_search": "z.B. frenchcore liveset",
-    "form_error": "Die Quelle konnte nicht gespeichert werden."
+    "form_error": "Die Quelle konnte nicht gespeichert werden.",
+    "backoff_link_p": "{p} öffnen",
+    "why_p_off": "{p} ist ausgeschaltet"
   },
   "downloads": {
     "title": "Downloads",
@@ -422,7 +436,8 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     },
     "local_link_pot": "Netzwerk-Einstellungen",
     "local_link_target": "Speicherort ändern",
-    "local_link_error": "Wartung"
+    "local_link_error": "Wartung",
+    "summary_p": "{p} {day}/{day_max}"
   },
   "library": {
     "title": "Bibliothek",
@@ -631,7 +646,9 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "festivals": "Festivals & Serien",
     "playback": "Wiedergabe",
     "notifications": "Benachrichtigungen",
-    "mediaserver": "Medienserver"
+    "mediaserver": "Medienserver",
+    "sources": "Weitere Quellen",
+    "reupload": "Re-Uploads"
   },
   "tabs_hint": {
     "general": "Grundlegendes Verhalten der App.",
@@ -639,7 +656,7 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "genres": "Reihenfolge = Priorität. Das erste Genre, dessen Keyword im Titel vorkommt, gewinnt. Manuell gesetzte Genres und das Standard-Genre einer Quelle gehen vor.",
     "download": "YouTube liefert meist Opus mit ca. 130–160 kbps. MP3 ist eine Umwandlung und klingt nicht besser als die Quelle – ist aber überall abspielbar.",
     "storage": "Wohin die Dateien kommen und wie sie heissen. Die Struktur ist auf Medienserver wie Plex oder Jellyfin ausgelegt.",
-    "throttle": "Begrenzt die Last auf YouTube. Diese Werte gelten für Suche, Watchlist und Downloads gemeinsam. SoundCloud hat eigene Werte im Tab «SoundCloud».",
+    "throttle": "Begrenzt die Last auf YouTube. Diese Werte gelten für Suche, Watchlist und Downloads gemeinsam. SoundCloud hat eigene Werte im Tab «SoundCloud», Mixcloud und hearthis.at unter «Weitere Quellen».",
     "soundcloud": "SoundCloud als zweite Quelle für Suche, Watchlist und Downloads – mit eigenen Limits, eigenen Zählern und eigenem Backoff, unabhängig von YouTube.",
     "network": "Der PO-Token weist Requests als echten Browser aus und senkt das Risiko von Bot-Sperren.",
     "schedule": "Wann die Watchlist automatisch geprüft wird – in der App und über die Windows-Aufgabenplanung.",
@@ -648,7 +665,9 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "festivals": "Erkennt Festival oder Serie, Jahr, Bühne und Set-Art aus den gespeicherten Titeln – offline, ohne eine einzige Zusatzanfrage.",
     "playback": "Eingebauter Player, Lautheitsangleichung, gemerkte Positionen und die Offline-Analyse deiner Dateien.",
     "notifications": "Windows-Benachrichtigungen für neue Sets im Eingang und fertige oder fehlgeschlagene Downloads – gebündelt zu einer Meldung, nie eine Flut. Ein Klick öffnet die App an der richtigen Stelle.",
-    "mediaserver": "Nach Downloads deinen Plex- oder Jellyfin-Server die Bibliothek neu einlesen lassen – gebündelt, nur im Heimnetz. Das Token liegt in der Windows-Anmeldeinformationsverwaltung, nie in config.yaml."
+    "mediaserver": "Nach Downloads deinen Plex- oder Jellyfin-Server die Bibliothek neu einlesen lassen – gebündelt, nur im Heimnetz. Das Token liegt in der Windows-Anmeldeinformationsverwaltung, nie in config.yaml.",
+    "sources": "Mixcloud und hearthis.at als weitere Quellen für Suche, Watchlist und Downloads – jeweils mit eigenen Grenzen, Zählern und Backoff, unabhängig von YouTube und SoundCloud.",
+    "reupload": "Erkennt denselben Mix, wenn er erneut hochgeladen wurde (anderer Kanal, andere Plattform, neue ID), an einem kompakten Audio-Fingerabdruck – offline aus deinen Dateien berechnet, ohne Netz."
   },
   "set": {
     "default": "Standard",
@@ -700,7 +719,9 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
       "playlists": "Playlists (M3U8)",
       "notify_events": "Benachrichtigen bei",
       "quiet": "Ruhezeit",
-      "ms_paths": "Pfade & Zeitpunkt"
+      "ms_paths": "Pfade & Zeitpunkt",
+      "more_sources": "Mixcloud & hearthis.at",
+      "fingerprint": "Fingerabdruck"
     },
     "general": {
       "start_view": {
@@ -846,6 +867,14 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
       "keep_original_soundcloud": {
         "label": "SoundCloud-Original behalten",
         "help": "SoundCloud-Audio unverändert speichern (AAC 160 kbps als .m4a, MP3 128 kbps als .mp3) – keine zweite verlustbehaftete Umwandlung. Aus: wie «Ausgabeformat»."
+      },
+      "keep_original_mixcloud": {
+        "label": "Mixcloud-Original behalten",
+        "help": "Mixcloud-Audio unverändert speichern (AAC, meist 64–128 kbps, als .m4a) – keine zweite verlustbehaftete Umwandlung. Aus: wie «Ausgabeformat»."
+      },
+      "keep_original_hearthis": {
+        "label": "hearthis.at-Original behalten",
+        "help": "Den hearthis.at-Stream unverändert speichern (MP3) – keine zweite verlustbehaftete Umwandlung. Aus: wie «Ausgabeformat»."
       }
     },
     "storage": {
@@ -930,7 +959,9 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
       "blocked": "{p} hat eine Sperre signalisiert. Suche, Watchlist und Downloads von {p} sind blockiert, bis die Zeit abgelaufen ist.",
       "clear": "Manuell aufheben",
       "sc_off": "SoundCloud ist ausgeschaltet",
-      "sc_off_detail": "Keine Suche, keine Watchlist-Prüfung und keine Downloads von SoundCloud."
+      "sc_off_detail": "Keine Suche, keine Watchlist-Prüfung und keine Downloads von SoundCloud.",
+      "p_off": "{p} ist ausgeschaltet",
+      "p_off_detail": "Keine {p}-Suche, keine Watchlist-Prüfungen und keine Downloads von {p}."
     },
     "soundcloud": {
       "enabled": {
@@ -1402,6 +1433,84 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
         "help": "Welche Bibliothek eingelesen wird. «Alle Bibliotheken» liest alles ein (auf grossen Servern langsamer)."
       },
       "lib_paths": "Ordner auf dem Server: {p}"
+    },
+    "platform": {
+      "enabled": {
+        "label": "{p} nutzen",
+        "help": "Aus: keine {p}-Suche, keine Prüfung von {p}-Quellen und keine {p}-Downloads. Bereits geladene Einträge bleiben in der Bibliothek."
+      },
+      "sleep_requests": {
+        "label": "Pause zwischen Requests",
+        "help": "Wartezeit zwischen Metadaten-Abfragen an {p} (Suche, Watchlist)."
+      },
+      "sleep_interval": {
+        "label": "Download-Pause – minimal",
+        "help": "Nach jedem {p}-Download folgt eine zufällige Pause zwischen Minimum und Maximum."
+      },
+      "max_sleep_interval": {
+        "label": "Download-Pause – maximal",
+        "help": "Obergrenze der zufälligen Pause."
+      },
+      "limit_rate_mb": {
+        "label": "Download-Tempo",
+        "help": "Maximale Bandbreite. 0 = unbegrenzt (nicht empfohlen)."
+      },
+      "max_downloads_per_run": {
+        "label": "Max. Downloads pro Lauf",
+        "help": "Eigener Zähler für {p}. Der Rest bleibt in der Warteschlange."
+      },
+      "max_downloads_per_day": {
+        "label": "Max. Downloads pro Tag",
+        "help": "Eigener Zähler für {p}, manuelle und automatische Downloads zusammen."
+      },
+      "max_searches_per_hour": {
+        "label": "Max. Suchen pro Stunde",
+        "help": "Eigener Zähler für {p}."
+      },
+      "backoff_initial_hours": {
+        "label": "Backoff – Startwert",
+        "help": "Sperrzeit, nachdem {p} zu viele Anfragen gemeldet hat (HTTP 429)."
+      },
+      "backoff_max_hours": {
+        "label": "Backoff – Maximum",
+        "help": "Die Sperrzeit verdoppelt sich bei jeder weiteren Sperre bis zu diesem Wert."
+      }
+    },
+    "reupload": {
+      "enabled": {
+        "label": "Re-Uploads erkennen",
+        "help": "Berechnet offline mit ffmpeg einen kompakten Audio-Fingerabdruck pro Set und vergleicht neue Downloads mit deiner Bibliothek. Ein Treffer wird als «Vermutlich Re-Upload von …» markiert – gelöscht wird nichts automatisch."
+      },
+      "fingerprint_after_download": {
+        "label": "Fingerabdruck nach jedem Download",
+        "help": "Eine Datei nach der anderen mit niedriger Priorität, nach der Lautheitsanalyse. Aus: nur der Abgleich der Bibliothek unten."
+      },
+      "precheck": {
+        "label": "Vor dem Download prüfen",
+        "help": "Vergleicht vor einem Download auch Dauer (±5 s) und Titel mit der Bibliothek auf derselben Plattform – ohne zusätzlichen Request. Treffer kommen in den Eingang statt in die Warteschlange und zeigen «Vermutlich bereits geladen»."
+      },
+      "head_minutes": {
+        "label": "Minuten ab Anfang",
+        "help": "Wie viel vom Anfang in den Fingerabdruck eingeht. Mehr = sicherer bei Sets mit langem gleichem Intro, etwas langsamer."
+      },
+      "windows": {
+        "label": "Zusätzliche Fenster",
+        "help": "30-Sekunden-Fenster, über den Rest des Sets verteilt. Damit werden zwei verschiedene Sets unterschieden, die mit demselben Track beginnen. 0 = nur der Anfang."
+      },
+      "min_score": {
+        "label": "Treffer-Schwelle",
+        "help": "Anteil übereinstimmender Fingerabdruck-Hashes, ab dem ein Set als Re-Upload gilt. Tiefer = findet mehr, aber mehr Fehltreffer."
+      },
+      "title": "{done} von {total} Dateien mit Fingerabdruck",
+      "marks": "{open} offen · {linked} verknüpft · {kept} behalten",
+      "help": "Läuft offline über die Bibliothek, eine Datei nach der anderen mit niedriger Priorität – ohne Netz, das Audio bleibt unverändert. Jederzeit abbrechbar.",
+      "button": "Neue Dateien abgleichen",
+      "button_n": "{n} neue abgleichen",
+      "all": "Alle neu abgleichen",
+      "all_title": "Jeden Fingerabdruck neu berechnen (z.B. nach geänderten Fenstern) – deine Entscheide bleiben",
+      "running": "Abgleich läuft … {done} / {total} · {found} gefunden",
+      "show": "{n} in der Bibliothek zeigen",
+      "no_ffmpeg": "Fingerabdrücke brauchen ffmpeg (bin\\ffmpeg.exe, installiert durch setup.ps1). Einstellungen › Wartung zeigt den Zustand."
     }
   },
   "opt": {
@@ -1518,6 +1627,12 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
       "title": "Mitgelieferte Serien zurücksetzen?",
       "text": "Alle mitgelieferten Serien kehren in den Lieferzustand zurück, ausgeblendete kommen wieder. Eigene Serien bleiben.",
       "ok": "Zurücksetzen"
+    },
+    "reupload_del": {
+      "title": "Re-Upload löschen?",
+      "ok": "Datei löschen",
+      "text": "«{title}» ist vermutlich derselbe Mix wie «{of}». Diese neuere Datei löschen?",
+      "note": "Das Original bleibt. Der Eintrag wird auf «ignoriert» gesetzt und nicht erneut geladen."
     }
   },
   "toast": {
@@ -1603,7 +1718,9 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "assign_done": "Festivals zugeordnet: {assigned} neu, {suggested} Vorschläge",
     "assign_cancelled": "Zuordnung abgebrochen: {assigned} neu, {suggested} Vorschläge",
     "analysis_done": "Lautheit analysiert: {n} Dateien ({failed} fehlgeschlagen)",
-    "analysis_cancelled": "Analyse nach {n} Dateien abgebrochen"
+    "analysis_cancelled": "Analyse nach {n} Dateien abgebrochen",
+    "fp_done": "Bibliothek abgeglichen: {n} Dateien, {found} vermutliche Re-Uploads",
+    "fp_cancelled": "Abgleich nach {n} Dateien abgebrochen"
   },
   "upd": {
     "available": "Version {v} verfügbar",
@@ -2189,5 +2306,26 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "empty_title": "Noch keine Sets",
     "empty_text": "Sobald die ersten Sets in der Bibliothek sind, siehst du hier, was du sammelst – Genres, Festivals, DJs, Stunden.",
     "empty_go": "Sets entdecken"
+  },
+  "reupload": {
+    "tag": "Re-Upload?",
+    "tag_title": "Vermutlich ein Re-Upload von «{title}» ({p}, {score} % Übereinstimmung) – klicken zum Entscheiden",
+    "linked": "Gleicher Mix",
+    "linked_title": "Als gleicher Mix wie «{title}» ({p}) verknüpft",
+    "chip": "Re-Uploads ({n})",
+    "chip_title": "Nur Sets zeigen, die als vermutlicher Re-Upload markiert sind",
+    "menu_head": "Vermutlich Re-Upload von «{title}» · {score} %",
+    "menu_head_linked": "Gleicher Mix wie «{title}»",
+    "keep": "Beide behalten",
+    "link": "Als gleichen Mix verknüpfen",
+    "undo": "Entscheid rückgängig",
+    "show_original": "Original zeigen",
+    "delete_new": "Diese neuere Datei löschen",
+    "toast_keep": "Beide behalten – die Markierung ist weg",
+    "toast_link": "Als gleicher Mix verknüpft",
+    "toast_open": "Entscheid rückgängig gemacht",
+    "toast_found": "Vermutlich Re-Upload: «{title}» entspricht «{of}» – siehe Bibliothek",
+    "dl_notice": "{n} neue Downloads sind vermutlich Re-Uploads von Sets, die du schon hast:",
+    "review": "In der Bibliothek ansehen"
   }
 });

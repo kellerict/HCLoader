@@ -66,7 +66,8 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "clock": "val.",
     "req_h": "užkl./val.",
     "lufs": "LUFS",
-    "db": "dB"
+    "db": "dB",
+    "pct": "%"
   },
   "range": {
     "ge_sleep": "≥ minimumas",
@@ -98,7 +99,10 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "youtube": "YouTube",
     "soundcloud": "SoundCloud",
     "label": "Platforma",
-    "sc_off": "„SoundCloud“ išjungta – įjunkite skiltyje Nustatymai › SoundCloud."
+    "sc_off": "„SoundCloud“ išjungta – įjunkite skiltyje Nustatymai › SoundCloud.",
+    "mixcloud": "Mixcloud",
+    "hearthis": "hearthis.at",
+    "p_off": "{p} išjungta – įjunkite skiltyje Nustatymai › Daugiau šaltinių."
   },
   "genre": {
     "change": "Keisti žanrą",
@@ -150,7 +154,8 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "sc_today": "{n} / {max}",
     "yt_tip": "YouTube · šiandien atsisiųsta {day}/{day_max} · šią valandą paieškų {s}/{s_max}",
     "sc_tip": "SoundCloud · šiandien atsisiųsta {day}/{day_max} · šią valandą paieškų {s}/{s_max}",
-    "backoff_tip": "{p}: pauzė iki {t} (liko {rest})"
+    "backoff_tip": "{p}: pauzė iki {t} (liko {rest})",
+    "p_tip": "{p} · šiandien atsisiųsta {day}/{day_max} · šią valandą paieškų {s}/{s_max}"
   },
   "schedule": {
     "due": "laikas",
@@ -164,7 +169,7 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
   },
   "card": {
     "source": "Rasta per stebimą šaltinį „{name}“",
-    "select": "Pasirinkti",
+    "select": "Tik prenumeratoriams (Select)",
     "open": "Atidaryti platformoje {p}",
     "ignore": "Ignoruoti",
     "unignore": "Nebeignoruoti",
@@ -178,7 +183,8 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "duplicate": "Tikriausiai jau atsisiųsta ({p})",
     "duplicate_title": "Labai panašus pavadinimas ir ta pati trukmė kaip „{title}“ ({p}) – ten jau atsisiųsta arba įtraukta į eilę. Vis tiek galite atsisiųsti.",
     "preview": "Tik peržiūra (Go+) – atsisiųsti negalima",
-    "preview_title": "„SoundCloud“ šiam kūriniui pateikia tik 30 sekundžių peržiūrą (Go+). Jo atsisiųsti negalima."
+    "preview_title": "„SoundCloud“ šiam kūriniui pateikia tik 30 sekundžių peržiūrą (Go+). Jo atsisiųsti negalima.",
+    "select_title": "Šis Mixcloud įkėlimas prieinamas tik kūrėjo prenumeratoriams (Mixcloud Select). Jo atsisiųsti negalima."
   },
   "discover": {
     "placeholder": "Ieškokite miksų, gyvų setų, DJ, renginių …",
@@ -238,7 +244,13 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "ready_text": "Įveskite paieškos frazę ir paspauskite Enter.",
     "none_title": "Nieko nerasta",
     "none_text": "Sušvelninkite filtrus arba išbandykite kitas paieškos frazes.",
-    "none_year": "Nėra rezultatų iš {year} m. Ieškokite dar kartą, kad metai būtų įtraukti į paieškos frazę, arba pakeiskite metus."
+    "none_year": "Nėra rezultatų iš {year} m. Ieškokite dar kartą, kad metai būtų įtraukti į paieškos frazę, arba pakeiskite metus.",
+    "quota_p": "„{p}“ paieškų šią valandą: {n} / {max}",
+    "placeholder_p": "Ieškoti „{p}“: miksai, setai, DJ, podkastai …",
+    "searching_p": "Ieškoma – paprastas užklausimas, švelnus „{p}“ atžvilgiu …",
+    "ready_text_p": "Įveskite paieškos frazę ir paspauskite Enter, kad ieškotumėte „{p}“.",
+    "previews_mc": "tik prenumeratoriams (Select): {n}",
+    "previews_mc_title": "Mixcloud Select įkėlimai skirti tik mokantiems prenumeratoriams ir niekada negali būti atsisiųsti. Matomi, kai „Slėpti atsisiųstus ir ignoruojamus“ išjungta."
   },
   "inbox": {
     "title": "Gauti",
@@ -335,8 +347,8 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "hits_auto": "Atsisiųsti automatiškai",
     "hint_inbox": "Radiniai laukia gautuose, kol juos atsisiųsite arba ignoruosite.",
     "hint_auto": "Radiniai, atitinkantys visus filtrus, iškart patenka į eilę.",
-    "hint_channel": "„YouTube“ kanalas (…/@vardas arba …/channel/UC…, pasirinktinai /videos arba /streams) arba „SoundCloud“ profilis (soundcloud.com/vardas).",
-    "hint_playlist": "„YouTube“ grojaraštis su „list=…“ arba „SoundCloud“ rinkinys (soundcloud.com/vardas/sets/rinkinys). Tikrinami naujausi įrašai.",
+    "hint_channel": "YouTube kanalas (…/@vardas arba …/channel/UC…, pasirinktinai /videos ar /streams), SoundCloud profilis (soundcloud.com/vardas), Mixcloud naudotojas (mixcloud.com/vardas) arba hearthis.at naudotojas (hearthis.at/vardas).",
+    "hint_playlist": "YouTube grojaraštis su „list=…“, SoundCloud rinkinys (soundcloud.com/vardas/sets/rinkinys), Mixcloud grojaraštis (mixcloud.com/vardas/playlists/sąrašas) arba hearthis.at rinkinys (hearthis.at/vardas/set/rinkinys). Tikrinami naujausi įrašai.",
     "f_platform": "Ieškoti",
     "detected": "atpažinta: {p} · {type}",
     "not_detected": "URL neatpažintas",
@@ -355,7 +367,9 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "ph_channel": "https://www.youtube.com/@kanalas  arba  https://soundcloud.com/vardas",
     "ph_playlist": "https://www.youtube.com/playlist?list=…  arba  https://soundcloud.com/vardas/sets/…",
     "ph_search": "pvz., frenchcore liveset",
-    "form_error": "Šaltinio išsaugoti nepavyko."
+    "form_error": "Šaltinio išsaugoti nepavyko.",
+    "backoff_link_p": "Atidaryti „{p}“",
+    "why_p_off": "„{p}“ išjungta"
   },
   "downloads": {
     "title": "Atsisiuntimai",
@@ -444,7 +458,8 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     },
     "local_link_pot": "Tinklo nustatymai",
     "local_link_target": "Keisti saugojimo vietą",
-    "local_link_error": "Priežiūra"
+    "local_link_error": "Priežiūra",
+    "summary_p": "„{p}“ {day}/{day_max}"
   },
   "library": {
     "title": "Biblioteka",
@@ -667,7 +682,9 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "festivals": "Festivaliai ir serijos",
     "playback": "Atkūrimas",
     "notifications": "Pranešimai",
-    "mediaserver": "Medijos serveris"
+    "mediaserver": "Medijos serveris",
+    "sources": "Daugiau šaltinių",
+    "reupload": "Pakartotiniai įkėlimai"
   },
   "tabs_hint": {
     "general": "Pagrindinis programos elgesys.",
@@ -675,7 +692,7 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "genres": "Tvarka = prioritetas. Laimi pirmasis žanras, kurio raktažodis yra pavadinime. Rankiniu būdu nustatyti žanrai ir šaltinio numatytasis žanras turi pirmenybę.",
     "download": "„YouTube“ paprastai pateikia „Opus“ apie 130–160 kbps greičiu. MP3 yra konvertavimas ir skamba ne geriau už šaltinį – bet groja visur.",
     "storage": "Kur patenka failai ir kaip jie pavadinami. Struktūra skirta medijų serveriams, pvz., Plex ar Jellyfin.",
-    "throttle": "Riboja apkrovą „YouTube“. Šios reikšmės galioja paieškai, stebimiems šaltiniams ir atsisiuntimams kartu. „SoundCloud“ turi savas reikšmes skirtuke „SoundCloud“.",
+    "throttle": "Riboja apkrovą „YouTube“. Šios reikšmės galioja paieškai, stebimiems šaltiniams ir atsisiuntimams kartu. „SoundCloud“ turi savas reikšmes skirtuke „SoundCloud“. Mixcloud ir hearthis.at turi savo vertes skiltyje „Daugiau šaltinių“.",
     "soundcloud": "„SoundCloud“ kaip antrasis paieškos, stebimų šaltinių ir atsisiuntimų šaltinis – su savais limitais, skaitikliais ir pauze, nepriklausomai nuo „YouTube“.",
     "network": "PO-Token identifikuoja užklausas kaip tikro naršyklės ir sumažina botų blokavimo riziką.",
     "schedule": "Kada stebimi šaltiniai tikrinami automatiškai – programoje ir per „Windows“ užduočių planuoklį.",
@@ -684,7 +701,9 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "festivals": "Atpažįsta festivalį ar seriją, metus, sceną ir seto tipą iš išsaugotų pavadinimų – neprisijungus, be nė vienos papildomos užklausos.",
     "playback": "Integruotas grotuvas, garsumo suvienodinimas, įsimintos pozicijos ir jūsų failų analizė neprisijungus.",
     "notifications": "Windows pranešimai apie naujus setus gautuosiuose ir baigtus ar nepavykusius atsisiuntimus – sujungti į vieną žinutę, niekada ne srautas. Spustelėjus atsidaro tinkama programos vieta.",
-    "mediaserver": "Po atsisiuntimų paprašyti jūsų Plex ar Jellyfin serverio iš naujo nuskaityti biblioteką – sujungtai, tik namų tinkle. Prieigos raktas saugomas Windows kredencialų tvarkytuve, niekada config.yaml."
+    "mediaserver": "Po atsisiuntimų paprašyti jūsų Plex ar Jellyfin serverio iš naujo nuskaityti biblioteką – sujungtai, tik namų tinkle. Prieigos raktas saugomas Windows kredencialų tvarkytuve, niekada config.yaml.",
+    "sources": "Mixcloud ir hearthis.at kaip papildomi šaltiniai paieškai, stebimų sąrašui ir atsisiuntimams – kiekvienas su savo ribomis, skaitikliais ir pauze (backoff), nepriklausomai nuo YouTube ir SoundCloud.",
+    "reupload": "Atpažįsta tą patį miksą, įkeltą iš naujo (kitas kanalas, kita platforma, naujas id), pagal kompaktišką garso piršto atspaudą – skaičiuojama neprisijungus iš jūsų failų, be tinklo."
   },
   "set": {
     "default": "Numatyta",
@@ -740,7 +759,9 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
       "playlists": "Grojaraščiai (M3U8)",
       "notify_events": "Pranešti apie",
       "quiet": "Tylos valandos",
-      "ms_paths": "Keliai ir laikas"
+      "ms_paths": "Keliai ir laikas",
+      "more_sources": "Mixcloud & hearthis.at",
+      "fingerprint": "Piršto atspaudas"
     },
     "general": {
       "language": {
@@ -886,6 +907,14 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
       "keep_original_soundcloud": {
         "label": "Palikti „SoundCloud“ originalą",
         "help": "Įrašyti „SoundCloud“ garsą nepakeistą (AAC 160 kbps kaip .m4a, MP3 128 kbps kaip .mp3) – be antro nuostolingo konvertavimo. Išjungta: kaip „Išvesties formatas“."
+      },
+      "keep_original_mixcloud": {
+        "label": "Palikti Mixcloud originalą",
+        "help": "Išsaugoti Mixcloud garsą nepakeistą (AAC, dažniausiai 64–128 kbps, kaip .m4a) – be antro nuostolingo konvertavimo. Išjungta: kaip „Išvesties formatas“."
+      },
+      "keep_original_hearthis": {
+        "label": "Palikti hearthis.at originalą",
+        "help": "Išsaugoti hearthis.at srautą nepakeistą (MP3) – be antro nuostolingo konvertavimo. Išjungta: kaip „Išvesties formatas“."
       }
     },
     "storage": {
@@ -970,7 +999,9 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
       "blocked": "{p} signalizavo apie blokavimą. Paieška, stebimi šaltiniai ir atsisiuntimai iš {p} užblokuoti, kol baigsis laikas.",
       "clear": "Panaikinti rankiniu būdu",
       "sc_off": "„SoundCloud“ išjungta",
-      "sc_off_detail": "Jokios „SoundCloud“ paieškos, stebimų šaltinių patikrų ir atsisiuntimų iš „SoundCloud“."
+      "sc_off_detail": "Jokios „SoundCloud“ paieškos, stebimų šaltinių patikrų ir atsisiuntimų iš „SoundCloud“.",
+      "p_off": "„{p}“ išjungta",
+      "p_off_detail": "Jokios „{p}“ paieškos, stebimų šaltinių patikrų ir atsisiuntimų iš „{p}“."
     },
     "soundcloud": {
       "enabled": {
@@ -1444,6 +1475,84 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
         "help": "Kurią biblioteką nuskaityti. „Visos bibliotekos“ nuskaito viską (lėčiau dideliuose serveriuose)."
       },
       "lib_paths": "Aplankai serveryje: {p}"
+    },
+    "platform": {
+      "enabled": {
+        "label": "Naudoti „{p}“",
+        "help": "Išjungta: jokios „{p}“ paieškos, „{p}“ šaltinių patikrų ir „{p}“ atsisiuntimų. Jau atsisiųsti įrašai lieka bibliotekoje."
+      },
+      "sleep_requests": {
+        "label": "Pauzė tarp užklausų",
+        "help": "Laukimo laikas tarp metaduomenų užklausų „{p}“ (paieška, stebimi šaltiniai)."
+      },
+      "sleep_interval": {
+        "label": "Atsisiuntimo pauzė – minimumas",
+        "help": "Po kiekvieno „{p}“ atsisiuntimo seka atsitiktinė pauzė tarp minimumo ir maksimumo."
+      },
+      "max_sleep_interval": {
+        "label": "Atsisiuntimo pauzė – maksimumas",
+        "help": "Atsitiktinės pauzės viršutinė riba."
+      },
+      "limit_rate_mb": {
+        "label": "Atsisiuntimo sparta",
+        "help": "Maksimalus pralaidumas. 0 = neribota (nerekomenduojama)."
+      },
+      "max_downloads_per_run": {
+        "label": "Maks. atsisiuntimų per paleidimą",
+        "help": "Atskiras „{p}“ skaitiklis. Likusieji lieka eilėje."
+      },
+      "max_downloads_per_day": {
+        "label": "Maks. atsisiuntimų per dieną",
+        "help": "Atskiras „{p}“ skaitiklis, rankiniai ir automatiniai atsisiuntimai kartu."
+      },
+      "max_searches_per_hour": {
+        "label": "Maks. paieškų per valandą",
+        "help": "Atskiras „{p}“ skaitiklis."
+      },
+      "backoff_initial_hours": {
+        "label": "Pauzė – pradinė reikšmė",
+        "help": "Blokavimo laikas, kai „{p}“ pranešė apie per daug užklausų (HTTP 429)."
+      },
+      "backoff_max_hours": {
+        "label": "Pauzė – maksimumas",
+        "help": "Blokavimo laikas padvigubėja po kiekvieno kito blokavimo iki šios reikšmės."
+      }
+    },
+    "reupload": {
+      "enabled": {
+        "label": "Atpažinti pakartotinius įkėlimus",
+        "help": "Neprisijungus su ffmpeg apskaičiuoja kompaktišką kiekvieno seto garso piršto atspaudą ir palygina naujus atsisiuntimus su jūsų biblioteka. Atitikmuo pažymimas „Tikėtinas pakartotinis įkėlimas: …“ – niekas automatiškai netrinama."
+      },
+      "fingerprint_after_download": {
+        "label": "Piršto atspaudas po kiekvieno atsisiuntimo",
+        "help": "Po vieną failą žemu prioritetu, po garsumo analizės. Išjungta: tik žemiau esantis bibliotekos palyginimas."
+      },
+      "precheck": {
+        "label": "Tikrinti prieš atsisiunčiant",
+        "help": "Prieš atsisiuntimą taip pat palygina trukmę (±5 s) ir pavadinimą su biblioteka toje pačioje platformoje – be papildomos užklausos. Atitikmenys patenka į gautuosius, o ne į eilę, ir rodo „Tikriausiai jau atsisiųsta“."
+      },
+      "head_minutes": {
+        "label": "Minutės nuo pradžios",
+        "help": "Kiek pradžios patenka į piršto atspaudą. Daugiau = patikimiau setams su ilgu vienodu įžanga, šiek tiek lėčiau."
+      },
+      "windows": {
+        "label": "Papildomi langai",
+        "help": "30 sekundžių langai, paskirstyti likusioje seto dalyje. Jais atskiriami du skirtingi setai, prasidedantys tuo pačiu takeliu. 0 = tik pradžia."
+      },
+      "min_score": {
+        "label": "Atitikimo slenkstis",
+        "help": "Sutampančių piršto atspaudo maišų dalis, nuo kurios setas laikomas pakartotiniu įkėlimu. Mažiau = randa daugiau, bet daugiau klaidingų atitikmenų."
+      },
+      "title": "Piršto atspaudas: {done} iš {total} failų",
+      "marks": "atvira: {open} · susieta: {linked} · palikta: {kept}",
+      "help": "Vykdoma neprisijungus per biblioteką, po vieną failą žemu prioritetu – be tinklo, garsas nekeičiamas. Galima bet kada atšaukti.",
+      "button": "Palyginti naujus failus",
+      "button_n": "Palyginti naujus ({n})",
+      "all": "Palyginti viską iš naujo",
+      "all_title": "Iš naujo apskaičiuoti visus piršto atspaudus (pvz., pakeitus langus) – jūsų sprendimai išlieka",
+      "running": "Lyginama … {done} / {total} · rasta: {found}",
+      "show": "Rodyti bibliotekoje ({n})",
+      "no_ffmpeg": "Piršto atspaudams reikia ffmpeg (bin\\ffmpeg.exe, įdiegia setup.ps1). Būseną rodo Nustatymai › Priežiūra."
     }
   },
   "opt": {
@@ -1564,6 +1673,12 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
       "title": "Atstatyti integruotas serijas?",
       "text": "Visos integruotos serijos grįš į pradinę būseną, paslėptos vėl atsiras. Jūsų serijos liks.",
       "ok": "Atstatyti"
+    },
+    "reupload_del": {
+      "title": "Ištrinti pakartotinį įkėlimą?",
+      "ok": "Ištrinti failą",
+      "text": "„{title}“ tikriausiai yra tas pats miksas kaip „{of}“. Ištrinti šį naujesnį failą?",
+      "note": "Originalas lieka. Įrašas pažymimas „ignoruojamas“ ir daugiau nesiunčiamas."
     }
   },
   "toast": {
@@ -1665,7 +1780,9 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "assign_done": "Festivaliai priskirti: naujų {assigned}, pasiūlymų {suggested}",
     "assign_cancelled": "Priskyrimas nutrauktas: naujų {assigned}, pasiūlymų {suggested}",
     "analysis_done": "Garsumas išanalizuotas: failų {n} (nepavyko {failed})",
-    "analysis_cancelled": "Analizė atšaukta po {n} failų"
+    "analysis_cancelled": "Analizė atšaukta po {n} failų",
+    "fp_done": "Biblioteka palyginta: failų {n}, tikėtinų pakartotinių įkėlimų {found}",
+    "fp_cancelled": "Palyginimas atšauktas, apdorota failų: {n}"
   },
   "upd": {
     "available": "Yra versija {v}",
@@ -2277,5 +2394,26 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "empty_title": "Setų dar nėra",
     "empty_text": "Kai bibliotekoje atsiras pirmieji setai, čia matysite, ką kolekcionuojate – žanrus, festivalius, DJ, valandas.",
     "empty_go": "Atrasti setus"
+  },
+  "reupload": {
+    "tag": "Pakartotinis įkėlimas?",
+    "tag_title": "Tikriausiai pakartotinis „{title}“ įkėlimas ({p}, {score} % atitikimas) – spustelėkite ir nuspręskite",
+    "linked": "Tas pats miksas",
+    "linked_title": "Susieta kaip tas pats miksas kaip „{title}“ ({p})",
+    "chip": "Pakartotiniai įkėlimai ({n})",
+    "chip_title": "Rodyti tik setus, pažymėtus kaip tikėtinas pakartotinis įkėlimas",
+    "menu_head": "Tikėtinas pakartotinis „{title}“ įkėlimas · {score} %",
+    "menu_head_linked": "Tas pats miksas kaip „{title}“",
+    "keep": "Palikti abu",
+    "link": "Susieti kaip tą patį miksą",
+    "undo": "Atšaukti sprendimą",
+    "show_original": "Rodyti originalą",
+    "delete_new": "Ištrinti šį naujesnį failą",
+    "toast_keep": "Palikti abu – žyma pašalinta",
+    "toast_link": "Susieta kaip tas pats miksas",
+    "toast_open": "Sprendimas atšauktas",
+    "toast_found": "Tikėtinas pakartotinis įkėlimas: „{title}“ atitinka „{of}“ – žr. biblioteką",
+    "dl_notice": "Naujausi atsisiuntimai, kurie tikriausiai yra jau turimų setų pakartotiniai įkėlimai ({n}):",
+    "review": "Peržiūrėti bibliotekoje"
   }
 });

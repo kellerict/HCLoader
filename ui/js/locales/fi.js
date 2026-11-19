@@ -64,7 +64,8 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "clock": "24 h",
     "req_h": "pyynt./h",
     "lufs": "LUFS",
-    "db": "dB"
+    "db": "dB",
+    "pct": "%"
   },
   "range": {
     "ge_sleep": "≥ vähimmäisarvo",
@@ -96,7 +97,10 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "youtube": "YouTube",
     "soundcloud": "SoundCloud",
     "label": "Alusta",
-    "sc_off": "SoundCloud on pois päältä – ota se käyttöön kohdassa Asetukset › SoundCloud."
+    "sc_off": "SoundCloud on pois päältä – ota se käyttöön kohdassa Asetukset › SoundCloud.",
+    "mixcloud": "Mixcloud",
+    "hearthis": "hearthis.at",
+    "p_off": "{p} on pois päältä – ota käyttöön kohdassa Asetukset › Lisää lähteitä."
   },
   "genre": {
     "change": "Vaihda tyylilaji",
@@ -148,7 +152,8 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "sc_today": "{n} / {max}",
     "yt_tip": "YouTube · ladattu tänään {day}/{day_max} · {s}/{s_max} hakua tällä tunnilla",
     "sc_tip": "SoundCloud · ladattu tänään {day}/{day_max} · {s}/{s_max} hakua tällä tunnilla",
-    "backoff_tip": "{p}: backoff asti {t} ({rest} jäljellä)"
+    "backoff_tip": "{p}: backoff asti {t} ({rest} jäljellä)",
+    "p_tip": "{p} · ladattu tänään {day}/{day_max} · {s}/{s_max} hakua tällä tunnilla"
   },
   "schedule": {
     "due": "erääntynyt",
@@ -162,7 +167,7 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
   },
   "card": {
     "source": "Löytyi seurantalähteestä ”{name}”",
-    "select": "Valitse",
+    "select": "Vain tilaajille (Select)",
     "open": "Avaa palvelussa {p}",
     "ignore": "Ohita",
     "unignore": "Älä enää ohita",
@@ -176,7 +181,8 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "duplicate": "Luultavasti jo ladattu ({p})",
     "duplicate_title": "Hyvin samankaltainen nimi ja sama kesto kuin kohteella ”{title}” palvelusta {p} – jo ladattu tai jonossa siellä. Voit silti ladata sen.",
     "preview": "Vain esikuuntelu (Go+) – ei ladattavissa",
-    "preview_title": "SoundCloud tarjoaa tälle kappaleelle vain 30 sekunnin esikuuntelun (Go+). Sitä ei voi ladata."
+    "preview_title": "SoundCloud tarjoaa tälle kappaleelle vain 30 sekunnin esikuuntelun (Go+). Sitä ei voi ladata.",
+    "select_title": "Tämä Mixcloud-lataus on vain tekijän tilaajien saatavilla (Mixcloud Select). Sitä ei voi ladata."
   },
   "discover": {
     "placeholder": "Hae mixiä, live-settiä, DJ:tä, tapahtumaa …",
@@ -234,7 +240,13 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "ready_text": "Kirjoita hakusana ja paina Enter.",
     "none_title": "Ei löytynyt mitään",
     "none_text": "Höllennä suodattimia tai kokeile muita hakusanoja.",
-    "none_year": "Ei tuloksia vuodelta {year}. Hae uudelleen, jotta vuosi otetaan mukaan hakusanaan – tai vaihda vuosi."
+    "none_year": "Ei tuloksia vuodelta {year}. Hae uudelleen, jotta vuosi otetaan mukaan hakusanaan – tai vaihda vuosi.",
+    "quota_p": "{p}-hakuja tällä tunnilla: {n} / {max}",
+    "placeholder_p": "Hae palvelusta {p}: mix, setti, DJ, podcast …",
+    "searching_p": "Haetaan – kevyt kysely, hellä palvelua {p} kohtaan …",
+    "ready_text_p": "Kirjoita hakusana ja paina Enter hakeaksesi palvelusta {p}.",
+    "previews_mc": "vain tilaajille (Select): {n}",
+    "previews_mc_title": "Mixcloud Select -lataukset ovat vain maksaville tilaajille, eikä niitä voi koskaan ladata. Näkyvät, kun ”Piilota ladatut ja ohitetut” on pois päältä."
   },
   "inbox": {
     "title": "Saapuneet",
@@ -325,8 +337,8 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "hits_auto": "Lataa automaattisesti",
     "hint_inbox": "Osumat odottavat Saapuneissa, kunnes lataat tai ohitat ne.",
     "hint_auto": "Osumat, jotka läpäisevät kaikki suodattimet, menevät suoraan jonoon.",
-    "hint_channel": "YouTube-kanava (…/@nimi tai …/channel/UC…, tarvittaessa /videos tai /streams) tai SoundCloud-profiili (soundcloud.com/nimi).",
-    "hint_playlist": "YouTube-soittolista, jossa ”list=…”, tai SoundCloud-setti (soundcloud.com/nimi/sets/setti). Uusimmat merkinnät tarkistetaan.",
+    "hint_channel": "YouTube-kanava (…/@nimi tai …/channel/UC…, valinnaisesti /videos tai /streams), SoundCloud-profiili (soundcloud.com/nimi), Mixcloud-käyttäjä (mixcloud.com/nimi) tai hearthis.at-käyttäjä (hearthis.at/nimi).",
+    "hint_playlist": "YouTube-soittolista, jossa ”list=…”, SoundCloud-setti (soundcloud.com/nimi/sets/setti), Mixcloud-soittolista (mixcloud.com/nimi/playlists/lista) tai hearthis.at-setti (hearthis.at/nimi/set/setti). Uusimmat kohteet tarkistetaan.",
     "f_platform": "Hae palvelusta",
     "detected": "tunnistettu: {p} · {type}",
     "not_detected": "URL-osoitetta ei tunnistettu",
@@ -345,7 +357,9 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "ph_channel": "https://www.youtube.com/@kanava  tai  https://soundcloud.com/nimi",
     "ph_playlist": "https://www.youtube.com/playlist?list=…  tai  https://soundcloud.com/nimi/sets/…",
     "ph_search": "esim. frenchcore liveset",
-    "form_error": "Lähdettä ei voitu tallentaa."
+    "form_error": "Lähdettä ei voitu tallentaa.",
+    "backoff_link_p": "Avaa {p}",
+    "why_p_off": "{p} on pois päältä"
   },
   "downloads": {
     "title": "Lataukset",
@@ -422,7 +436,8 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     },
     "local_link_pot": "Verkkoasetukset",
     "local_link_target": "Muuta tallennuspaikkaa",
-    "local_link_error": "Ylläpito"
+    "local_link_error": "Ylläpito",
+    "summary_p": "{p} {day}/{day_max}"
   },
   "library": {
     "title": "Kirjasto",
@@ -631,7 +646,9 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "festivals": "Festivaalit ja sarjat",
     "playback": "Toisto",
     "notifications": "Ilmoitukset",
-    "mediaserver": "Mediapalvelin"
+    "mediaserver": "Mediapalvelin",
+    "sources": "Lisää lähteitä",
+    "reupload": "Uudelleenlataukset"
   },
   "tabs_hint": {
     "general": "Sovelluksen perustoiminta.",
@@ -639,7 +656,7 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "genres": "Järjestys = tärkeysjärjestys. Ensimmäinen tyylilaji, jonka avainsana esiintyy nimessä, voittaa. Käsin asetetut tyylilajit ja lähteen oletustyylilaji ovat etusijalla.",
     "download": "YouTube toimittaa yleensä Opusta noin 130–160 kbit/s. MP3 on muunnos eikä kuulosta lähdettä paremmalta – mutta toimii kaikkialla.",
     "storage": "Minne tiedostot menevät ja miten ne nimetään. Rakenne on suunniteltu mediapalvelimille, kuten Plex tai Jellyfin.",
-    "throttle": "Rajoittaa YouTubeen kohdistuvaa kuormitusta. Arvot koskevat hakua, seurantaa ja latauksia yhdessä. SoundCloudilla on omat arvot välilehdellä ”SoundCloud”.",
+    "throttle": "Rajoittaa YouTubeen kohdistuvaa kuormitusta. Arvot koskevat hakua, seurantaa ja latauksia yhdessä. SoundCloudilla on omat arvot välilehdellä ”SoundCloud”. Mixcloudilla ja hearthis.atilla on omat arvonsa kohdassa ”Lisää lähteitä”.",
     "soundcloud": "SoundCloud toisena lähteenä haulle, seurannalle ja lataukselle – omilla rajoilla, laskureilla ja backoffilla, riippumatta YouTubesta.",
     "network": "PO-Token tunnistaa pyynnöt oikeaksi selaimeksi ja pienentää bottiestojen riskiä.",
     "schedule": "Milloin seuranta tarkistetaan automaattisesti – sovelluksessa ja Windowsin tehtävien ajoituksella.",
@@ -648,7 +665,9 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "festivals": "Tunnistaa festivaalin tai sarjan, vuoden, lavan ja setin tyypin tallennetuista otsikoista – ilman verkkoa, ilman yhtäkään lisäpyyntöä.",
     "playback": "Sisäänrakennettu soitin, äänenvoimakkuuden tasaus, muistetut kohdat ja tiedostojesi offline-analyysi.",
     "notifications": "Windows-ilmoitukset uusista seteistä saapuneissa sekä valmiista tai epäonnistuneista latauksista – koottuna yhdeksi viestiksi, ei koskaan tulvana. Napsautus avaa sovelluksen oikeaan kohtaan.",
-    "mediaserver": "Pyydä latausten jälkeen Plex- tai Jellyfin-palvelintasi skannaamaan kirjastonsa uudelleen – koottuna, vain kotiverkossa. Tunnus tallennetaan Windowsin tunnistetietojen hallintaan, ei koskaan config.yaml-tiedostoon."
+    "mediaserver": "Pyydä latausten jälkeen Plex- tai Jellyfin-palvelintasi skannaamaan kirjastonsa uudelleen – koottuna, vain kotiverkossa. Tunnus tallennetaan Windowsin tunnistetietojen hallintaan, ei koskaan config.yaml-tiedostoon.",
+    "sources": "Mixcloud ja hearthis.at lisälähteinä hakuun, seurantalistaan ja latauksiin – kullakin omat rajat, laskurit ja tauko (backoff), YouTubesta ja SoundCloudista riippumatta.",
+    "reupload": "Tunnistaa saman miksauksen, kun se on ladattu uudelleen (eri kanava, eri palvelu, uusi tunnus), tiiviin äänisormenjäljen avulla – lasketaan offline tiedostoistasi, ilman verkkoa."
   },
   "set": {
     "default": "Oletus",
@@ -700,7 +719,9 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
       "playlists": "Soittolistat (M3U8)",
       "notify_events": "Ilmoita",
       "quiet": "Hiljaiset tunnit",
-      "ms_paths": "Polut ja ajoitus"
+      "ms_paths": "Polut ja ajoitus",
+      "more_sources": "Mixcloud & hearthis.at",
+      "fingerprint": "Sormenjälki"
     },
     "general": {
       "language": {
@@ -846,6 +867,14 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
       "keep_original_soundcloud": {
         "label": "Säilytä SoundCloud-alkuperäinen",
         "help": "Tallenna SoundCloud-ääni muuttamattomana (AAC 160 kbit/s .m4a-tiedostona, MP3 128 kbit/s .mp3-tiedostona) – ei toista häviöllistä muunnosta. Pois: kuten ”Tulostusmuoto”."
+      },
+      "keep_original_mixcloud": {
+        "label": "Säilytä Mixcloud-alkuperäinen",
+        "help": "Tallenna Mixcloud-ääni muuttamattomana (AAC, yleensä 64–128 kbps, .m4a-tiedostona) – ei toista häviöllistä muunnosta. Pois: kuten ”Tulostemuoto”."
+      },
+      "keep_original_hearthis": {
+        "label": "Säilytä hearthis.at-alkuperäinen",
+        "help": "Tallenna hearthis.at-virta muuttamattomana (MP3) – ei toista häviöllistä muunnosta. Pois: kuten ”Tulostemuoto”."
       }
     },
     "storage": {
@@ -930,7 +959,9 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
       "blocked": "{p} ilmoitti eston. Haku, seuranta ja lataukset palvelusta {p} on estetty, kunnes aika on kulunut.",
       "clear": "Poista käsin",
       "sc_off": "SoundCloud on pois päältä",
-      "sc_off_detail": "Ei SoundCloud-hakua, ei seurannan tarkistuksia eikä latauksia SoundCloudista."
+      "sc_off_detail": "Ei SoundCloud-hakua, ei seurannan tarkistuksia eikä latauksia SoundCloudista.",
+      "p_off": "{p} on pois päältä",
+      "p_off_detail": "Ei {p}-hakua, ei seurannan tarkistuksia eikä latauksia palvelusta {p}."
     },
     "soundcloud": {
       "enabled": {
@@ -1402,6 +1433,84 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
         "help": "Mikä kirjasto skannataan. ”Kaikki kirjastot” skannaa kaiken (hitaampaa suurilla palvelimilla)."
       },
       "lib_paths": "Kansiot palvelimella: {p}"
+    },
+    "platform": {
+      "enabled": {
+        "label": "Käytä palvelua {p}",
+        "help": "Pois: ei {p}-hakua, ei {p}-lähteiden tarkistuksia eikä {p}-latauksia. Jo ladatut merkinnät pysyvät kirjastossa."
+      },
+      "sleep_requests": {
+        "label": "Tauko pyyntöjen välillä",
+        "help": "Odotusaika palveluun {p} kohdistuvien metatietokyselyiden välillä (haku, seuranta)."
+      },
+      "sleep_interval": {
+        "label": "Latauksen tauko – vähintään",
+        "help": "Jokaisen {p}-latauksen jälkeen tulee satunnainen tauko vähimmäis- ja enimmäisarvon väliltä."
+      },
+      "max_sleep_interval": {
+        "label": "Latauksen tauko – enintään",
+        "help": "Satunnaisen tauon yläraja."
+      },
+      "limit_rate_mb": {
+        "label": "Latausnopeus",
+        "help": "Suurin kaistanleveys. 0 = rajaton (ei suositella)."
+      },
+      "max_downloads_per_run": {
+        "label": "Latauksia enintään ajoa kohti",
+        "help": "Palvelun {p} oma laskuri. Loput jäävät jonoon."
+      },
+      "max_downloads_per_day": {
+        "label": "Latauksia enintään päivässä",
+        "help": "Palvelun {p} oma laskuri, käsin ja automaattisesti tehdyt lataukset yhdessä."
+      },
+      "max_searches_per_hour": {
+        "label": "Hakuja enintään tunnissa",
+        "help": "Palvelun {p} oma laskuri."
+      },
+      "backoff_initial_hours": {
+        "label": "Backoff – alkuarvo",
+        "help": "Eston kesto sen jälkeen, kun {p} ilmoitti liian monesta pyynnöstä (HTTP 429)."
+      },
+      "backoff_max_hours": {
+        "label": "Backoff – enimmäisarvo",
+        "help": "Eston kesto kaksinkertaistuu jokaisen uuden eston jälkeen tähän arvoon asti."
+      }
+    },
+    "reupload": {
+      "enabled": {
+        "label": "Tunnista uudelleenlataukset",
+        "help": "Laskee offline ffmpegillä tiiviin äänisormenjäljen jokaisesta setistä ja vertaa uusia latauksia kirjastoosi. Osuma merkitään ”Todennäköinen uudelleenlataus: …” – mitään ei poisteta automaattisesti."
+      },
+      "fingerprint_after_download": {
+        "label": "Sormenjälki jokaisen latauksen jälkeen",
+        "help": "Yksi tiedosto kerrallaan matalalla prioriteetilla, äänenvoimakkuusanalyysin jälkeen. Pois: vain alla oleva kirjaston vertailu."
+      },
+      "precheck": {
+        "label": "Tarkista ennen latausta",
+        "help": "Vertaa ennen latausta myös kestoa (±5 s) ja nimeä kirjastoon samassa palvelussa – ilman lisäpyyntöä. Osumat menevät saapuneisiin jonon sijaan ja näyttävät ”Todennäköisesti jo ladattu”."
+      },
+      "head_minutes": {
+        "label": "Minuuttia alusta",
+        "help": "Kuinka paljon alusta tulee sormenjälkeen. Enemmän = varmempi seteille, joilla on pitkä samanlainen intro, hieman hitaampi."
+      },
+      "windows": {
+        "label": "Lisäikkunat",
+        "help": "30 sekunnin ikkunoita levitettynä setin loppuosaan. Niiden avulla erotetaan kaksi eri settiä, jotka alkavat samalla kappaleella. 0 = vain alku."
+      },
+      "min_score": {
+        "label": "Osumakynnys",
+        "help": "Täsmäävien sormenjälkitiivisteiden osuus, josta alkaen setti katsotaan uudelleenlataukseksi. Matalampi = löytää enemmän, mutta enemmän vääriä osumia."
+      },
+      "title": "Sormenjälki {done}/{total} tiedostolla",
+      "marks": "{open} avoinna · {linked} linkitetty · {kept} säilytetty",
+      "help": "Käy kirjaston läpi offline, yksi tiedosto kerrallaan matalalla prioriteetilla – ilman verkkoa, ääni pysyy ennallaan. Voidaan keskeyttää milloin tahansa.",
+      "button": "Vertaa uudet tiedostot",
+      "button_n": "Vertaa uudet ({n})",
+      "all": "Vertaa kaikki uudelleen",
+      "all_title": "Laske jokainen sormenjälki uudelleen (esim. ikkunoiden muuttamisen jälkeen) – päätöksesi säilyvät",
+      "running": "Verrataan … {done} / {total} · {found} löydetty",
+      "show": "Näytä kirjastossa ({n})",
+      "no_ffmpeg": "Sormenjäljet tarvitsevat ffmpegin (bin\\ffmpeg.exe, asentaa setup.ps1). Asetukset › Ylläpito näyttää tilan."
     }
   },
   "opt": {
@@ -1518,6 +1627,12 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
       "title": "Palautetaanko sisäänrakennetut sarjat?",
       "text": "Kaikki sisäänrakennetut sarjat palaavat alkutilaan ja piilotetut tulevat takaisin. Omat sarjasi säilyvät.",
       "ok": "Palauta"
+    },
+    "reupload_del": {
+      "title": "Poistetaanko uudelleenlataus?",
+      "ok": "Poista tiedosto",
+      "text": "”{title}” on todennäköisesti sama miksaus kuin ”{of}”. Poistetaanko tämä uudempi tiedosto?",
+      "note": "Alkuperäinen säilyy. Kohde merkitään ”ohitetuksi” eikä sitä ladata uudelleen."
     }
   },
   "toast": {
@@ -1603,7 +1718,9 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "assign_done": "Festivaalit kohdistettu: {assigned} uutta, {suggested} ehdotusta",
     "assign_cancelled": "Kohdistus keskeytetty: {assigned} uutta, {suggested} ehdotusta",
     "analysis_done": "Äänenvoimakkuus analysoitu: {n} tiedostoa ({failed} epäonnistui)",
-    "analysis_cancelled": "Analyysi keskeytettiin {n} tiedoston jälkeen"
+    "analysis_cancelled": "Analyysi keskeytettiin {n} tiedoston jälkeen",
+    "fp_done": "Kirjasto verrattu: {n} tiedostoa, {found} todennäköistä uudelleenlatausta",
+    "fp_cancelled": "Vertailu keskeytetty {n} tiedoston jälkeen"
   },
   "upd": {
     "available": "Versio {v} saatavilla",
@@ -2189,5 +2306,26 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "empty_title": "Ei vielä settejä",
     "empty_text": "Kun ensimmäiset setit ovat kirjastossa, näet täältä mitä keräät – tyylilajit, festivaalit, DJ:t, tunnit.",
     "empty_go": "Löydä settejä"
+  },
+  "reupload": {
+    "tag": "Uudelleenlataus?",
+    "tag_title": "Todennäköisesti setin ”{title}” uudelleenlataus ({p}, {score} % vastaavuus) – päätä napsauttamalla",
+    "linked": "Sama miksaus",
+    "linked_title": "Linkitetty samaksi miksaukseksi kuin ”{title}” ({p})",
+    "chip": "Uudelleenlataukset ({n})",
+    "chip_title": "Näytä vain todennäköisiksi uudelleenlatauksiksi merkityt setit",
+    "menu_head": "Todennäköinen uudelleenlataus: ”{title}” · {score} %",
+    "menu_head_linked": "Sama miksaus kuin ”{title}”",
+    "keep": "Säilytä molemmat",
+    "link": "Linkitä samaksi miksaukseksi",
+    "undo": "Peru päätös",
+    "show_original": "Näytä alkuperäinen",
+    "delete_new": "Poista tämä uudempi tiedosto",
+    "toast_keep": "Molemmat säilytetty – merkintä poistettu",
+    "toast_link": "Linkitetty samaksi miksaukseksi",
+    "toast_open": "Päätös peruttu",
+    "toast_found": "Todennäköinen uudelleenlataus: ”{title}” vastaa settiä ”{of}” – katso kirjasto",
+    "dl_notice": "Viimeaikaiset lataukset, jotka ovat todennäköisesti uudelleenlatauksia jo omistamistasi seteistä ({n}):",
+    "review": "Tarkista kirjastossa"
   }
 });

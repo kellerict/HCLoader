@@ -210,7 +210,8 @@
     "outside_period": "Ajanjakson ulkopuolella",
     "preview": "Vain esikuuntelu (Go+)",
     "too_long": "Liian pitkä",
-    "too_short": "Liian lyhyt"
+    "too_short": "Liian lyhyt",
+    "select_only": "Vain tilaajille (Mixcloud Select)"
   },
   "genre": {
     "unknown": "Tuntematon tyylilaji: {genre}"

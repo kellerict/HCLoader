@@ -64,7 +64,8 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "clock": "24 h",
     "req_h": "förfr./h",
     "lufs": "LUFS",
-    "db": "dB"
+    "db": "dB",
+    "pct": "%"
   },
   "range": {
     "ge_sleep": "≥ minimum",
@@ -96,7 +97,10 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "youtube": "YouTube",
     "soundcloud": "SoundCloud",
     "label": "Plattform",
-    "sc_off": "SoundCloud är avstängt – slå på det under Inställningar › SoundCloud."
+    "sc_off": "SoundCloud är avstängt – slå på det under Inställningar › SoundCloud.",
+    "mixcloud": "Mixcloud",
+    "hearthis": "hearthis.at",
+    "p_off": "{p} är avstängt – slå på under Inställningar › Fler källor."
   },
   "genre": {
     "change": "Ändra genre",
@@ -148,7 +152,8 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "sc_today": "{n} / {max}",
     "yt_tip": "YouTube · nedladdat idag {day}/{day_max} · {s}/{s_max} sökningar denna timme",
     "sc_tip": "SoundCloud · nedladdat idag {day}/{day_max} · {s}/{s_max} sökningar denna timme",
-    "backoff_tip": "{p}: backoff till {t} ({rest} kvar)"
+    "backoff_tip": "{p}: backoff till {t} ({rest} kvar)",
+    "p_tip": "{p} · nedladdat idag {day}/{day_max} · {s}/{s_max} sökningar denna timme"
   },
   "schedule": {
     "due": "aktuell",
@@ -162,7 +167,7 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
   },
   "card": {
     "source": "Hittad via bevakningskällan ”{name}”",
-    "select": "Markera",
+    "select": "Bara prenumeranter (Select)",
     "open": "Öppna på {p}",
     "ignore": "Ignorera",
     "unignore": "Sluta ignorera",
@@ -176,7 +181,8 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "duplicate": "Troligen redan nedladdad ({p})",
     "duplicate_title": "Mycket lik titel och samma längd som ”{title}” från {p} – redan nedladdad eller i kö där. Du kan ändå ladda ner den.",
     "preview": "Endast förhandslyssning (Go+) – kan inte laddas ner",
-    "preview_title": "SoundCloud ger bara en förhandslyssning på 30 sekunder (Go+) för det här spåret. Det kan inte laddas ner."
+    "preview_title": "SoundCloud ger bara en förhandslyssning på 30 sekunder (Go+) för det här spåret. Det kan inte laddas ner.",
+    "select_title": "Den här Mixcloud-uppladdningen är bara tillgänglig för skaparens prenumeranter (Mixcloud Select). Den kan inte laddas ned."
   },
   "discover": {
     "placeholder": "Sök efter mix, livesets, DJ, event …",
@@ -234,7 +240,13 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "ready_text": "Skriv en sökterm och tryck på Enter.",
     "none_title": "Inget hittades",
     "none_text": "Lätta på filtren eller prova andra söktermer.",
-    "none_year": "Inget resultat från {year}. Sök igen så att året ingår i söktermen – eller ändra året."
+    "none_year": "Inget resultat från {year}. Sök igen så att året ingår i söktermen – eller ändra året.",
+    "quota_p": "{p}-sökningar denna timme: {n} / {max}",
+    "placeholder_p": "Sök på {p}: mix, set, DJ, podcast …",
+    "searching_p": "Söker – enkel förfrågan, skonsam mot {p} …",
+    "ready_text_p": "Skriv en sökterm och tryck på Enter för att söka på {p}.",
+    "previews_mc": "{n} bara för prenumeranter (Select)",
+    "previews_mc_title": "Mixcloud Select-uppladdningar är bara för betalande prenumeranter och kan aldrig laddas ned. Syns när ”Dölj nedladdade och ignorerade” är av."
   },
   "inbox": {
     "title": "Inkorg",
@@ -325,8 +337,8 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "hits_auto": "Ladda ner automatiskt",
     "hint_inbox": "Träffar väntar i inkorgen tills du laddar ner eller ignorerar dem.",
     "hint_auto": "Träffar som klarar alla filter går direkt till kön.",
-    "hint_channel": "YouTube-kanal (…/@namn eller …/channel/UC…, valfritt /videos eller /streams) eller SoundCloud-profil (soundcloud.com/namn).",
-    "hint_playlist": "YouTube-spellista med ”list=…” eller SoundCloud-set (soundcloud.com/namn/sets/set). De nyaste posterna kontrolleras.",
+    "hint_channel": "YouTube-kanal (…/@namn eller …/channel/UC…, valfritt /videos eller /streams), SoundCloud-profil (soundcloud.com/namn), Mixcloud-användare (mixcloud.com/namn) eller hearthis.at-användare (hearthis.at/namn).",
+    "hint_playlist": "YouTube-spellista med ”list=…”, SoundCloud-set (soundcloud.com/namn/sets/set), Mixcloud-spellista (mixcloud.com/namn/playlists/lista) eller hearthis.at-set (hearthis.at/namn/set/set). De senaste posterna kontrolleras.",
     "f_platform": "Sök på",
     "detected": "identifierad: {p} · {type}",
     "not_detected": "URL:en känns inte igen",
@@ -345,7 +357,9 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "ph_channel": "https://www.youtube.com/@kanal  eller  https://soundcloud.com/namn",
     "ph_playlist": "https://www.youtube.com/playlist?list=…  eller  https://soundcloud.com/namn/sets/…",
     "ph_search": "t.ex. frenchcore liveset",
-    "form_error": "Källan kunde inte sparas."
+    "form_error": "Källan kunde inte sparas.",
+    "backoff_link_p": "Öppna {p}",
+    "why_p_off": "{p} är avstängt"
   },
   "downloads": {
     "title": "Nedladdningar",
@@ -422,7 +436,8 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     },
     "local_link_pot": "Nätverksinställningar",
     "local_link_target": "Ändra lagringsplats",
-    "local_link_error": "Underhåll"
+    "local_link_error": "Underhåll",
+    "summary_p": "{p} {day}/{day_max}"
   },
   "library": {
     "title": "Bibliotek",
@@ -631,7 +646,9 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "festivals": "Festivaler & serier",
     "playback": "Uppspelning",
     "notifications": "Aviseringar",
-    "mediaserver": "Mediaserver"
+    "mediaserver": "Mediaserver",
+    "sources": "Fler källor",
+    "reupload": "Omuppladdningar"
   },
   "tabs_hint": {
     "general": "Appens grundläggande beteende.",
@@ -639,7 +656,7 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "genres": "Ordning = prioritet. Den första genre vars nyckelord förekommer i titeln vinner. Manuellt angivna genrer och en källas standardgenre går före.",
     "download": "YouTube levererar oftast Opus med cirka 130–160 kbit/s. MP3 är en konvertering och låter inte bättre än källan – men fungerar överallt.",
     "storage": "Var filerna hamnar och hur de namnges. Strukturen är gjord för mediaservrar som Plex eller Jellyfin.",
-    "throttle": "Begränsar belastningen på YouTube. Värdena gäller för sökning, bevakning och nedladdningar tillsammans. SoundCloud har egna värden på fliken ”SoundCloud”.",
+    "throttle": "Begränsar belastningen på YouTube. Värdena gäller för sökning, bevakning och nedladdningar tillsammans. SoundCloud har egna värden på fliken ”SoundCloud”. Mixcloud och hearthis.at har egna värden under ”Fler källor”.",
     "soundcloud": "SoundCloud som andra källa för sökning, bevakning och nedladdningar – med egna gränser, räknare och backoff, oberoende av YouTube.",
     "network": "PO-Token identifierar förfrågningar som en riktig webbläsare och minskar risken för bot-blockeringar.",
     "schedule": "När bevakningen kontrolleras automatiskt – i appen och via Windows Aktivitetshanteraren.",
@@ -648,7 +665,9 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "festivals": "Känner igen festival eller serie, år, scen och settyp ur de sparade titlarna – offline, utan en enda extra förfrågan.",
     "playback": "Inbyggd spelare, ljudnormalisering, sparade positioner och offlineanalysen av dina filer.",
     "notifications": "Windows-aviseringar för nya set i inkorgen och klara eller misslyckade nedladdningar – samlade i ett meddelande, aldrig en flod. Ett klick öppnar appen på rätt ställe.",
-    "mediaserver": "Låt din Plex- eller Jellyfin-server skanna om biblioteket efter nedladdningar – samlat, bara i hemnätverket. Token sparas i Windows Autentiseringshanteraren, aldrig i config.yaml."
+    "mediaserver": "Låt din Plex- eller Jellyfin-server skanna om biblioteket efter nedladdningar – samlat, bara i hemnätverket. Token sparas i Windows Autentiseringshanteraren, aldrig i config.yaml.",
+    "sources": "Mixcloud och hearthis.at som extra källor för sökning, bevakningslista och nedladdningar – var och en med egna gränser, räknare och backoff, oberoende av YouTube och SoundCloud.",
+    "reupload": "Känner igen samma mix som laddats upp igen (annan kanal, annan plattform, nytt id) med ett kompakt ljudfingeravtryck – beräknat offline från dina filer, utan nätverk."
   },
   "set": {
     "default": "Standard",
@@ -700,7 +719,9 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
       "playlists": "Spellistor (M3U8)",
       "notify_events": "Avisera vid",
       "quiet": "Tysta timmar",
-      "ms_paths": "Sökvägar & tidpunkt"
+      "ms_paths": "Sökvägar & tidpunkt",
+      "more_sources": "Mixcloud & hearthis.at",
+      "fingerprint": "Fingeravtryck"
     },
     "general": {
       "language": {
@@ -846,6 +867,14 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
       "keep_original_soundcloud": {
         "label": "Behåll SoundCloud-original",
         "help": "Spara SoundCloud-ljud oförändrat (AAC 160 kbit/s som .m4a, MP3 128 kbit/s som .mp3) – ingen andra förlustbehäftad konvertering. Av: som ”Utdataformat”."
+      },
+      "keep_original_mixcloud": {
+        "label": "Behåll Mixcloud-original",
+        "help": "Spara Mixcloud-ljud oförändrat (AAC, oftast 64–128 kbps, som .m4a) – ingen andra förstörande konvertering. Av: som ”Utdataformat”."
+      },
+      "keep_original_hearthis": {
+        "label": "Behåll hearthis.at-original",
+        "help": "Spara hearthis.at-strömmen oförändrad (MP3) – ingen andra förstörande konvertering. Av: som ”Utdataformat”."
       }
     },
     "storage": {
@@ -930,7 +959,9 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
       "blocked": "{p} signalerade en blockering. Sökning, bevakning och nedladdningar från {p} är blockerade tills tiden har gått ut.",
       "clear": "Häv manuellt",
       "sc_off": "SoundCloud är avstängt",
-      "sc_off_detail": "Ingen SoundCloud-sökning, inga kontroller av bevakning och inga nedladdningar från SoundCloud."
+      "sc_off_detail": "Ingen SoundCloud-sökning, inga kontroller av bevakning och inga nedladdningar från SoundCloud.",
+      "p_off": "{p} är avstängt",
+      "p_off_detail": "Ingen {p}-sökning, inga kontroller av bevakning och inga nedladdningar från {p}."
     },
     "soundcloud": {
       "enabled": {
@@ -1402,6 +1433,84 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
         "help": "Vilket bibliotek som skannas. ”Alla bibliotek” skannar allt (långsammare på stora servrar)."
       },
       "lib_paths": "Mappar på servern: {p}"
+    },
+    "platform": {
+      "enabled": {
+        "label": "Använd {p}",
+        "help": "Av: ingen {p}-sökning, inga kontroller av {p}-källor och inga {p}-nedladdningar. Redan nedladdade poster ligger kvar i biblioteket."
+      },
+      "sleep_requests": {
+        "label": "Paus mellan förfrågningar",
+        "help": "Väntetid mellan metadatafrågor till {p} (sökning, bevakning)."
+      },
+      "sleep_interval": {
+        "label": "Nedladdningspaus – minimum",
+        "help": "Efter varje {p}-nedladdning följer en slumpmässig paus mellan minimum och maximum."
+      },
+      "max_sleep_interval": {
+        "label": "Nedladdningspaus – maximum",
+        "help": "Övre gräns för den slumpmässiga pausen."
+      },
+      "limit_rate_mb": {
+        "label": "Nedladdningshastighet",
+        "help": "Maximal bandbredd. 0 = obegränsad (rekommenderas inte)."
+      },
+      "max_downloads_per_run": {
+        "label": "Max nedladdningar per körning",
+        "help": "Separat räknare för {p}. Resten ligger kvar i kön."
+      },
+      "max_downloads_per_day": {
+        "label": "Max nedladdningar per dag",
+        "help": "Separat räknare för {p}, manuella och automatiska nedladdningar tillsammans."
+      },
+      "max_searches_per_hour": {
+        "label": "Max sökningar per timme",
+        "help": "Separat räknare för {p}."
+      },
+      "backoff_initial_hours": {
+        "label": "Backoff – startvärde",
+        "help": "Spärrtid efter att {p} har meddelat för många förfrågningar (HTTP 429)."
+      },
+      "backoff_max_hours": {
+        "label": "Backoff – maximum",
+        "help": "Spärrtiden fördubblas vid varje ny blockering upp till detta värde."
+      }
+    },
+    "reupload": {
+      "enabled": {
+        "label": "Känn igen omuppladdningar",
+        "help": "Beräknar offline med ffmpeg ett kompakt ljudfingeravtryck per set och jämför nya nedladdningar med ditt bibliotek. En träff markeras ”Trolig omuppladdning av …” – inget raderas automatiskt."
+      },
+      "fingerprint_after_download": {
+        "label": "Fingeravtryck efter varje nedladdning",
+        "help": "En fil i taget med låg prioritet, efter ljudstyrkeanalysen. Av: bara biblioteksjämförelsen nedan."
+      },
+      "precheck": {
+        "label": "Kontrollera före nedladdning",
+        "help": "Jämför före en nedladdning även längd (±5 s) och titel med biblioteket på samma plattform – utan extra förfrågan. Träffar hamnar i inkorgen i stället för kön och visar ”Troligen redan nedladdad”."
+      },
+      "head_minutes": {
+        "label": "Minuter från början",
+        "help": "Hur mycket av början som ingår i fingeravtrycket. Mer = säkrare för set med långt identiskt intro, lite långsammare."
+      },
+      "windows": {
+        "label": "Extra fönster",
+        "help": "30-sekundersfönster spridda över resten av setet. Med dem skiljs två olika set åt som börjar med samma spår. 0 = bara början."
+      },
+      "min_score": {
+        "label": "Tröskel för träff",
+        "help": "Andel matchande fingeravtrycks-hashar från vilken ett set räknas som omuppladdning. Lägre = hittar fler, men fler felträffar."
+      },
+      "title": "{done} av {total} filer har fingeravtryck",
+      "marks": "{open} öppna · {linked} länkade · {kept} behållna",
+      "help": "Körs offline över biblioteket, en fil i taget med låg prioritet – utan nätverk, ljudet förblir orört. Kan avbrytas när som helst.",
+      "button": "Jämför nya filer",
+      "button_n": "Jämför {n} nya",
+      "all": "Jämför allt igen",
+      "all_title": "Beräkna varje fingeravtryck på nytt (t.ex. efter ändrade fönster) – dina beslut finns kvar",
+      "running": "Jämför … {done} / {total} · {found} hittade",
+      "show": "Visa {n} i biblioteket",
+      "no_ffmpeg": "Fingeravtryck kräver ffmpeg (bin\\ffmpeg.exe, installeras av setup.ps1). Inställningar › Underhåll visar statusen."
     }
   },
   "opt": {
@@ -1518,6 +1627,12 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
       "title": "Återställ inbyggda serier?",
       "text": "Alla inbyggda serier återgår till ursprungsläget och dolda kommer tillbaka. Dina egna serier finns kvar.",
       "ok": "Återställ"
+    },
+    "reupload_del": {
+      "title": "Radera omuppladdning?",
+      "ok": "Radera fil",
+      "text": "”{title}” är troligen samma mix som ”{of}”. Radera den här nyare filen?",
+      "note": "Originalet finns kvar. Posten sätts till ”ignorerad” och laddas inte ned igen."
     }
   },
   "toast": {
@@ -1603,7 +1718,9 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "assign_done": "Festivaler tilldelade: {assigned} nya, {suggested} förslag",
     "assign_cancelled": "Tilldelningen avbröts: {assigned} nya, {suggested} förslag",
     "analysis_done": "Ljudstyrka analyserad: {n} filer ({failed} misslyckade)",
-    "analysis_cancelled": "Analysen avbröts efter {n} filer"
+    "analysis_cancelled": "Analysen avbröts efter {n} filer",
+    "fp_done": "Biblioteket jämfört: {n} filer, {found} troliga omuppladdningar",
+    "fp_cancelled": "Jämförelsen avbröts efter {n} filer"
   },
   "upd": {
     "available": "Version {v} finns",
@@ -2189,5 +2306,26 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "empty_title": "Inga set ännu",
     "empty_text": "Så snart de första seten finns i biblioteket ser du här vad du samlar – genrer, festivaler, DJ:s, timmar.",
     "empty_go": "Upptäck set"
+  },
+  "reupload": {
+    "tag": "Omuppladdning?",
+    "tag_title": "Troligen en omuppladdning av ”{title}” ({p}, {score} % träff) – klicka för att bestämma",
+    "linked": "Samma mix",
+    "linked_title": "Länkad som samma mix som ”{title}” ({p})",
+    "chip": "Omuppladdningar ({n})",
+    "chip_title": "Visa bara set som markerats som trolig omuppladdning",
+    "menu_head": "Trolig omuppladdning av ”{title}” · {score} %",
+    "menu_head_linked": "Samma mix som ”{title}”",
+    "keep": "Behåll båda",
+    "link": "Länka som samma mix",
+    "undo": "Ångra beslut",
+    "show_original": "Visa originalet",
+    "delete_new": "Radera den här nyare filen",
+    "toast_keep": "Båda behållna – markeringen är borta",
+    "toast_link": "Länkad som samma mix",
+    "toast_open": "Beslutet ångrat",
+    "toast_found": "Trolig omuppladdning: ”{title}” matchar ”{of}” – se biblioteket",
+    "dl_notice": "Senaste nedladdningar som troligen är omuppladdningar av set du redan har ({n}):",
+    "review": "Granska i biblioteket"
   }
 });

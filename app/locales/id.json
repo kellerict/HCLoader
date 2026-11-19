@@ -209,7 +209,8 @@
     "outside_period": "Di luar periode",
     "preview": "Hanya pratinjau (Go+)",
     "too_long": "Terlalu panjang",
-    "too_short": "Terlalu pendek"
+    "too_short": "Terlalu pendek",
+    "select_only": "Khusus pelanggan (Mixcloud Select)"
   },
   "genre": {
     "unknown": "Genre tidak dikenal: {genre}"

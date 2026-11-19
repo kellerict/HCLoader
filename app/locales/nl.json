@@ -210,7 +210,8 @@
     "outside_period": "Buiten de periode",
     "preview": "Alleen preview (Go+)",
     "too_long": "Te lang",
-    "too_short": "Te kort"
+    "too_short": "Te kort",
+    "select_only": "Alleen abonnees (Mixcloud Select)"
   },
   "genre": {
     "unknown": "Onbekend genre: {genre}"

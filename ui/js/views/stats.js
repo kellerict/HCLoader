@@ -152,7 +152,10 @@
   }
   function platforms(d) {
     const by = Object.fromEntries(d.platforms.map((p) => [p.platform, p]));
-    const parts = ['youtube', 'soundcloud'].map((p) => ({ label: HC.platform.label(p), value: (by[p] || {}).sets || 0, color: p === 'soundcloud' ? 'var(--sc)' : 'var(--accent)', sub: `${num((by[p] || {}).sets || 0)} · ${hours((by[p] || {}).seconds || 0)}` }));
+    /* v0.10.0: alle Plattformen; Mixcloud/hearthis.at nur, wenn es Sets davon gibt oder sie eingeschaltet sind */
+    const COLOR = { youtube: 'var(--accent)', soundcloud: 'var(--sc)', mixcloud: 'var(--mc)', hearthis: 'var(--ht)' };
+    const shown = HC.platform.all.filter((p) => p === 'youtube' || p === 'soundcloud' || (by[p] && by[p].sets) || HC.platform.enabled(p));
+    const parts = shown.map((p) => ({ label: HC.platform.label(p), value: (by[p] || {}).sets || 0, color: COLOR[p], sub: `${num((by[p] || {}).sets || 0)} · ${hours((by[p] || {}).seconds || 0)}` }));
     const total = parts.reduce((a, p) => a + p.value, 0);
     const label = parts.map((p) => `${p.label}: ${num(p.value)}`).join(', ');
     return card('sources', t('stats.h_sources'), donut(parts, [num(total), t('stats.sets_word', { count: total })], label));
@@ -186,7 +189,7 @@
     const items = w.months.map((m, i) => ({ value: m.found, label: monthLabel(m.month, false, i === 0), long: monthLabel(m.month, true), tip: `${t('stats.w_found_n', { n: num(m.found) })} · ${t('stats.w_checks_n', { n: num(m.checks) })}` }));
     const chart = w.months.length > 1 ? vbars(items.slice(-MAX_BARS), { none: t('stats.none'), caption: t('stats.h_watchlist'), fmtTick: (v) => num(Math.round(v)), maxLabels: 12, cls: 'mini' }) : '';
     const src = w.sources.length ? `<table class="st-table"><thead><tr><th>${esc(t('stats.w_source'))}</th><th class="num">${esc(t('stats.w_found'))}</th><th class="num">${esc(t('stats.w_library'))}</th><th class="num">${esc(t('stats.w_inbox'))}</th></tr></thead>
-        <tbody>${w.sources.map((s) => `<tr><td><span class="st-pdot${s.platform === 'soundcloud' ? ' sc' : ''}" aria-hidden="true"></span>${esc(s.name)}<small class="muted"> · ${esc(t('source_type.' + s.type))}</small></td><td class="num mono">${num(s.found)}</td><td class="num mono">${num(s.downloaded)}</td><td class="num mono">${num(s.inbox)}</td></tr>`).join('')}</tbody></table>`
+        <tbody>${w.sources.map((s) => `<tr><td><span class="st-pdot${({ soundcloud: ' sc', mixcloud: ' mc', hearthis: ' ht' })[s.platform] || ''}" aria-hidden="true"></span>${esc(s.name)}<small class="muted"> · ${esc(t('source_type.' + s.type))}</small></td><td class="num mono">${num(s.found)}</td><td class="num mono">${num(s.downloaded)}</td><td class="num mono">${num(s.inbox)}</td></tr>`).join('')}</tbody></table>`
       : empty(w.source_count ? t('stats.w_none_range') : t('stats.w_no_sources'));
     const last = w.last ? `<span class="st-meta mono">${esc(t('stats.w_last', { t: util.fmtWhen(w.last) }))}</span>` : '';
     return card('watchlist', t('stats.h_watchlist'), last + minis + chart + src, 'wide');

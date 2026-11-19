@@ -49,7 +49,7 @@
         { name: 'Unsortiert', color: '#6b6b78', keywords: [], priority: 4 },
       ],
     },
-    download: { audio_format: 'mp3', mp3_quality: '320', embed_cover: true, write_cover_jpg: false, write_cue: true, write_id3_chapters: true, keep_original_soundcloud: true },
+    download: { audio_format: 'mp3', mp3_quality: '320', embed_cover: true, write_cover_jpg: false, write_cue: true, write_id3_chapters: true, keep_original_soundcloud: true, keep_original_mixcloud: true, keep_original_hearthis: true },
     storage: {
       target_dir: '%USERPROFILE%\\Music\\HCLoader',
       path_template: '{genre}/{artist}/{year}/{date} - {title} [{id}]',
@@ -67,6 +67,18 @@
       max_downloads_per_run: 10, max_downloads_per_day: 25, max_searches_per_hour: 20,
       backoff_initial_hours: 6, backoff_max_hours: 48,
     },
+    /* v0.10.0: weitere Quellen mit eigener Schonung */
+    mixcloud: {
+      enabled: true, sleep_requests: 3, sleep_interval: 30, max_sleep_interval: 120, limit_rate_mb: 3.0,
+      max_downloads_per_run: 10, max_downloads_per_day: 25, max_searches_per_hour: 20,
+      backoff_initial_hours: 6, backoff_max_hours: 48,
+    },
+    hearthis: {
+      enabled: true, sleep_requests: 3, sleep_interval: 30, max_sleep_interval: 120, limit_rate_mb: 3.0,
+      max_downloads_per_run: 10, max_downloads_per_day: 25, max_searches_per_hour: 20,
+      backoff_initial_hours: 6, backoff_max_hours: 48,
+    },
+    reupload: { enabled: true, fingerprint_after_download: true, head_minutes: 3, windows: 3, min_score: 15, precheck: false },
     player: { mode: 'internal', normalize: true, target_lufs: -18, resume: 'ask', waveform: true },
     loudness: { analyse_after_download: true, write_tags: true, waveforms: true },
     playlists: { folder: '', relative_paths: true, sync_after_download: false },
@@ -132,6 +144,16 @@
     'download.write_cue': { bool: 1 },
     'download.write_id3_chapters': { bool: 1 },
     'download.keep_original_soundcloud': { bool: 1 },
+    'download.keep_original_mixcloud': { bool: 1 },
+    'download.keep_original_hearthis': { bool: 1 },
+    'mixcloud.enabled': { bool: 1 },
+    'hearthis.enabled': { bool: 1 },
+    'reupload.enabled': { bool: 1 },
+    'reupload.fingerprint_after_download': { bool: 1 },
+    'reupload.precheck': { bool: 1 },
+    'reupload.head_minutes': { int: 1, min: 1, max: 10 },
+    'reupload.windows': { int: 1, min: 0, max: 8 },
+    'reupload.min_score': { int: 1, min: 5, max: 90 },
     'storage.target_dir': { str: 1, required: 1 },
     'storage.path_template': { str: 1, required: 1 },
     'storage.max_title_length': { int: 1, min: 20, max: 200 },
@@ -189,7 +211,7 @@
     'playlists.sync_after_download': { bool: 1 },
   };
   /* Abschnitt «soundcloud» erbt die Schonungs-Felder (gleiche Grenzen und Meldungen wie «throttle»). */
-  Object.keys(RULES).filter((k) => k.startsWith('throttle.')).forEach((k) => { RULES[k.replace('throttle.', 'soundcloud.')] = RULES[k]; });
+  Object.keys(RULES).filter((k) => k.startsWith('throttle.')).forEach((k) => { ['soundcloud', 'mixcloud', 'hearthis'].forEach((sec) => { RULES[k.replace('throttle.', `${sec}.`)] = RULES[k]; }); });
   const PLACEHOLDERS = ['genre', 'artist', 'channel', 'year', 'date', 'title', 'id', 'platform', 'festival', 'event_year', 'stage'];
   const MIN_YEAR = 2005;
 
@@ -222,7 +244,7 @@
       if (r.min != null && val < r.min) return fail(M.min(r.min));
     });
     const f = v.filters || {}, s = v.storage || {};
-    ['throttle', 'soundcloud'].forEach((sec) => {
+    ['throttle', 'soundcloud', 'mixcloud', 'hearthis'].forEach((sec) => {
       const x = v[sec] || {};
       if (!errors[`${sec}.max_sleep_interval`] && !errors[`${sec}.sleep_interval`] && x.max_sleep_interval < x.sleep_interval)
         errors[`${sec}.max_sleep_interval`] = `Must be at least the minimum (${x.sleep_interval} s).`;
@@ -350,6 +372,36 @@
   ];
   VIDEOS.push(...SC_VIDEOS);
   const SC_SEARCH_IDS = SC_VIDEOS.filter((v) => v.status !== 'inbox').map((v) => v.id);
+
+  /* ---------- Mixcloud / hearthis.at (v0.10.0): IDs «mc:<user>_<slug>» / «ht:<zahl>», Seite in url ---------- */
+  const MCU = { thera: ['mc:DJ_Thera', 'DJ Thera', 'DJ_Thera'], raw: ['mc:rawstyle_radio', 'Rawstyle Radio', 'rawstyle_radio'] };
+  const HTU = { fab: ['ht:frenchcore-fabrik', 'Frenchcore Fabrik', 'frenchcore-fabrik'], ug: ['ht:uptempo-ug', 'Uptempo Underground', 'uptempo-ug'] };
+  const MC = (slug, title, u, min, sec, days, plays, genre, extra) => Object.assign({
+    id: `mc:${MCU[u][2]}_${slug}`, title, channel_id: MCU[u][0], channel_name: MCU[u][1], duration: min * 60 + sec,
+    upload_date: isoDay(days), view_count: plays, thumbnail: null, genre, genre_manual: false, status: 'new',
+    platform: 'mixcloud', url: `https://www.mixcloud.com/${MCU[u][2]}/${slug}/`, preview: false,
+  }, extra);
+  const HT = (num, slug, title, u, min, sec, days, plays, genre, extra) => Object.assign({
+    id: `ht:${num}`, title: `${HTU[u][1]} - ${title}`, channel_id: HTU[u][0], channel_name: HTU[u][1], duration: min * 60 + sec,
+    upload_date: isoDay(days), view_count: plays, thumbnail: null, genre, genre_manual: false, status: 'new',
+    platform: 'hearthis', url: `https://hearthis.at/${HTU[u][2]}/${slug}/`, preview: false,
+  }, extra);
+  const MC_VIDEOS = [
+    MC('hardcore-session-14', 'Hardcore Session #14 – Uptempo Special', 'thera', 62, 18, 3, 1840, 'Uptempo'),
+    MC('euphoric-yearmix-2026-reupload', 'Euphoric Hardstyle Yearmix 2026 (Re-Upload)', 'raw', 95, 41, 1, 260, 'Hardstyle', { duplicate_of: dupOf('eEuph0ric26') }),
+    MC('rawstyle-radio-200', 'Rawstyle Radio Episode 200 – 2 Hour Special', 'raw', 120, 0, 9, 5100, 'Hardstyle'),
+    MC('select-exclusive-mix', 'Select Exclusive: Hardcore Vinyl Set', 'thera', 71, 5, 14, 380, 'Hardcore', { preview: true, filter_reason: 'Subscribers only (Mixcloud Select)' }),
+    MC('frenchcore-warmup', 'Frenchcore Warm Up – Club Edition', 'thera', 58, 40, 21, 990, 'Hardcore'),
+  ];
+  const HT_VIDEOS = [
+    HT(4001, 'frenchcore-podcast-31', 'Frenchcore Podcast 31', 'fab', 60, 10, 2, 812, 'Hardcore'),
+    HT(4002, 'uptempo-underground-12', 'Uptempo Underground 12 – 250 BPM', 'ug', 54, 33, 6, 420, 'Uptempo'),
+    HT(4003, 'frenchcore-podcast-30', 'Frenchcore Podcast 30', 'fab', 61, 2, 16, 1300, 'Hardcore'),
+    HT(4004, 'raw-and-dirty-liveset', 'Raw & Dirty Liveset (Basement)', 'ug', 66, 50, 30, 210, 'Hardstyle', { status: 'inbox', source_id: 11 }),
+  ];
+  VIDEOS.push(...MC_VIDEOS, ...HT_VIDEOS);
+  const MC_SEARCH_IDS = MC_VIDEOS.map((v) => v.id);
+  const HT_SEARCH_IDS = HT_VIDEOS.filter((v) => v.status !== 'inbox').map((v) => v.id);
   /* Die flache Suche liefert das Datum nur ungefähr («vor 3 Monaten») -> date_approx. */
   const asSearchHit = (v) => Object.assign(clone(v), v.date_approx == null && v.upload_date && (Date.now() - new Date(v.upload_date)) / 86400000 >= 30 ? { date_approx: true } : {});
   let lastSearch = { query: 'hardcore liveset 2026', effective_query: 'hardcore liveset 2026', genre: null, year: null, ids: SEARCH_IDS, platform: 'youtube' };
@@ -408,6 +460,9 @@
     /* SoundCloud: Name ist noch der Vorschlag aus der URL (name_auto) – die nächste Prüfung setzt den echten. */
     { id: 8, type: 'channel', name: 'Pulsewerk Audio', url_or_query: 'https://soundcloud.com/pulsewerk-audio', default_genre: null, enabled: true, auto_download: false, max_entries: null, last_checked: isoAt(1, 21, 46), platform: 'soundcloud', name_auto: true },
     { id: 9, type: 'playlist', name: 'Hardfloor Zürich – Podcast', url_or_query: 'https://soundcloud.com/hardfloor-zrh/sets/podcast', default_genre: 'Hardstyle', enabled: true, auto_download: false, max_entries: 20, last_checked: isoAt(1, 21, 47), platform: 'soundcloud' },
+    /* v0.10.0: Mixcloud-Nutzer und hearthis.at-Nutzer */
+    { id: 10, type: 'channel', name: 'DJ Thera', url_or_query: 'https://www.mixcloud.com/DJ_Thera/', default_genre: null, enabled: true, auto_download: false, max_entries: null, last_checked: isoAt(1, 21, 48), platform: 'mixcloud' },
+    { id: 11, type: 'channel', name: 'Uptempo Underground', url_or_query: 'https://hearthis.at/uptempo-ug/', default_genre: 'Uptempo', enabled: true, auto_download: false, max_entries: null, last_checked: isoAt(1, 21, 49), platform: 'hearthis' },
   ];
   SOURCES.forEach((s) => { s.platform = s.platform || 'youtube'; s.name_auto = !!s.name_auto; });
   /* Echte Namen, die eine Prüfung liefert (name_auto). */
@@ -522,6 +577,19 @@
     file_path: `${TARGET}\\${v.genre}\\${v.channel_name}\\${v.upload_date.slice(0, 4)}\\${v.upload_date} - ${v.title} [${v.id.replace(':', '-')}].m4a`,
   });
   LIBRARY.splice(2, 0, scLib(byId('sc:880114208'), 2, 160));
+  /* v0.10.0 Re-Uploads (Audio-Fingerabdruck): ein Mixcloud-Download ist vermutlich derselbe Mix wie ein YouTube-Set
+     (offen), ein hearthis.at-Download ist als «gleicher Mix» verknüpft. */
+  const otherLib = (v, dlDays, kbps, ext, platform) => Object.assign(scLib(v, dlDays, kbps), {
+    platform, file_path: `${TARGET}\${v.genre}\${v.channel_name}\${v.upload_date.slice(0, 4)}\${v.upload_date} - ${v.title} [${v.id.replace(':', '-')}].${ext}`,
+  });
+  const ruOf = (id, score, state) => { const o = LIBRARY.find((x) => x.id === id); return { of: { id, title: o.title, platform: o.platform, channel: o.artist, in_library: true }, score, offset_s: 3.4, state }; };
+  const mcReup = byId('mc:rawstyle_radio_euphoric-yearmix-2026-reupload');
+  mcReup.status = 'done';
+  LIBRARY.splice(0, 0, Object.assign(otherLib(mcReup, 0, 128, 'm4a', 'mixcloud'), { reupload: ruOf('eEuph0ric26', 0.47, 'open') }));
+  const htLinked = byId('ht:4003');
+  htLinked.status = 'done';
+  LIBRARY.splice(5, 0, Object.assign(otherLib(htLinked, 4, 192, 'mp3', 'hearthis'), { reupload: ruOf('rIndoorCls2', 0.31, 'linked') }));
+  LIBRARY.forEach((l) => { if (!('reupload' in l)) l.reupload = null; });
   /* Diese Dateien liegen noch am Ort eines älteren Ablage-Musters: «Neu taggen» verschiebt sie (neuer Pfad in der Antwort). */
   const STALE = { cIndVol016: 'Concrete Noise', gMillClass2: 'Gabber Vault Archive' };
   Object.entries(STALE).forEach(([id, folder]) => {
@@ -1137,6 +1205,9 @@
     po: { state: 'active', detail: 'Token generated 4 min ago', created: Date.now() - 4 * 60000 },
     backoff: { active: false, until: null, level: 0 }, // YouTube
     sc: { backoff: { active: false, until: null, level: 0 }, counters: { downloads_run: 0, downloads_day: 1, searches_hour: 2 } }, // SoundCloud: eigene Zähler
+    mc: { backoff: { active: false, until: null, level: 0 }, counters: { downloads_run: 0, downloads_day: 1, searches_hour: 1 } }, // v0.10.0 Mixcloud
+    ht: { backoff: { active: false, until: null, level: 0 }, counters: { downloads_run: 0, downloads_day: 0, searches_hour: 0 } }, // v0.10.0 hearthis.at
+    reup: { running: false, cancel: false, timer: null, lastPass: null, done: new Set() }, // v0.10.0 Fingerabdrücke
     task: { registered: false },
     appNext: isoAt(0, 21, 45), // nächste In-App-Prüfung = letzte Prüfung + Intervall
     checking: false, // läuft gerade eine Watchlist-Prüfung?
@@ -1173,10 +1244,13 @@
   };
   const activeQueue = () => state.queue.filter((q) => q.state !== 'failed');
   /* Pro Plattform getrennt: Backoff, Zähler, Limits (throttle = YouTube, soundcloud = SoundCloud). */
-  const platOf = (x) => { const v = byId(x.id || x); return v && v.platform === 'soundcloud' ? 'soundcloud' : 'youtube'; };
-  const boOf = (p) => (p === 'soundcloud' ? state.sc.backoff : state.backoff);
-  const cntOf = (p) => (p === 'soundcloud' ? state.sc.counters : state.counters);
-  const thOf = (p) => (p === 'soundcloud' ? settings.soundcloud : settings.throttle);
+  const PLATS = ['youtube', 'soundcloud', 'mixcloud', 'hearthis'];
+  const PLABEL = { youtube: 'YouTube', soundcloud: 'SoundCloud', mixcloud: 'Mixcloud', hearthis: 'hearthis.at' };
+  const PSTATE = { soundcloud: 'sc', mixcloud: 'mc', hearthis: 'ht' };
+  const platOf = (x) => { const v = byId(x.id || x); return v && PLATS.includes(v.platform) ? v.platform : 'youtube'; };
+  const boOf = (p) => (PSTATE[p] ? state[PSTATE[p]].backoff : state.backoff);
+  const cntOf = (p) => (PSTATE[p] ? state[PSTATE[p]].counters : state.counters);
+  const thOf = (p) => (PSTATE[p] ? settings[p] : settings.throttle);
   const hhmm = (iso) => { const d = new Date(iso); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
   const boView = (p) => {
     const b = boOf(p);
@@ -1185,7 +1259,7 @@
   const platformView = (p) => {
     const th = thOf(p);
     return {
-      enabled: p === 'youtube' || !!settings.soundcloud.enabled, backoff: boView(p), counters: clone(cntOf(p)),
+      enabled: p === 'youtube' || !!settings[p].enabled, backoff: boView(p), counters: clone(cntOf(p)),
       limits: { downloads_run: th.max_downloads_per_run, downloads_day: th.max_downloads_per_day, searches_hour: th.max_searches_per_hour },
     };
   };
@@ -1203,15 +1277,15 @@
       queue_length: activeQueue().length, queue_paused: state.paused,
       inbox_count: VIDEOS.filter((v) => v.status === 'inbox').length,
       counters: clone(state.counters),
-      platforms: { youtube: platformView('youtube'), soundcloud: platformView('soundcloud') },
+      platforms: Object.fromEntries(PLATS.map((p) => [p, platformView(p)])),
     };
   }
   const pushStatus = () => emit('status', status());
   const targetOf = (v) => `${v.genre}\\${v.channel_name}\\${(v.upload_date || '').slice(0, 4)}\\`;
   /** Wie worker.DownloadQueue.blocked(): (code, Meldung), warum wartende Einträge nicht laufen. */
   function blockOf(p) {
-    const th = thOf(p), c = cntOf(p), pre = p === 'soundcloud' ? 'SoundCloud: ' : '';
-    if (boOf(p).active) return ['backoff', p === 'soundcloud' ? `SoundCloud: backoff until ${hhmm(boOf(p).until)} – the rest stays in the queue` : 'Backoff active – the rest stays in the queue'];
+    const th = thOf(p), c = cntOf(p), pre = p !== 'youtube' ? `${PLABEL[p]}: ` : '';
+    if (boOf(p).active) return ['backoff', p !== 'youtube' ? `${PLABEL[p]}: backoff until ${hhmm(boOf(p).until)} – the rest stays in the queue` : 'Backoff active – the rest stays in the queue'];
     if (c.downloads_day >= th.max_downloads_per_day) return ['day_limit', `${pre}Daily limit reached (${c.downloads_day}/${th.max_downloads_per_day}) – the rest stays in the queue`];
     if (c.downloads_run >= th.max_downloads_per_run) return ['run_limit', `${pre}Run limit reached (${th.max_downloads_per_run}/${th.max_downloads_per_run}) – the rest stays in the queue; “Resume” starts a new run`];
     if (state.local) return state.local.slice();
@@ -1221,7 +1295,7 @@
   function blocked() {
     const waiting = state.queue.filter((q) => q.state === 'waiting');
     const per = {};
-    ['youtube', 'soundcloud'].forEach((p) => {
+    PLATS.forEach((p) => {
       const b = waiting.some((q) => platOf(q) === p) ? blockOf(p) : null;
       if (b) per[p] = { code: b[0], reason: b[1] };
     });
@@ -1315,7 +1389,7 @@
     const text = String(input || '').replace(/\s+/g, ' ').trim();
     const out = { type: '', platform: 'youtube', name: '', url_normalized: '' };
     if (!text) { out.type = hint || ''; return out; }
-    const looksUrl = /^(https?:\/\/|www\.|m\.|youtube\.com|soundcloud\.com|youtu\.be)/i.test(text);
+    const looksUrl = /^(https?:\/\/|www\.|m\.|youtube\.com|soundcloud\.com|youtu\.be|mixcloud\.com|hearthis\.at)/i.test(text);
     if (hint === 'search' || !looksUrl) return Object.assign(out, { type: 'search', name: text });
     const url = /^https?:\/\//i.test(text) ? text : `https://${text}`;
     let u;
@@ -1326,6 +1400,16 @@
       out.platform = 'soundcloud';
       if (parts.length >= 3 && parts[1] === 'sets') return Object.assign(out, { type: 'playlist', name: `${fromSlug(parts[0])} – ${fromSlug(parts[2])}` });
       if (parts.length === 1 || (parts.length === 2 && parts[1] === 'tracks')) return Object.assign(out, { type: 'channel', name: fromSlug(parts[0]) });
+      return out;
+    }
+    if (host === 'mixcloud.com' || host === 'hearthis.at') {
+      const mc = host === 'mixcloud.com';
+      out.platform = mc ? 'mixcloud' : 'hearthis';
+      const base = mc ? `https://www.mixcloud.com/${parts[0]}/` : `https://hearthis.at/${parts[0]}/`;
+      const listSeg = mc ? 'playlists' : 'set';
+      if (parts.length === 3 && parts[1] === listSeg) return Object.assign(out, { type: 'playlist', name: `${fromSlug(parts[0])} – ${fromSlug(parts[2])}`, url_normalized: `${base}${listSeg}/${parts[2]}/` });
+      if (parts.length === 1 || (mc && parts.length === 2 && parts[1] === 'uploads')) return Object.assign(out, { type: 'channel', name: fromSlug(parts[0]), url_normalized: base });
+      out.url_normalized = '';
       return out;
     }
     if (host !== 'youtube.com') return out;
@@ -1720,7 +1804,8 @@
       years: n ? yrs : [],
       djs: DJS.map(([name, ini, f]) => ({ key: name.toLowerCase().replace(/[^a-z0-9]/g, ''), name, initials: ini, sets: share(f), seconds: Math.round(sec * f) })).filter((x) => x.sets),
       months: n || from ? months.map((m) => ({ month: m.month, sets: m.sets, seconds: m.seconds, bytes: m.bytes })) : [],
-      platforms: n ? [{ platform: 'youtube', sets: n - share(0.14), seconds: Math.round(sec * 0.86), bytes: Math.round(bytes * 0.86) }, { platform: 'soundcloud', sets: share(0.14), seconds: Math.round(sec * 0.14), bytes: Math.round(bytes * 0.14) }] : [],
+      platforms: n ? [{ platform: 'youtube', sets: n - share(0.14) - share(0.05) - share(0.03), seconds: Math.round(sec * 0.78), bytes: Math.round(bytes * 0.78) }, { platform: 'soundcloud', sets: share(0.14), seconds: Math.round(sec * 0.14), bytes: Math.round(bytes * 0.14) },
+        { platform: 'mixcloud', sets: share(0.05), seconds: Math.round(sec * 0.05), bytes: Math.round(bytes * 0.05) }, { platform: 'hearthis', sets: share(0.03), seconds: Math.round(sec * 0.03), bytes: Math.round(bytes * 0.03) }] : [],
       tracks: TRACKS.map(([artist, title, version, f]) => ({ key: `${artist}|${title}`.toLowerCase(), artist, title, version, sets: Math.round(n * f) })).filter((x) => x.sets >= 2),
       watchlist: { checks: wl.reduce((a, m) => a + m.checks, 0), scheduled: Math.round(wl.reduce((a, m) => a + m.checks, 0) * 0.64), found, downloaded: Math.round(found * 0.21), last: isoAt(0, 3, 0), months: wl, sources: empty ? [] : src.slice(0, 10), source_count: SOURCES.length, enabled_sources: SOURCES.filter((x) => x.enabled).length, inbox: 12 },
       series_count: 0,
@@ -1857,10 +1942,10 @@
     },
     clear_backoff(platform) {
       return later(150, () => {
-        if (platform && !['youtube', 'soundcloud'].includes(platform)) return { ok: false, error: 'Unbekannte Plattform.' };
+        if (platform && !PLATS.includes(platform)) return { ok: false, error: 'Unbekannte Plattform.' };
         if (!platform || platform === 'youtube') state.backoff = { active: false, until: null, level: 0 };
-        if (!platform || platform === 'soundcloud') state.sc.backoff = { active: false, until: null, level: 0 };
-        pushLog('warn', `Backoff${platform === 'soundcloud' ? ' (SoundCloud)' : platform === 'youtube' ? ' (YouTube)' : ''} lifted manually`);
+        Object.entries(PSTATE).forEach(([p, k]) => { if (!platform || platform === p) state[k].backoff = { active: false, until: null, level: 0 }; });
+        pushLog('warn', `Backoff${platform ? ` (${PLABEL[platform]})` : ''} lifted manually`);
         emit('queue', {});
         pushStatus();
         return { ok: true };
@@ -1909,15 +1994,15 @@
       return later(1100, () => {
         const o = Object.assign({ genre: null, year: null, platform: 'youtube' }, opts);
         const p = o.platform, sc = p === 'soundcloud';
-        if (!['youtube', 'soundcloud'].includes(p)) return { ok: false, error: 'Unbekannte Plattform.' };
-        if (sc && !settings.soundcloud.enabled) return { ok: false, error: 'SoundCloud is turned off (Settings › SoundCloud)' };
-        if (boOf(p).active) return { ok: false, error: sc ? `Backoff (SoundCloud) active until ${hhmm(boOf(p).until)} – search blocked` : 'Backoff active – search is blocked.' };
+        if (!PLATS.includes(p)) return { ok: false, error: 'Unbekannte Plattform.' };
+        if (p !== 'youtube' && !settings[p].enabled) return { ok: false, error: `${PLABEL[p]} is turned off (Settings › ${PLABEL[p]})` };
+        if (boOf(p).active) return { ok: false, error: p !== 'youtube' ? `Backoff (${PLABEL[p]}) active until ${hhmm(boOf(p).until)} – search blocked` : 'Backoff active – search is blocked.' };
         if (cntOf(p).searches_hour >= thOf(p).max_searches_per_hour) return { ok: false, error: 'Limit “searches per hour” reached.' };
         const effective = effectiveQuery(query, o);
-        const ids = sc ? SC_SEARCH_IDS : o.year ? yearHits(o.year) : SEARCH_IDS;
+        const ids = sc ? SC_SEARCH_IDS : p === 'mixcloud' ? MC_SEARCH_IDS : p === 'hearthis' ? HT_SEARCH_IDS : o.year ? yearHits(o.year) : SEARCH_IDS;
         lastSearch = { query, effective_query: effective, genre: o.genre, year: o.year || null, ids, platform: p };
         cntOf(p).searches_hour++;
-        pushLog('info', `Search${sc ? ' (SoundCloud)' : ''} “${effective}” · ${ids.length} results (flat)`);
+        pushLog('info', `Search${p !== 'youtube' ? ` (${PLABEL[p]})` : ''} “${effective}” · ${ids.length} results (flat)`);
         pushStatus();
         return { ok: true, results: ids.map((id) => asSearchHit(byId(id))), effective_query: effective, query, genre: o.genre, year: o.year || null, hidden_count: 0, platform: p };
       });
@@ -1989,13 +2074,15 @@
         if (!name) errors.name = 'Name missing.';
         else if (SOURCES.some((x) => x.id !== src.id && x.name.toLowerCase() === name.toLowerCase())) errors.name = 'A source with this name already exists.';
         if (!url) errors.url_or_query = src.type === 'search' ? 'Search term missing.' : 'URL missing.';
-        else if (src.type !== 'search' && !/^https?:\/\/((www\.|music\.|m\.)?youtube\.com|(www\.|m\.)?soundcloud\.com)\//.test(url)) errors.url_or_query = 'Unsupported URL – expected a YouTube URL (https://www.youtube.com/…) or a SoundCloud URL (https://soundcloud.com/…).';
+        else if (src.type !== 'search' && !/^https?:\/\/((www\.|music\.|m\.)?youtube\.com|(www\.|m\.)?soundcloud\.com|(www\.)?mixcloud\.com|(www\.)?hearthis\.at)\//.test(url)) errors.url_or_query = 'Unsupported URL – expected a channel or playlist URL of YouTube, a user or set URL of SoundCloud, or a user or playlist URL of Mixcloud or hearthis.at.';
+        else if (src.type !== 'search' && /mixcloud\.com/.test(url) && !settings.mixcloud.enabled) errors.url_or_query = 'Mixcloud is turned off (Settings › Mixcloud).';
+        else if (src.type !== 'search' && /hearthis\.at/.test(url) && !settings.hearthis.enabled) errors.url_or_query = 'hearthis.at is turned off (Settings › hearthis.at).';
         else if (src.type !== 'search' && /soundcloud\.com/.test(url) && !settings.soundcloud.enabled) errors.url_or_query = 'SoundCloud is turned off (Settings › SoundCloud).';
         else if (src.type === 'channel' && /soundcloud\.com\/[^/]+\/sets\//.test(url)) errors.url_or_query = 'Choose the type “Playlist” for a set.';
         else if (src.type === 'playlist' && /soundcloud\.com/.test(url) && !/\/sets\/[^/]+/.test(url)) errors.url_or_query = 'SoundCloud playlist URL expected (…/<user>/sets/<set>).';
         else if (src.type === 'channel' && /\/(playlists|releases|featured|shorts|community|podcasts|about)\/?$/.test(url)) errors.url_or_query = 'Only the channel URL itself, /videos or /streams – other tabs are not supported.';
         else if (src.type === 'playlist' && !/soundcloud\.com/.test(url) && !/[?&]list=[\w-]+/.test(url)) errors.url_or_query = 'Playlist URL expected (…/playlist?list=…).';
-        if (src.type === 'search' && src.platform != null && !['youtube', 'soundcloud'].includes(src.platform)) errors.platform = 'Platform must be YouTube or SoundCloud.';
+        if (src.type === 'search' && src.platform != null && !PLATS.includes(src.platform)) errors.platform = 'Unknown platform.';
         const cap = src.type === 'search' ? 100 : 200; // leer (null) = Standard schedule.entries_per_source
         if (src.max_entries != null && !(Number.isInteger(src.max_entries) && src.max_entries >= 1 && src.max_entries <= cap)) errors.max_entries = `Whole number between 1 and ${cap} expected (empty = default).`;
         if (src.default_genre && !settings.genres.items.some((g) => g.name === src.default_genre)) errors.default_genre = 'This genre does not exist (any more).';
@@ -2260,6 +2347,67 @@
       });
     },
     cancel_analyse_library: () => later(20, () => { anState.cancel = true; return { ok: true, running: anState.running }; }),
+    /* ---------- v0.10.0 Re-Uploads per Audio-Fingerabdruck (offline) ---------- */
+    get_reupload_status: () => later(30, () => {
+      const lib = LIBRARY.filter((l) => !l.missing);
+      const done = Math.min(lib.length, 18 + state.reup.done.size);
+      const marks = LIBRARY.filter((l) => l.reupload);
+      const n = (st) => marks.filter((l) => l.reupload.state === st).length;
+      return { total: lib.length, fingerprinted: done, failed: 0, pending: lib.length - done, open: n('open'), kept: n('kept'), linked: n('linked'), last_pass: state.reup.lastPass, ffmpeg: true, running: state.reup.running, enabled: !!settings.reupload.enabled };
+    }),
+    fingerprint_library(opts) {
+      return later(60, () => {
+        const scope = opts && opts.scope === 'all' ? 'all' : 'new';
+        if (!settings.reupload.enabled) return { ok: false, error: 'Re-upload detection is turned off (Settings › Re-uploads)' };
+        if (state.reup.running) return { ok: true, started: false, running: true };
+        const lib = LIBRARY.filter((l) => !l.missing);
+        const total = scope === 'all' ? lib.length : Math.max(0, lib.length - 18 - state.reup.done.size);
+        Object.assign(state.reup, { running: true, cancel: false });
+        emit('fingerprint', { phase: 'start', scope });
+        pushLog('info', 'Fingerprinting the library (offline, one file at a time) …');
+        let done = 0;
+        const step = () => {
+          if (!state.reup.cancel && done < total) {
+            state.reup.done.add(lib[lib.length - 1 - (done % lib.length)].id);
+            done++;
+            emit('fingerprint', { phase: 'progress', scope, done, total, found: 0, failed: 0 });
+          }
+          if (!state.reup.cancel && done < total) { state.reup.timer = setTimeout(step, 600 * speed.factor); return; }
+          state.reup.running = false;
+          if (!state.reup.cancel) state.reup.lastPass = new Date().toISOString();
+          pushLog('ok', `Library fingerprinted: ${done} files, 0 probable re-uploads, 0 failed`);
+          emit('fingerprint', { phase: 'done', scope, ok: true, cancelled: state.reup.cancel, total, done, found: 0, failed: 0 });
+        };
+        state.reup.timer = setTimeout(step, 300 * speed.factor);
+        return { ok: true, started: true, scope };
+      });
+    },
+    cancel_fingerprint_library: () => later(20, () => { state.reup.cancel = true; return { ok: true, running: state.reup.running }; }),
+    get_reuploads: (opts) => later(30, () => ({
+      ok: true,
+      items: LIBRARY.filter((l) => l.reupload && ((opts && opts.state === 'all') || l.reupload.state === 'open'))
+        .map((l) => ({ id: l.id, title: l.title, platform: l.platform, channel: l.artist, file_path: l.file_path, downloaded_at: l.downloaded_at, reupload: clone(l.reupload) })),
+    })),
+    resolve_reupload(id, action) {
+      return later(80, () => {
+        const l = LIBRARY.find((x) => x.id === id);
+        if (!l || !l.reupload) return { ok: false, error: 'This set is not marked as a re-upload' };
+        if (action === 'delete_new') {
+          LIBRARY = LIBRARY.filter((x) => x !== l);
+          const v = byId(id);
+          if (v) v.status = 'ignored';
+          emit('video', { id, status: 'ignored', genre: null });
+          emit('reupload', { id, reupload: null, deleted: true });
+          pushStatus();
+          return { ok: true };
+        }
+        const st = { keep: 'kept', link: 'linked', open: 'open' }[action];
+        if (!st) return { ok: false, error: 'Unknown action (allowed: keep, link, delete_new, open)' };
+        l.reupload.state = st;
+        emit('reupload', { id, reupload: clone(l.reupload) });
+        return { ok: true, id, state: st, reupload: clone(l.reupload) };
+      });
+    },
     play_external(id) {
       return later(60, () => {
         const l = LIBRARY.find((x) => x.id === id);

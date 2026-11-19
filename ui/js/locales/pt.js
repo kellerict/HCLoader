@@ -64,7 +64,8 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "clock": "h",
     "req_h": "req./h",
     "lufs": "LUFS",
-    "db": "dB"
+    "db": "dB",
+    "pct": "%"
   },
   "range": {
     "ge_sleep": "≥ mínimo",
@@ -96,7 +97,10 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "youtube": "YouTube",
     "soundcloud": "SoundCloud",
     "label": "Plataforma",
-    "sc_off": "O SoundCloud está desativado – ative em Configurações › SoundCloud."
+    "sc_off": "O SoundCloud está desativado – ative em Configurações › SoundCloud.",
+    "mixcloud": "Mixcloud",
+    "hearthis": "hearthis.at",
+    "p_off": "{p} está desativado – ative em Configurações › Mais fontes."
   },
   "genre": {
     "change": "Alterar gênero",
@@ -148,7 +152,8 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "sc_today": "{n} / {max}",
     "yt_tip": "YouTube · baixados hoje {day}/{day_max} · {s}/{s_max} buscas nesta hora",
     "sc_tip": "SoundCloud · baixados hoje {day}/{day_max} · {s}/{s_max} buscas nesta hora",
-    "backoff_tip": "{p}: bloqueio temporário até {t} (faltam {rest})"
+    "backoff_tip": "{p}: bloqueio temporário até {t} (faltam {rest})",
+    "p_tip": "{p} · baixados hoje {day}/{day_max} · {s}/{s_max} buscas nesta hora"
   },
   "schedule": {
     "due": "pendente",
@@ -162,7 +167,7 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
   },
   "card": {
     "source": "Encontrado pela fonte de monitoramento “{name}”",
-    "select": "Selecionar",
+    "select": "Só assinantes (Select)",
     "open": "Abrir no {p}",
     "ignore": "Ignorar",
     "unignore": "Parar de ignorar",
@@ -176,7 +181,8 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "duplicate": "Provavelmente já baixado ({p})",
     "duplicate_title": "Título muito parecido e mesma duração de “{title}” em {p} – já baixado ou na fila lá. Você ainda pode baixá-lo.",
     "preview": "Somente prévia (Go+) – não pode ser baixado",
-    "preview_title": "O SoundCloud só oferece uma prévia de 30 segundos (Go+) desta faixa. Ela não pode ser baixada."
+    "preview_title": "O SoundCloud só oferece uma prévia de 30 segundos (Go+) desta faixa. Ela não pode ser baixada.",
+    "select_title": "Este envio do Mixcloud só está disponível para assinantes do criador (Mixcloud Select). Não pode ser baixado."
   },
   "discover": {
     "placeholder": "Buscar mix, live set, DJ, evento …",
@@ -234,7 +240,13 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "ready_text": "Digite um termo de busca e pressione Enter.",
     "none_title": "Nada encontrado",
     "none_text": "Afrouxe os filtros ou tente outros termos.",
-    "none_year": "Nenhum resultado de {year}. Busque de novo para incluir o ano no termo – ou mude o ano."
+    "none_year": "Nenhum resultado de {year}. Busque de novo para incluir o ano no termo – ou mude o ano.",
+    "quota_p": "Buscas no {p} nesta hora: {n} / {max}",
+    "placeholder_p": "Buscar no {p}: mix, set, DJ, podcast …",
+    "searching_p": "Buscando – consulta leve, sem sobrecarregar o {p} …",
+    "ready_text_p": "Digite um termo e pressione Enter para buscar no {p}.",
+    "previews_mc": "{n} só para assinantes (Select)",
+    "previews_mc_title": "Envios do Mixcloud Select são só para assinantes pagos e nunca podem ser baixados. Visíveis quando “Ocultar baixados e ignorados” está desativado."
   },
   "inbox": {
     "title": "Caixa de entrada",
@@ -325,8 +337,8 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "hits_auto": "Baixar automaticamente",
     "hint_inbox": "Os resultados aguardam na caixa de entrada até você baixá-los ou ignorá-los.",
     "hint_auto": "Resultados que passam por todos os filtros vão direto para a fila.",
-    "hint_channel": "Canal do YouTube (…/@nome ou …/channel/UC…, opcionalmente /videos ou /streams) ou perfil do SoundCloud (soundcloud.com/nome).",
-    "hint_playlist": "Playlist do YouTube com “list=…” ou set do SoundCloud (soundcloud.com/nome/sets/set). As entradas mais recentes são verificadas.",
+    "hint_channel": "Canal do YouTube (…/@nome ou …/channel/UC…, opcionalmente /videos ou /streams), perfil do SoundCloud (soundcloud.com/nome), usuário do Mixcloud (mixcloud.com/nome) ou usuário do hearthis.at (hearthis.at/nome).",
+    "hint_playlist": "Playlist do YouTube com “list=…”, set do SoundCloud (soundcloud.com/nome/sets/set), playlist do Mixcloud (mixcloud.com/nome/playlists/lista) ou set do hearthis.at (hearthis.at/nome/set/set). As entradas mais recentes são verificadas.",
     "f_platform": "Buscar em",
     "detected": "detectado: {p} · {type}",
     "not_detected": "URL não reconhecida",
@@ -345,7 +357,9 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "ph_channel": "https://www.youtube.com/@canal  ou  https://soundcloud.com/nome",
     "ph_playlist": "https://www.youtube.com/playlist?list=…  ou  https://soundcloud.com/nome/sets/…",
     "ph_search": "ex.: frenchcore liveset",
-    "form_error": "Não foi possível salvar a fonte."
+    "form_error": "Não foi possível salvar a fonte.",
+    "backoff_link_p": "Abrir {p}",
+    "why_p_off": "O {p} está desativado"
   },
   "downloads": {
     "title": "Downloads",
@@ -422,7 +436,8 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     },
     "local_link_pot": "Configurações de rede",
     "local_link_target": "Alterar local de armazenamento",
-    "local_link_error": "Manutenção"
+    "local_link_error": "Manutenção",
+    "summary_p": "{p} {day}/{day_max}"
   },
   "library": {
     "title": "Biblioteca",
@@ -631,7 +646,9 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "festivals": "Festivais e séries",
     "playback": "Reprodução",
     "notifications": "Notificações",
-    "mediaserver": "Servidor de mídia"
+    "mediaserver": "Servidor de mídia",
+    "sources": "Mais fontes",
+    "reupload": "Reenvios"
   },
   "tabs_hint": {
     "general": "Comportamento básico do app.",
@@ -639,7 +656,7 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "genres": "A ordem é a prioridade. Vence o primeiro gênero cuja palavra-chave aparece no título. Gêneros definidos manualmente e o gênero padrão de uma fonte têm precedência.",
     "download": "O YouTube geralmente entrega Opus a cerca de 130–160 kbps. O MP3 é uma conversão e não soa melhor que a fonte – mas toca em qualquer lugar.",
     "storage": "Para onde vão os arquivos e como são nomeados. A estrutura foi pensada para servidores de mídia como Plex ou Jellyfin.",
-    "throttle": "Limita a carga sobre o YouTube. Estes valores valem em conjunto para busca, lista de monitoramento e downloads. O SoundCloud tem valores próprios na aba “SoundCloud”.",
+    "throttle": "Limita a carga sobre o YouTube. Estes valores valem em conjunto para busca, lista de monitoramento e downloads. O SoundCloud tem valores próprios na aba “SoundCloud”. Mixcloud e hearthis.at têm os seus em “Mais fontes”.",
     "soundcloud": "O SoundCloud como segunda fonte para busca, lista de monitoramento e downloads – com limites, contadores e bloqueio temporário próprios, independentes do YouTube.",
     "network": "O PO-Token identifica as requisições como de um navegador real e reduz o risco de bloqueios por bot.",
     "schedule": "Quando a lista de monitoramento é verificada automaticamente – no app e pelo Agendador de Tarefas do Windows.",
@@ -648,7 +665,9 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "festivals": "Reconhece festival ou série, ano, palco e tipo de set a partir dos títulos salvos – offline, sem nenhuma requisição extra.",
     "playback": "Player integrado, normalização de volume, posições lembradas e a análise offline dos seus arquivos.",
     "notifications": "Notificações do Windows para sets novos na caixa de entrada e downloads concluídos ou com falha – agrupadas numa só mensagem, nunca uma enxurrada. Um clique abre o app no lugar certo.",
-    "mediaserver": "Depois dos downloads, pedir ao seu servidor Plex ou Jellyfin para reescanear a biblioteca – agrupado, só na rede local. O token fica no Gerenciador de Credenciais do Windows, nunca no config.yaml."
+    "mediaserver": "Depois dos downloads, pedir ao seu servidor Plex ou Jellyfin para reescanear a biblioteca – agrupado, só na rede local. O token fica no Gerenciador de Credenciais do Windows, nunca no config.yaml.",
+    "sources": "Mixcloud e hearthis.at como fontes extras para busca, watchlist e downloads – cada uma com limites, contadores e backoff próprios, independentes do YouTube e do SoundCloud.",
+    "reupload": "Reconhece o mesmo mix enviado de novo (outro canal, outra plataforma, novo id) por uma impressão digital de áudio compacta – calculada offline a partir dos seus arquivos, sem rede."
   },
   "set": {
     "default": "Padrão",
@@ -700,7 +719,9 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
       "playlists": "Playlists (M3U8)",
       "notify_events": "Avisar sobre",
       "quiet": "Horário silencioso",
-      "ms_paths": "Caminhos e momento"
+      "ms_paths": "Caminhos e momento",
+      "more_sources": "Mixcloud & hearthis.at",
+      "fingerprint": "Impressão digital"
     },
     "general": {
       "language": {
@@ -846,6 +867,14 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
       "keep_original_soundcloud": {
         "label": "Manter original do SoundCloud",
         "help": "Salva o áudio do SoundCloud sem alterações (AAC 160 kbps como .m4a, MP3 128 kbps como .mp3) – sem uma segunda conversão com perdas. Desativado: como “Formato de saída”."
+      },
+      "keep_original_mixcloud": {
+        "label": "Manter original do Mixcloud",
+        "help": "Salvar o áudio do Mixcloud sem alteração (AAC, geralmente 64–128 kbps, como .m4a) – sem segunda conversão com perdas. Desativado: como “Formato de saída”."
+      },
+      "keep_original_hearthis": {
+        "label": "Manter original do hearthis.at",
+        "help": "Salvar o stream do hearthis.at sem alteração (MP3) – sem segunda conversão com perdas. Desativado: como “Formato de saída”."
       }
     },
     "storage": {
@@ -930,7 +959,9 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
       "blocked": "O {p} sinalizou um bloqueio. Busca, lista de monitoramento e downloads do {p} ficam bloqueados até o tempo expirar.",
       "clear": "Liberar manualmente",
       "sc_off": "O SoundCloud está desativado",
-      "sc_off_detail": "Sem busca no SoundCloud, sem verificações da lista de monitoramento e sem downloads do SoundCloud."
+      "sc_off_detail": "Sem busca no SoundCloud, sem verificações da lista de monitoramento e sem downloads do SoundCloud.",
+      "p_off": "O {p} está desativado",
+      "p_off_detail": "Sem busca no {p}, sem verificações da lista de monitoramento e sem downloads do {p}."
     },
     "soundcloud": {
       "enabled": {
@@ -1402,6 +1433,84 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
         "help": "Qual biblioteca escanear. “Todas as bibliotecas” escaneia tudo (mais lento em servidores grandes)."
       },
       "lib_paths": "Pastas no servidor: {p}"
+    },
+    "platform": {
+      "enabled": {
+        "label": "Usar {p}",
+        "help": "Desativado: sem busca no {p}, sem verificação de fontes do {p} e sem downloads do {p}. O que já foi baixado permanece na biblioteca."
+      },
+      "sleep_requests": {
+        "label": "Pausa entre requisições",
+        "help": "Tempo de espera entre consultas de metadados ao {p} (busca, lista de monitoramento)."
+      },
+      "sleep_interval": {
+        "label": "Pausa de download – mínimo",
+        "help": "Após cada download do {p} segue uma pausa aleatória entre o mínimo e o máximo."
+      },
+      "max_sleep_interval": {
+        "label": "Pausa de download – máximo",
+        "help": "Limite superior da pausa aleatória."
+      },
+      "limit_rate_mb": {
+        "label": "Velocidade de download",
+        "help": "Largura de banda máxima. 0 = ilimitada (não recomendado)."
+      },
+      "max_downloads_per_run": {
+        "label": "Máx. de downloads por execução",
+        "help": "Contador separado para o {p}. O restante permanece na fila."
+      },
+      "max_downloads_per_day": {
+        "label": "Máx. de downloads por dia",
+        "help": "Contador separado para o {p}, downloads manuais e automáticos juntos."
+      },
+      "max_searches_per_hour": {
+        "label": "Máx. de buscas por hora",
+        "help": "Contador separado para o {p}."
+      },
+      "backoff_initial_hours": {
+        "label": "Bloqueio temporário – valor inicial",
+        "help": "Tempo de bloqueio após o {p} informar excesso de requisições (HTTP 429)."
+      },
+      "backoff_max_hours": {
+        "label": "Bloqueio temporário – máximo",
+        "help": "O tempo de bloqueio dobra a cada novo bloqueio até este valor."
+      }
+    },
+    "reupload": {
+      "enabled": {
+        "label": "Detectar reenvios",
+        "help": "Calcula offline com o ffmpeg uma impressão digital de áudio compacta por set e compara novos downloads com sua biblioteca. Uma correspondência é marcada como “Provável reenvio de …” – nada é apagado automaticamente."
+      },
+      "fingerprint_after_download": {
+        "label": "Impressão após cada download",
+        "help": "Um arquivo por vez com baixa prioridade, depois da análise de volume. Desativado: só a comparação da biblioteca abaixo."
+      },
+      "precheck": {
+        "label": "Verificar antes do download",
+        "help": "Antes de um download também compara duração (±5 s) e título com a biblioteca na mesma plataforma – sem requisição extra. Correspondências vão para a caixa de entrada em vez da fila e mostram “Provavelmente já baixado”."
+      },
+      "head_minutes": {
+        "label": "Minutos desde o início",
+        "help": "Quanto do começo entra na impressão digital. Mais = mais seguro para sets com introdução longa e idêntica, um pouco mais lento."
+      },
+      "windows": {
+        "label": "Janelas extras",
+        "help": "Janelas de 30 segundos distribuídas pelo resto do set. Com elas, dois sets diferentes que começam com a mesma faixa são distinguidos. 0 = só o início."
+      },
+      "min_score": {
+        "label": "Limite de correspondência",
+        "help": "Proporção de hashes de impressão iguais a partir da qual um set conta como reenvio. Menor = encontra mais, mas com mais falsos positivos."
+      },
+      "title": "{done} de {total} arquivos com impressão digital",
+      "marks": "{open} abertos · {linked} vinculados · {kept} mantidos",
+      "help": "Percorre a biblioteca offline, um arquivo por vez com baixa prioridade – sem rede, o áudio fica intacto. Pode ser cancelado a qualquer momento.",
+      "button": "Comparar arquivos novos",
+      "button_n": "Comparar {n} novos",
+      "all": "Comparar tudo de novo",
+      "all_title": "Recalcular todas as impressões digitais (p. ex. após mudar as janelas) – suas decisões ficam",
+      "running": "Comparando … {done} / {total} · {found} encontrados",
+      "show": "Mostrar {n} na biblioteca",
+      "no_ffmpeg": "As impressões digitais precisam do ffmpeg (bin\\ffmpeg.exe, instalado pelo setup.ps1). Configurações › Manutenção mostra o estado."
     }
   },
   "opt": {
@@ -1518,6 +1627,12 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
       "title": "Redefinir as séries embutidas?",
       "text": "Todas as séries embutidas voltam ao estado original e as ocultas reaparecem. Suas próprias séries permanecem.",
       "ok": "Redefinir"
+    },
+    "reupload_del": {
+      "title": "Apagar reenvio?",
+      "ok": "Apagar arquivo",
+      "text": "“{title}” provavelmente é o mesmo mix que “{of}”. Apagar este arquivo mais novo?",
+      "note": "O original fica. A entrada passa a “ignorada” e não é baixada de novo."
     }
   },
   "toast": {
@@ -1603,7 +1718,9 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "assign_done": "Festivais atribuídos: {assigned} novos, {suggested} sugestões",
     "assign_cancelled": "Atribuição cancelada: {assigned} novos, {suggested} sugestões",
     "analysis_done": "Volume analisado: {n} arquivos ({failed} com falha)",
-    "analysis_cancelled": "Análise cancelada após {n} arquivos"
+    "analysis_cancelled": "Análise cancelada após {n} arquivos",
+    "fp_done": "Biblioteca comparada: {n} arquivos, {found} prováveis reenvios",
+    "fp_cancelled": "Comparação cancelada após {n} arquivos"
   },
   "upd": {
     "available": "Versão {v} disponível",
@@ -2189,5 +2306,26 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "empty_title": "Ainda não há sets",
     "empty_text": "Assim que os primeiros sets estiverem na sua biblioteca, você verá aqui o que coleciona – gêneros, festivais, DJs, horas.",
     "empty_go": "Descobrir sets"
+  },
+  "reupload": {
+    "tag": "Reenvio?",
+    "tag_title": "Provavelmente um reenvio de “{title}” ({p}, {score} % de correspondência) – clique para decidir",
+    "linked": "Mesmo mix",
+    "linked_title": "Vinculado como o mesmo mix que “{title}” ({p})",
+    "chip": "Reenvios ({n})",
+    "chip_title": "Mostrar só sets marcados como provável reenvio",
+    "menu_head": "Provável reenvio de “{title}” · {score} %",
+    "menu_head_linked": "Mesmo mix que “{title}”",
+    "keep": "Manter os dois",
+    "link": "Vincular como o mesmo mix",
+    "undo": "Desfazer decisão",
+    "show_original": "Mostrar o original",
+    "delete_new": "Apagar este arquivo mais novo",
+    "toast_keep": "Os dois mantidos – a marcação sumiu",
+    "toast_link": "Vinculado como o mesmo mix",
+    "toast_open": "Decisão desfeita",
+    "toast_found": "Provável reenvio: “{title}” corresponde a “{of}” – veja a biblioteca",
+    "dl_notice": "Downloads recentes que provavelmente são reenvios de sets que você já tem ({n}):",
+    "review": "Revisar na biblioteca"
   }
 });

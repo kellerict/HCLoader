@@ -87,8 +87,8 @@
   const platBlock = (q) => { const pb = queue.platform_blocked; const x = pb && pb[HC.platform.of(q.video)]; return x && x.code ? x : null; };
   /** Grund am einzelnen Eintrag: der allgemeine, sonst der seiner Plattform. */
   const whyOf = (q) => why || (platBlock(q) && WHY[platBlock(q).code] ? platBlock(q).code : null);
-  const thOf = (v) => { const sv = HC.settings.values; return (HC.platform.of(v) === 'soundcloud' && sv.soundcloud) || sv.throttle; };
-  const sig = (q, i, items) => `${q.state}|${q.phase}|${i}|${canUp(items, i)}|${canDown(items, i)}|${whyOf(q)}|${HC.platform.scEnabled()}`;
+  const thOf = (v) => { const sv = HC.settings.values; return sv[HC.platform.section(HC.platform.of(v))] || sv.throttle; };
+  const sig = (q, i, items) => `${q.state}|${q.phase}|${i}|${canUp(items, i)}|${canDown(items, i)}|${whyOf(q)}|${HC.platform.active().join(',')}`;
 
   function inner(q, i, items) {
     const v = q.video, active = q.state === 'active', failed = q.state === 'failed';
@@ -231,10 +231,13 @@
       HC.platform.all.forEach((p) => {
         const x = queue.platform_blocked && queue.platform_blocked[p];
         if (!x || !x.code) return;
-        const bo = HC.platform.backoff(p), other = HC.platform.label(p === 'youtube' ? 'soundcloud' : 'youtube');
+        const bo = HC.platform.backoff(p);
+        /* «Die anderen Plattformen laden weiter»: die erste andere eingeschaltete Plattform (oder YouTube) */
+        const other = HC.platform.label(HC.platform.active().find((o) => o !== p) || 'youtube');
         const text = x.reason ? esc(x.reason) : `${esc(HC.platform.label(p))}: ${esc(t('downloads.' + (WHY[x.code] || 'why_busy')))}`;
-        const tab = p === 'soundcloud' ? 'soundcloud' : 'throttle';
-        html += ui.notice(x.code === 'backoff' ? 'error' : 'warn', `<b>${text}</b>${bo && x.code === 'backoff' && !x.reason ? ` (${esc(t('statusbar.backoff_until', { t: util.fmtWhen(bo.until), rest: util.fmtSpan(bo.remaining_s) }))})` : ''} ${esc(t('downloads.platform_other', { p: other }))} <button class="linkbtn" data-goto="settings/${tab}">${t(p === 'soundcloud' ? 'watchlist.backoff_link_sc' : 'watchlist.backoff_link')}</button>`);
+        const tab = { youtube: 'throttle', soundcloud: 'soundcloud' }[p] || 'sources';
+        const link = p === 'youtube' ? t('watchlist.backoff_link') : p === 'soundcloud' ? t('watchlist.backoff_link_sc') : t('watchlist.backoff_link_p', { p: esc(HC.platform.label(p)) });
+        html += ui.notice(x.code === 'backoff' ? 'error' : 'warn', `<b>${text}</b>${bo && x.code === 'backoff' && !x.reason ? ` (${esc(t('statusbar.backoff_until', { t: util.fmtWhen(bo.until), rest: util.fmtSpan(bo.remaining_s) }))})` : ''} ${esc(t('downloads.platform_other', { p: other }))} <button class="linkbtn" data-goto="settings/${tab}">${link}</button>`);
       });
     }
     if (queue.paused) html += ui.notice('warn', t('downloads.paused'));
@@ -272,9 +275,13 @@
     $('#l-day-max', el).textContent = `/ ${th.max_downloads_per_day}`;
     meter('#m-day', s.counters.downloads_day, th.max_downloads_per_day);
     $('#l-rate', el).innerHTML = th.limit_rate_mb ? `${util.fmtDec(th.limit_rate_mb, 1, true)} <small>${t('unit.mbs')}</small>` : `<small>${t('downloads.unlimited')}</small>`;
-    const sc = HC.platform.scEnabled() ? HC.platform.state('soundcloud') : null;
-    $('#q-summary', el).textContent = t('downloads.summary', { day: s.counters.downloads_day, day_max: th.max_downloads_per_day, run: s.counters.downloads_run, run_max: th.max_downloads_per_run })
-      + (sc ? ` · ${t('downloads.summary_sc', { day: sc.counters.downloads_day || 0, day_max: sc.limits.downloads_day })}` : '');
+    /* weitere eingeschaltete Plattformen: «SoundCloud 0/25 · Mixcloud 1/25 …» */
+    const more = HC.platform.others.filter((p) => HC.platform.enabled(p)).map((p) => {
+      const x = HC.platform.state(p);
+      return p === 'soundcloud' ? t('downloads.summary_sc', { day: x.counters.downloads_day || 0, day_max: x.limits.downloads_day })
+        : t('downloads.summary_p', { p: HC.platform.label(p), day: x.counters.downloads_day || 0, day_max: x.limits.downloads_day });
+    });
+    $('#q-summary', el).textContent = [t('downloads.summary', { day: s.counters.downloads_day, day_max: th.max_downloads_per_day, run: s.counters.downloads_run, run_max: th.max_downloads_per_run }), ...more].join(' · ');
     paintSleepTile();
     renderNotice();
   }
@@ -297,6 +304,7 @@
           <div class="limit" id="l-sleep-tile"><div class="k">${t('downloads.l_sleep')}</div><div class="v" id="l-sleep"></div><div class="meter sleep" id="m-sleep"><i style="transform:scaleX(0)"></i></div></div>
         </div>
         <div id="q-notice" hidden style="margin-bottom:16px"></div>
+        <div id="q-reup" hidden style="margin-bottom:16px"></div>
         <div class="section-label">${t('downloads.sec_queue')} <span class="mono" id="q-count" style="font-size:12px"></span><span class="mono q-summary" id="q-summary"></span></div>
         <div id="q-list"></div>
         <div id="q-failed-wrap" hidden>
@@ -347,6 +355,18 @@
       if (q.phase === 'sleep') paintSleepTile();
     });
     HC.bridge.on('done', refresh);
+    /* v0.10.0: vermutliche Re-Uploads unter den Downloads -> Hinweis mit Sprung in die Bibliothek */
+    const reup = async () => {
+      const r = await HC.bridge.safe('get_reuploads');
+      const box = $('#q-reup', el);
+      const list = (r && r.ok && r.items) || [];
+      box.hidden = !list.length;
+      if (!list.length) { box.innerHTML = ''; return; }
+      const names = list.slice(0, 3).map((x) => `<b>${esc(x.title)}</b> → ${esc(x.reupload.of.title || x.reupload.of.id)}`).join('<br>');
+      box.innerHTML = ui.notice('warn', `${esc(t('reupload.dl_notice', { n: list.length }))}<br>${names}${list.length > 3 ? '<br>…' : ''} <button class="linkbtn" data-goto="library/reuploads">${esc(t('reupload.review'))}</button>`);
+    };
+    HC.bridge.on('reupload', util.debounce(reup, 300));
+    reup();
     HC.bridge.on('failed', refresh);
     HC.bridge.on('status_rendered', renderLimits);
     HC.bridge.on('settings_changed', renderLimits);

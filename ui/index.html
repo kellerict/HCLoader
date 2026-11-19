@@ -9,7 +9,7 @@
      Bilder: lokal (file: auch für das Cover im Mini-Player), data: (Overlays) und Thumbnails von *.ytimg.com (YouTube)
      und *.sndcdn.com (SoundCloud) – sonst nichts.
      Medien: nur lokale Dateien (Mini-Player, kein Streaming); data: einzig für die synthetische Tonfolge des Mock-Modus. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file: 'unsafe-eval'; style-src 'self' file: 'unsafe-inline'; img-src 'self' file: data: https://i.ytimg.com https://*.ytimg.com https://*.sndcdn.com; media-src 'self' file: data:; font-src 'self' file:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file: 'unsafe-eval'; style-src 'self' file: 'unsafe-inline'; img-src 'self' file: data: https://i.ytimg.com https://*.ytimg.com https://*.sndcdn.com https://thumbnailer.mixcloud.com https://*.hearthis.at; media-src 'self' file: data:; font-src 'self' file:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>HCLoader</title>
 <link rel="icon" type="image/png" href="img/icon-32.png">
 <link rel="stylesheet" href="css/theme.css">
@@ -65,6 +65,8 @@
   <span class="it" id="sb-pot-it"><span class="led off" id="sb-pot-led"></span><span data-i18n="statusbar.po"></span> <b id="sb-pot">–</b></span>
   <span class="it" id="sb-backoff-it"><span class="led off" id="sb-backoff-led"></span><span data-i18n="statusbar.backoff"></span> <b id="sb-backoff">–</b></span>
   <span class="it sc" id="sb-sc-it" hidden><span class="led off" id="sb-sc-led"></span><span>SC</span> <b id="sb-sc">–</b></span>
+  <span class="it mc" id="sb-mc-it" hidden><span class="led off" id="sb-mc-led"></span><span>MC</span> <b id="sb-mc">–</b></span>
+  <span class="it ht" id="sb-ht-it" hidden><span class="led off" id="sb-ht-led"></span><span>HT</span> <b id="sb-ht">–</b></span>
   <span class="it right"><span class="led off" id="sb-queue-led"></span><span data-i18n="statusbar.queue"></span> <b><span id="sb-queue" hidden>0</span><span id="sb-queue-empty" data-i18n="statusbar.queue_empty"></span><span id="sb-queue-sfx"></span></b></span>
   <span class="it" id="sb-day-it"><span data-i18n="statusbar.today"></span> <b><span id="sb-day">0</span> / <span id="sb-day-max">–</span></b></span>
   <span class="it"><span data-i18n="statusbar.next"></span> <b id="sb-next">–</b></span>

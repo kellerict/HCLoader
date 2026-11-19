@@ -210,7 +210,8 @@
     "outside_period": "अवधि के बाहर",
     "preview": "केवल प्रीव्यू (Go+)",
     "too_long": "बहुत लंबा",
-    "too_short": "बहुत छोटा"
+    "too_short": "बहुत छोटा",
+    "select_only": "केवल सब्सक्राइबर (Mixcloud Select)"
   },
   "genre": {
     "unknown": "अज्ञात जॉनर: {genre}"

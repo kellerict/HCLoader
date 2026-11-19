@@ -63,7 +63,8 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "clock": "点",
     "req_h": "次/时",
     "lufs": "LUFS",
-    "db": "dB"
+    "db": "dB",
+    "pct": "%"
   },
   "range": {
     "ge_sleep": "≥ 最小值",
@@ -95,7 +96,10 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "youtube": "YouTube",
     "soundcloud": "SoundCloud",
     "label": "平台",
-    "sc_off": "SoundCloud 已关闭 – 请在 设置 › SoundCloud 中开启。"
+    "sc_off": "SoundCloud 已关闭 – 请在 设置 › SoundCloud 中开启。",
+    "mixcloud": "Mixcloud",
+    "hearthis": "hearthis.at",
+    "p_off": "{p} 已关闭 – 可在 设置 › 更多来源 中开启。"
   },
   "genre": {
     "change": "更改流派",
@@ -147,7 +151,8 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "sc_today": "{n} / {max}",
     "yt_tip": "YouTube · 今日已下载 {day}/{day_max} · 本小时已搜索 {s}/{s_max} 次",
     "sc_tip": "SoundCloud · 今日已下载 {day}/{day_max} · 本小时已搜索 {s}/{s_max} 次",
-    "backoff_tip": "{p}：退避至 {t}（剩余 {rest}）"
+    "backoff_tip": "{p}：退避至 {t}（剩余 {rest}）",
+    "p_tip": "{p} · 今日已下载 {day}/{day_max} · 本小时已搜索 {s}/{s_max} 次"
   },
   "schedule": {
     "due": "已到期",
@@ -161,7 +166,7 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
   },
   "card": {
     "source": "来自关注列表来源“{name}”",
-    "select": "选择",
+    "select": "仅限订阅者（Select）",
     "open": "在 {p} 上打开",
     "ignore": "忽略",
     "unignore": "取消忽略",
@@ -175,7 +180,8 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "duplicate": "可能已下载（{p}）",
     "duplicate_title": "与 {p} 的“{title}”标题非常相似且时长相同 – 已在那边下载或排队。仍可继续下载。",
     "preview": "仅试听（Go+）– 无法下载",
-    "preview_title": "SoundCloud 只为此曲目提供 30 秒试听（Go+），无法下载。"
+    "preview_title": "SoundCloud 只为此曲目提供 30 秒试听（Go+），无法下载。",
+    "select_title": "此 Mixcloud 上传仅对创作者的订阅者开放（Mixcloud Select），无法下载。"
   },
   "discover": {
     "placeholder": "搜索 mix、live set、DJ、活动…",
@@ -232,7 +238,13 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "ready_text": "输入搜索词并按 Enter。",
     "none_title": "未找到内容",
     "none_text": "请放宽筛选条件或换其他搜索词。",
-    "none_year": "没有 {year} 年的结果。请重新搜索，使年份包含在搜索词中 – 或更改年份。"
+    "none_year": "没有 {year} 年的结果。请重新搜索，使年份包含在搜索词中 – 或更改年份。",
+    "quota_p": "本小时 {p} 搜索次数：{n} / {max}",
+    "placeholder_p": "搜索 {p}：mix、set、DJ、播客…",
+    "searching_p": "搜索中 – 轻量查询，减轻 {p} 负担…",
+    "ready_text_p": "输入搜索词并按 Enter 搜索 {p}。",
+    "previews_mc": "{n} 个仅限订阅者（Select）",
+    "previews_mc_title": "Mixcloud Select 上传仅供付费订阅者，永远无法下载。关闭“隐藏已下载和已忽略”时可见。"
   },
   "inbox": {
     "title": "收件箱",
@@ -320,8 +332,8 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "hits_auto": "自动下载",
     "hint_inbox": "发现的内容会留在收件箱，等你下载或忽略。",
     "hint_auto": "通过全部筛选的发现会直接进入队列。",
-    "hint_channel": "YouTube 频道（…/@name 或 …/channel/UC…，可加 /videos 或 /streams）或 SoundCloud 个人主页（soundcloud.com/name）。",
-    "hint_playlist": "带“list=…”的 YouTube 播放列表或 SoundCloud 合集（soundcloud.com/name/sets/set）。检查最新的条目。",
+    "hint_channel": "YouTube 频道（…/@名称 或 …/channel/UC…，可加 /videos 或 /streams）、SoundCloud 主页（soundcloud.com/名称）、Mixcloud 用户（mixcloud.com/名称）或 hearthis.at 用户（hearthis.at/名称）。",
+    "hint_playlist": "带“list=…”的 YouTube 播放列表、SoundCloud 合集（soundcloud.com/名称/sets/合集）、Mixcloud 播放列表（mixcloud.com/名称/playlists/列表）或 hearthis.at 合集（hearthis.at/名称/set/合集）。检查最新的条目。",
     "f_platform": "搜索平台",
     "detected": "已识别：{p} · {type}",
     "not_detected": "无法识别 URL",
@@ -340,7 +352,9 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "ph_channel": "https://www.youtube.com/@channel  或  https://soundcloud.com/name",
     "ph_playlist": "https://www.youtube.com/playlist?list=…  或  https://soundcloud.com/name/sets/…",
     "ph_search": "例如 frenchcore liveset",
-    "form_error": "无法保存来源。"
+    "form_error": "无法保存来源。",
+    "backoff_link_p": "打开 {p}",
+    "why_p_off": "{p} 已关闭"
   },
   "downloads": {
     "title": "下载",
@@ -411,7 +425,8 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     },
     "local_link_pot": "网络设置",
     "local_link_target": "更改存储位置",
-    "local_link_error": "维护"
+    "local_link_error": "维护",
+    "summary_p": "{p} {day}/{day_max}"
   },
   "library": {
     "title": "媒体库",
@@ -613,7 +628,9 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "festivals": "音乐节与系列",
     "playback": "播放",
     "notifications": "通知",
-    "mediaserver": "媒体服务器"
+    "mediaserver": "媒体服务器",
+    "sources": "更多来源",
+    "reupload": "重复上传"
   },
   "tabs_hint": {
     "general": "应用的基本行为。",
@@ -621,7 +638,7 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "genres": "顺序即优先级。标题中最先出现其关键词的流派胜出。手动设置的流派和来源的默认流派优先。",
     "download": "YouTube 通常提供约 130–160 kbps 的 Opus。MP3 是转换结果，音质不会比源文件更好 – 但到处都能播放。",
     "storage": "文件存放位置及命名方式。该结构适用于 Plex、Jellyfin 等媒体服务器。",
-    "throttle": "限制对 YouTube 的负载。这些值同时适用于搜索、关注列表和下载。SoundCloud 在“SoundCloud”标签页中有自己的值。",
+    "throttle": "限制对 YouTube 的负载。这些值同时适用于搜索、关注列表和下载。SoundCloud 在“SoundCloud”标签页中有自己的值。 Mixcloud 和 hearthis.at 的设置在“更多来源”中。",
     "soundcloud": "将 SoundCloud 作为搜索、关注列表和下载的第二来源 – 拥有独立的限制、计数器和退避，与 YouTube 互不影响。",
     "network": "PO-Token 可将请求标识为真实浏览器，降低被机器人拦截的风险。",
     "schedule": "关注列表何时自动检查 – 在应用内以及通过 Windows 任务计划程序。",
@@ -630,7 +647,9 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "festivals": "根据已保存的标题识别音乐节或系列、年份、舞台和 set 类型——离线进行，不产生任何额外请求。",
     "playback": "内置播放器、响度均衡、记住的位置以及文件的离线分析。",
     "notifications": "收件箱有新混音、下载完成或失败时显示 Windows 通知 – 合并为一条消息，绝不刷屏。点击即可打开应用的对应页面。",
-    "mediaserver": "下载后请求你的 Plex 或 Jellyfin 服务器重新扫描媒体库 – 合并处理，仅限局域网。令牌保存在 Windows 凭据管理器中，绝不写入 config.yaml。"
+    "mediaserver": "下载后请求你的 Plex 或 Jellyfin 服务器重新扫描媒体库 – 合并处理，仅限局域网。令牌保存在 Windows 凭据管理器中，绝不写入 config.yaml。",
+    "sources": "Mixcloud 和 hearthis.at 作为搜索、关注列表和下载的更多来源 – 各有独立的限制、计数和退避，与 YouTube 和 SoundCloud 互不影响。",
+    "reupload": "通过紧凑的音频指纹识别再次上传的同一混音（其他频道、其他平台、新 ID）– 离线根据你的文件计算，不联网。"
   },
   "set": {
     "default": "默认值",
@@ -680,7 +699,9 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
       "playlists": "播放列表（M3U8）",
       "notify_events": "通知内容",
       "quiet": "免打扰时段",
-      "ms_paths": "路径与时机"
+      "ms_paths": "路径与时机",
+      "more_sources": "Mixcloud & hearthis.at",
+      "fingerprint": "指纹"
     },
     "general": {
       "language": {
@@ -826,6 +847,14 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
       "keep_original_soundcloud": {
         "label": "保留 SoundCloud 原始音频",
         "help": "原样保存 SoundCloud 音频（AAC 160 kbps 存为 .m4a，MP3 128 kbps 存为 .mp3）– 避免二次有损转换。关闭：与“输出格式”一致。"
+      },
+      "keep_original_mixcloud": {
+        "label": "保留 Mixcloud 原始音频",
+        "help": "原样保存 Mixcloud 音频（AAC，通常 64–128 kbps，保存为 .m4a）– 不做第二次有损转换。关闭：按“输出格式”处理。"
+      },
+      "keep_original_hearthis": {
+        "label": "保留 hearthis.at 原始音频",
+        "help": "原样保存 hearthis.at 音频流（MP3）– 不做第二次有损转换。关闭：按“输出格式”处理。"
       }
     },
     "storage": {
@@ -910,7 +939,9 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
       "blocked": "{p} 发出了阻止信号。在时间结束前，来自 {p} 的搜索、关注列表和下载均被阻止。",
       "clear": "手动解除",
       "sc_off": "SoundCloud 已关闭",
-      "sc_off_detail": "不进行 SoundCloud 搜索、关注列表检查和 SoundCloud 下载。"
+      "sc_off_detail": "不进行 SoundCloud 搜索、关注列表检查和 SoundCloud 下载。",
+      "p_off": "{p} 已关闭",
+      "p_off_detail": "不进行 {p} 搜索、关注列表检查和 {p} 下载。"
     },
     "soundcloud": {
       "enabled": {
@@ -1381,6 +1412,84 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
         "help": "要扫描的媒体库。“全部媒体库”会扫描所有内容（大型服务器上较慢）。"
       },
       "lib_paths": "服务器上的文件夹：{p}"
+    },
+    "platform": {
+      "enabled": {
+        "label": "使用 {p}",
+        "help": "关闭：不搜索 {p}、不检查 {p} 来源、不下载 {p}。已下载的内容仍保留在媒体库中。"
+      },
+      "sleep_requests": {
+        "label": "请求间隔",
+        "help": "向 {p} 进行元数据查询（搜索、关注列表）之间的等待时间。"
+      },
+      "sleep_interval": {
+        "label": "下载间隔 – 最小",
+        "help": "每次 {p} 下载后，会随机暂停最小值与最大值之间的时间。"
+      },
+      "max_sleep_interval": {
+        "label": "下载间隔 – 最大",
+        "help": "随机暂停的上限。"
+      },
+      "limit_rate_mb": {
+        "label": "下载速率",
+        "help": "最大带宽。0 = 不限（不推荐）。"
+      },
+      "max_downloads_per_run": {
+        "label": "每次运行最多下载数",
+        "help": "{p} 的独立计数器。其余内容留在队列中。"
+      },
+      "max_downloads_per_day": {
+        "label": "每天最多下载数",
+        "help": "{p} 的独立计数器，手动和自动下载合并计算。"
+      },
+      "max_searches_per_hour": {
+        "label": "每小时最多搜索次数",
+        "help": "{p} 的独立计数器。"
+      },
+      "backoff_initial_hours": {
+        "label": "退避 – 初始值",
+        "help": "{p} 报告请求过多（HTTP 429）后的阻止时长。"
+      },
+      "backoff_max_hours": {
+        "label": "退避 – 最大值",
+        "help": "每次再被阻止，阻止时长翻倍，直至此值。"
+      }
+    },
+    "reupload": {
+      "enabled": {
+        "label": "识别重复上传",
+        "help": "离线用 ffmpeg 为每个 Set 计算紧凑的音频指纹，并将新下载与你的媒体库比较。匹配会标记为“可能是 … 的重复上传” – 不会自动删除任何内容。"
+      },
+      "fingerprint_after_download": {
+        "label": "每次下载后生成指纹",
+        "help": "逐个文件、低优先级，在响度分析之后进行。关闭：仅使用下方的媒体库比对。"
+      },
+      "precheck": {
+        "label": "下载前检查",
+        "help": "下载前也在同一平台上将时长（±5 秒）和标题与媒体库比较 – 不产生额外请求。匹配项会进入收件箱而不是队列，并显示“可能已下载”。"
+      },
+      "head_minutes": {
+        "label": "从开头计算的分钟数",
+        "help": "指纹包含开头多长的部分。越多 = 对开头很长且相同的 Set 越可靠，但稍慢。"
+      },
+      "windows": {
+        "label": "额外窗口",
+        "help": "分布在 Set 其余部分的 30 秒窗口。用它们区分以同一首曲目开头的两个不同 Set。0 = 只用开头。"
+      },
+      "min_score": {
+        "label": "匹配阈值",
+        "help": "指纹哈希匹配的比例达到此值时，Set 被视为重复上传。越低 = 找到越多，但误判也越多。"
+      },
+      "title": "已为 {total} 个文件中的 {done} 个生成指纹",
+      "marks": "{open} 个待定 · {linked} 个已关联 · {kept} 个已保留",
+      "help": "离线遍历媒体库，逐个文件、低优先级 – 不联网，音频保持不变。可随时取消。",
+      "button": "比对新文件",
+      "button_n": "比对 {n} 个新文件",
+      "all": "全部重新比对",
+      "all_title": "重新计算所有指纹（例如更改窗口之后）– 你的决定会保留",
+      "running": "比对中 … {done} / {total} · 找到 {found} 个",
+      "show": "在媒体库中显示 {n} 个",
+      "no_ffmpeg": "指纹需要 ffmpeg（bin\\ffmpeg.exe，由 setup.ps1 安装）。设置 › 维护 中可查看其状态。"
     }
   },
   "opt": {
@@ -1495,6 +1604,12 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
       "title": "重置内置系列？",
       "text": "所有内置系列恢复到初始状态，已隐藏的会重新出现。你自己的系列保持不变。",
       "ok": "重置"
+    },
+    "reupload_del": {
+      "title": "删除重复上传？",
+      "ok": "删除文件",
+      "text": "“{title}”可能与“{of}”是同一混音。要删除这个较新的文件吗？",
+      "note": "原始文件保留。该条目会设为“已忽略”，不会再次下载。"
     }
   },
   "toast": {
@@ -1572,7 +1687,9 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "assign_done": "音乐节已归类：新增 {assigned} 个，建议 {suggested} 条",
     "assign_cancelled": "归类已取消：新增 {assigned} 个，建议 {suggested} 条",
     "analysis_done": "响度已分析：{n} 个文件（{failed} 个失败）",
-    "analysis_cancelled": "已在 {n} 个文件后取消分析"
+    "analysis_cancelled": "已在 {n} 个文件后取消分析",
+    "fp_done": "媒体库已比对：{n} 个文件，{found} 个可能的重复上传",
+    "fp_cancelled": "比对在 {n} 个文件后取消"
   },
   "upd": {
     "available": "有新版本 {v}",
@@ -2145,5 +2262,26 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "empty_title": "还没有混音",
     "empty_text": "媒体库中一有混音，你就能在这里看到收藏的内容 – 风格、音乐节、DJ、时长。",
     "empty_go": "发现混音"
+  },
+  "reupload": {
+    "tag": "重复上传？",
+    "tag_title": "可能是“{title}”的重复上传（{p}，{score}% 匹配）– 点击做决定",
+    "linked": "同一混音",
+    "linked_title": "已关联为与“{title}”（{p}）相同的混音",
+    "chip": "重复上传（{n}）",
+    "chip_title": "只显示标记为可能重复上传的 Set",
+    "menu_head": "可能是“{title}”的重复上传 · {score}%",
+    "menu_head_linked": "与“{title}”是同一混音",
+    "keep": "两个都保留",
+    "link": "关联为同一混音",
+    "undo": "撤销决定",
+    "show_original": "显示原始文件",
+    "delete_new": "删除这个较新的文件",
+    "toast_keep": "两个都已保留 – 标记已移除",
+    "toast_link": "已关联为同一混音",
+    "toast_open": "决定已撤销",
+    "toast_found": "可能是重复上传：“{title}”与“{of}”匹配 – 请查看媒体库",
+    "dl_notice": "最近的下载中可能是你已有 Set 的重复上传（{n}）：",
+    "review": "在媒体库中查看"
   }
 });

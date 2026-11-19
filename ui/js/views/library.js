@@ -22,6 +22,10 @@
    Playlist-Export (v0.8.0, js/playlist.js): Knopf «M3U» in der Leiste exportiert, was gerade zu sehen ist – gewählte
    Ausgabe/Serie der Festival-Ansicht, nur ein Genre, sonst Suche + Filter + Sortierung; «Weiterhören» hat einen eigenen.
 
+   Re-Uploads (v0.10.0): LibraryItem.reupload (Audio-Fingerabdruck) -> Kennzeichen «Re-Upload?» am Eintrag; Klick ->
+   Menü «Beide behalten» / «Als gleichen Mix verknüpfen» / «Neue Datei löschen» / «Original zeigen» (resolve_reupload).
+   Verknüpfte zeigen «Gleicher Mix wie …». Chip «Re-Uploads (n)» filtert offene Markierungen (#library/reuploads).
+
    get_library() wird ohne Filter aufgerufen: gefiltert, sortiert und gruppiert wird hier
    (sofortige Reaktion, kein Roundtrip). Grosse Bibliotheken werden in Blöcken gezeichnet.
    ===================================================================== */
@@ -41,6 +45,7 @@
   let loaded = false;
   let limit = PAGE;
   let onlyMissing = false;
+  let onlyReup = false; // v0.10.0: nur offene Re-Upload-Markierungen
   let targetDown = null; // Pfad des nicht erreichbaren Zielordners, sonst null
   let moreObserver = null;
   const busy = new Set(); // IDs, die gerade neu getaggt werden
@@ -90,7 +95,7 @@
     const q = util.norm($('#lib-q', el).value.trim());
     const g = $('#lib-genre', el).value, c = $('#lib-channel', el).value, y = $('#lib-year', el).value;
     const list = items.filter((l) => (!g || l.genre === g) && (!c || l.artist === c) && (!y || year(l) === y)
-      && (!onlyMissing || l.missing) && (!q || util.norm(`${l.title} ${l.artist} ${l.file_path} ${HC.platform.label(HC.platform.of(l))} ${l.festival ? HC.fest.full(l.festival) : ''}`).includes(q)));
+      && (!onlyMissing || l.missing) && (!onlyReup || ruOpen(l)) && (!q || util.norm(`${l.title} ${l.artist} ${l.file_path} ${HC.platform.label(HC.platform.of(l))} ${l.festival ? HC.fest.full(l.festival) : ''}`).includes(q)));
     const cmp = {
       newest: (a, b) => stamp(b) - stamp(a) || byText(a.title, b.title),
       title: (a, b) => byText(a.title, b.title),
@@ -99,7 +104,7 @@
     }[prefs.sort];
     return list.sort(cmp);
   }
-  const filtersActive = () => !!($('#lib-q', el).value.trim() || $('#lib-genre', el).value || $('#lib-channel', el).value || $('#lib-year', el).value || onlyMissing);
+  const filtersActive = () => !!($('#lib-q', el).value.trim() || $('#lib-genre', el).value || $('#lib-channel', el).value || $('#lib-year', el).value || onlyMissing || onlyReup);
 
   /* ---------- Zeile / Kachel ---------- */
   const playerMode = () => { const pl = HC.settings.values.player; return pl && pl.mode === 'external' ? 'external' : 'internal'; };
@@ -117,10 +122,20 @@
   const genreTag = (l) => ui.gtag(l.genre, { edit: true, manual: !!l.genre_manual, busy: busy.has(l.id) });
   const festTag = (l, add) => HC.fest.badge(l, { add, busy: busy.has(l.id) });
   const nowMark = (l) => (isNow(l) ? `<span class="nowplay" title="${esc(t('library.now_playing'))}">${ui.eq()}</span>` : '');
+  /* v0.10.0 Re-Upload: offen -> klickbares Kennzeichen, verknüpft -> «Gleicher Mix», behalten -> nichts */
+  const ruOpen = (l) => !!(l.reupload && l.reupload.state === 'open');
+  const ruTag = (l) => {
+    const r = l.reupload;
+    if (!r || r.state === 'kept') return '';
+    const pct = Math.round((r.score || 0) * 100);
+    const vars = { title: r.of.title || r.of.id, p: HC.platform.label(r.of.platform), score: pct };
+    if (r.state === 'linked') return `<button type="button" class="ru-tag linked" data-act="reupload" title="${esc(t('reupload.linked_title', vars))}">${I.copy}<span>${esc(t('reupload.linked'))}</span></button>`;
+    return `<button type="button" class="ru-tag" data-act="reupload" title="${esc(t('reupload.tag_title', vars))}" aria-haspopup="menu">${I.copy}<span>${esc(t('reupload.tag'))}</span></button>`;
+  };
   function row(l) {
     return `<tr data-id="${esc(l.id)}" class="${cls(l).trim()}">
       <td class="clip"><div class="cell-title">${ui.thumb(l, 'mini')}${nowMark(l)}</div>
-        <div><b title="${esc(l.title)}">${esc(l.title)}</b><small title="${esc(l.file_path)}">${ui.pbadge(l)}${l.missing ? missTag() : ''}${l.has_cue && !l.missing ? cueTag() : ''}${festTag(l, true)}<span>${esc(shortDir(l.file_path))}</span></small></div></div></td>
+        <div><b title="${esc(l.title)}">${esc(l.title)}</b><small title="${esc(l.file_path)}">${ui.pbadge(l)}${l.missing ? missTag() : ''}${ruTag(l)}${l.has_cue && !l.missing ? cueTag() : ''}${festTag(l, true)}<span>${esc(shortDir(l.file_path))}</span></small></div></div></td>
       <td class="clip" title="${esc(l.artist)}">${esc(l.artist)}</td>
       <td>${genreTag(l)}</td>
       <td class="mono">${esc(year(l) || '–')}</td>
@@ -136,6 +151,7 @@
         <div class="ctitle" title="${esc(l.title)}">${esc(l.title)}</div>
         <div class="cmeta" title="${esc(l.file_path)}"><span class="ch">${esc(l.artist)}</span><span>·</span><span>${esc(year(l) || '–')}</span><span>·</span><span>${l.missing ? '–' : fmtSize(l.size_mb)}</span></div>
         ${l.festival || l.festival_suggestion ? `<div class="cfest">${festTag(l)}</div>` : ''}
+        ${l.reupload && l.reupload.state !== 'kept' ? `<div class="cfest">${ruTag(l)}</div>` : ''}
         <div class="cfoot"><span class="lib-date" title="${esc(t('library.col_loaded'))}: ${esc(util.fmtFull(l.downloaded_at))}">${util.fmtDate(l.downloaded_at)}</span>${l.has_cue && !l.missing ? cueTag() : ''}<span class="spacer"></span>${actions(l)}</div>
       </div></div>`;
   }
@@ -400,6 +416,14 @@
     });
     if (restart) fx.pop(bar, 'grow');
 
+    const nru = items.filter(ruOpen).length;
+    const rchip = $('#lib-reup', el);
+    if (!nru) onlyReup = false;
+    rchip.hidden = !nru;
+    rchip.classList.toggle('on', onlyReup);
+    rchip.setAttribute('aria-pressed', onlyReup);
+    $('span', rchip).textContent = t('reupload.chip', { n: nru });
+
     const miss = items.filter((l) => l.missing).length;
     const chip = $('#lib-missing', el);
     if (!miss) onlyMissing = false;
@@ -432,6 +456,7 @@
     $('#lib-q', el).value = '';
     ['#lib-genre', '#lib-channel', '#lib-year'].forEach((s) => { $(s, el).value = ''; });
     onlyMissing = false;
+    onlyReup = false;
     refilter(true);
   }
 
@@ -497,6 +522,53 @@
       { label: t('library.retag_short'), icon: I.tag, key: 'retag', disabled: !!(l.missing || l.unknown || working), onClick: () => retag(l) },
       { label: t(l.missing ? 'library.remove' : 'library.delete'), icon: l.missing ? I.file_x : I.trash, danger: true, key: 'del', disabled: !!(working || l.unknown), onClick: () => remove(l) },
     ]);
+  }
+  /* ---------- Re-Upload (v0.10.0) ---------- */
+  /** Menü am Kennzeichen: beide behalten, als gleichen Mix verknüpfen, neue Datei löschen, Original zeigen, rückgängig. */
+  function reupMenu(l, anchor) {
+    const r = l.reupload;
+    if (!r) return;
+    const vars = { title: r.of.title || r.of.id, p: HC.platform.label(r.of.platform), score: Math.round((r.score || 0) * 100) };
+    const open = r.state === 'open';
+    ui.menu(anchor, [
+      { head: t(open ? 'reupload.menu_head' : 'reupload.menu_head_linked', vars) },
+      ...(open ? [
+        { label: t('reupload.keep'), icon: I.check, key: 'ru-keep', onClick: () => resolveReup(l, 'keep') },
+        { label: t('reupload.link'), icon: I.copy, key: 'ru-link', onClick: () => resolveReup(l, 'link') },
+      ] : [{ label: t('reupload.undo'), icon: I.retry, key: 'ru-open', onClick: () => resolveReup(l, 'open') }]),
+      { label: t('reupload.show_original'), icon: I.search, key: 'ru-show', disabled: !r.of.in_library, onClick: () => showOriginal(r.of) },
+      'sep',
+      { label: t('reupload.delete_new'), icon: I.trash, danger: true, key: 'ru-del', disabled: !!(l.unknown || busy.has(l.id)), onClick: () => deleteNew(l) },
+    ]);
+  }
+  async function resolveReup(l, action) {
+    const r = await HC.bridge.safe('resolve_reupload', l.id, action);
+    if (!r || !r.ok) return fail(r);
+    l.reupload = r.reupload || null;
+    renderStats(false);
+    if (!repaint(l, true) || onlyReup) render();
+    ui.toast(t('reupload.toast_' + action), 'ok');
+  }
+  async function deleteNew(l) {
+    const r0 = l.reupload;
+    const yes = await ui.modal({
+      title: t('dlg.reupload_del.title'), okLabel: t('dlg.reupload_del.ok'), danger: true, kind: 'del',
+      body: `<p>${esc(t('dlg.reupload_del.text', { title: l.title, of: (r0 && r0.of.title) || '' }))}</p><div class="pathbox">${esc(l.file_path)}</div>${ui.notice('info', t('dlg.reupload_del.note'))}`,
+    });
+    if (!yes) return;
+    HC.player.release(l.id);
+    const r = await HC.bridge.safe('resolve_reupload', l.id, 'delete_new');
+    if (!r || !r.ok) return fail(r);
+    dropItem(l, 'toast.deleted');
+  }
+  function showOriginal(of) {
+    onlyReup = false;
+    onlyMissing = false;
+    ['#lib-genre', '#lib-channel', '#lib-year'].forEach((x) => { $(x, el).value = ''; });
+    $('#lib-q', el).value = of.title || '';
+    refilter(true);
+    const n = nodeOf(of.id);
+    if (n) { n.scrollIntoView({ block: 'center' }); fx.flash(n); }
   }
   /** Kennzahlen und Auswahllisten nach einer Genre-Änderung nachziehen. */
   function genreChanged() {
@@ -679,6 +751,7 @@
           <button type="button" class="btn sm ghost lib-export" id="lib-export" title="${esc(t('library.export_title'))}">${I.playlist}${esc(t('library.export'))}</button>
           <button type="button" class="linkbtn" id="lib-clear" hidden>${t('library.clear')}</button>
           <button type="button" class="chip warnchip" id="lib-missing" title="${esc(t('library.missing_chip_title'))}" hidden>${I.warn}<span></span></button>
+          <button type="button" class="chip ruchip" id="lib-reup" title="${esc(t('reupload.chip_title'))}" hidden>${I.copy}<span></span></button>
         </div>
       </div>
       <div class="scroll" id="lib-scroll"><section class="lib-continue" id="lib-continue" aria-label="${esc(t('library.continue'))}" hidden></section><div id="lib-body"></div></div>
@@ -756,6 +829,16 @@
       render(true);
     });
     $('#lib-missing', el).addEventListener('click', () => { onlyMissing = !onlyMissing; refilter(true); });
+    $('#lib-reup', el).addEventListener('click', () => { onlyReup = !onlyReup; refilter(true); });
+    /* v0.10.0: neue/geänderte Re-Upload-Markierung (nach Download, Abgleich, Entscheid) */
+    HC.bridge.on('reupload', (d) => {
+      const l = items.find((x) => x.id === d.id);
+      if (!l) { if (loaded && d.reupload && HC.app.current() === 'library') refresh(false, d.id); return; }
+      if (d.deleted) { items = items.filter((x) => x !== l); renderStats(false); render(); return; }
+      l.reupload = d.reupload || null;
+      renderStats(false);
+      if (!repaint(l, true) || onlyReup) render();
+    });
     $('#lib-continue', el).addEventListener('click', onContinue);
     $('#lib-continue', el).addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-cl]')) { e.preventDefault(); onContinue(e); } });
     /* Position gemerkt/vergessen (Pause, Schliessen, Ende) -> Leiste nachladen. */
@@ -795,6 +878,7 @@
       else if (b.dataset.act === 'more') more(l, b);
       else if (b.dataset.act === 'genre') ui.genreMenu(b, l.genre, (name) => setGenre(l, name));
       else if (b.dataset.act === 'fest') festMenu(l, b);
+      else if (b.dataset.act === 'reupload') reupMenu(l, b);
       else if (b.dataset.act === 'fest-accept') acceptFestival(l);
     });
     /* Mini-Player: den laufenden Eintrag markieren (nur die betroffenen Zeilen neu zeichnen). */
@@ -827,8 +911,9 @@
       if (/^collector(-\d+)?$/.test(arg || '')) return C.open(arg);
       if (C.active() && changed) return C.resume();
       if (C.active()) C.close(true);
+      if (arg === 'reuploads') { onlyReup = true; return refresh(changed); }
       return refresh(changed);
     },
-    reset() { items = []; cont = []; loaded = false; targetDown = null; limit = PAGE; onlyMissing = false; busy.clear(); nav.series = nav.edition = null; HC.collector.reset(); HC.tracks.reset(); HC.djs.reset(); },
+    reset() { items = []; cont = []; loaded = false; targetDown = null; limit = PAGE; onlyMissing = false; onlyReup = false; busy.clear(); nav.series = nav.edition = null; HC.collector.reset(); HC.tracks.reset(); HC.djs.reset(); },
   };
 })();

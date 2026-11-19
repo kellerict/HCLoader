@@ -210,7 +210,8 @@
     "outside_period": "সময়কালের বাইরে",
     "preview": "শুধু প্রিভিউ (Go+)",
     "too_long": "বেশি লম্বা",
-    "too_short": "বেশি ছোট"
+    "too_short": "বেশি ছোট",
+    "select_only": "শুধু সাবস্ক্রাইবার (Mixcloud Select)"
   },
   "genre": {
     "unknown": "অজানা জনরা: {genre}"

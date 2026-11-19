@@ -210,7 +210,8 @@
     "outside_period": "Väljaspool perioodi",
     "preview": "Ainult eelvaade (Go+)",
     "too_long": "Liiga pikk",
-    "too_short": "Liiga lühike"
+    "too_short": "Liiga lühike",
+    "select_only": "Ainult tellijatele (Mixcloud Select)"
   },
   "genre": {
     "unknown": "Tundmatu žanr: {genre}"

@@ -462,7 +462,8 @@
      waveform        {id, ok, peaks?, duration?, loudness?, error?}   v0.7.0 angeforderte Wellenform ist fertig
      fingerprint     {phase, scope, done?, total?, found?, failed?, cancelled?, error?}
                      phase: "start"|"progress"|"done"|"error" (v0.10.0, «Bibliothek abgleichen»)
-     reupload        {id, reupload: Reupload|null, deleted?}   v0.10.0 Markierung neu/geändert/aufgelöst
+     reupload        {id, reupload: Reupload|null, deleted?, pass?}   v0.10.0 Markierung neu/geändert/aufgelöst
+                     (pass: true = Treffer des Bibliotheks-Abgleichs, die UI zeigt dafür keinen Toast)
      playlists_synced {synced, failed}                 v0.8.0 gespeicherte Playlists nach Downloads neu geschrieben
      stats_sizes     {phase: "progress"|"done", done, total, missing?}   v0.9.0 Dateigrössen werden gemessen
      media_scan      {ok, server, files, requests?, partial?, at, error?, code?}   v0.9.0 Plex/Jellyfin-Scan ausgelöst

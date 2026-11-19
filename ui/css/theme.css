@@ -47,6 +47,8 @@
   --error:#ff3b5c; --error-soft:rgba(255,59,92,.12);
   --info:#7fb7ff;
   --sc:#ff7a1a; --sc-soft:rgba(255,122,26,.13); /* SoundCloud: dezenter Zweitakzent, nur für Plattform-Kennzeichen */
+  --mc:#8a94ff; --mc-soft:rgba(138,148,255,.14); /* v0.10.0 Mixcloud */
+  --ht:#35d0c0; --ht-soft:rgba(53,208,192,.13); /* v0.10.0 hearthis.at */
 
   /* Genres (Defaults; zur Laufzeit kommen die Farben aus den Einstellungen) */
   --g-hardstyle:#a43bff; --g-hardcore:#ff1f1f; --g-uptempo:#b6ff00; --g-unsorted:#6b6b78;

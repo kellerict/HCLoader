@@ -63,7 +63,8 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "clock": "pukul",
     "req_h": "perm./jam",
     "lufs": "LUFS",
-    "db": "dB"
+    "db": "dB",
+    "pct": "%"
   },
   "range": {
     "ge_sleep": "≥ minimum",
@@ -95,7 +96,10 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "youtube": "YouTube",
     "soundcloud": "SoundCloud",
     "label": "Platform",
-    "sc_off": "SoundCloud dinonaktifkan – aktifkan di Pengaturan › SoundCloud."
+    "sc_off": "SoundCloud dinonaktifkan – aktifkan di Pengaturan › SoundCloud.",
+    "mixcloud": "Mixcloud",
+    "hearthis": "hearthis.at",
+    "p_off": "{p} dinonaktifkan – aktifkan di Pengaturan › Sumber lain."
   },
   "genre": {
     "change": "Ubah genre",
@@ -147,7 +151,8 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "sc_today": "{n} / {max}",
     "yt_tip": "YouTube · terunduh hari ini {day}/{day_max} · {s}/{s_max} pencarian jam ini",
     "sc_tip": "SoundCloud · terunduh hari ini {day}/{day_max} · {s}/{s_max} pencarian jam ini",
-    "backoff_tip": "{p}: backoff hingga {t} (sisa {rest})"
+    "backoff_tip": "{p}: backoff hingga {t} (sisa {rest})",
+    "p_tip": "{p} · terunduh hari ini {day}/{day_max} · {s}/{s_max} pencarian jam ini"
   },
   "schedule": {
     "due": "jatuh tempo",
@@ -161,7 +166,7 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
   },
   "card": {
     "source": "Ditemukan lewat sumber daftar pantau “{name}”",
-    "select": "Pilih",
+    "select": "Khusus pelanggan (Select)",
     "open": "Buka di {p}",
     "ignore": "Abaikan",
     "unignore": "Berhenti mengabaikan",
@@ -175,7 +180,8 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "duplicate": "Kemungkinan sudah diunduh ({p})",
     "duplicate_title": "Judul sangat mirip dan durasi sama dengan “{title}” dari {p} – sudah diunduh atau diantrekan di sana. Anda tetap bisa mengunduhnya.",
     "preview": "Hanya pratinjau (Go+) – tidak dapat diunduh",
-    "preview_title": "SoundCloud hanya menyediakan pratinjau 30 detik (Go+) untuk trek ini. Trek ini tidak dapat diunduh."
+    "preview_title": "SoundCloud hanya menyediakan pratinjau 30 detik (Go+) untuk trek ini. Trek ini tidak dapat diunduh.",
+    "select_title": "Unggahan Mixcloud ini hanya tersedia bagi pelanggan pembuatnya (Mixcloud Select). Tidak bisa diunduh."
   },
   "discover": {
     "placeholder": "Cari mix, live set, DJ, acara …",
@@ -232,7 +238,13 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "ready_text": "Masukkan kata kunci lalu tekan Enter.",
     "none_title": "Tidak ada hasil",
     "none_text": "Longgarkan filter atau coba kata kunci lain.",
-    "none_year": "Tidak ada hasil dari {year}. Cari lagi agar tahun ikut dalam kata kunci – atau ubah tahunnya."
+    "none_year": "Tidak ada hasil dari {year}. Cari lagi agar tahun ikut dalam kata kunci – atau ubah tahunnya.",
+    "quota_p": "Pencarian {p} jam ini: {n} / {max}",
+    "placeholder_p": "Cari di {p}: mix, set, DJ, podcast …",
+    "searching_p": "Mencari – kueri ringan, hemat beban {p} …",
+    "ready_text_p": "Masukkan kata kunci lalu tekan Enter untuk mencari di {p}.",
+    "previews_mc": "{n} khusus pelanggan (Select)",
+    "previews_mc_title": "Unggahan Mixcloud Select hanya untuk pelanggan berbayar dan tidak pernah bisa diunduh. Terlihat saat “Sembunyikan yang diunduh & diabaikan” mati."
   },
   "inbox": {
     "title": "Kotak masuk",
@@ -320,8 +332,8 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "hits_auto": "Unduh otomatis",
     "hint_inbox": "Temuan menunggu di kotak masuk hingga Anda mengunduh atau mengabaikannya.",
     "hint_auto": "Temuan yang lolos semua filter langsung masuk ke antrean.",
-    "hint_channel": "Kanal YouTube (…/@nama atau …/channel/UC…, opsional /videos atau /streams) atau profil SoundCloud (soundcloud.com/nama).",
-    "hint_playlist": "Playlist YouTube dengan “list=…” atau set SoundCloud (soundcloud.com/nama/sets/set). Entri terbaru yang diperiksa.",
+    "hint_channel": "Kanal YouTube (…/@nama atau …/channel/UC…, opsional /videos atau /streams), profil SoundCloud (soundcloud.com/nama), pengguna Mixcloud (mixcloud.com/nama) atau pengguna hearthis.at (hearthis.at/nama).",
+    "hint_playlist": "Playlist YouTube dengan “list=…”, set SoundCloud (soundcloud.com/nama/sets/set), playlist Mixcloud (mixcloud.com/nama/playlists/daftar) atau set hearthis.at (hearthis.at/nama/set/set). Entri terbaru yang diperiksa.",
     "f_platform": "Cari di",
     "detected": "terdeteksi: {p} · {type}",
     "not_detected": "URL tidak dikenali",
@@ -340,7 +352,9 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "ph_channel": "https://www.youtube.com/@kanal  atau  https://soundcloud.com/nama",
     "ph_playlist": "https://www.youtube.com/playlist?list=…  atau  https://soundcloud.com/nama/sets/…",
     "ph_search": "mis. frenchcore liveset",
-    "form_error": "Sumber tidak dapat disimpan."
+    "form_error": "Sumber tidak dapat disimpan.",
+    "backoff_link_p": "Buka {p}",
+    "why_p_off": "{p} dinonaktifkan"
   },
   "downloads": {
     "title": "Unduhan",
@@ -411,7 +425,8 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     },
     "local_link_pot": "Pengaturan jaringan",
     "local_link_target": "Ubah lokasi penyimpanan",
-    "local_link_error": "Pemeliharaan"
+    "local_link_error": "Pemeliharaan",
+    "summary_p": "{p} {day}/{day_max}"
   },
   "library": {
     "title": "Pustaka",
@@ -613,7 +628,9 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "festivals": "Festival & seri",
     "playback": "Pemutaran",
     "notifications": "Notifikasi",
-    "mediaserver": "Server media"
+    "mediaserver": "Server media",
+    "sources": "Sumber lain",
+    "reupload": "Unggahan ulang"
   },
   "tabs_hint": {
     "general": "Perilaku dasar aplikasi.",
@@ -621,7 +638,7 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "genres": "Urutan = prioritas. Genre pertama yang kata kuncinya muncul di judul menang. Genre yang diatur manual dan genre bawaan sumber didahulukan.",
     "download": "YouTube biasanya menyajikan Opus sekitar 130–160 kbps. MP3 adalah hasil konversi dan tidak terdengar lebih baik dari sumbernya – tetapi bisa diputar di mana saja.",
     "storage": "Ke mana file disimpan dan bagaimana penamaannya. Strukturnya dirancang untuk server media seperti Plex atau Jellyfin.",
-    "throttle": "Membatasi beban pada YouTube. Nilai ini berlaku untuk pencarian, daftar pantau, dan unduhan sekaligus. SoundCloud punya nilai sendiri di tab “SoundCloud”.",
+    "throttle": "Membatasi beban pada YouTube. Nilai ini berlaku untuk pencarian, daftar pantau, dan unduhan sekaligus. SoundCloud punya nilai sendiri di tab “SoundCloud”. Mixcloud dan hearthis.at punya nilai sendiri di “Sumber lain”.",
     "soundcloud": "SoundCloud sebagai sumber kedua untuk pencarian, daftar pantau, dan unduhan – dengan batas, penghitung, dan backoff sendiri, terpisah dari YouTube.",
     "network": "PO-Token menandai permintaan sebagai browser sungguhan dan menurunkan risiko pemblokiran bot.",
     "schedule": "Kapan daftar pantau diperiksa otomatis – di aplikasi dan lewat Penjadwal Tugas Windows.",
@@ -630,7 +647,9 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "festivals": "Mengenali festival atau seri, tahun, panggung, dan jenis set dari judul yang tersimpan – luring, tanpa satu pun permintaan tambahan.",
     "playback": "Pemutar bawaan, penyamaan kenyaringan, posisi yang diingat, dan analisis offline file Anda.",
     "notifications": "Notifikasi Windows untuk set baru di kotak masuk serta unduhan yang selesai atau gagal – digabung menjadi satu pesan, tidak pernah membanjiri. Klik membuka aplikasi di tempat yang tepat.",
-    "mediaserver": "Setelah unduhan, minta server Plex atau Jellyfin Anda memindai ulang perpustakaannya – digabung, hanya di jaringan lokal. Token disimpan di Windows Credential Manager, tidak pernah di config.yaml."
+    "mediaserver": "Setelah unduhan, minta server Plex atau Jellyfin Anda memindai ulang perpustakaannya – digabung, hanya di jaringan lokal. Token disimpan di Windows Credential Manager, tidak pernah di config.yaml.",
+    "sources": "Mixcloud dan hearthis.at sebagai sumber tambahan untuk pencarian, watchlist, dan unduhan – masing-masing dengan batas, penghitung, dan backoff sendiri, terpisah dari YouTube dan SoundCloud.",
+    "reupload": "Mengenali mix yang sama yang diunggah lagi (kanal lain, platform lain, id baru) lewat sidik jari audio yang ringkas – dihitung offline dari file Anda, tanpa jaringan."
   },
   "set": {
     "default": "Bawaan",
@@ -680,7 +699,9 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
       "playlists": "Playlist (M3U8)",
       "notify_events": "Beri tahu saya tentang",
       "quiet": "Jam tenang",
-      "ms_paths": "Jalur & waktu"
+      "ms_paths": "Jalur & waktu",
+      "more_sources": "Mixcloud & hearthis.at",
+      "fingerprint": "Sidik jari"
     },
     "general": {
       "language": {
@@ -826,6 +847,14 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
       "keep_original_soundcloud": {
         "label": "Pertahankan asli SoundCloud",
         "help": "Simpan audio SoundCloud tanpa perubahan (AAC 160 kbps sebagai .m4a, MP3 128 kbps sebagai .mp3) – tanpa konversi lossy kedua. Nonaktif: seperti “Format keluaran”."
+      },
+      "keep_original_mixcloud": {
+        "label": "Simpan asli Mixcloud",
+        "help": "Simpan audio Mixcloud tanpa diubah (AAC, biasanya 64–128 kbps, sebagai .m4a) – tanpa konversi lossy kedua. Mati: sesuai “Format keluaran”."
+      },
+      "keep_original_hearthis": {
+        "label": "Simpan asli hearthis.at",
+        "help": "Simpan stream hearthis.at tanpa diubah (MP3) – tanpa konversi lossy kedua. Mati: sesuai “Format keluaran”."
       }
     },
     "storage": {
@@ -910,7 +939,9 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
       "blocked": "{p} memberi sinyal blokir. Pencarian, daftar pantau, dan unduhan dari {p} diblokir hingga waktunya habis.",
       "clear": "Cabut manual",
       "sc_off": "SoundCloud dinonaktifkan",
-      "sc_off_detail": "Tidak ada pencarian SoundCloud, pemeriksaan daftar pantau, maupun unduhan dari SoundCloud."
+      "sc_off_detail": "Tidak ada pencarian SoundCloud, pemeriksaan daftar pantau, maupun unduhan dari SoundCloud.",
+      "p_off": "{p} dinonaktifkan",
+      "p_off_detail": "Tidak ada pencarian {p}, pemeriksaan daftar pantau, maupun unduhan dari {p}."
     },
     "soundcloud": {
       "enabled": {
@@ -1381,6 +1412,84 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
         "help": "Perpustakaan mana yang dipindai. “Semua perpustakaan” memindai semuanya (lebih lambat di server besar)."
       },
       "lib_paths": "Folder di server: {p}"
+    },
+    "platform": {
+      "enabled": {
+        "label": "Gunakan {p}",
+        "help": "Nonaktif: tidak ada pencarian {p}, tidak ada pemeriksaan sumber {p}, dan tidak ada unduhan {p}. Yang sudah diunduh tetap ada di pustaka."
+      },
+      "sleep_requests": {
+        "label": "Jeda antar permintaan",
+        "help": "Waktu tunggu antar kueri metadata ke {p} (pencarian, daftar pantau)."
+      },
+      "sleep_interval": {
+        "label": "Jeda unduhan – minimum",
+        "help": "Setelah tiap unduhan {p}, jeda acak antara minimum dan maksimum menyusul."
+      },
+      "max_sleep_interval": {
+        "label": "Jeda unduhan – maksimum",
+        "help": "Batas atas jeda acak."
+      },
+      "limit_rate_mb": {
+        "label": "Kecepatan unduh",
+        "help": "Bandwidth maksimum. 0 = tanpa batas (tidak disarankan)."
+      },
+      "max_downloads_per_run": {
+        "label": "Maks. unduhan per sesi",
+        "help": "Penghitung terpisah untuk {p}. Sisanya tetap di antrean."
+      },
+      "max_downloads_per_day": {
+        "label": "Maks. unduhan per hari",
+        "help": "Penghitung terpisah untuk {p}, unduhan manual dan otomatis sekaligus."
+      },
+      "max_searches_per_hour": {
+        "label": "Maks. pencarian per jam",
+        "help": "Penghitung terpisah untuk {p}."
+      },
+      "backoff_initial_hours": {
+        "label": "Backoff – nilai awal",
+        "help": "Lama blokir setelah {p} melaporkan terlalu banyak permintaan (HTTP 429)."
+      },
+      "backoff_max_hours": {
+        "label": "Backoff – maksimum",
+        "help": "Lama blokir berlipat ganda pada setiap blokir berikutnya hingga nilai ini."
+      }
+    },
+    "reupload": {
+      "enabled": {
+        "label": "Deteksi unggahan ulang",
+        "help": "Menghitung sidik jari audio ringkas per set secara offline dengan ffmpeg dan membandingkan unduhan baru dengan pustaka Anda. Kecocokan ditandai “Kemungkinan unggahan ulang dari …” – tidak ada yang dihapus otomatis."
+      },
+      "fingerprint_after_download": {
+        "label": "Sidik jari setelah tiap unduhan",
+        "help": "Satu file setiap kali dengan prioritas rendah, setelah analisis kenyaringan. Mati: hanya pencocokan pustaka di bawah."
+      },
+      "precheck": {
+        "label": "Periksa sebelum mengunduh",
+        "help": "Sebelum unduhan juga membandingkan durasi (±5 dtk) dan judul dengan pustaka di platform yang sama – tanpa permintaan tambahan. Hasil cocok masuk ke kotak masuk, bukan antrean, dan menampilkan “Kemungkinan sudah diunduh”."
+      },
+      "head_minutes": {
+        "label": "Menit dari awal",
+        "help": "Seberapa banyak bagian awal yang masuk ke sidik jari. Lebih banyak = lebih aman untuk set dengan intro panjang yang sama, sedikit lebih lambat."
+      },
+      "windows": {
+        "label": "Jendela tambahan",
+        "help": "Jendela 30 detik yang tersebar di sisa set. Dengan ini dua set berbeda yang dimulai dengan trek yang sama bisa dibedakan. 0 = hanya awal."
+      },
+      "min_score": {
+        "label": "Ambang kecocokan",
+        "help": "Proporsi hash sidik jari yang cocok agar set dianggap unggahan ulang. Lebih rendah = menemukan lebih banyak, tapi lebih banyak salah."
+      },
+      "title": "{done} dari {total} file punya sidik jari",
+      "marks": "{open} terbuka · {linked} tertaut · {kept} disimpan",
+      "help": "Berjalan offline di pustaka, satu file setiap kali dengan prioritas rendah – tanpa jaringan, audio tidak berubah. Bisa dibatalkan kapan saja.",
+      "button": "Cocokkan file baru",
+      "button_n": "Cocokkan {n} baru",
+      "all": "Cocokkan semua lagi",
+      "all_title": "Hitung ulang setiap sidik jari (mis. setelah mengubah jendela) – keputusan Anda tetap",
+      "running": "Mencocokkan … {done} / {total} · {found} ditemukan",
+      "show": "Tampilkan {n} di pustaka",
+      "no_ffmpeg": "Sidik jari memerlukan ffmpeg (bin\\ffmpeg.exe, dipasang oleh setup.ps1). Pengaturan › Pemeliharaan menampilkan statusnya."
     }
   },
   "opt": {
@@ -1495,6 +1604,12 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
       "title": "Setel ulang seri bawaan?",
       "text": "Semua seri bawaan kembali ke keadaan semula dan yang disembunyikan muncul lagi. Seri Anda sendiri tetap ada.",
       "ok": "Setel ulang"
+    },
+    "reupload_del": {
+      "title": "Hapus unggahan ulang?",
+      "ok": "Hapus file",
+      "text": "“{title}” kemungkinan mix yang sama dengan “{of}”. Hapus file yang lebih baru ini?",
+      "note": "Aslinya tetap ada. Entri diubah menjadi “diabaikan” dan tidak diunduh lagi."
     }
   },
   "toast": {
@@ -1572,7 +1687,9 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "assign_done": "Festival ditetapkan: {assigned} baru, {suggested} saran",
     "assign_cancelled": "Penetapan dibatalkan: {assigned} baru, {suggested} saran",
     "analysis_done": "Kenyaringan dianalisis: {n} file ({failed} gagal)",
-    "analysis_cancelled": "Analisis dibatalkan setelah {n} file"
+    "analysis_cancelled": "Analisis dibatalkan setelah {n} file",
+    "fp_done": "Pustaka dicocokkan: {n} file, {found} kemungkinan unggahan ulang",
+    "fp_cancelled": "Pencocokan dibatalkan setelah {n} file"
   },
   "upd": {
     "available": "Versi {v} tersedia",
@@ -2145,5 +2262,26 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "empty_title": "Belum ada set",
     "empty_text": "Begitu set pertama ada di perpustakaan, Anda akan melihat di sini apa yang Anda koleksi – genre, festival, DJ, jam.",
     "empty_go": "Temukan set"
+  },
+  "reupload": {
+    "tag": "Unggahan ulang?",
+    "tag_title": "Kemungkinan unggahan ulang dari “{title}” ({p}, {score} % cocok) – klik untuk memutuskan",
+    "linked": "Mix sama",
+    "linked_title": "Ditautkan sebagai mix yang sama dengan “{title}” ({p})",
+    "chip": "Unggahan ulang ({n})",
+    "chip_title": "Tampilkan hanya set yang ditandai sebagai kemungkinan unggahan ulang",
+    "menu_head": "Kemungkinan unggahan ulang dari “{title}” · {score} %",
+    "menu_head_linked": "Mix yang sama dengan “{title}”",
+    "keep": "Simpan keduanya",
+    "link": "Tautkan sebagai mix yang sama",
+    "undo": "Batalkan keputusan",
+    "show_original": "Tampilkan aslinya",
+    "delete_new": "Hapus file yang lebih baru ini",
+    "toast_keep": "Keduanya disimpan – tanda dihapus",
+    "toast_link": "Ditautkan sebagai mix yang sama",
+    "toast_open": "Keputusan dibatalkan",
+    "toast_found": "Kemungkinan unggahan ulang: “{title}” cocok dengan “{of}” – lihat pustaka",
+    "dl_notice": "Unduhan terbaru yang kemungkinan unggahan ulang dari set yang sudah Anda miliki ({n}):",
+    "review": "Tinjau di pustaka"
   }
 });
