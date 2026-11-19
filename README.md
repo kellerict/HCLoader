@@ -44,8 +44,10 @@ such as Plex or Jellyfin.
   Windows display language; switching applies at once.
 - **Everything configurable in the GUI**, every setting with help text, default and reset.
 - **Portable or venv install**, a one-click yt-dlp/plugin update, SQLite state, DB backups.
-- **Sources**: YouTube today; SoundCloud is in development. See
+- **Sources**: YouTube, SoundCloud, Mixcloud and hearthis.at, each with its own throttle. See
   [Supported sources](https://github.com/kellerict/HCLoader/wiki/Supported-Sources).
+- **Re-upload detection**: an offline audio fingerprint marks probable re-uploads of sets you
+  already have. See [Re-upload detection](https://github.com/kellerict/HCLoader/wiki/Re-upload-Detection).
 
 <p align="center">
   <img src="docs/screenshots/downloads.png" alt="Downloads view" width="48%">
@@ -132,7 +134,7 @@ More: [Installation](https://github.com/kellerict/HCLoader/wiki/Installation), [
 | **Downloads** | The queue with live progress, today's and this run's counters, pause and retry. |
 | **Bibliothek** (Library) | Everything you have downloaded; re-tag, open folder, delete, play. |
 | **Protokoll** (Log) | Live log and run history (manual, watchlist, scheduled). |
-| **Einstellungen** (Settings) | All options in tabs: general, filters, genres, download, storage, throttle, SoundCloud, network and PO token, schedule, appearance, maintenance. |
+| **Einstellungen** (Settings) | All options in tabs: general, filters, genres, download, storage, throttle, SoundCloud, more sources, re-uploads, network and PO token, schedule, appearance, maintenance. |
 
 The navigation labels are German; the English names above are used throughout the documentation.
 See the wiki pages [Discover and search](https://github.com/kellerict/HCLoader/wiki/Discover-and-Search),
@@ -162,7 +164,7 @@ changed in **Settings, Schonung** (throttle).
 Cheap before expensive: results come from flat metadata queries, are filtered, and only then are
 individual videos resolved and downloaded. A video is never downloaded twice (SQLite state plus
 yt-dlp download archive). While a backoff is active, search, watchlist and downloads are blocked
-and the status bar shows the remaining time. SoundCloud has its own limits, counters and backoff.
+and the status bar shows the remaining time. SoundCloud, Mixcloud and hearthis.at have their own limits, counters and backoff.
 More in [Throttling and backoff](https://github.com/kellerict/HCLoader/wiki/Throttling-and-Backoff).
 
 ## Folder structure and tags
@@ -250,7 +252,7 @@ collaborators. See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY
 
 HCLoader is meant for **personal archiving of content you have access to**. It is not a tool for
 redistributing music. You are responsible for complying with the terms of service of YouTube
-(and SoundCloud) and with copyright law in your country. Respect the creators: support the artists
+(and SoundCloud, Mixcloud, hearthis.at) and with copyright law in your country. Respect the creators: support the artists
 whose mixes you enjoy. The built-in limits exist to keep the load on these services low; please do
 not work around them.
 

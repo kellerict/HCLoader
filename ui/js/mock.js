@@ -395,7 +395,7 @@
   ];
   const HT_VIDEOS = [
     HT(4001, 'frenchcore-podcast-31', 'Frenchcore Podcast 31', 'fab', 60, 10, 2, 812, 'Hardcore'),
-    HT(4002, 'uptempo-underground-12', 'Uptempo Underground 12 – 250 BPM', 'ug', 54, 33, 6, 420, 'Uptempo'),
+    HT(4002, 'uptempo-underground-12', 'Uptempo Underground 12 – 250 BPM Mix', 'ug', 54, 33, 6, 420, 'Uptempo'),
     HT(4003, 'frenchcore-podcast-30', 'Frenchcore Podcast 30', 'fab', 61, 2, 16, 1300, 'Hardcore'),
     HT(4004, 'raw-and-dirty-liveset', 'Raw & Dirty Liveset (Basement)', 'ug', 66, 50, 30, 210, 'Hardstyle', { status: 'inbox', source_id: 11 }),
   ];
