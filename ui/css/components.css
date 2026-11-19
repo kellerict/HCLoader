@@ -1887,3 +1887,66 @@ button.tk-time:hover,button.tk-time:focus-visible{border-color:var(--acid);backg
 .chip.ruchip svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.2}
 .chip.ruchip.on{color:#000}
 .lib-card .cfest .ru-tag{margin-top:2px}
+
+/* =====================================================================
+   Entdecken: aufklappbare Plattform-Auswahl, Plattform-Logos, Stichwort-Boxen
+   ===================================================================== */
+.picon{width:18px;height:18px;flex:none;display:block;user-select:none;pointer-events:none}
+.pbadge .picon{width:11px;height:11px}
+.psel{position:relative;flex:none;display:flex}
+.psel-btn{display:inline-flex;align-items:center;gap:9px;min-width:158px;padding:0 10px 0 12px;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);
+  font:600 12px/18px var(--f-mono);letter-spacing:calc(.8px * var(--ls));text-transform:uppercase;color:var(--text);
+  transition:border-color var(--t-fast),box-shadow var(--t-fast),background var(--t-fast)}
+.psel-btn:hover:not(:disabled){border-color:var(--line-2);background:var(--panel-2)}
+.psel-btn:focus-visible,.psel.open .psel-btn{outline:none;border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 0 14px var(--accent-glow)}
+.psel-btn:disabled{opacity:.55;cursor:progress}
+.psel-btn>svg{width:14px;height:14px;margin-left:auto;stroke:var(--muted);fill:none;stroke-width:2.4;flex:none;transition:transform var(--t-med)}
+.psel.open .psel-btn>svg{transform:rotate(180deg)}
+.psel-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.psel-list{position:absolute;left:0;top:calc(100% + 6px);z-index:40;min-width:100%;width:max-content;max-width:300px;padding:5px;display:flex;flex-direction:column;gap:1px;
+  background:var(--panel-2);border:1px solid var(--line-2);border-radius:var(--radius);box-shadow:0 14px 34px rgba(0,0,0,.65);
+  transform-origin:top left;animation:psel-in var(--t-med) ease-out}
+.psel-list[hidden]{display:none}
+@keyframes psel-in{from{opacity:0;transform:translateY(-4px) scaleY(.96)}to{opacity:1;transform:none}}
+.psel-list button{display:flex;align-items:center;gap:10px;width:100%;padding:7px 9px;background:none;border:0;border-radius:var(--radius-sm);text-align:left;
+  font:500 13px/18px var(--f-body,inherit);color:var(--text);transition:background var(--t-fast)}
+.psel-list button[hidden]{display:none}
+.psel-list button:hover,.psel-list button:focus-visible{background:var(--panel-3);outline:none}
+.psel-list button:focus-visible{box-shadow:inset 0 0 0 1px var(--accent)}
+.psel-list button>svg{width:14px;height:14px;stroke:var(--acid);fill:none;stroke-width:2.6;flex:none;visibility:hidden}
+.psel-list button.on>svg{visibility:visible}
+.psel-list button.on .psel-name{font-weight:700}
+.psel-list button.off{opacity:.42;cursor:not-allowed}
+.psel-list button[data-p=all]{margin-bottom:4px;position:relative}
+.psel-list button[data-p=all]::after{content:"";position:absolute;left:4px;right:4px;bottom:-3px;border-bottom:1px solid var(--line)}
+.psel-note{margin-left:auto;padding-left:12px;font:10.5px/18px var(--f-mono);letter-spacing:calc(.8px * var(--ls));text-transform:uppercase;color:var(--dim);white-space:nowrap}
+.psel-note.warn{color:var(--warn)}
+.psel-note:empty{padding:0}
+.bulkbar .count .picon{display:inline-block;width:14px;height:14px;vertical-align:-2px;margin-right:7px}
+.search-info .skipped{display:inline-flex;align-items:center;gap:6px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);cursor:help}
+.search-info .skipped svg{width:13px;height:13px;stroke:var(--warn);fill:none;stroke-width:2.2;flex:none}
+#quota span{white-space:nowrap}
+
+.kwbox{position:relative}
+.kwbox .tags{padding-right:30px}
+.kw-clear{position:absolute;right:4px;bottom:4px;width:24px;height:24px;display:grid;place-items:center;background:none;border:1px solid transparent;border-radius:var(--radius-sm);
+  color:var(--dim);transition:color var(--t-fast),border-color var(--t-fast),background var(--t-fast)}
+.kw-clear[hidden]{display:none}
+.kw-clear svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.2}
+.kw-clear:hover,.kw-clear:focus-visible{color:var(--error);border-color:rgba(255,59,92,.45);background:rgba(255,59,92,.08);outline:none}
+.kw-suggs{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.kw-suggs[hidden]{display:none}
+.kw-sugg{display:inline-flex;align-items:center;gap:4px;max-width:100%;padding:1px 7px 1px 5px;background:none;border:1px dashed var(--line-2);border-radius:var(--radius-sm);
+  font:12px/18px var(--f-mono);color:var(--muted);opacity:.78;transition:opacity var(--t-fast),color var(--t-fast),border-color var(--t-fast)}
+.kw-sugg i{font-style:normal;color:var(--dim)}
+.kw-sugg span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kw-sugg:hover,.kw-sugg:focus-visible{opacity:1;color:var(--text);border-color:var(--muted);border-style:solid;outline:none}
+.kw-sugg:hover i,.kw-sugg:focus-visible i{color:var(--acid)}
+.kw-hint{margin-top:-6px;margin-bottom:18px}
+.toast-act{flex:none;align-self:center;margin-left:6px;padding:2px 9px;background:none;border:1px solid var(--line-2);border-radius:var(--radius-sm);
+  font:600 11px/18px var(--f-mono);letter-spacing:calc(.8px * var(--ls));text-transform:uppercase;color:var(--text);transition:border-color var(--t-fast),color var(--t-fast)}
+.toast-act:hover,.toast-act:focus-visible{border-color:var(--accent);color:var(--accent);outline:none}
+/* Logos einfarbig, sobald Effekte reduziert sind oder das System mehr Kontrast verlangt. */
+body.reduced .picon{filter:grayscale(1) brightness(1.5) contrast(1.15)}
+@media (prefers-contrast:more),(forced-colors:active){.picon{filter:grayscale(1) brightness(1.5) contrast(1.15)}}
+@media (prefers-reduced-motion:reduce){.psel-list{animation:none}.psel-btn>svg{transition:none}}

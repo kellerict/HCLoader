@@ -1,8 +1,11 @@
 /* =====================================================================
    views/discover.js – Entdecken: Suche, Genre-Chips, Filter-Panel, Karten
    Die Filter laufen clientseitig auf den Treffern (Spiegel von core/filters.py).
-   Plattform-Umschalter YouTube | SoundCloud (Phase 7a): jede Plattform behält ihre
-   letzten Treffer; gesucht wird immer nur auf der gewählten.
+   Plattform-Auswahl (aufklappbar): jede Plattform behält ihre letzten Treffer. «Alle» sucht
+   die eingeschalteten Plattformen NACHEINANDER über den normalen Suchaufruf je Plattform
+   (Throttle und Suchen/Stunde gelten je Plattform, nie parallel) und mischt die Treffer.
+   Die Stichwort-Boxen im Filter-Panel sind ein Sitzungsfilter: Startwert = gespeicherte
+   Einstellungen (Filter), Änderungen hier speichern nichts.
    ===================================================================== */
 (function () {
   'use strict';
@@ -25,7 +28,11 @@
   let incEd, excEd;
   /* Womit die angezeigten Treffer gesucht wurden (für «Gesucht mit …» und den Veraltet-Hinweis). */
   let last = null; // {query, effective, genre, year, known}
-  let platform = 'youtube';
+  let platform = 'youtube'; // oder ALL
+  const ALL = 'all';
+  const STORE_KEY = 'hcl.discover.platform';
+  let progress = null; // «Alle»: {p, i, n} – welche Plattform gerade gesucht wird
+  let menuOpen = false;
   const stash = {}; // Treffer der gerade nicht gezeigten Plattform: {results, last}
 
   function defaultsFromSettings() {
@@ -53,6 +60,8 @@
     $('#f-blacklist', el).checked = f.blacklist;
     incEd.set(f.inc);
     excEd.set(f.exc);
+    renderKw('inc');
+    renderKw('exc');
     renderChips();
   }
 
@@ -89,7 +98,7 @@
     return {
       genre: on.length === 1 && on[0] !== FALLBACK_GENRE ? on[0] : null,
       year: f.period === 'year' ? f.year : null,
-      platform,
+      platform: platform === ALL ? null : platform,
     };
   }
   /** Das Jahr landet nur im Suchbegriff, wenn search.append_year an ist. */
@@ -157,25 +166,31 @@
     const o = searchOpts();
     const stale = last.known && (o.genre !== last.genre || (appendYear() && (o.year || null) !== last.year));
     const eff = last.effective;
-    if (!eff && !stale) { box.hidden = true; return; }
+    const skip = last.skipped && last.skipped.length ? `<span class="skipped" title="${util.esc(t('discover.skipped_title'))}">${I.info}${t('discover.skipped', { list: last.skipped.map(skipText).join(' · ') })}</span>` : '';
+    if (!eff && !stale && !skip) { box.hidden = true; return; }
     let q = '';
     if (eff) {
       const base = last.query || '';
       const split = base && eff.toLowerCase().startsWith(base.toLowerCase()) ? base.length : 0;
       q = `<span class="k">${t('discover.searched')}</span><span class="q" title="${util.esc(eff)}">${util.esc(eff.slice(0, split))}<b>${util.esc(eff.slice(split))}</b></span>`;
     }
-    box.innerHTML = `${q}${stale ? `<span class="stale" title="${util.esc(t('discover.re_search_title'))}"><span class="led warn"></span>${t('discover.stale')}<button class="linkbtn" data-re>${t('discover.re_search')}</button></span>` : ''}`;
+    box.innerHTML = `${q}${skip}${stale ? `<span class="stale" title="${util.esc(t('discover.re_search_title'))}"><span class="led warn"></span>${t('discover.stale')}<button class="linkbtn" data-re>${t('discover.re_search')}</button></span>` : ''}`;
     box.hidden = false;
   }
   function renderQuota() {
     if (!HC.status) return;
+    if (platform === ALL) {
+      const list = allTargets().map((p) => { const x = HC.platform.state(p); return `<span title="${util.esc(HC.platform.label(p))}">${HC.platform.short(p)} <b>${util.esc(x.counters.searches_hour || 0)}</b>/${util.esc(x.limits.searches_hour)}</span>`; }).join(' · ');
+      $('#quota', el).innerHTML = t('discover.quota_all', { list });
+      return;
+    }
     const st = HC.platform.state(platform);
     $('#quota', el).innerHTML = t(pkey('discover.quota'), { p: util.esc(HC.platform.label(platform)), n: `<b>${util.esc(st.counters.searches_hour || 0)}</b>`, max: util.esc(st.limits.searches_hour) });
   }
   function renderCount(list) {
     const n = list.length, hidden = results ? results.length - n : 0;
     const prev = results ? results.filter((v) => v.preview).length : 0;
-    $('#count', el).innerHTML = searching ? t(pkey('discover.searching'), { p: HC.platform.label(platform) })
+    $('#count', el).innerHTML = searching ? (platform === ALL ? (progress ? `${HC.platform.icon(progress.p)}${t('discover.searching_all', { p: util.esc(HC.platform.label(progress.p)), i: progress.i, n: progress.n })}` : '') : t(pkey('discover.searching'), { p: HC.platform.label(platform) }))
       : !results ? ''
         : t('discover.count', { n: `<b>${util.fmtNum(n)}</b>`, count: n, hidden }) + (prev ? ` · <span class="prevcount" title="${util.esc(t(platform === 'mixcloud' ? 'discover.previews_mc_title' : 'discover.previews_title'))}">${t(platform === 'mixcloud' ? 'discover.previews_mc' : 'discover.previews', { n: prev })}</span>` : '')
           + (sel.size ? ` · ${t('discover.selected', { n: `<b>${sel.size}</b>` })}` : '');
@@ -192,7 +207,7 @@
     }
     const list = visible();
     [...sel].forEach((id) => { const v = HC.store.get(id); if (!ui.canLoad(v) || !list.includes(v)) sel.delete(id); });
-    if (!results) grid.innerHTML = `<div class="empty">${platform !== 'youtube' ? I.wave : I.search}<h4>${t('discover.ready_title')}</h4>${t(pkey('discover.ready_text'), { p: util.esc(HC.platform.label(platform)) })}</div>`;
+    if (!results) grid.innerHTML = `<div class="empty">${platform !== 'youtube' ? I.wave : I.search}<h4>${t('discover.ready_title')}</h4>${t(pkey('discover.ready_text'), { p: util.esc(plabel(platform)) })}</div>`;
     else if (!list.length) grid.innerHTML = `<div class="empty">${I.filter}<h4>${t('discover.none_title')}</h4>${f.period === 'year' ? t('discover.none_year', { year: f.year }) : t('discover.none_text')}</div>`;
     else grid.innerHTML = list.map((v) => ui.card(v, { selected: sel.has(v.id) })).join('');
     renderCount(list);
@@ -211,6 +226,21 @@
     ui.busy(btn, true, t('discover.searching_btn'));
     paintPlatform();
     renderGrid();
+    if (platform === ALL) {
+      const out = await searchAll(q, opts);
+      searching = false;
+      progress = null;
+      ui.busy(btn, false);
+      paintPlatform();
+      if (out.ok) {
+        results = out.results;
+        sel.clear();
+        last = { query: q, effective: out.effective, genre: opts.genre, year: opts.year || null, known: true, skipped: out.skipped };
+      } else ui.toast(out.error || t('discover.all_none'), 'err');
+      renderGrid(true);
+      renderQuota();
+      return;
+    }
     const r = await HC.bridge.safe('search', q, opts);
     searching = false;
     ui.busy(btn, false);
@@ -223,28 +253,91 @@
     renderGrid(true);
   }
 
-  /* ---------- Plattform-Umschalter ---------- */
+  /* ---------- «Alle»: eine Plattform nach der anderen ---------- */
+  const allTargets = () => HC.platform.active();
+  const skipText = (x) => `${util.esc(HC.platform.label(x.p))} (${util.esc(x.why === 'backoff' ? t('discover.skip_backoff', { t: util.fmtTime(x.until) }) : x.error || t('discover.skip_error'))})`;
+  /** Treffer je Plattform im Reissverschluss mischen (Rang 1 jeder Plattform zuerst) – «Relevanz» bleibt so je Plattform erhalten. */
+  function interleave(lists) {
+    const out = [], seen = new Set();
+    const n = Math.max(0, ...lists.map((l) => l.length));
+    for (let i = 0; i < n; i++) lists.forEach((l) => { const v = l[i]; if (v && !seen.has(v.id)) { seen.add(v.id); out.push(v); } });
+    return out;
+  }
+  /**
+   * Sucht alle eingeschalteten Plattformen streng nacheinander: der nächste Aufruf startet erst,
+   * wenn der vorige beantwortet ist. Plattformen im Backoff werden gar nicht angefragt.
+   */
+  async function searchAll(q, opts) {
+    const targets = allTargets(), lists = [], skipped = [];
+    let effective = '', lastError = '';
+    for (let i = 0; i < targets.length; i++) {
+      const p = targets[i];
+      const bo = HC.platform.backoff(p);
+      if (bo) { skipped.push({ p, why: 'backoff', until: bo.until }); continue; }
+      progress = { p, i: i + 1, n: targets.length };
+      renderCount([]);
+      const r = await HC.bridge.safe('search', q, Object.assign({}, opts, { platform: p }));
+      if (r && r.ok) {
+        lists.push(HC.store.put(r.results || []));
+        if (!effective && typeof r.effective_query === 'string') effective = r.effective_query;
+      } else {
+        lastError = (r && r.error) || '';
+        skipped.push({ p, why: 'error', error: lastError });
+      }
+    }
+    if (!lists.length) return { ok: false, error: skipped.length === 1 ? lastError : '' };
+    return { ok: true, results: interleave(lists), effective, skipped };
+  }
+
+  /* ---------- Plattform-Auswahl (aufklappbar) ---------- */
   /** Text-Schlüssel je Plattform: YouTube ohne Zusatz, SoundCloud «_sc» (Phase 7a), Mixcloud/hearthis.at «_p» mit {p}. */
-  const pkey = (base) => (platform === 'youtube' ? base : platform === 'soundcloud' ? `${base}_sc` : `${base}_p`);
+  const pkey = (base) => (platform === 'youtube' ? base : platform === ALL ? `${base}_all` : platform === 'soundcloud' ? `${base}_sc` : `${base}_p`);
+  const plabel = (p) => (p === ALL ? t('platform.all') : HC.platform.label(p));
+  const picon = (p) => HC.platform.icon(p === ALL ? 'all' : p);
+  const allOk = () => allTargets().length > 1;
+  const remember = () => { try { localStorage.setItem(STORE_KEY, platform); } catch (e) { /* egal */ } };
+  const remembered = () => { try { return localStorage.getItem(STORE_KEY); } catch (e) { return null; } };
+  const usable = (p) => (p === ALL ? allOk() : HC.platform.enabled(p));
   const offText = (p) => (p === 'soundcloud' ? t('platform.sc_off') : t('platform.p_off', { p: HC.platform.label(p) }));
   function paintPlatform() {
-    $$('#plat button', el).forEach((b) => {
-      const on = b.dataset.p === platform, off = !HC.platform.enabled(b.dataset.p);
+    const btn = $('#plat-btn', el);
+    btn.innerHTML = `${picon(platform)}<span class="psel-name">${util.esc(plabel(platform))}</span>${I.down}`;
+    btn.setAttribute('aria-label', t('discover.platform_current', { p: plabel(platform) }));
+    btn.disabled = searching;
+    if (searching) openMenu(false);
+    $$('#plat-list [data-p]', el).forEach((b) => {
+      const p = b.dataset.p, on = p === platform;
+      const off = p !== ALL && !HC.platform.enabled(p);
+      const bo = p !== ALL && !off ? HC.platform.backoff(p) : null;
+      b.hidden = p === ALL && !allOk();
       b.classList.toggle('on', on);
       b.classList.toggle('off', off);
-      b.setAttribute('aria-pressed', on);
+      b.setAttribute('aria-selected', on);
       b.setAttribute('aria-disabled', off);
-      b.title = off ? offText(b.dataset.p) : t('discover.platform_title');
-      b.disabled = searching && !on;
+      b.title = off ? offText(p) : p === ALL ? t('discover.platform_all_title') : bo ? t('discover.platform_backoff', { p: HC.platform.label(p), t: util.fmtTime(bo.until) }) : '';
+      $('.psel-note', b).textContent = off ? t('common.off') : bo ? t('discover.platform_backoff_short') : p === ALL ? String(allTargets().length) : '';
+      $('.psel-note', b).classList.toggle('warn', !!bo);
     });
-    $('#q', el).placeholder = t(pkey('discover.placeholder'), { p: HC.platform.label(platform) });
+    $('#q', el).placeholder = t(pkey('discover.placeholder'), { p: plabel(platform) });
     el.dataset.platform = platform;
   }
-  function setPlatform(p) {
-    if (!HC.platform.enabled(p)) p = 'youtube';
+  const options = () => $$('#plat-list [data-p]', el).filter((b) => !b.hidden);
+  function openMenu(open, focusBack) {
+    if (open === menuOpen) return;
+    menuOpen = open;
+    const list = $('#plat-list', el), btn = $('#plat-btn', el);
+    list.hidden = !open;
+    btn.setAttribute('aria-expanded', open);
+    $('#plat', el).classList.toggle('open', open);
+    if (open) (options().find((b) => b.classList.contains('on')) || options()[0]).focus();
+    else if (focusBack) btn.focus();
+  }
+  function setPlatform(p, keep) {
+    if (!usable(p)) p = 'youtube';
     if (p === platform || searching) { paintPlatform(); return; }
     stash[platform] = { results, last, q: $('#q', el).value };
     platform = p;
+    if (!keep) remember();
     const x = stash[p] || { results: null, last: null };
     results = x.results;
     last = x.last;
@@ -254,6 +347,31 @@
     renderScope();
     renderGrid(true);
     renderQuota();
+  }
+
+  /* ---------- Stichwort-Boxen: «alle entfernen» (mit Rückgängig) und Vorschläge ---------- */
+  const KW = { inc: 'include_keywords', exc: 'exclude_keywords' };
+  const kwEd = (key) => (key === 'inc' ? incEd : excEd);
+  /** Vorschläge = gespeicherte Stichwörter (Einstellungen › Filter), die in der Box gerade fehlen. */
+  function renderKw(key) {
+    const saved = (HC.settings.values.filters[KW[key]] || []).map((k) => String(k).toLowerCase());
+    const miss = saved.filter((k, i) => saved.indexOf(k) === i && !f[key].includes(k));
+    const box = $(`#s-${key}`, el);
+    box.hidden = !miss.length;
+    box.innerHTML = miss.map((k) => `<button type="button" class="kw-sugg" data-k="${util.esc(k)}" title="${util.esc(t('discover.kw_sugg_title'))}"><i>+</i><span>${util.esc(k)}</span></button>`).join('');
+    $(`#c-${key}`, el).hidden = !f[key].length;
+  }
+  function setKw(key, list) {
+    f[key] = list.slice();
+    kwEd(key).set(f[key]);
+    renderKw(key);
+    renderGrid();
+  }
+  function clearKw(key) {
+    const before = f[key].slice();
+    if (!before.length) return;
+    setKw(key, []);
+    ui.toast(t(`discover.kw_cleared_${key}`), 'info', 7000, { label: t('common.undo'), fn: () => setKw(key, before.concat(f[key].filter((k) => !before.includes(k)))) });
   }
 
   async function loadBlacklist() {
@@ -266,8 +384,11 @@
     el = root;
     el.innerHTML = `
       <div class="searchbar">
-        <div class="seg pseg" id="plat" role="group" aria-label="${util.esc(t('platform.label'))}">
-          ${HC.platform.all.map((p) => `<button type="button" data-p="${p}">${p === 'youtube' ? '' : I.wave}${t('platform.' + p)}</button>`).join('')}
+        <div class="psel" id="plat">
+          <button type="button" class="psel-btn" id="plat-btn" aria-haspopup="listbox" aria-expanded="false" aria-controls="plat-list" title="${util.esc(t('discover.platform_title'))}"></button>
+          <div class="psel-list" id="plat-list" role="listbox" aria-label="${util.esc(t('platform.label'))}" hidden>
+            ${[ALL].concat(HC.platform.all).map((p) => `<button type="button" role="option" tabindex="-1" data-p="${p}">${picon(p)}<span class="psel-name">${util.esc(plabel(p))}</span><small class="psel-note"></small>${I.check}</button>`).join('')}
+          </div>
         </div>
         <div class="search-wrap">${I.search}
           <input class="input" id="q" placeholder="${util.esc(t('discover.placeholder'))}" spellcheck="false" autocomplete="off">
@@ -303,8 +424,10 @@
               <label><span>${t('discover.f_to')}</span><input class="input mono" id="f-to" type="date" min="${MIN_YEAR}-01-01"></label>
             </div>
             <p class="fhint" id="f-date-hint" hidden></p></div>
-          <div class="fgroup"><label class="lbl">${t('discover.f_inc')}</label><div id="t-inc"></div></div>
-          <div class="fgroup"><label class="lbl">${t('discover.f_exc')}</label><div id="t-exc"></div></div>
+          ${['inc', 'exc'].map((k) => `<div class="fgroup"><label class="lbl">${t('discover.f_' + k)}</label>
+            <div class="kwbox"><div id="t-${k}"></div><button type="button" class="kw-clear" id="c-${k}" data-clear="${k}" title="${util.esc(t('discover.kw_clear'))}" aria-label="${util.esc(t('discover.kw_clear'))}" hidden>${I.trash}</button></div>
+            <div class="kw-suggs" id="s-${k}" data-key="${k}" aria-label="${util.esc(t('discover.kw_sugg_label'))}" hidden></div></div>`).join('')}
+          <p class="fhint kw-hint">${t('discover.kw_session_hint')}</p>
           <div class="fgroup"><label class="lbl">${t('discover.f_show')}</label>
             <label class="check"><input type="checkbox" id="f-hide">${t('discover.f_hide')}</label>
             <label class="check"><input type="checkbox" id="f-blacklist">${t('discover.f_blacklist')}</label></div>
@@ -323,18 +446,43 @@
       </div>`;
 
     defaultsFromSettings();
-    const onKw = (key) => (list) => { f[key] = list; renderGrid(); };
+    const onKw = (key) => (list) => { f[key] = list; renderKw(key); renderGrid(); };
     incEd = ui.chips($('#t-inc', el), { list: f.inc, kind: 'inc', onChange: onKw('inc') });
     excEd = ui.chips($('#t-exc', el), { list: f.exc, kind: 'exc', onChange: onKw('exc') });
     syncControls();
 
     paintPlatform();
-    $('#plat', el).addEventListener('click', (e) => {
+    const plat = $('#plat', el);
+    $('#plat-btn', el).addEventListener('click', () => openMenu(!menuOpen));
+    $('#plat-btn', el).addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); openMenu(true); }
+    });
+    $('#plat-list', el).addEventListener('click', (e) => {
       const b = e.target.closest('button[data-p]');
       if (!b) return;
       if (b.classList.contains('off')) { ui.toast(offText(b.dataset.p), 'info'); return; }
+      openMenu(false);
       setPlatform(b.dataset.p);
       $('#q', el).focus();
+    });
+    /* Pfeile/Pos1/Ende wandern (umlaufend), Esc schliesst und gibt den Fokus zurück, Tab schliesst. */
+    $('#plat-list', el).addEventListener('keydown', (e) => {
+      const opts = options(), i = opts.indexOf(document.activeElement);
+      const go = (n) => { e.preventDefault(); opts[(n + opts.length) % opts.length].focus(); };
+      if (e.key === 'ArrowDown') go(i + 1);
+      else if (e.key === 'ArrowUp') go(i - 1);
+      else if (e.key === 'Home') go(0);
+      else if (e.key === 'End') go(opts.length - 1);
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); openMenu(false, true); }
+      else if (e.key === 'Tab') { e.preventDefault(); openMenu(false, true); }
+    });
+    document.addEventListener('pointerdown', (e) => { if (menuOpen && !plat.contains(e.target)) openMenu(false); });
+    plat.addEventListener('focusout', (e) => { if (menuOpen && e.relatedTarget && !plat.contains(e.relatedTarget)) openMenu(false); });
+    $('.filters', el).addEventListener('click', (e) => {
+      const c = e.target.closest('[data-clear]');
+      if (c) { clearKw(c.dataset.clear); return; }
+      const s = e.target.closest('.kw-sugg');
+      if (s) { const key = s.parentElement.dataset.key; setKw(key, f[key].concat(s.dataset.k)); }
     });
     $('#btn-search', el).onclick = search;
     $('#q', el).addEventListener('keydown', (e) => { if (e.key === 'Enter') search(); });
@@ -410,7 +558,8 @@
     HC.bridge.on('video', () => renderGrid());
     HC.bridge.on('status_rendered', renderQuota);
     HC.bridge.on('blacklist_changed', loadBlacklist);
-    HC.bridge.on('settings_changed', () => { defaultsFromSettings(); syncControls(); setPlatform(platform); renderGrid(); renderQuota(); });
+    HC.bridge.on('settings_changed', () => { defaultsFromSettings(); syncControls(); setPlatform(usable(platform) ? platform : 'youtube', true); renderGrid(); renderQuota(); });
+    HC.bridge.on('status_rendered', () => { if (!searching && !menuOpen) paintPlatform(); });
     HC.bridge.on('status_rendered', () => { if (maxYear() !== +$('#f-year', el).max) syncPeriod(); }); // Jahreswechsel bei laufender App
   }
 
@@ -420,20 +569,26 @@
       loaded = true;
       loadBlacklist();
       const prev = await HC.bridge.safe('get_last_search');
-      if (prev && prev.results && !results) {
-        /* Die letzte Suche bestimmt die Plattform beim Start (SoundCloud nur, wenn eingeschaltet). */
-        const pp = HC.platform.all.includes(prev.platform) ? prev.platform : 'youtube';
-        if (HC.platform.enabled(pp)) platform = pp;
-        else { stash[pp] = { results: HC.store.put(prev.results), last: null, q: prev.query || '' }; prev.results = null; }
-        paintPlatform();
-      }
-      if (prev && prev.results && !results) {
-        $('#q', el).value = prev.query || '';
-        results = HC.store.put(prev.results);
+      /* Die gemerkte Auswahl gewinnt, sonst bestimmt die letzte Suche die Plattform beim Start.
+         Passt die letzte Suche nicht zur Auswahl (oder ist ihre Plattform aus), wartet sie bei ihrer Plattform. */
+      const want = remembered();
+      const has = !!(prev && prev.results) && !results;
+      const pp = has && HC.platform.all.includes(prev.platform) ? prev.platform : 'youtube';
+      const pick = want && usable(want) ? want : HC.platform.enabled(pp) ? pp : 'youtube';
+      if (!results) platform = pick;
+      if (has) {
+        const hits = HC.store.put(prev.results);
         /* genre/year liefert das Backend evtl. nicht mit -> dann kein «veraltet»-Hinweis. */
         const known = 'genre' in prev || 'year' in prev;
-        last = { query: prev.query || '', effective: typeof prev.effective_query === 'string' ? prev.effective_query : '', genre: prev.genre || null, year: prev.year || null, known };
+        const was = { query: prev.query || '', effective: typeof prev.effective_query === 'string' ? prev.effective_query : '', genre: prev.genre || null, year: prev.year || null, known };
+        if (pick === pp) {
+          $('#q', el).value = prev.query || '';
+          results = hits;
+          last = was;
+        } else stash[pp] = { results: hits, last: HC.platform.enabled(pp) ? was : null, q: prev.query || '' };
       }
+      paintPlatform();
+      renderScope();
       renderGrid(true);
     } else if (changed) {
       renderGrid(true);

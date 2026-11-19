@@ -291,6 +291,8 @@
     section: (p) => SECTION[p] || 'throttle',
     of: (x) => (x && PLATFORMS.includes(x.platform) ? x.platform : 'youtube'),
     label: (p) => HC.t(`platform.${PLATFORMS.includes(p) ? p : 'youtube'}`),
+    /** Lokales Plattform-Logo (ui/icons/platforms/*.svg, nie aus dem Netz); 'all' = neutrales Zeichen. Rein dekorativ: der Name steht immer daneben. */
+    icon: (p) => `<img class="picon" src="icons/platforms/${({ all: 'all', soundcloud: 'soundcloud', mixcloud: 'mixcloud', hearthis: 'hearthisat' })[p] || 'youtube'}.svg" alt="" aria-hidden="true" draggable="false">`,
     /** Kurzzeichen fürs Badge (YT/SC/MC/HT) */
     short: (p) => ({ soundcloud: 'SC', mixcloud: 'MC', hearthis: 'HT' })[p] || 'YT',
     /** Plattform eingeschaltet? (gespeicherte Einstellung, sonst der Status) – YouTube immer. */

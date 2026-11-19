@@ -164,6 +164,7 @@ class Api:
         notify_sender: Callable[[], Any] | None = None,
         media_transport: mediaserver.Transport | None = None,
         notify_delay: float = 15.0,
+        catchup_delay: float = CATCHUP_START_DELAY_S,
     ) -> None:
         self._config_file = config_file or config.config_path()
         settings, warnings = config.load_with_warnings(self._config_file)
@@ -268,7 +269,7 @@ class Api:
         self._fest_cancel = threading.Event()
         self._tl_cancel = threading.Event()  # v0.6.0 tracklist pass
         # v0.10.1: one-off passes catch up on existing libraries by themselves (GUI only)
-        self._catchup = CatchUp(self._bus, self._catchup_steps(), delay=CATCHUP_START_DELAY_S)
+        self._catchup = CatchUp(self._bus, self._catchup_steps(), delay=catchup_delay)
         # v0.5.0 «Festival collector»: matching jobs (one at a time, long: paced searches) and
         # playlist imports (short) in their own threads; per-edition stop events
         self._col_worker = Worker("hcloader-collector")

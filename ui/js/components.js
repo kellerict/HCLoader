@@ -12,7 +12,8 @@
 
   /* ---------- Toast ---------- */
   const TOAST_ICON = { ok: I.check, err: I.warn, warn: I.warn, info: I.info };
-  ui.toast = function (msg, kind, ms) {
+  /** action = {label, fn}: kleiner Knopf im Toast (z.B. «Rückgängig»); ein Klick daneben schliesst nur. */
+  ui.toast = function (msg, kind, ms, action) {
     const host = HC.$('#toasts');
     if (!host) return;
     const k = kind || 'ok';
@@ -24,7 +25,7 @@
     el._msg = String(msg);
     el.className = `toast ${k}`;
     el.setAttribute('role', 'status');
-    el.innerHTML = `${TOAST_ICON[k] || I.check}<span>${esc(msg)}</span><i class="timer" style="animation-duration:${dur}ms"></i>`;
+    el.innerHTML = `${TOAST_ICON[k] || I.check}<span>${esc(msg)}</span>${action ? `<button type="button" class="toast-act">${esc(action.label)}</button>` : ''}<i class="timer" style="animation-duration:${dur}ms"></i>`;
     host.appendChild(el);
     while (host.children.length > 4) host.firstChild.remove();
     const close = () => {
@@ -32,7 +33,7 @@
       el.classList.add('out');
       setTimeout(() => el.remove(), HC.fx.reduced() ? 0 : 190);
     };
-    el.addEventListener('click', close);
+    el.addEventListener('click', (e) => { if (action && e.target.closest('.toast-act')) action.fn(); close(); });
     setTimeout(close, dur);
   };
 
@@ -255,7 +256,7 @@
   ui.pbadge = (x, force) => {
     const p = typeof x === 'string' ? x : HC.platform.of(x);
     if (p === 'youtube' && !force && !HC.platform.anyOther()) return '';
-    return `<span class="pbadge ${PCLS[p] || 'yt'}" title="${esc(HC.platform.label(p))}">${p === 'youtube' ? '' : I.wave}${HC.platform.short(p)}</span>`;
+    return `<span class="pbadge ${PCLS[p] || 'yt'}" title="${esc(HC.platform.label(p))}" aria-label="${esc(HC.platform.label(p))}">${HC.platform.icon(p)}${HC.platform.short(p)}</span>`;
   };
   /** Kleine Equalizer-Balken (laufende Wiedergabe). */
   ui.eq = (cls) => `<span class="eqb ${cls || ''}" aria-hidden="true"><i></i><i></i><i></i></span>`;
