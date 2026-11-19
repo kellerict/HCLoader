@@ -413,7 +413,7 @@
     "sc_url_expected": "SoundCloud URL expected (https://soundcloud.com/…).",
     "sc_url_unsupported": "Unsupported SoundCloud URL. Allowed: soundcloud.com/<user>, …/<user>/tracks or …/<user>/sets/<set> (single tracks are not a source).",
     "type_invalid": "Type must be channel, playlist or search.",
-    "unsupported_url": "Unsupported URL – expected a channel or playlist URL of YouTube, a user or set URL of SoundCloud, or a user or playlist URL of Mixcloud or hearthis.at.",
+    "unsupported_url": "Unsupported URL – expected a YouTube URL (channel, playlist), a SoundCloud URL (soundcloud.com/<user>, …/<user>/sets/<set>) or a Mixcloud or hearthis.at URL (user, playlist).",
     "url_missing": "URL missing.",
     "url_or_query_missing": "URL or search term missing.",
     "url_too_long": "URL is too long.",

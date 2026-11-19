@@ -231,11 +231,11 @@ def test_settings_add_series_and_assign(page):
     assert page.locator(".series-row").count() == before + 1
 
     # the offline pass picks up the new series and reports progress + result
-    assert "39 of 81" in page.inner_text("[data-custom=festStatus] .st-title")
+    assert "39 of 83" in page.inner_text("[data-custom=festStatus] .st-title")
     page.click('[data-fest="assign"]')
     page.wait_for_selector("[data-custom=festStatus] .notice.ok", timeout=10000)
     assert _calls(page, "assign_festivals") == [[{"scope": "library"}]]
-    assert "44 of 81" in page.inner_text("[data-custom=festStatus] .st-title")
+    assert "44 of 83" in page.inner_text("[data-custom=festStatus] .st-title")
     page.wait_for_function(
         "document.querySelector('.series-row:has(.rtag.own) ~ *') !== null"
         " && [...document.querySelectorAll('.series-row')].find(r => r.querySelector('b')"
