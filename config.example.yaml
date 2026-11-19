@@ -394,6 +394,6 @@ reupload:
   # Zusätzliche 30-s-Fenster über den Rest des Sets verteilt (0-8)
   windows: 3
   # Ab diesem Anteil übereinstimmender Hashes (in %) gilt ein Set als Re-Upload (5-90)
-  min_score: 20
+  min_score: 15
   # Vor dem Download Dauer (+-5 s) und Titel auch auf derselben Plattform vergleichen (kein zusätzlicher Request); Treffer kommen in den Eingang
   precheck: false

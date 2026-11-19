@@ -2325,7 +2325,7 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "toast_link": "Linked as the same mix",
     "toast_open": "Decision undone",
     "toast_found": "Probable re-upload: “{title}” matches “{of}” – see Library",
-    "dl_notice": "{n} recent downloads are probably re-uploads of sets you already have:",
+    "dl_notice": "Recent downloads that are probably re-uploads of sets you already have ({n}):",
     "review": "Review in the library"
   }
 });

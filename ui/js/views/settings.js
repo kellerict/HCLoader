@@ -1034,6 +1034,17 @@
         const extra = running
           ? `<div class="fest-prog"><div class="progress${a && a.total ? '' : ' indet'}"><div class="bar kick" style="width:${pct}%;--p:${pct}"></div></div><span class="unit">${esc(t('set.reupload.running', { done: util.fmtNum((a && a.done) || 0), total: a && a.total ? util.fmtNum(a.total) : '…', found: util.fmtNum((a && a.found) || 0) }))}</span></div>`
           : res ? ui.notice(res.ok === false ? 'error' : res.cancelled ? 'warn' : 'ok', esc(res.ok === false ? res.error || t('err.generic') : t(res.cancelled ? 'toast.fp_cancelled' : 'toast.fp_done', { n: res.done || 0, found: res.found || 0 }))) : '';
+        /* Während des Abgleichs nur Balken und Zähler nachziehen: der Knopf «Abbrechen» bleibt dasselbe Element. */
+        const shape = [running, !!(a && a.cancelling), !!a && !!a.total, s.pending, s.open, s.fingerprinted, s.total, s.last_pass, on, res ? JSON.stringify(res) : ''].join('|');
+        const prog = host.querySelector('.fest-prog');
+        if (running && host._shape === shape && prog) {
+          const bar = prog.querySelector('.bar');
+          bar.style.width = `${pct}%`;
+          bar.style.setProperty('--p', pct);
+          prog.querySelector('.unit').textContent = t('set.reupload.running', { done: util.fmtNum((a && a.done) || 0), total: a && a.total ? util.fmtNum(a.total) : '…', found: util.fmtNum((a && a.found) || 0) });
+          return;
+        }
+        host._shape = shape;
         host.innerHTML = box(running ? 'warn' : s.pending ? 'off' : 'ok', esc(t('set.reupload.title', { done: util.fmtNum(s.fingerprinted || 0), total: util.fmtNum(s.total || 0) })), detail, actions, extra, running ? 'warn blink' : s.pending ? 'off' : '');
       };
       const load = async () => { const s = await HC.bridge.safe('get_reupload_status'); if (s) { cache.reupload = s; if (!s.running && cache.fpRun && cache.fpRun.running) cache.fpRun = null; if (host.isConnected) paint(); } };

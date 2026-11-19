@@ -2325,7 +2325,7 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "toast_link": "Als gleicher Mix verknüpft",
     "toast_open": "Entscheid rückgängig gemacht",
     "toast_found": "Vermutlich Re-Upload: «{title}» entspricht «{of}» – siehe Bibliothek",
-    "dl_notice": "{n} neue Downloads sind vermutlich Re-Uploads von Sets, die du schon hast:",
+    "dl_notice": "Neue Downloads, die vermutlich Re-Uploads von Sets sind, die du schon hast ({n}):",
     "review": "In der Bibliothek ansehen"
   }
 });
