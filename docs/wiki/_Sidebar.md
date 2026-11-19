@@ -21,6 +21,7 @@
 - [Scheduled checks](Scheduled-Checks)
 - [Notifications and media servers](Notifications-and-Media-Servers)
 - [Supported sources](Supported-Sources)
+- [Re-upload detection](Re-upload-Detection)
 
 **⚙️ Configuration**
 - [Settings reference](Settings-Reference)

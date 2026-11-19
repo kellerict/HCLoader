@@ -18,7 +18,7 @@ Cloud-Session (Linux-Container). Abweichend von `build-all.md`: alle Phasen auf 
 | 3 – Entdecken & Downloads | **abgeschlossen** (QA bestanden; Review R1 behoben 00f165c, R2 behoben ba6ccbd) | | | |
 | 4 – Watchlist & Zeitplan | **abgeschlossen** (QA bestanden; Review R1 behoben 06503c8, R2 freigegeben, R2-m1 behoben) | | | |
 | 5 – Bibliothek, Protokoll, Feinschliff | **abgeschlossen** (QA bestanden; Review R1 behoben ea1e9aa, R2 freigegeben, R2-m1 behoben) |
-| 7 – Weitere Quellen (User-Wunsch) | 7a SoundCloud in Arbeit (Backend); 7b Mixcloud + hearthis.at, 7c archive.org geplant |
+| 7 – Weitere Quellen (User-Wunsch) | 7a SoundCloud abgeschlossen; 7b Mixcloud + hearthis.at in v0.10.0 gebaut; 7c archive.org zurückgestellt |
 | 8 – Player in der Bibliothek (User-Wunsch) | geplant nach 7a-Backend, zusammen mit 7a-UI: eingebauter Mini-Player (Default) + Standardplayer, Setting `player.mode` |
 | 6 – Portable (User-Wunsch) | gebaut (6ba6448); Windows-Build nie gelaufen (Actions blockiert); QA/Review offen | | | |
 
@@ -233,8 +233,46 @@ Entscheide: docs/decisions.md «Statistics, notifications, media server (v0.9.0)
   Plex- und Jellyfin-Server inkl. Docker-Pfad, Anmeldeinformationsverwaltung, Statistik mit grosser Bibliothek)
 - [ ] 6 Release v0.9.0
 
+## v0.10.0 – Re-Upload-Erkennung, Mixcloud, hearthis.at (docs/ROADMAP.md; 7b, 7c)
+Offline-Audio-Fingerabdruck pro Set, Vergleich neuer Downloads mit der Bibliothek, Markierung «vermutlich Re-Upload
+von X» mit Entscheid; Mixcloud und hearthis.at als vollwertige Plattformen wie SoundCloud. archive.org (7c) bewusst
+nicht umgesetzt (yt-dlp kann nur einzelne Items). Entscheide: docs/decisions.md «Re-upload detection (v0.10.0)»,
+«Mixcloud and hearthis.at (v0.10.0)», «archive.org (v0.10.0)», Vertrag docs/bridge-api.md «Re-upload detection,
+Mixcloud, hearthis.at».
+- [x] 1 Plattformen (`integrator`): `app/core/platforms.py` als Register (Präfix, Archiv-Name, Hosts, ID-Muster,
+  Suche, Einstellungs-Abschnitt, Tag), IDs `mc:<nutzer>_<slug>` / `ht:<id>`, Track-Seite aus `videos.url` (geprüft),
+  `config.PLATFORM_SECTIONS` + `platform_throttle_settings()` (eigener Throttle, Zähler, Backoff, Locks je Plattform),
+  Abschnitte `mixcloud`, `hearthis`, `download.keep_original_mixcloud/hearthis`; `ytclient`: Mixcloud-Listen mit
+  erweiterten yt-dlp-Extraktoren (Titel/Dauer/Datum/Bild in derselben GraphQL-Seite, Seiten auf das Fenster begrenzt),
+  eigene Such-/Listen-Extraktoren `mcsearch` (api.mixcloud.com) und `htsearch` / Nutzer / Sets (api-v2.hearthis.at),
+  Select-Uploads = nie ladbar; Watchlist-Quellen (Prüfung, Vorschlag, Normalisierung), Backfill-Seitengrössen,
+  Öffnen/Kanal-zur-Watchlist, Statusleiste, Headless, Smoke; yt-dlp 2026.10.26 geprüft
+- [x] 2 Re-Uploads (`integrator`): Migration 16 (`fingerprints`, `fingerprint_index`, `reuploads`),
+  `app/core/fingerprint.py` (ffmpeg-Fenster, Landmark-Hashes in reinem Python, Versatz-Histogramm, Regel «≥ 2 Abschnitte»,
+  Index jedes 4. Hash, Markieren des neueren, Entscheide behalten/verknüpfen/rückgängig, Durchlauf mit Abbruch,
+  Nachholen nach Headless-Läufen), `worker.FingerprintQueue` (wartet auf die Lautheitsanalyse), 5 Bridge-Methoden +
+  Events `fingerprint`/`reupload`, `LibraryItem.reupload`, Vor-Prüfung `reupload.precheck` (Dauer + Titel, gleiche Plattform)
+- [x] 3 UI: Plattform-Umschalter mit 4 Plattformen (Entdecken, gespeicherte Suchen), Tab «Weitere Quellen» (generische
+  Feldtexte `set.platform.*` mit `{p}`), Tab «Re-Uploads» mit Abgleich (Fortschritt, Abbrechen), Bibliothek: Kennzeichen
+  «Re-Upload?» mit Menü (beide behalten, verknüpfen, Original zeigen, neuere löschen, rückgängig), Chip «Re-Uploads (n)»,
+  `#library/reuploads`, Hinweis in den Downloads, Toast; Statusleiste MC/HT nur bei Aktivität; Statistik mit allen
+  Quellen; Texte in allen 17 vollständigen Sprachen (nl-BE/de-x-frk erben); Mock-Daten; Screenshots (en im Repo, de/ru lokal)
+- [x] 4 Tests: `tests/test_fingerprint.py` (synthetisches Audio ohne ffmpeg: Re-Upload mit Versatz/Rauschen/Pegel,
+  Neukodierung, fremdes Audio, gleiches Intro; Index, Ablauf, Durchlauf, Abbruch, Fehler, Entscheide, Migration 16,
+  Worker-Events, Vor-Prüfung), `tests/test_platforms_v010.py` (IDs/URLs, Optionen, Listen mit aufgezeichneten
+  API-Antworten durch die echten yt-dlp-Extraktoren, Throttle pro Plattform, Downloads nur mit geprüfter Track-Seite,
+  Watchlist), `tests/test_reupload_ui.py` (Playwright, nur explizite Waits); i18n-Parität
+- [x] 5 Doku: CHANGELOG [Unreleased] mit Highlights, Wiki «Re-upload detection» (neu), «Supported sources»,
+  «Settings reference», Home/Roadmap/Sidebar/Statistics, bridge-api, settings-schema, decisions, CODE_SIGNING.md und
+  Wiki-Datenschutz-Tabelle, Installer-Datenschutzseite (en/de)
+- [ ] 6 QA + Review (u.a. unter Windows mit echtem Netz: Mixcloud-Suche/-Nutzer/-Playlist und Download, hearthis.at-
+  Suche/-Nutzer/-Set und Download – die API-Endpunkte sind aus dem Container nicht erreichbar und nur mit
+  aufgezeichneten Antworten getestet; Fingerabdruck echter Re-Uploads (YouTube ↔ SoundCloud ↔ Mixcloud), Dauer des
+  Abgleichs einer grossen Bibliothek)
+- [ ] 7 Release v0.10.0
+
 ## Geplant für spätere Versionen
-- Phase 7b: Mixcloud + hearthis.at (Watchlist); 7c: archive.org (optional)
+- 7c archive.org: zurückgestellt (v0.10.0, docs/decisions.md «archive.org»)
 
 ## Offen für den User (Nacht 17./18.11.)
 - **v0.5.0 Festival-Sammler NICHT veröffentlicht.** Backend, UI, Review (M1 b2b-Fehlbestätigung behoben) und Windows-Build sind ok. Die QA scheitert aber zum 4. Mal knapp am Timetable-Parser (Text einfügen): 18/22 frische Beispiele, Schwelle 20. Kein stiller Datenverlust mehr (unlesbare Zeilen werden angezeigt), die Vorschau erlaubt Bearbeiten/Entfernen vor dem Import. Restfehler: Werbe-/UI-Zeilen wie «Swipe for more» als Artist, «Bühne: Zeit Artist, …» inline, Bühnenname als Zeilenpräfix, «UNDERGROUND» als Artist in Line-ups ohne Zeiten.
@@ -288,3 +326,4 @@ Entscheide: docs/decisions.md «Statistics, notifications, media server (v0.9.0)
 - 2026-11-18 – v0.8.0: QA BESTANDEN; Review M1 (bekannte Namen vor dem Zerlegen, «Mark With a K») und M2 (DJ-Index-Cache per DB-Trigger/Migration 14, inkrementell) behoben, Minors m1–m10 und QA-Defekt «#»-Pfade; Version 0.8.0 + CHANGELOG → bereit für Release (ca. 15 Min. bis Merge/Tag durch Orchestrator).
 - 2026-11-18 – v0.9.0 Statistik, Windows-Benachrichtigungen und Plex/Jellyfin-Scan gebaut (Backend, UI, 19 Sprachen, Tests, Screenshots, Doku); offen: QA, Review, Test unter Windows, Release (ca. 1–2 Std.)
 - 2026-11-18 – v0.9.0: QA BESTANDEN; Review M1 behoben (`hcloader:`-Link nur noch Navigation: eigener Einstieg `--protocol`, strikte Allow-List, `--open` nicht mit anderen Aktionen, `-I`, alte Registrierung wird beim Start umgeschrieben), Minors m1–m7 und Nits, QA-Punkte (Credential-Store-Tests, Steuerzeichen in Toasts, Monate in Lokalzeit); Version 0.9.0 + CHANGELOG → bereit für Release (ca. 15 Min. bis Merge/Tag durch Orchestrator; echter Toast-/Protokoll-Test unter Windows offen).
+- 2026-11-19 – v0.10.0 Re-Upload-Erkennung (Audio-Fingerabdruck), Mixcloud und hearthis.at gebaut (Backend, UI, alle Sprachen, Tests, Screenshots, Doku); archive.org zurückgestellt; offen: QA, Review, echter Test unter Windows, Release (ca. 1–2 Std.)

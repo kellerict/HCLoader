@@ -18,7 +18,7 @@ Navigation → **Statistics** (or `Ctrl+6`). You can also make it the start view
 | **Totals** | Sets, playing time, size on disk, average set length; the date of the first download and of the last one. |
 | **Downloads per month** | One bar per month (per year once the history is longer than three years). The current month is highlighted. |
 | **By genre** | Sets and hours per genre, in the genre colours from Settings › Genres. |
-| **Sources** | YouTube vs. SoundCloud as a ring chart. |
+| **Sources** | YouTube, SoundCloud, Mixcloud and hearthis.at as a ring chart. |
 | **Top festivals** | The 10 festivals with the most sets and how many editions they cover (needs the [festival assignment](Festival-Collector)). |
 | **Top DJs** | The 10 DJs with the most sets – b2b sets count for each artist. Click one to open the [DJ page](DJ-Pages-and-Playlists). |
 | **By year of the set** | The event year (from the festival edition, otherwise the upload year). |

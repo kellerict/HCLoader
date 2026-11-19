@@ -146,6 +146,8 @@ The tab also contains:
 | `write_cue` | `true` | | Write a `.cue` file from chapters or description timestamps. |
 | `write_id3_chapters` | `true` | | Write ID3 `CHAP`/`CTOC` frames (MP3 only). |
 | `keep_original_soundcloud` | `true` | | SoundCloud: keep the original audio unchanged (AAC 160 kbps to `.m4a`, MP3 128 kbps to `.mp3`). `false` = follow `audio_format`. |
+| `keep_original_mixcloud` | `true` | | v0.10.0, Mixcloud: keep the original AAC audio (usually 64–128 kbps, `.m4a`). `false` = follow `audio_format`. |
+| `keep_original_hearthis` | `true` | | v0.10.0, hearthis.at: keep the MP3 stream unchanged. `false` = follow `audio_format`. |
 
 ## storage (tab Ablage & Tags)
 
@@ -214,7 +216,7 @@ Details and rationale: [Throttling and backoff](Throttling-and-Backoff).
 | `backoff_initial_hours` | `6` | 0.5 to 168 | First backoff after HTTP 429 or a bot check. |
 | `backoff_max_hours` | `48` | at least `backoff_initial_hours` | The backoff doubles up to this value. |
 
-## soundcloud (tab SoundCloud, in development)
+## soundcloud (tab SoundCloud)
 
 SoundCloud has its own section with the same keys as `throttle` (same ranges and defaults), plus a
 switch. Counters, backoff, request spacing and download pauses are kept per platform: a 429 from
@@ -224,6 +226,29 @@ SoundCloud never blocks YouTube and the other way around.
 |---|---|---|
 | `enabled` | `true` | Off = no SoundCloud search, source or download. |
 | `sleep_requests`, `sleep_interval`, `max_sleep_interval`, `limit_rate_mb`, `max_downloads_per_run`, `max_downloads_per_day`, `max_searches_per_hour`, `backoff_initial_hours`, `backoff_max_hours` | as `throttle` | Same meaning as above, for SoundCloud. |
+
+## mixcloud, hearthis (tab More sources, v0.10.0)
+
+Mixcloud and hearthis.at have one section each with the same keys as `soundcloud`: a switch plus
+their own pauses, limits, counters and backoff. See [Supported sources](Supported-Sources).
+
+| Key | Default | Description |
+|---|---|---|
+| `enabled` | `true` | Off = no search, source check or download on this platform. |
+| `sleep_requests`, `sleep_interval`, `max_sleep_interval`, `limit_rate_mb`, `max_downloads_per_run`, `max_downloads_per_day`, `max_searches_per_hour`, `backoff_initial_hours`, `backoff_max_hours` | as `throttle` | Same meaning, for this platform only. |
+
+## reupload (tab Re-uploads, v0.10.0)
+
+Offline audio fingerprints to recognise re-uploads – see [Re-upload detection](Re-upload-Detection).
+
+| Key | Default | Range / values | Description |
+|---|---|---|---|
+| `enabled` | `true` | | Fingerprint library items and compare new downloads with the library. |
+| `fingerprint_after_download` | `true` | | Fingerprint every new download (low priority, after the loudness analysis). |
+| `head_minutes` | `3` | 1–10 | Minutes from the start in the fingerprint. |
+| `windows` | `3` | 0–8 | Extra 30-second windows spread over the rest of the set. |
+| `min_score` | `15` | 5–90 (%) | Share of matching hashes from which a set counts as re-upload. |
+| `precheck` | `false` | | Before a download, also compare length (±5 s) and title on the same platform (no request); matches go to the inbox. |
 
 ## network (tab Netzwerk & PO-Token)
 

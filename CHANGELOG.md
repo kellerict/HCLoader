@@ -10,6 +10,60 @@ appears after «Show all changes» (`docs/RELEASING.md`).
 
 ## [Unreleased]
 
+### Highlights
+- **Re-upload detection**: an offline audio fingerprint recognises the same mix uploaded again – another channel, another platform, a new id
+- Probable re-uploads are **marked in the library** with *Keep both*, *Link as the same mix* or *Delete this newer file* – nothing is deleted automatically
+- **Fingerprint your existing library** in the background, with progress and cancel; optional check by length and title before downloading
+- **Mixcloud** as a new source: search, users and playlists in the watchlist, downloads
+- **hearthis.at** as a new source: search, users and sets in the watchlist, downloads
+- Every source has **its own throttle**, counters and backoff – a block on one never stops the others
+
+### Added
+- Re-upload detection (new settings tab **Re-uploads**): after each download the new file is
+  fingerprinted offline with ffmpeg (first minutes plus a few 30-second windows, mono at low sample
+  rate, low priority, one file at a time, after the loudness analysis) and compared with the library
+  through a fast index. A match at the same time offset in at least two parts of the set marks the
+  newer download as *probable re-upload of X* (threshold adjustable, default 15 %). Two different
+  sets that only share the opening track are no match. Library: tag **RE-UPLOAD?** with the actions
+  *Keep both*, *Link as the same mix*, *Show the original*, *Delete this newer file* (the entry
+  becomes *ignored* and is never downloaded again) and *Undo*; chip **Re-uploads (n)**; a note in
+  Downloads and a toast after a download. **Fingerprint new files** / **Fingerprint all again**
+  compare the existing library (progress, cancel, resumes where it stopped; decisions are kept).
+- Optional **Check before downloading** (`reupload.precheck`, off by default): search hits and
+  watchlist entries are also compared by length (±5 s) and title with the library on the same
+  platform – no extra request; matches go to the inbox instead of the queue.
+- **Mixcloud**: search (Mixcloud's public search API, 50 results per request), watchlist sources
+  `mixcloud.com/<user>` (uploads) and `mixcloud.com/<user>/playlists/<playlist>`, downloads through
+  yt-dlp. Listings ask for title, length, date and picture in the same page request and stop as soon
+  as they have enough entries. Mixcloud Select uploads (subscribers only) are shown as not
+  downloadable. Original AAC audio kept by default (`download.keep_original_mixcloud`).
+- **hearthis.at**: search and watchlist sources `hearthis.at/<user>/` and
+  `hearthis.at/<user>/set/<set>/` through the public API (20 entries per request, lazy), downloads
+  through yt-dlp; the MP3 stream is kept unchanged by default (`download.keep_original_hearthis`),
+  lossless originals are skipped.
+- Settings tab **More sources** with a switch and the full throttle (pauses, limits, backoff) for
+  Mixcloud and hearthis.at each; status bar items for them while they are active; platform switch in
+  Discover and in saved searches with four platforms; statistics show all sources.
+- New settings sections `mixcloud`, `hearthis`, `reupload`; `download.keep_original_mixcloud`,
+  `download.keep_original_hearthis`. Database migration 16 (`fingerprints`, `fingerprint_index`,
+  `reuploads`).
+- Ids `mc:<user>_<slug>` / `ht:<id>`, file names `[mc-…]` / `[ht-…]`, tags `TXXX:MIXCLOUD_ID` /
+  `TXXX:HEARTHIS_ID`, archive lines `mixcloud …` / `hearthisat …`; `{platform}` in the folder pattern
+  gives «Mixcloud» / «hearthis.at».
+- Bridge methods `get_reupload_status`, `fingerprint_library`, `cancel_fingerprint_library`,
+  `get_reuploads`, `resolve_reupload`; events `fingerprint`, `reupload`; `LibraryItem.reupload`
+  (`docs/bridge-api.md`).
+- Texts in all languages; wiki pages *Re-upload detection* (new), *Supported sources*, *Settings
+  reference* updated; installer privacy page and privacy table list Mixcloud and hearthis.at.
+
+### Changed
+- Settings sections and throttles of all platforms come from one table
+  (`config.PLATFORM_SECTIONS`), so a new platform gets its throttle everywhere at once.
+
+### Not included
+- **archive.org** is postponed: yt-dlp only supports single items, not collections or search
+  (`docs/decisions.md`).
+
 ## [0.9.0] - 2026-11-18
 
 ### Highlights

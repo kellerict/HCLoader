@@ -1655,3 +1655,61 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
 - **Grund:** `%1` ist eine fremde Zeichenkette. Ein Aufrufer, der Anführungszeichen nicht kodiert, könnte sonst
   über `hcloader://x" --smoke "<url>` einen Download oder einen Watchlist-Lauf auslösen (Muster wie
   CVE-2018-1000006). Der Schutz darf nicht vom Browser abhängen.
+
+## 2026-11-19 – Re-upload detection (v0.10.0)
+
+- **Entscheid:** Eigener, leichter Fingerabdruck in reinem Python (`app/core/fingerprint.py`) statt Chromaprint/
+  `fpcalc`. ffmpeg dekodiert nur Ausschnitte (Kopf `reupload.head_minutes` + `reupload.windows` × 30 s, mono,
+  5512 Hz); pro Frame (FFT 512, Schritt 256 = 46 ms) die stärksten Spitzen in 6 Frequenzbändern (max. 7 pro
+  Sekunde), gepaart zu 24-Bit-Hashes (f1, f2, Δt) mit Zeitpunkt. Vergleich über ein Histogramm des Zeitversatzes;
+  Treffer = Anteil im besten Versatz ≥ `reupload.min_score` (Standard 15 %), ≥ 20 Treffer **und** Treffer in ≥ 2
+  Abschnitten (sonst würden zwei verschiedene Sets mit demselben Intro-Track als gleich gelten). Schneller Index:
+  jedes vierte Hash (`hash % 4 == 0`) in `fingerprint_index` (SQLite, indiziert), nur die 8 besten Kandidaten
+  werden vollständig verglichen. Markiert wird immer der später geladene Eintrag; nichts wird automatisch gelöscht.
+  Eigener Thread `FingerprintQueue`, der wartet, solange die Lautheitsanalyse dekodiert (höchstens ein ffmpeg).
+  Kalibrierung mit synthetischem Audio (Tests): Re-Upload mit 2,4 s Versatz, Rauschen, Pegel und Tiefpass ≈ 26 %,
+  gleiche Datei neu kodiert ≈ 32 %, fremdes Audio < 1 %, gleiches Intro / anderer Rest: Kopf 87 %, aber nur 1 Abschnitt.
+- **Grund:** Chromaprint wäre lizenzrechtlich möglich (LGPL-2.1+ ist mit GPL-3.0-or-later vereinbar; `fpcalc`
+  ist ein eigenständiges Programm, das wie ffmpeg mitgeliefert werden könnte), aber es wäre ein weiteres Binary,
+  das `fetch_binaries.ps1`/Portable-Build holen, prüfen (Prüfsumme) und aktualisieren müssten, ohne das die
+  Funktion still ausfällt, und das in der CI (Windows ohne ffmpeg/fpcalc) nicht testbar ist. Der eigene Abdruck
+  braucht nur das vorhandene ffmpeg, ist mit Arrays testbar und für den Zweck (gleiche Aufnahme, anders kodiert
+  oder mit anderem Intro) genau genug. Grenzen: ein stark gekürzter Re-Upload (> 1–2 Min. anderes Intro bei
+  vielen Fenstern) wird evtl. nicht erkannt; Tempo-/Tonhöhen-Änderungen (Nightcore, Pitch) werden nie erkannt.
+- **Vor-Prüfung** (`reupload.precheck`, Standard aus): die Phase-7a-Duplikatprüfung (Dauer ±5 s, Titel) gilt dann
+  auch auf derselben Plattform, ohne Request; der Fingerabdruck bestätigt erst nach dem Download.
+
+## 2026-11-19 – Mixcloud and hearthis.at (v0.10.0)
+
+- **Entscheid:** Zwei Plattformen wie SoundCloud: IDs `mc:<nutzer>_<slug>` (= yt-dlp-ID, Archivzeile `mixcloud …`)
+  und `ht:<track-id>` (Archivzeile `hearthisat …`), Dateiname `[mc-…]` / `[ht-…]`, Tag `TXXX:MIXCLOUD_ID` /
+  `TXXX:HEARTHIS_ID`, eigener Throttle (`settings.mixcloud`, `settings.hearthis`, State-Präfix `mixcloud.` /
+  `hearthis.`, eigene Prozess-Locks). Die Download-URL lässt sich nicht aus der ID bauen (Mixcloud-Nutzer
+  können `_` enthalten, hearthis braucht die Track-Seite): sie kommt aus `videos.url` und wird vor dem Download
+  geprüft (`platforms.track_page_ok`: https, Host der Plattform, Track-Pfad; bei Mixcloud muss die ID dazu passen).
+- yt-dlp 2026.10.26 (geprüft): Mixcloud hat `MixcloudIE` (Track), `MixcloudUserIE` (Uploads, Favoriten …) und
+  `MixcloudPlaylistIE` über GraphQL, Seiten zu 100, ohne Titel/Dauer in der Liste, **keine Suche**. hearthis.at
+  hat nur `HearThisAtIE` (einzelner Track über `api-v2.hearthis.at`), **keine Nutzer-/Set-Liste und keine Suche**.
+  Daher (wie bei SoundCloud) Erweiterungen in `ytclient.py`, registriert pro YoutubeDL-Instanz:
+  Mixcloud-Listen fragen in derselben GraphQL-Seite zusätzlich `name audioLength publishDate isExclusive picture
+  owner` ab (Felder, die `MixcloudIE` selbst abfragt) und begrenzen Seitengrösse/Seiten auf das gewünschte Fenster;
+  Mixcloud-Suche über die öffentliche API `api.mixcloud.com/search/?type=cloudcast`; hearthis.at-Suche
+  (`/search?t=`) und Listen (`/<nutzer>/?type=tracks`, `/set/<slug>/`) über `api-v2.hearthis.at`, Seiten zu 20,
+  lazy. Alles über yt-dlp-Networking (Proxy, `sleep_interval_requests`, Seiten-Tor von «Alles einlesen»), also
+  durch den Throttle der Plattform. Kompatibilitätsprüfung wie bei SoundCloud: geänderte yt-dlp-Interna →
+  Standard-Extraktoren (Warnung einmal im Log).
+- Mixcloud-Select-Uploads (nur für Abonnenten, `isExclusive`) gelten wie Go+-Vorschauen als nie ladbar.
+- **Grund:** Billig vor teuer: ohne Titel/Dauer in der flachen Liste müsste jeder Eintrag einzeln aufgelöst
+  werden, nur um ihn zu filtern. Die Endpunkte von hearthis.at und die Mixcloud-Such-API sind aus dem Container
+  nicht erreichbar (Proxy) und wurden mit aufgezeichneten Antworten getestet; der echte Test unter Windows steht
+  in der QA aus.
+
+## 2026-11-19 – archive.org (v0.10.0, nicht umgesetzt)
+
+- **Entscheid:** archive.org wird in v0.10.0 **nicht** als Plattform eingebaut.
+- **Grund:** yt-dlp 2026.10.26 kann nur einzelne Items (`ArchiveOrgIE`, `/details/<id>`) – Sammlungen und Suche
+  (der eigentliche Nutzen als Watchlist-Quelle) bräuchten einen eigenen Client für die Advanced-Search-API, und
+  ein Item ist oft ein ganzes Konzert mit vielen Dateien, was nicht zum Modell «ein Set = eine Datei» passt.
+  Die Unterstützung ist damit nicht «solide» im Sinne der Roadmap (7c optional). Wieder aufnehmen, wenn yt-dlp
+  Sammlungen flach listen kann oder ein konkreter Bedarf besteht.
+

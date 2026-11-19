@@ -32,8 +32,10 @@ Leitfaden `docs/TRANSLATING.md`); Validierungsmeldungen aus `app/locales/<code>.
 | | `write_cue` | bool | true | |
 | | `write_id3_chapters` | bool | true | |
 | | `keep_original_soundcloud` | bool | true | Phase 7a: SoundCloud-Audio unverändert behalten (AAC 160 → `.m4a`, MP3 128 → `.mp3`); `false` = wie `audio_format` |
+| | `keep_original_mixcloud` | bool | true | v0.10.0: Mixcloud-Audio unverändert behalten (AAC, meist 64–128 kbps → `.m4a`); `false` = wie `audio_format` |
+| | `keep_original_hearthis` | bool | true | v0.10.0: hearthis.at-Stream unverändert behalten (MP3); `false` = wie `audio_format` |
 | `storage` (Ablage & Tags) | `target_dir` | str | `%USERPROFILE%\Music\HCLoader` | relativ (z.B. `.\Music`) = relativ zum App-Ordner, nur Portable-Version (Phase 6) |
-| | `path_template` | str | `{genre}/{artist}/{year}/{date} - {title} [{id}]` | Platzhalter: genre, artist, channel, year, date, title, id, platform («YouTube»/«SoundCloud», Phase 7a), festival, event_year, stage (v0.3.0; leer → Reste wie « - »/«()» entfernt, leere Ordnerebene entfällt). `{id}` bei SoundCloud = `sc-<id>`. Standard bleibt unverändert |
+| | `path_template` | str | `{genre}/{artist}/{year}/{date} - {title} [{id}]` | Platzhalter: genre, artist, channel, year, date, title, id, platform («YouTube»/«SoundCloud», Phase 7a; «Mixcloud»/«hearthis.at», v0.10.0), festival, event_year, stage (v0.3.0; leer → Reste wie « - »/«()» entfernt, leere Ordnerebene entfällt). `{id}` bei SoundCloud = `sc-<id>`, Mixcloud `mc-<nutzer>_<slug>`, hearthis.at `ht-<id>`. Standard bleibt unverändert |
 | | `max_title_length` | int | 120 | 20–200 |
 | | `max_path_length` | int | 240 | 100–259 |
 | | `artist_from_title` | bool | false | |
@@ -63,6 +65,16 @@ Leitfaden `docs/TRANSLATING.md`); Validierungsmeldungen aus `app/locales/<code>.
 | | `max_searches_per_hour` | int | 20 | 1–200 |
 | | `backoff_initial_hours` | float | 6 | 0.5–168 |
 | | `backoff_max_hours` | float | 48 | ≥ initial |
+| `mixcloud` (Tab «Weitere Quellen», v0.10.0) | `enabled` | bool | true | aus = keine Mixcloud-Suche, -Quelle, -Download |
+| | `sleep_requests` … `backoff_max_hours` | wie `soundcloud` | wie `soundcloud` | dieselben neun Schonungs-Felder, Grenzen und Meldungen (Modell erbt von `ThrottleSettings`) |
+| `hearthis` (Tab «Weitere Quellen», v0.10.0) | `enabled` | bool | true | aus = keine hearthis.at-Suche, -Quelle, -Download |
+| | `sleep_requests` … `backoff_max_hours` | wie `soundcloud` | wie `soundcloud` | dieselben neun Schonungs-Felder |
+| `reupload` (Tab «Re-Uploads», v0.10.0) | `enabled` | bool | true | Audio-Fingerabdruck pro Bibliotheks-Eintrag (offline, ffmpeg) und Vergleich mit der Bibliothek |
+| | `fingerprint_after_download` | bool | true | Fingerabdruck jedes neuen Downloads (niedrige Priorität, wartet auf die Lautheitsanalyse) |
+| | `head_minutes` | int (min) | 3 | 1–10: Minuten ab Anfang im Fingerabdruck |
+| | `windows` | int | 3 | 0–8: zusätzliche 30-s-Fenster über den Rest des Sets verteilt |
+| | `min_score` | int (%) | 15 | 5–90: Anteil übereinstimmender Hashes (bester Zeitversatz), ab dem ein Set als Re-Upload gilt; zusätzlich ≥ 20 Treffer und Treffer in ≥ 2 Abschnitten |
+| | `precheck` | bool | false | Vor dem Download Dauer (±5 s) und Titel auch auf derselben Plattform vergleichen (kein Request); Treffer → Eingang statt Warteschlange |
 | `schedule` (Zeitplan) | `watchlist_interval_hours` | float | 24 | 1–168 |
 | | `in_app_check` | bool | true | |
 | | `task_scheduler_enabled` | bool | false | |
@@ -132,6 +144,20 @@ Bridge (`ui/js/bridge.js`): `get_settings()` → `{values, defaults}`; `save_set
   Checkbox; eine dritte Plattform kann es später ablösen.
 - Suche: `search(query, {genre?, year?, platform?})`; Genre-Begriffe und Jahr werden auch bei SoundCloud
   angehängt (SoundCloud sucht in Titel, Tags und Beschreibung, die Begriffe grenzen gleich ein).
+
+## v0.10.0 – Mixcloud, hearthis.at, Re-Uploads (Entscheid)
+- `mixcloud` und `hearthis` als eigene Abschnitte wie `soundcloud` (eigene Zähler und eigener Backoff je
+  Plattform), aber **ein** gemeinsamer Tab «Weitere Quellen» (`tabs.sources`) mit zwei Blöcken; die Felder
+  nutzen generische Texte `set.platform.<feld>.label/help` mit `{p}` (Feld-Option `lk`/`lp` in
+  `settings.js`), damit nicht pro Plattform 20 neue Texte nötig sind. `config.PLATFORM_SECTIONS` und
+  `config.platform_throttle_settings()` sind die einzige Stelle, die Plattform → Abschnitt kennt.
+- `download.keep_original_mixcloud` / `keep_original_hearthis` als Schalter neben dem von SoundCloud
+  (Zwischenüberschrift «Mixcloud & hearthis.at» im Tab «Download & Qualität»).
+- Neuer Abschnitt `reupload` (Tab «Re-Uploads») mit Statusbox «Bibliothek abgleichen» (`get_reupload_status`,
+  `fingerprint_library({scope})`, Fortschritt `fingerprint`). Fingerabdrücke und Entscheide (behalten/
+  verknüpfen) stehen in der DB (`fingerprints`, `fingerprint_index`, `reuploads`, Migration 16), nicht in
+  `config.yaml`.
+- archive.org hat keinen Abschnitt: nicht umgesetzt (docs/decisions.md «archive.org»).
 
 ## v0.3.0 – Festivals & Serien (Entscheid)
 - Neuer Tab «Festivals & Serien» = Abschnitt `festivals` (Tabelle oben) + Serienliste. Die **Serienliste

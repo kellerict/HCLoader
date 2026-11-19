@@ -790,6 +790,55 @@ Header `Authorization: MediaBrowser Client="HCLoader", …, Token="…"`. Test: 
 Jellyfin `GET /System/Info` + `GET /Library/VirtualFolders`. Transport: urllib ohne Proxy, ohne Weiterleitungen,
 Timeout 10 s, Antwort ≤ 2 MB, keine Wiederholung; 401/403 = `auth`. Headless: nach den Downloads ein Stapel.
 
+### Re-upload detection, Mixcloud, hearthis.at (v0.10.0)
+
+Entscheide: `docs/decisions.md` «Re-upload detection (v0.10.0)», «Mixcloud and hearthis.at (v0.10.0)»,
+«archive.org (v0.10.0)». Backend: `app/core/fingerprint.py` (Algorithmus, ffmpeg-Fenster, Index, Markierungen,
+Durchlauf), `app/core/platforms.py` (IDs, Hosts, Track-Seiten), `app/core/ytclient.py` (Extraktoren);
+Dienst `worker.FingerprintQueue` (eigener Thread `hcloader-fingerprint`, eine Datei nach der anderen, wartet,
+solange die Lautheitsanalyse dekodiert) – nie im pywebview-Callback-Thread.
+
+| Methode | Parameter | Rückgabe |
+|---|---|---|
+| `get_reupload_status()` | | `{total, fingerprinted, failed, pending, open, kept, linked, last_pass, ffmpeg, running, enabled}` – `pending` = Bibliotheks-Einträge ohne (aktuellen) Fingerabdruck |
+| `fingerprint_library(opts?)` | `{scope: "new" (Standard) \| "all"}` | `{ok:true, started:true, scope}` \| `{ok:true, started:false, running:true}` \| `{ok:false, error}` (aus, kein ffmpeg). Fortschritt `fingerprint`, Treffer `reupload` (mit `pass:true`) |
+| `cancel_fingerprint_library()` | | `{ok:true, running}` – bricht auch das laufende ffmpeg ab (nichts gespeichert) |
+| `get_reuploads(opts?)` | `{state: "open" (Standard) \| "all"}` | `{ok:true, items:[{id, title, platform, channel, file_path, downloaded_at, reupload: Reupload}]}` – nur Einträge in der Bibliothek, neueste zuerst |
+| `resolve_reupload(id, action)` | `action`: `"keep"` (beide behalten, Markierung weg) \| `"link"` (gleicher Mix, verknüpft) \| `"delete_new"` (diese neuere Datei löschen, Eintrag → `ignored`, wie `delete_library_item`) \| `"open"` (Entscheid rückgängig) | `{ok:true, id, state, reupload}` \| `{ok:true}` (delete_new) \| `{ok:false, error}` (nicht markiert, unbekannte Aktion) |
+
+**Datenformen**
+
+- `Reupload` = `{of: {id, title, platform, channel, in_library}, score (0..1), offset_s, state: "open"|"kept"|"linked"}`
+  – `of` = der ältere Bibliotheks-Eintrag (früherer `downloaded_at`), markiert ist immer der neuere;
+  `offset_s` = Zeitversatz des Audios (positiv: der neue beginnt später, z.B. längeres Intro).
+- `LibraryItem.reupload`: `Reupload | null`; `get_library({reupload: true})` = nur offene Markierungen.
+- `Video.platform` / `Source.platform` / `Status.platforms`: zusätzlich `"mixcloud"`, `"hearthis"`.
+  IDs `mc:<nutzer>_<slug>` (= yt-dlp-ID) und `ht:<track-id>`, `channel_id` `mc:<nutzer>` / `ht:<permalink>`.
+  `Video.url` ist bei diesen beiden Pflicht für den Download (Track-Seite, wird aus Liste/Suche gespeichert).
+  `Video.preview` bei Mixcloud = Select-Upload (nur Abonnenten), `filter_reason` «Subscribers only (Mixcloud Select)».
+- `search(query, {platform: "mixcloud"|"hearthis"})`: eigene Such-Extraktoren (`mcsearchN:`, `htsearchN:`),
+  Limit «Suchen pro Stunde» je Plattform. `suggest_source` erkennt `mixcloud.com/<nutzer>` (auch `/uploads`) →
+  channel, `mixcloud.com/<nutzer>/playlists/<liste>` → playlist, `hearthis.at/<nutzer>` → channel,
+  `hearthis.at/<nutzer>/set/<set>` → playlist; einzelne Tracks → `type:""`.
+- `clear_backoff(platform?)`: auch `"mixcloud"` / `"hearthis"`.
+
+**Events**
+
+- `fingerprint` = `{phase: "start"|"progress"|"done"|"error", scope, done?, total?, found?, failed?, cancelled?, error?}`.
+- `reupload` = `{id, reupload: Reupload | null, deleted?, pass?}` – neue Markierung (nach Download oder im Durchlauf,
+  dann `pass:true`: die UI zeigt keinen Toast pro Treffer), Entscheid (`keep`/`link`/`open`) oder gelöscht.
+
+**Ablauf.** `Api._after_download(id)` → `FingerprintQueue.request(id)` (mit `reupload.enabled` und
+`fingerprint_after_download`). Pro Datei: Fenster aus der gespeicherten Dauer (`head_minutes` ab Anfang +
+`windows` × 30 s), je Fenster ein ffmpeg-Aufruf (`-ss` vor `-i`, mono, 5512 Hz, s16le, `-threads 1`, niedrige
+Priorität) → Landmark-Hashes → `fingerprints` + Stichprobe in `fingerprint_index` → Kandidaten über den Index →
+Vergleich mit den vollständigen Fingerabdrücken → bei Treffer Markierung des neueren Eintrags. Ein Entscheid
+(`kept`/`linked`) für dasselbe Paar bleibt auch nach «Alle neu abgleichen». Gelöschte Bibliotheks-Einträge
+verlieren Fingerabdruck und Markierungen (`fingerprint.forget`). Der Headless-Lauf dekodiert nicht; die GUI
+holt Downloads seit dem ersten v0.10.0-Start beim nächsten Start nach (`fingerprint.since_pending`).
+Vor-Prüfung (`reupload.precheck`): Suchtreffer und Watchlist-Einträge bekommen `duplicate_of` auch für einen
+Eintrag **derselben** Plattform (Dauer ±5 s, Titel-Jaccard ≥ 0.8) – Auto-Download-Quellen legen sie in den Eingang.
+
 ### Festival collector (v0.5.0)
 
 Konzept: `docs/concepts/festivals.md` «v0.5.0 – Collect a whole edition», Entscheide: `docs/decisions.md`
@@ -1087,7 +1136,7 @@ Start aktiv oder im Lauf ausgelöst) · 3 falsche Argumente · 4 anderer Lauf ak
 
 ## SoundCloud (Phase 7a)
 
-Plattform = Merkmal jedes Videos/Tracks und jeder Quelle: `platform: "youtube" | "soundcloud"`.
+Plattform = Merkmal jedes Videos/Tracks und jeder Quelle: `platform: "youtube" | "soundcloud"`. Seit v0.10.0 auch `"mixcloud"` und `"hearthis"` (siehe «Re-upload detection, Mixcloud, hearthis.at»).
 
 **IDs.** YouTube unverändert (11 Zeichen). SoundCloud: `sc:<numerische Track-ID>` überall, wo die UI
 eine `id` schickt oder bekommt (Video, QueueItem, LibraryItem, Events). `channel_id` von SoundCloud:

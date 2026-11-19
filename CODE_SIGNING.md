@@ -42,7 +42,8 @@ by the user:
 
 | Feature | Destination | When | Setting |
 |---|---|---|---|
-| Search, watchlist checks, downloads | YouTube, SoundCloud | when the user searches, downloads, or runs a watchlist check (manually, by the in-app interval or a scheduled task the user created) | Watchlist / schedule settings, `soundcloud.enabled` |
+| Search, watchlist checks, downloads | YouTube, SoundCloud, Mixcloud (`app.mixcloud.com`, `api.mixcloud.com`, its stream CDN), hearthis.at (`api-v2.hearthis.at`, `hearthis.at`) | when the user searches, downloads, or runs a watchlist check (manually, by the in-app interval or a scheduled task the user created) | Watchlist / schedule settings, `soundcloud.enabled`, `mixcloud.enabled`, `hearthis.enabled` |
+| Cover pictures in lists | image hosts of the platforms (`*.ytimg.com`, `*.sndcdn.com`, `thumbnailer.mixcloud.com`, `*.hearthis.at`) | when search results, inbox or library entries with a picture are shown | none (pictures of entries the user loaded from that platform) |
 | App update check | GitHub (`api.github.com`, release downloads) | once per start | installer privacy page; `maintenance.check_app_updates_on_start` |
 | yt-dlp / plugin update check | PyPI (`pypi.org`) | at most once per day at start | installer privacy page; `maintenance.check_updates_on_start` |
 | Library scan after downloads (off by default) | the user's own Plex or Jellyfin server at the address the user entered (usually in the home network) | after downloads (batched), «Test connection», «Scan now» – never through the proxy | `media_server.type` (Settings › Media server) |
@@ -60,12 +61,15 @@ default and can be switched off in the same place.
 
 No telemetry, no analytics, no accounts. The services HCLoader talks to have their own privacy
 policies: [YouTube/Google](https://policies.google.com/privacy),
-[SoundCloud](https://soundcloud.com/pages/privacy), [GitHub](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement),
+[SoundCloud](https://soundcloud.com/pages/privacy), [Mixcloud](https://www.mixcloud.com/privacy/),
+[hearthis.at](https://hearthis.at/privacy/), [GitHub](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement),
 [PyPI](https://policies.python.org/pypi.org/Privacy-Notice/). Settings, the database and logs stay on the local
 computer (`%APPDATA%\HCLoader` or the portable folder). Browser cookies are only read if the user
 explicitly enables `network.cookies_from_browser`, and are never stored in logs. The Plex token / Jellyfin API
 key for the optional library scan is stored in the Windows Credential Manager of the current user
 (never in the configuration, the database or logs) and is only sent to the server the user entered.
+Audio fingerprints for the re-upload detection are computed locally from the downloaded files
+(ffmpeg, no network) and stay in the local database.
 Windows notifications are shown locally; HCLoader registers its notification name and a
 `hcloader:` link for the current user (removed by the uninstaller).
 

@@ -14,7 +14,7 @@ automated GitHub release (see v0.2.0).
 | v0.7.0 | Loudness normalisation (ReplayGain / EBU R128 tags, offline) · player remembers position, waveform with chapter marks, sleep timer |
 | v0.8.0 | Playlist export (M3U per festival/genre/DJ) · DJ pages with aliases and one-click watchlist |
 | v0.9.0 | Statistics view · Windows notifications for new watchlist sets · Plex/Jellyfin library scan after download |
-| v0.10.0 | Re-upload detection via audio fingerprint · more sources: Mixcloud, hearthis.at (7b), archive.org (7c, optional) |
+| v0.10.0 | Re-upload detection via audio fingerprint · more sources: Mixcloud, hearthis.at (7b); archive.org (7c, optional) postponed – yt-dlp supports single items only (`docs/decisions.md`) |
 | any time | **Signed installer** – code signing certificate (e.g. SignPath Foundation for open source), signing in the release workflow, no more SmartScreen warning |
 
 Principles stay the same for every release: gentle on YouTube (central throttle), cheap before
