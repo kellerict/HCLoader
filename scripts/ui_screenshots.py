@@ -176,13 +176,64 @@ class Shooter:
         self.page.click(f'{row} [data-act="more"]')
         self.page.click(f'.menu [data-k="{key}"]')
 
+    def pick_platform(self, plat: str) -> None:
+        """Discover: open the platform selector and choose an entry ("all" or a platform)."""
+        self.page.click("#plat-btn")
+        self.page.click(f'#plat-list [data-p="{plat}"]')
+        self.page.wait_for_function(
+            "p => document.querySelector('#v-discover').dataset.platform === p", arg=plat
+        )
+
+    def discover_platform_scenes(self) -> None:
+        """Platform selector (collapsed/open), «All» (sequential search, skipped platform, badges)
+        and the keyword boxes (clear all with undo toast, suggestion chips)."""
+        page = self.page
+        page.evaluate("HC.mock.api.clear_backoff(); HC.mock.demo.local(null)")
+        self.go("discover")
+        page.click("#f-reset")
+        page.click("#plat-btn")
+        page.wait_for_selector("#plat-list:not([hidden])")
+        self.settle()
+        self.shot("discover-platform-menu")
+        page.keyboard.press("Escape")
+        # «All»: Mixcloud is in backoff -> skipped with a note; the others one after another
+        page.evaluate("HC.mock.demo.backoff(6, 'mixcloud')")
+        self.pick_platform("all")
+        page.fill("#q", "hardcore mix")
+        page.click("#btn-search")
+        page.wait_for_function(
+            "(document.querySelector('#count').textContent || '').includes('SoundCloud')"
+        )
+        self.shot("discover-all-searching")
+        page.wait_for_selector("#grid .card:not(.skeleton)")
+        self.settle()
+        # keyword boxes: one removed keyword comes back as a suggestion chip
+        page.click("#t-inc .tag:nth-child(2) button")
+        page.click("#t-exc .tag:nth-child(1) button")
+        self.settle()
+        self.shot("discover-all")
+        page.click("#plat-btn")
+        page.wait_for_selector("#plat-list:not([hidden])")
+        self.settle()
+        self.shot("discover-all-menu")
+        page.keyboard.press("Escape")
+        page.click("#c-exc")
+        page.wait_for_selector(".toast .toast-act")
+        self.settle()
+        self.shot("discover-keywords-cleared")
+        page.click(".toast .toast-act")
+        page.evaluate("HC.mock.api.clear_backoff()")
+        page.click("#f-reset")
+        self.pick_platform("youtube")
+        self.settle()
+
     def soundcloud_scenes(self) -> None:
         """Phase 7a: SoundCloud-Suche, Namensvorschlag im Quellen-Dialog, Backoff pro Plattform."""
         page = self.page
         page.evaluate("HC.mock.api.clear_backoff(); HC.mock.demo.local(null)")
         self.go("discover")
         page.click("#f-reset")
-        page.click('#plat [data-p="soundcloud"]')
+        self.pick_platform("soundcloud")
         self.settle()
         self.shot("discover-soundcloud-empty")
         page.fill("#q", "hardcore mix")
@@ -195,7 +246,7 @@ class Shooter:
         self.settle()
         self.shot("discover-soundcloud-all")
         page.check("#f-hide")
-        page.click('#plat [data-p="youtube"]')
+        self.pick_platform("youtube")
 
         # Quelle anlegen: URL tippen -> Typ, Plattform und Name kommen als Vorschlag
         self.go("watchlist")
@@ -702,7 +753,7 @@ class Shooter:
         self.go("discover")
         page.click("#f-reset")
         for plat in ("mixcloud", "hearthis"):
-            page.click(f'#plat [data-p="{plat}"]')
+            self.pick_platform(plat)
             self.settle()
             page.fill("#q", "hardcore mix")
             page.click("#btn-search")
@@ -714,7 +765,7 @@ class Shooter:
             page.wait_for_selector("#grid .card:not(.skeleton)")
             self.settle()
             self.shot(f"discover-{plat}")
-        page.click('#plat [data-p="youtube"]')
+        self.pick_platform("youtube")
         self.settle()
 
         self.go("library")
@@ -1132,6 +1183,7 @@ class Shooter:
         self.djs_scenes()
         self.sources_scenes()
         self.stats_scenes()
+        self.discover_platform_scenes()
 
         # m9: in pywebview gestartet, Backend antwortet nicht -> Fehlerzustand statt Mock
         page.clock.install(time=FIXED_NOW)

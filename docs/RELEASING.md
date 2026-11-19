@@ -46,30 +46,46 @@ attaches the assets.
 ## Writing release notes
 
 The CHANGELOG section becomes the GitHub release text, and the app shows it in the update dialog
-(«Changes»). Users read it in a small dialog, so keep it short and structured (English):
+(«Changes») and in Settings › Maintenance › Release notes. Users read it in a small dialog, so keep
+it short and structured. **Style rule (from v0.10.1, binding for every new version):**
 
 ```markdown
 ## [X.Y.Z] - YYYY-MM-DD
 
 ### Highlights
-- One line per point, what the user gets – no prose, no implementation details
-- 3 to 8 bullets
+- What the user gets, in plain language – one line each
+- 3 to 6 bullets
 
 ### Added
-- Details, one bullet per change …
+- Short one-line bullet, at most about 15 words
 
 ### Changed
+- …
+
 ### Fixed
+- …
 ```
 
-- **`### Highlights` comes first**, with 3 to 8 one-line bullets. The dialog shows only this list
-  (at most 8 bullets, each cut after three lines); everything else appears after «Show all changes».
-  Without a Highlights heading the app falls back to the first list of the section.
-- No introductory paragraph, no running text. Use `### Added` / `### Changed` / `### Fixed` below.
-- The dialog renders a small Markdown subset: headings, bullet and numbered lists (nested), `**bold**`,
+- **`### Highlights` comes first**, with **3 to 6** one-line bullets in plain language for users.
+  The app shows only this list by default (for every version that has it); everything else appears
+  after «Show all changes».
+- Below it only `### Added` / `### Changed` / `### Fixed` (rarely `### Removed`, `### Not included`),
+  each with **short one-line bullets – at most about 15 words**. Say what changed for the user, not
+  how.
+- **No implementation details** in the CHANGELOG: no setting keys, file or module names, database
+  migrations, bridge methods, sample rates, thresholds, request counts. Those belong in
+  `docs/` (`bridge-api.md`, `decisions.md`, `settings-schema.md`) and the wiki.
+- No introductory paragraph, no running text, no nested lists. English only.
+- Emphasis: `**bold**` for the feature name, `*italic*` for button or menu labels. The renderer
+  understands both (also `_italic_` and `***bold italic***`), so no literal asterisks appear.
+- Safety net in the app: a version without Highlights shows the first 6 bullets of its first list;
+  bullets longer than three lines are clamped with «more» (click or Enter expands them). Do not
+  rely on it – write short bullets.
+- `tests/test_notes_js.py::test_changelog_renders_without_literal_markers` checks the rule for every
+  version from 0.5.0 on (Highlights first, 3–6 highlights, short bullets, no stray markers).
+- The dialog renders a small Markdown subset: headings, bullet and numbered lists, `**bold**`,
   `*italic*`, `` `code` ``, tables, `>` quotes, `---` and `https://` links. Raw HTML is shown as text;
-  images and other link schemes are dropped. Tables are fine for before/after values (keep them to
-  three or four narrow columns).
+  images and other link schemes are dropped.
 - Check the result in the mock: `ui/index.html?mock=1`, banner › «Changes»
   (`python scripts/ui_screenshots.py --only update-notes update-notes-all`).
 
@@ -162,7 +178,7 @@ it is kept as `_previous-<timestamp>`. Manual restore: close HCLoader, delete th
 ## Checklist
 
 - [ ] `__version__` bumped, CHANGELOG section `## [X.Y.Z]` written (on a branch), starting with
-      `### Highlights` (3 to 8 one-line bullets)
+      `### Highlights` (3 to 6 one-line bullets, see "Writing release notes")
 - [ ] CI green on the PR, merged to `main`
 - [ ] `Portable` workflow on `main` green (jobs `plan`, `portable`, `release`), tag `vX.Y.Z` created
 - [ ] release shows four assets: `HCLoader-Setup-X.Y.Z.exe`, portable ZIP, source ZIP, `SHA256SUMS`

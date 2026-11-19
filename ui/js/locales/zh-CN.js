@@ -36,7 +36,8 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "loading": "加载中…",
     "add_chip": "+ 添加",
     "empty": "“空”",
-    "empty_list": "“无”"
+    "empty_list": "“无”",
+    "undo": "撤销"
   },
   "fmt": {
     "today": "今天",
@@ -99,7 +100,8 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "sc_off": "SoundCloud 已关闭 – 请在 设置 › SoundCloud 中开启。",
     "mixcloud": "Mixcloud",
     "hearthis": "hearthis.at",
-    "p_off": "{p} 已关闭 – 可在 设置 › 更多来源 中开启。"
+    "p_off": "{p} 已关闭 – 可在 设置 › 更多来源 中开启。",
+    "all": "全部"
   },
   "genre": {
     "change": "更改流派",
@@ -244,7 +246,26 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "searching_p": "搜索中 – 轻量查询，减轻 {p} 负担…",
     "ready_text_p": "输入搜索词并按 Enter 搜索 {p}。",
     "previews_mc": "{n} 个仅限订阅者（Select）",
-    "previews_mc_title": "Mixcloud Select 上传仅供付费订阅者，永远无法下载。关闭“隐藏已下载和已忽略”时可见。"
+    "previews_mc_title": "Mixcloud Select 上传仅供付费订阅者，永远无法下载。关闭“隐藏已下载和已忽略”时可见。",
+    "placeholder_all": "搜索所有平台：混音、现场、DJ、活动…",
+    "searching_all": "正在搜索 {p}（{i}/{n}）– 逐个平台进行…",
+    "ready_text_all": "输入搜索词并按回车 – 将依次搜索所有已启用的平台。",
+    "quota_all": "本小时搜索次数：{list}",
+    "platform_current": "平台：{p}",
+    "platform_all_title": "依次搜索所有已启用的平台。每个平台保留各自的间隔和“每小时搜索次数”上限。",
+    "platform_backoff": "{p}：退避至 {t} – “全部”会跳过",
+    "platform_backoff_short": "退避",
+    "skipped": "已跳过：{list}",
+    "skipped_title": "这些平台本次未被搜索。",
+    "skip_backoff": "退避至 {t}",
+    "skip_error": "无响应",
+    "all_none": "没有可搜索的平台。",
+    "kw_clear": "全部移除",
+    "kw_cleared_inc": "已移除包含关键词",
+    "kw_cleared_exc": "已移除排除关键词",
+    "kw_sugg_title": "重新添加（来自已保存的设置）",
+    "kw_sugg_label": "来自已保存设置的建议",
+    "kw_session_hint": "仅对本次会话有效 – 此处不会保存。初始值：设置 › 筛选与关键词。"
   },
   "inbox": {
     "title": "收件箱",

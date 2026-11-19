@@ -846,6 +846,47 @@ holt Downloads seit dem ersten v0.10.0-Start beim nächsten Start nach (`fingerp
 Vor-Prüfung (`reupload.precheck`): Suchtreffer und Watchlist-Einträge bekommen `duplicate_of` auch für einen
 Eintrag **derselben** Plattform (Dauer ±5 s, Titel-Jaccard ≥ 0.8) – Auto-Download-Quellen legen sie in den Eingang.
 
+### Automatic catch-up passes (v0.10.1)
+
+Entscheid: `docs/decisions.md` «Automatischer Nachlauf für bestehende Bibliotheken (v0.10.1)». Dienst
+`worker.CatchUp` (eigener Thread `hcloader-catchup`, startet einmal pro Sitzung `CATCHUP_START_DELAY_S` = 20 s
+nach dem ersten `loaded` der GUI; nicht im Headless-Lauf). Er führt nacheinander aus, was ältere Bibliotheken
+brauchen – jeweils nur, wenn es etwas zu tun gibt und die zugehörigen Einstellungen es erlauben:
+
+| Schritt | Bedingung (`needed`) | Lauf (im üblichen Thread) |
+|---|---|---|
+| `festivals` | `festivals.detect` an und `series.auto_pending` ≠ leer (Bibliothek, keine Zuordnung, kein manueller Wert, mit der aktuellen Katalog-Signatur noch nicht geprüft) | Wartungs-Worker, `series.assign_pass(scope="auto")` |
+| `tracklists` | `tracklist.unscanned` > 0 (Sets, deren Trackliste nie gelesen wurde) | Wartungs-Worker, `tracklist.index_pass(scope="new")` |
+| `analysis` | `loudness.analyse_after_download` an, `analysis.pending` ≠ leer, ffmpeg da, Zielordner erreichbar | `AnalysisQueue.start_pass("new", auto=True)` |
+| `fingerprints` | `reupload.enabled` und `fingerprint_after_download` an, `fingerprint.pending` ≠ leer, ffmpeg da, Zielordner erreichbar | `FingerprintQueue.start_pass("new", auto=True)` |
+
+Der DJ-Index (v0.8.0) braucht keinen Nachlauf: er wird bei Bedarf aus der Datenbank abgeleitet (Cache per
+DB-Trigger) und sieht neue Festival-Zuordnungen sofort.
+
+Ein Wartungsauftrag, den der User selbst startet (`assign_festivals`, `build_tracklists` mit `all`, Backup,
+yt-dlp-Update …), wird nicht abgelehnt: der laufende automatische Schritt stoppt (`CatchUp.skip`) und der Auftrag
+reiht sich dahinter ein. Ein gestoppter Schritt macht beim nächsten Start weiter (inkrementell).
+
+| Methode | Parameter | Rückgabe |
+|---|---|---|
+| `get_catchup_status()` | | `{ok:true, running: "festivals"\|"tracklists"\|"analysis"\|"fingerprints"\|null}` |
+| `cancel_catchup()` | | `{ok:true, cancelled}` – stoppt den laufenden Schritt und alle folgenden für diese Sitzung |
+
+**Events**
+
+- `auto_pass` = `{phase: "step", step}` beim Start eines Schritts, `{phase: "end", cancelled}` am Schluss
+  (nur, wenn mindestens ein Schritt lief – ohne Arbeit kommt kein Event).
+- `festival_assign`, `tracklist_index`, `audio_analysis`, `fingerprint` tragen zusätzlich `auto: true`, wenn
+  der Nachlauf sie gestartet hat (`festival_assign` dann mit `scope: "auto"`). Die UI zeigt sie dezent in der
+  Statusleiste (`#sb-auto-it`, `ui/js/catchup.js`, «×» = `cancel_catchup`) und ohne Toast.
+
+**Festivals: Signatur.** `series.auto_signature` = Hash aus der mitgelieferten Serienliste
+(`series.yaml`-Inhalt), Anzahl/letzter Änderung/ausgeblendeten Serien des Users und den Erkennungs-Einstellungen
+(`min_confidence`, `match_description`, `year_from_upload_date`, `extra_stages`). Jedes geprüfte Set landet mit
+dieser Signatur in `festival_checks` (Migration 17); ändert sie sich (App-Update mit neuer Serienliste, Serie
+bearbeitet, Schwelle geändert), werden alle noch nicht zugeordneten Sets einmal neu geprüft. Manuelle Werte
+(`festival_manual`) werden nie angefasst, ein bestehender Vorschlag nie durch ein schwächeres Ergebnis ersetzt.
+
 ### Festival collector (v0.5.0)
 
 Konzept: `docs/concepts/festivals.md` «v0.5.0 – Collect a whole edition», Entscheide: `docs/decisions.md`
@@ -1092,6 +1133,7 @@ Status). Ergänzungen der Python-Seite:
 | `stats_sizes` | `{phase:"progress"\|"done", done, total, missing?, offline?}` (`offline` = Laufwerk/Freigabe nicht erreichbar, bleibt ungemessen) | v0.9.0: fehlende Dateigrössen werden gemessen (nach `get_stats`); `progress` nach je 200 Dateien, danach lädt die UI die Statistik neu | 0.9.0 |
 | `media_scan` | `MediaScan` | v0.9.0: ein Plex-/Jellyfin-Scan wurde angefragt (nach Downloads oder `scan_media_server`); bei Fehler zusätzlich `toast` (warn) | 0.9.0 |
 | `navigate` | `{view}` | v0.9.0: zweiter Start mit `--open <view>` / Klick auf eine Windows-Benachrichtigung → die UI wechselt die Ansicht | 0.9.0 |
+| `auto_pass` | `{phase:"step", step}` \| `{phase:"end", cancelled}` | v0.10.1 automatischer Nachlauf nach dem GUI-Start (siehe «Automatic catch-up passes»); die Durchlauf-Events tragen dann `auto:true` | 0.10.1 |
 | `playlists_synced` | `{synced, failed}` | gespeicherte Playlists mit «Aktuell halten» wurden neu geschrieben (nach Downloads mit `playlists.sync_after_download` oder per `sync_playlists`); nur gesendet, wenn mindestens eine geschrieben wurde oder fehlschlug. Die UI zeigt einen leisen Toast und lädt die Liste in den Einstellungen neu | 0.8.0 |
 
 ## Download-Queue (Phase 3)

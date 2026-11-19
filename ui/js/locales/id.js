@@ -36,7 +36,8 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "loading": "memuat …",
     "add_chip": "+ tambah",
     "empty": "“kosong”",
-    "empty_list": "“tidak ada”"
+    "empty_list": "“tidak ada”",
+    "undo": "Urungkan"
   },
   "fmt": {
     "today": "hari ini",
@@ -99,7 +100,8 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "sc_off": "SoundCloud dinonaktifkan – aktifkan di Pengaturan › SoundCloud.",
     "mixcloud": "Mixcloud",
     "hearthis": "hearthis.at",
-    "p_off": "{p} dinonaktifkan – aktifkan di Pengaturan › Sumber lain."
+    "p_off": "{p} dinonaktifkan – aktifkan di Pengaturan › Sumber lain.",
+    "all": "Semua"
   },
   "genre": {
     "change": "Ubah genre",
@@ -244,7 +246,26 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "searching_p": "Mencari – kueri ringan, hemat beban {p} …",
     "ready_text_p": "Masukkan kata kunci lalu tekan Enter untuk mencari di {p}.",
     "previews_mc": "{n} khusus pelanggan (Select)",
-    "previews_mc_title": "Unggahan Mixcloud Select hanya untuk pelanggan berbayar dan tidak pernah bisa diunduh. Terlihat saat “Sembunyikan yang diunduh & diabaikan” mati."
+    "previews_mc_title": "Unggahan Mixcloud Select hanya untuk pelanggan berbayar dan tidak pernah bisa diunduh. Terlihat saat “Sembunyikan yang diunduh & diabaikan” mati.",
+    "placeholder_all": "Cari di semua platform: mix, live set, DJ, acara …",
+    "searching_all": "Mencari di {p} ({i} dari {n}) – satu platform demi satu …",
+    "ready_text_all": "Ketik kata pencarian lalu tekan Enter – semua platform yang aktif dicari satu per satu.",
+    "quota_all": "Pencarian jam ini: {list}",
+    "platform_current": "Platform: {p}",
+    "platform_all_title": "Mencari di semua platform yang aktif, satu per satu. Tiap platform tetap memakai jeda dan batas “pencarian per jam” miliknya sendiri.",
+    "platform_backoff": "{p}: backoff sampai {t} – dilewati oleh “Semua”",
+    "platform_backoff_short": "backoff",
+    "skipped": "Dilewati: {list}",
+    "skipped_title": "Platform ini tidak dicari kali ini.",
+    "skip_backoff": "backoff sampai {t}",
+    "skip_error": "tidak ada jawaban",
+    "all_none": "Tidak ada platform yang bisa dicari.",
+    "kw_clear": "Hapus semua",
+    "kw_cleared_inc": "Kata kunci wajib dihapus",
+    "kw_cleared_exc": "Kata kunci pengecualian dihapus",
+    "kw_sugg_title": "Tambahkan lagi (dari pengaturan tersimpan)",
+    "kw_sugg_label": "Saran dari pengaturan tersimpan",
+    "kw_session_hint": "Hanya berlaku untuk sesi ini – tidak ada yang disimpan di sini. Nilai awal: Pengaturan › Filter & kata kunci."
   },
   "inbox": {
     "title": "Kotak masuk",

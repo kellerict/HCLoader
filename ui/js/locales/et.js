@@ -36,7 +36,8 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "loading": "laadimine …",
     "add_chip": "+ lisa",
     "empty": "„tühi“",
-    "empty_list": "„puudub“"
+    "empty_list": "„puudub“",
+    "undo": "Võta tagasi"
   },
   "fmt": {
     "today": "täna",
@@ -100,7 +101,8 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "sc_off": "SoundCloud on välja lülitatud – lülita sisse jaotises Seaded › SoundCloud.",
     "mixcloud": "Mixcloud",
     "hearthis": "hearthis.at",
-    "p_off": "{p} on välja lülitatud – lülita sisse jaotises Seaded › Rohkem allikaid."
+    "p_off": "{p} on välja lülitatud – lülita sisse jaotises Seaded › Rohkem allikaid.",
+    "all": "Kõik"
   },
   "genre": {
     "change": "Muuda žanrit",
@@ -246,7 +248,26 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "searching_p": "Otsimine – lihtne päring, teenust {p} säästev …",
     "ready_text_p": "Sisesta otsingufraas ja vajuta Enter, et teenusest {p} otsida.",
     "previews_mc": "ainult tellijatele (Select): {n}",
-    "previews_mc_title": "Mixcloud Selecti üleslaadimised on ainult maksvatele tellijatele ja neid ei saa kunagi alla laadida. Nähtavad, kui „Peida allalaaditud ja eiratud“ on väljas."
+    "previews_mc_title": "Mixcloud Selecti üleslaadimised on ainult maksvatele tellijatele ja neid ei saa kunagi alla laadida. Nähtavad, kui „Peida allalaaditud ja eiratud“ on väljas.",
+    "placeholder_all": "Otsi kõigilt platvormidelt: miks, live-set, DJ, üritus …",
+    "searching_all": "Otsin platvormilt {p} ({i}/{n}) – üks platvorm teise järel …",
+    "ready_text_all": "Sisesta otsingusõna ja vajuta Enter – kõik sisse lülitatud platvormid otsitakse läbi üksteise järel.",
+    "quota_all": "Otsinguid sel tunnil: {list}",
+    "platform_current": "Platvorm: {p}",
+    "platform_all_title": "Otsib kõigilt sisse lülitatud platvormidelt üksteise järel. Igal platvormil on oma pausid ja oma „otsinguid tunnis“ piirang.",
+    "platform_backoff": "{p}: paus kuni {t} – „Kõik“ jätab selle vahele",
+    "platform_backoff_short": "paus",
+    "skipped": "Vahele jäetud: {list}",
+    "skipped_title": "Neilt platvormidelt seekord ei otsitud.",
+    "skip_backoff": "paus kuni {t}",
+    "skip_error": "vastust pole",
+    "all_none": "Ühtegi platvormi ei saanud otsida.",
+    "kw_clear": "Eemalda kõik",
+    "kw_cleared_inc": "Kohustuslikud märksõnad eemaldatud",
+    "kw_cleared_exc": "Välistatud märksõnad eemaldatud",
+    "kw_sugg_title": "Lisa uuesti (salvestatud seadetest)",
+    "kw_sugg_label": "Soovitused salvestatud seadetest",
+    "kw_session_hint": "Kehtib ainult selles seansis – siin ei salvestata midagi. Algväärtused: Seaded › Filtrid ja märksõnad."
   },
   "inbox": {
     "title": "Saabunud",

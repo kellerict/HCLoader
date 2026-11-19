@@ -36,7 +36,8 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "loading": "ladataan …",
     "add_chip": "+ lisää",
     "empty": "”tyhjä”",
-    "empty_list": "”ei mitään”"
+    "empty_list": "”ei mitään”",
+    "undo": "Kumoa"
   },
   "fmt": {
     "today": "tänään",
@@ -100,7 +101,8 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "sc_off": "SoundCloud on pois päältä – ota se käyttöön kohdassa Asetukset › SoundCloud.",
     "mixcloud": "Mixcloud",
     "hearthis": "hearthis.at",
-    "p_off": "{p} on pois päältä – ota käyttöön kohdassa Asetukset › Lisää lähteitä."
+    "p_off": "{p} on pois päältä – ota käyttöön kohdassa Asetukset › Lisää lähteitä.",
+    "all": "Kaikki"
   },
   "genre": {
     "change": "Vaihda tyylilaji",
@@ -246,7 +248,26 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "searching_p": "Haetaan – kevyt kysely, hellä palvelua {p} kohtaan …",
     "ready_text_p": "Kirjoita hakusana ja paina Enter hakeaksesi palvelusta {p}.",
     "previews_mc": "vain tilaajille (Select): {n}",
-    "previews_mc_title": "Mixcloud Select -lataukset ovat vain maksaville tilaajille, eikä niitä voi koskaan ladata. Näkyvät, kun ”Piilota ladatut ja ohitetut” on pois päältä."
+    "previews_mc_title": "Mixcloud Select -lataukset ovat vain maksaville tilaajille, eikä niitä voi koskaan ladata. Näkyvät, kun ”Piilota ladatut ja ohitetut” on pois päältä.",
+    "placeholder_all": "Hae kaikista palveluista: miksaus, live-setti, DJ, tapahtuma …",
+    "searching_all": "Haetaan palvelusta {p} ({i}/{n}) – yksi palvelu kerrallaan …",
+    "ready_text_all": "Kirjoita hakusana ja paina Enter – kaikki käytössä olevat palvelut käydään läpi yksi kerrallaan.",
+    "quota_all": "Hakuja tällä tunnilla: {list}",
+    "platform_current": "Palvelu: {p}",
+    "platform_all_title": "Hakee kaikista käytössä olevista palveluista yksi kerrallaan. Jokaisella palvelulla on omat taukonsa ja oma ”hakuja tunnissa” -rajansa.",
+    "platform_backoff": "{p}: tauko klo {t} asti – ”Kaikki” ohittaa sen",
+    "platform_backoff_short": "tauko",
+    "skipped": "Ohitettu: {list}",
+    "skipped_title": "Näistä palveluista ei haettu tällä kertaa.",
+    "skip_backoff": "tauko klo {t} asti",
+    "skip_error": "ei vastausta",
+    "all_none": "Mistään palvelusta ei voitu hakea.",
+    "kw_clear": "Poista kaikki",
+    "kw_cleared_inc": "Sisällytettävät avainsanat poistettu",
+    "kw_cleared_exc": "Pois suljettavat avainsanat poistettu",
+    "kw_sugg_title": "Lisää takaisin (tallennetuista asetuksista)",
+    "kw_sugg_label": "Ehdotuksia tallennetuista asetuksista",
+    "kw_session_hint": "Koskee vain tätä istuntoa – tässä ei tallenneta mitään. Lähtöarvot: Asetukset › Suodattimet ja avainsanat."
   },
   "inbox": {
     "title": "Saapuneet",

@@ -36,7 +36,8 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
     "loading": "chargement …",
     "add_chip": "+ ajouter",
     "empty": "« vide »",
-    "empty_list": "« aucun »"
+    "empty_list": "« aucun »",
+    "undo": "Annuler"
   },
   "fmt": {
     "today": "aujourd’hui",
@@ -100,7 +101,8 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
     "sc_off": "SoundCloud est désactivé – activez-le dans Paramètres › SoundCloud.",
     "mixcloud": "Mixcloud",
     "hearthis": "hearthis.at",
-    "p_off": "{p} est désactivé – activez-le sous Paramètres › Autres sources."
+    "p_off": "{p} est désactivé – activez-le sous Paramètres › Autres sources.",
+    "all": "Toutes"
   },
   "genre": {
     "change": "Changer le genre",
@@ -246,7 +248,26 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
     "searching_p": "Recherche – requête légère, ménage {p} …",
     "ready_text_p": "Saisissez un terme et appuyez sur Entrée pour chercher sur {p}.",
     "previews_mc": "{n} réservés aux abonnés (Select)",
-    "previews_mc_title": "Les uploads Mixcloud Select sont réservés aux abonnés payants et ne peuvent jamais être téléchargés. Visibles quand « Masquer téléchargés & ignorés » est désactivé."
+    "previews_mc_title": "Les uploads Mixcloud Select sont réservés aux abonnés payants et ne peuvent jamais être téléchargés. Visibles quand « Masquer téléchargés & ignorés » est désactivé.",
+    "placeholder_all": "Rechercher sur toutes les plateformes : mix, live set, DJ, événement …",
+    "searching_all": "Recherche sur {p} ({i} sur {n}) – une plateforme après l’autre …",
+    "ready_text_all": "Saisissez un terme et appuyez sur Entrée – toutes les plateformes activées sont parcourues l’une après l’autre.",
+    "quota_all": "Recherches cette heure : {list}",
+    "platform_current": "Plateforme : {p}",
+    "platform_all_title": "Parcourt toutes les plateformes activées, l’une après l’autre. Chaque plateforme garde ses propres pauses et sa propre limite de « recherches par heure ».",
+    "platform_backoff": "{p} : backoff jusqu’à {t} – ignorée par « Toutes »",
+    "platform_backoff_short": "backoff",
+    "skipped": "Ignorées : {list}",
+    "skipped_title": "Ces plateformes n’ont pas été parcourues cette fois.",
+    "skip_backoff": "backoff jusqu’à {t}",
+    "skip_error": "pas de réponse",
+    "all_none": "Aucune plateforme n’a pu être parcourue.",
+    "kw_clear": "Tout retirer",
+    "kw_cleared_inc": "Mots-clés à inclure retirés",
+    "kw_cleared_exc": "Mots-clés à exclure retirés",
+    "kw_sugg_title": "Rajouter (depuis les réglages enregistrés)",
+    "kw_sugg_label": "Suggestions issues des réglages enregistrés",
+    "kw_session_hint": "Valable pour cette session seulement – rien n’est enregistré ici. Valeurs de départ : Paramètres › Filtres et mots-clés."
   },
   "inbox": {
     "title": "Boîte de réception",

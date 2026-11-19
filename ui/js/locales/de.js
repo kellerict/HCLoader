@@ -36,7 +36,8 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "loading": "lädt …",
     "add_chip": "+ hinzufügen",
     "empty": "«leer»",
-    "empty_list": "«keine»"
+    "empty_list": "«keine»",
+    "undo": "Rückgängig"
   },
   "fmt": {
     "today": "heute",
@@ -100,7 +101,8 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "sc_off": "SoundCloud ist ausgeschaltet – einschalten unter Einstellungen › SoundCloud.",
     "mixcloud": "Mixcloud",
     "hearthis": "hearthis.at",
-    "p_off": "{p} ist ausgeschaltet – einschalten unter Einstellungen › Weitere Quellen."
+    "p_off": "{p} ist ausgeschaltet – einschalten unter Einstellungen › Weitere Quellen.",
+    "all": "Alle"
   },
   "genre": {
     "change": "Genre ändern",
@@ -246,7 +248,26 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "searching_p": "Suche läuft – flache Abfrage, schonend für {p} …",
     "ready_text_p": "Suchbegriff eingeben und mit Enter auf {p} suchen.",
     "previews_mc": "{n} nur für Abonnenten (Select)",
-    "previews_mc_title": "Mixcloud-Select-Uploads gibt es nur für zahlende Abonnenten, sie lassen sich nie laden. Sichtbar, wenn «Geladene & ignorierte ausblenden» aus ist."
+    "previews_mc_title": "Mixcloud-Select-Uploads gibt es nur für zahlende Abonnenten, sie lassen sich nie laden. Sichtbar, wenn «Geladene & ignorierte ausblenden» aus ist.",
+    "placeholder_all": "Alle Plattformen durchsuchen: Mix, Liveset, DJ, Event …",
+    "searching_all": "Suche auf {p} ({i} von {n}) – eine Plattform nach der anderen …",
+    "ready_text_all": "Suchbegriff eingeben und Enter drücken – alle eingeschalteten Plattformen werden nacheinander durchsucht.",
+    "quota_all": "Suchen diese Stunde: {list}",
+    "platform_current": "Plattform: {p}",
+    "platform_all_title": "Durchsucht alle eingeschalteten Plattformen nacheinander. Jede Plattform behält ihre eigenen Pausen und ihr eigenes Limit «Suchen pro Stunde».",
+    "platform_backoff": "{p}: Backoff bis {t} – wird bei «Alle» übersprungen",
+    "platform_backoff_short": "Backoff",
+    "skipped": "Übersprungen: {list}",
+    "skipped_title": "Diese Plattformen wurden diesmal nicht durchsucht.",
+    "skip_backoff": "Backoff bis {t}",
+    "skip_error": "keine Antwort",
+    "all_none": "Keine Plattform konnte durchsucht werden.",
+    "kw_clear": "Alle entfernen",
+    "kw_cleared_inc": "Pflicht-Stichwörter entfernt",
+    "kw_cleared_exc": "Ausschluss-Stichwörter entfernt",
+    "kw_sugg_title": "Wieder hinzufügen (aus den gespeicherten Einstellungen)",
+    "kw_sugg_label": "Vorschläge aus den gespeicherten Einstellungen",
+    "kw_session_hint": "Gilt nur für diese Sitzung – hier wird nichts gespeichert. Startwerte: Einstellungen › Filter & Keywords."
   },
   "inbox": {
     "title": "Eingang",

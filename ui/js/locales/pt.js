@@ -36,7 +36,8 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "loading": "carregando …",
     "add_chip": "+ adicionar",
     "empty": "“vazio”",
-    "empty_list": "“nenhum”"
+    "empty_list": "“nenhum”",
+    "undo": "Desfazer"
   },
   "fmt": {
     "today": "hoje",
@@ -100,7 +101,8 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "sc_off": "O SoundCloud está desativado – ative em Configurações › SoundCloud.",
     "mixcloud": "Mixcloud",
     "hearthis": "hearthis.at",
-    "p_off": "{p} está desativado – ative em Configurações › Mais fontes."
+    "p_off": "{p} está desativado – ative em Configurações › Mais fontes.",
+    "all": "Todas"
   },
   "genre": {
     "change": "Alterar gênero",
@@ -246,7 +248,26 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "searching_p": "Buscando – consulta leve, sem sobrecarregar o {p} …",
     "ready_text_p": "Digite um termo e pressione Enter para buscar no {p}.",
     "previews_mc": "{n} só para assinantes (Select)",
-    "previews_mc_title": "Envios do Mixcloud Select são só para assinantes pagos e nunca podem ser baixados. Visíveis quando “Ocultar baixados e ignorados” está desativado."
+    "previews_mc_title": "Envios do Mixcloud Select são só para assinantes pagos e nunca podem ser baixados. Visíveis quando “Ocultar baixados e ignorados” está desativado.",
+    "placeholder_all": "Buscar em todas as plataformas: mix, live set, DJ, evento …",
+    "searching_all": "Buscando em {p} ({i} de {n}) – uma plataforma após a outra …",
+    "ready_text_all": "Digite um termo e pressione Enter – todas as plataformas ativadas são pesquisadas, uma após a outra.",
+    "quota_all": "Buscas nesta hora: {list}",
+    "platform_current": "Plataforma: {p}",
+    "platform_all_title": "Pesquisa todas as plataformas ativadas, uma após a outra. Cada plataforma mantém suas próprias pausas e seu próprio limite de “buscas por hora”.",
+    "platform_backoff": "{p}: backoff até {t} – ignorada em “Todas”",
+    "platform_backoff_short": "backoff",
+    "skipped": "Ignoradas: {list}",
+    "skipped_title": "Estas plataformas não foram pesquisadas desta vez.",
+    "skip_backoff": "backoff até {t}",
+    "skip_error": "sem resposta",
+    "all_none": "Nenhuma plataforma pôde ser pesquisada.",
+    "kw_clear": "Remover todas",
+    "kw_cleared_inc": "Palavras-chave de inclusão removidas",
+    "kw_cleared_exc": "Palavras-chave de exclusão removidas",
+    "kw_sugg_title": "Adicionar de novo (das configurações salvas)",
+    "kw_sugg_label": "Sugestões das configurações salvas",
+    "kw_session_hint": "Vale só para esta sessão – nada é salvo aqui. Valores iniciais: Configurações › Filtros e palavras-chave."
   },
   "inbox": {
     "title": "Caixa de entrada",

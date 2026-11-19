@@ -3133,12 +3133,12 @@
         const l = LIBRARY.find((x) => x.id === id);
         if (l && l.reupload) l.reupload.of.present = present;
       },
-      /** Backoff einer Plattform auslösen (platform: "youtube" (Standard) | "soundcloud"). */
+      /** Backoff einer Plattform auslösen (platform: "youtube" (Standard) | "soundcloud" | "mixcloud" | "hearthis"). */
       backoff(hours, platform) {
-        const h = hours || 6, sc = platform === 'soundcloud';
+        const h = hours || 6, pk = PSTATE[platform];
         const bo = { active: true, until: new Date(Date.now() + h * 3600000 - 47 * 60000).toISOString(), level: 1 };
-        if (sc) state.sc.backoff = bo; else state.backoff = bo;
-        pushLog('error', `HTTP 429 von ${sc ? 'SoundCloud' : 'YouTube'} – Backoff ${h} h aktiviert`);
+        if (pk) state[pk].backoff = bo; else state.backoff = bo;
+        pushLog('error', `HTTP 429 von ${pk ? PLABEL[platform] : 'YouTube'} – Backoff ${h} h aktiviert`);
         emit('queue', {});
         pushStatus();
       },

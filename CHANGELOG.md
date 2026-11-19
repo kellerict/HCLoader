@@ -4,358 +4,199 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning follows [SemVer](https://semver.org/).
 Entries are written in English from v0.2.1 on; older entries are in German.
 
-Every version starts with `### Highlights`: 3 to 8 one-line bullets, no prose. The app shows exactly
-this list in the update dialog; everything below it (`### Added`, `### Changed`, `### Fixed` …) only
-appears after «Show all changes» (`docs/RELEASING.md`).
+Every version starts with `### Highlights` (3 to 6 one-line bullets for users), followed by
+`### Added` / `### Changed` / `### Fixed` with short one-line bullets. Implementation details belong
+in `docs/` and the wiki, not here. The app shows the Highlights; the rest appears after «Show all
+changes». Full rule: `docs/RELEASING.md` › "Writing release notes".
 
 ## [Unreleased]
+
+## [0.10.1] - 2026-11-19
+
+### Highlights
+- Festivals are now assigned automatically for existing libraries – no button needed
+- Tracklists, loudness and fingerprints of older sets also catch up by themselves
+- The catch-up runs quietly in the background, shown in the status bar, and can be stopped
+- Shorter, readable release notes: highlights first, details on demand
+
+### Added
+- Automatic catch-up after the start for sets downloaded with older versions
+- Status bar shows which catch-up pass runs, with progress and a stop button
+- A new festival list in an app update re-checks sets without a festival
+
+### Changed
+- Your own festival choices are never overwritten; a suggestion is never replaced by a weaker one
+- Starting a maintenance job yourself pauses the automatic catch-up
+- Release notes show only the highlights first, for every version
+- Release notes of all versions since 0.5.0 rewritten to be short and plain
+
+### Fixed
+- Sets downloaded before festival detection existed no longer stay in «Other / unassigned»
+- Italic text in release notes no longer shows literal asterisks
+- Very long release-note bullets are cut after three lines, with «more» to expand
 
 ## [0.10.0] - 2026-11-19
 
 ### Highlights
-- **Re-upload detection**: an offline audio fingerprint recognises the same mix uploaded again – another channel, another platform, a new id
-- Probable re-uploads are **marked in the library** with *Keep both*, *Link as the same mix* or *Delete this newer file* – nothing is deleted automatically
-- **Fingerprint your existing library** in the background, with progress and cancel; optional check by length and title before downloading
-- **Mixcloud** as a new source: search, users and playlists in the watchlist, downloads
-- **hearthis.at** as a new source: search, users and sets in the watchlist, downloads
-- Every source has **its own throttle**, counters and backoff – a block on one never stops the others
+- **Re-upload detection**: recognises the same mix uploaded again on another channel or platform
+- Probable re-uploads are **marked in the library** – you decide, nothing is deleted automatically
+- **Fingerprint your existing library** in the background, with progress and cancel
+- **Mixcloud** as a new source: search, users and playlists, downloads
+- **hearthis.at** as a new source: search, users and sets, downloads
+- Every source has **its own throttle** – a block on one never stops the others
 
 ### Added
-- Re-upload detection (new settings tab **Re-uploads**): after each download the new file is
-  fingerprinted offline with ffmpeg (first minutes plus a few 30-second windows, mono at low sample
-  rate, low priority, one file at a time, after the loudness analysis) and compared with the library
-  through a fast index. A match at the same time offset in at least two parts of the set marks the
-  newer download as *probable re-upload of X* (threshold adjustable, default 15 %). Two different
-  sets that only share the opening track are no match. Library: tag **RE-UPLOAD?** with the actions
-  *Keep both*, *Link as the same mix*, *Show the original*, *Delete this newer file* (the entry
-  becomes *ignored* and is never downloaded again) and *Undo*; chip **Re-uploads (n)**; a note in
-  Downloads and a toast after a download. **Fingerprint new files** / **Fingerprint all again**
-  compare the existing library (progress, cancel, resumes where it stopped; decisions are kept).
-- Optional **Check before downloading** (`reupload.precheck`, off by default): search hits and
-  watchlist entries are also compared by length (±5 s) and title with the library on the same
-  platform – no extra request; matches go to the inbox instead of the queue.
-- **Mixcloud**: search (Mixcloud's public search API, 50 results per request), watchlist sources
-  `mixcloud.com/<user>` (uploads) and `mixcloud.com/<user>/playlists/<playlist>`, downloads through
-  yt-dlp. Listings ask for title, length, date and picture in the same page request and stop as soon
-  as they have enough entries. Mixcloud Select uploads (subscribers only) are shown as not
-  downloadable. Original AAC audio kept by default (`download.keep_original_mixcloud`).
-- **hearthis.at**: search and watchlist sources `hearthis.at/<user>/` and
-  `hearthis.at/<user>/set/<set>/` through the public API (20 entries per request, lazy), downloads
-  through yt-dlp; the MP3 stream is kept unchanged by default (`download.keep_original_hearthis`),
-  lossless originals are skipped.
-- Settings tab **More sources** with a switch and the full throttle (pauses, limits, backoff) for
-  Mixcloud and hearthis.at each; status bar items for them while they are active; platform switch in
-  Discover and in saved searches with four platforms; statistics show all sources.
-- New settings sections `mixcloud`, `hearthis`, `reupload`; `download.keep_original_mixcloud`,
-  `download.keep_original_hearthis`. Database migration 16 (`fingerprints`, `fingerprint_index`,
-  `reuploads`).
-- Ids `mc:<user>_<slug>` / `ht:<id>`, file names `[mc-…]` / `[ht-…]`, tags `TXXX:MIXCLOUD_ID` /
-  `TXXX:HEARTHIS_ID`, archive lines `mixcloud …` / `hearthisat …`; `{platform}` in the folder pattern
-  gives «Mixcloud» / «hearthis.at».
-- Bridge methods `get_reupload_status`, `fingerprint_library`, `cancel_fingerprint_library`,
-  `get_reuploads`, `resolve_reupload`; events `fingerprint`, `reupload`; `LibraryItem.reupload`
-  (`docs/bridge-api.md`).
-- Texts in all languages; wiki pages *Re-upload detection* (new), *Supported sources*, *Settings
-  reference* updated; installer privacy page and privacy table list Mixcloud and hearthis.at.
+- New settings tab **Re-uploads** with an offline audio fingerprint after each download
+- Library tag **RE-UPLOAD?** with *Keep both*, *Link as the same mix* and *Delete this newer file*
+- Filter chip **Re-uploads** in the library, notes in Downloads and after a download
+- Optional check by length and title before downloading, without extra requests
+- Mixcloud search, user uploads and playlists in the watchlist, downloads
+- hearthis.at search, user uploads and sets in the watchlist, downloads
+- Settings tab **More sources** with a switch and its own throttle per source
+- Status bar items for Mixcloud and hearthis.at while they are active
+- Platform switch for four sources in Discover and saved searches
+- Texts in all languages; wiki pages for re-uploads and supported sources
 
 ### Changed
-- Settings sections and throttles of all platforms come from one table
-  (`config.PLATFORM_SECTIONS`), so a new platform gets its throttle everywhere at once.
-- Re-upload fingerprint windows sit at fixed times – half counted from the start (5, 10, 15 … min),
-  half counted back from the end (2, 6, 12 … min) – and a partial match is confirmed by decoding the
-  new file again where the other set's parts lie at the found offset. Copies with minutes more or less
-  at either end, trimmed copies, low bitrates and noisy copies are recognised; sets that only share
-  a track or the intro are not.
-- An HTTP 403 of the Mixcloud or hearthis.at API starts that platform's backoff (as for SoundCloud).
-- The same-platform pre-check needs equal numbers in both titles, so the next episode of a weekly
-  show is not taken for a re-upload.
+- Fingerprints compare several parts of a set, so trimmed or noisy copies are found
+- Sets that only share a track or the intro are not taken for re-uploads
+- A block by Mixcloud or hearthis.at pauses only that source
+- The next episode of a weekly show is no longer taken for a re-upload
 
 ### Fixed
-- *Delete this newer file* is only possible while the original file is present and readable;
-  otherwise the menu explains why and offers **Original missing – keep this copy** (the copy replaces
-  the original). The last copy of a mix can no longer be deleted by accident.
-- Deleting a set while its fingerprint is computed no longer fails on Windows (the decode stops
-  first) and leaves no fingerprint rows behind.
-- Mixcloud: playlists read newest-last stop paging past the size limit; search paging only follows
-  Mixcloud's own API.
+- *Delete this newer file* only works while the original file is still there
+- New option *Original missing – keep this copy* when the original is gone
+- Deleting a set while it is fingerprinted no longer fails on Windows
+- Mixcloud playlists and search stop paging at the right place
 
 ### Not included
-- **archive.org** is postponed: yt-dlp only supports single items, not collections or search
-  (`docs/decisions.md`).
+- **archive.org** is postponed: yt-dlp does not support its collections or search
 
 ## [0.9.0] - 2026-11-18
 
 ### Highlights
-- **Statistics view**: sets, hours and GB of your library, by genre, festival, year and DJ – charts that work offline
-- **Downloads over time**, YouTube vs. SoundCloud, most played tracks and watchlist activity, with a date range filter
-- **Windows notifications** when the watchlist finds new sets or downloads finish or fail – bundled, with quiet hours
-- A click on a notification **opens the app at the inbox** (also after a scheduled check while the app was closed)
-- **Plex and Jellyfin**: the media server rescans its library after downloads – batched, only the new folders
-- The Plex token / Jellyfin API key lives in the **Windows Credential Manager**, never in config.yaml or the log
+- **Statistics view**: sets, hours and GB of your library by genre, festival, year and DJ
+- **Downloads over time**, sources, most played tracks and watchlist activity, with a date filter
+- **Windows notifications** for new sets and finished or failed downloads – bundled, with quiet hours
+- A click on a notification **opens the app at the right view**
+- **Plex and Jellyfin** rescan their library after downloads
+- Media server tokens are kept in the **Windows Credential Manager**
 
 ### Added
-- Statistics view (navigation › **Statistics**, `#stats`, Ctrl+6): totals (sets, playing time, size on
-  disk, average set length), downloads per month (per year for long histories), genres, YouTube vs.
-  SoundCloud, top 10 festivals and DJs, sets per event year, the most played tracks (offline
-  tracklists) and watchlist activity (checks, scheduled share, found, inbox, the most productive
-  sources). Presets *All time*, *12 months*, *30 days*, *This year* and a custom range. Computed from
-  the database only (no network, fast on 10,000 sets); charts are plain HTML/CSS/SVG with text
-  alternatives, keyboard focus and no animation with *Reduce effects*. A click on a DJ opens their page.
-- File sizes are stored with every download (`videos.file_size`, database migration 15 with an index
-  on the download time); libraries from before v0.9.0 are measured once in the background (local
-  files only) when the statistics view opens.
-- Windows notifications (new settings tab **Notifications**): new sets in the inbox (in-app and
-  scheduled checks), downloads finished, downloads failed – each switchable, plus quiet hours. Events
-  are collected and shown as one notification (one per download run, at least two minutes apart);
-  during the quiet hours nothing is shown and one summary follows afterwards. **Send test** button.
-  Shown through Windows PowerShell 5.1 (part of Windows, no extra package) or, if installed, the
-  optional pywinrt packages; without either the events are only logged.
-- A click on a notification opens HCLoader at the matching view (inbox, downloads or library) –
-  also when the app is already running. New command-line option `--open <view>`; the
-  `hcloader://open/<view>` link can only navigate (fixed allow-list, any extra argument is refused);
-  the app registers its notification name/icon and the `hcloader:` link per user (HKCU, no admin
-  rights); the uninstaller removes both.
-- Plex/Jellyfin library scan (new settings tab **Media server**): server type, address, library
-  (chosen from the list loaded by **Test connection**), the target folder as the server sees it
-  (NAS/Docker), wait time and certificate check. After downloads the new files are sent in one
-  batch: Plex `…/library/sections/<id>/refresh?path=<folder>`, Jellyfin `/Library/Media/Updated`
-  (falls back to a full library refresh when paths cannot be mapped). **Scan now** button, last scan
-  shown. Only the address you enter is contacted, without the system proxy, no redirects, 10 s
-  timeouts, no retries; failures are logged and shown as a message. The scheduled run scans too.
-- Token / API key in the Windows Credential Manager (`HCLoader/media_server/<type>`), stored after a
-  successful connection test, removable in the settings.
-- New settings sections `notifications` and `media_server`; `general.start_view` accepts `stats`.
-- Bridge methods `get_stats`, `get_notification_status`, `test_notification`,
-  `get_media_server_status`, `test_media_server`, `forget_media_server_secret`, `scan_media_server`;
-  events `stats_sizes`, `media_scan`, `navigate`; `watchlist_done` also carries `inbox`
-  (`docs/bridge-api.md`).
-- Texts in all languages; wiki pages *Statistics* and *Notifications and media servers*, *Settings
-  reference* updated.
+- Statistics view with totals, charts per month, genre, festival, DJ and year
+- Date range presets: all time, 12 months, 30 days, this year, custom
+- File sizes of older libraries are measured once in the background
+- Settings tab **Notifications** with switches per event and quiet hours
+- **Send test** button for notifications
+- Settings tab **Media server** for Plex or Jellyfin with **Test connection** and **Scan now**
+- Texts in all languages; wiki pages for statistics, notifications and media servers
 
 ### Changed
-- The navigation has a new entry *Statistics* between *Library* and *Log*; Ctrl+6 opens it, the log
-  and the settings moved to Ctrl+7 and Ctrl+8.
+- New navigation entry *Statistics*; log and settings moved to Ctrl+7 and Ctrl+8
 
 ## [0.8.0] - 2026-11-18
 
 ### Highlights
-- **DJ pages**: every artist in your library with sets, hours, festivals and years – grouped by festival and year
-- **Aliases and b2b**: "HH" is Headhunterz, "SubZero Project" is Sub Zero Project, and a b2b set counts for every artist
-- **Play all** sets of a DJ in the built-in player, one after the other
-- **Add a DJ to the watchlist** with one click – their own channel if known, otherwise a "live set" search
-- **Playlist export (M3U8)** for a festival edition, a genre, a DJ, your current search, a collector checklist or "Continue listening"
-- Relative paths by default, so playlists keep working when the music folder moves; optional **auto-update after downloads**
+- **DJ pages**: every artist with sets, hours, festivals and years
+- **Aliases and b2b**: spelling variants fold into one DJ, b2b sets count for everyone
+- **Play all** sets of a DJ in the built-in player
+- **Add a DJ to the watchlist** with one click
+- **Playlist export (M3U8)** for festivals, genres, DJs, searches and checklists
 
 ### Added
-- DJ pages (Library › **DJs**, `#library/djs`): list with search (also by alias), sort by sets, most
-  recent or name, hidden "not a DJ" entries; a page per DJ with an initials badge, stats (sets, hours,
-  festivals, years, b2b), sets grouped by festival and year with stage and b2b partners, the 10 most
-  played tracks of their sets (from the offline tracklists), **Play all**, **Export M3U**, **Add to
-  watchlist** (confirmation first, then the normal watchlist path; nothing is downloaded
-  automatically) and **Search in Discover**.
-- Artist detection runs offline on stored data (`app/core/artists.py`): confirmed festival-collector
-  rows, the set title (festival, year, stage and set type parts skipped, "… by <DJ>"), the artist's own
-  channel. b2b/vs/x and "&" credit every artist; a known act such as "D-Block & S-te-Fan" stays one.
-  Spelling variants fold to one DJ; a short built-in alias list (`app/data/artists.yaml`).
-- Edit name, aliases and own channel, merge two DJs, split an alias off again, hide entries that are
-  not DJs – stored in the database and kept across updates.
-- Playlist export (`app/core/playlists.py`): M3U8 (UTF-8, `#EXTM3U`, `#EXTINF` with duration and
-  "Artist - Title") from the library (selected festival edition/series, a genre, or search + filters
-  + sort), a DJ page, a collector checklist (downloaded sets) and "Continue listening". Relative paths
-  by default (a file on another drive or share is written with its full path, the dialog says how
-  many), file names cleaned for Windows and shortened to the path length limit, overwrite question,
-  folder picker, missing files skipped.
-- Saved playlists with **Keep up to date**: rewritten after downloads (also the scheduled run) when
-  *Update saved playlists after downloads* is on (off by default); list in Settings › Storage & tags.
-- New settings section `playlists` (`folder`, `relative_paths`, `sync_after_download`).
-- Database migration 13 (automatic backup first): tables `artists` and `playlists`.
-- Bridge methods `get_artists`, `get_artist`, `save_artist`, `merge_artists`, `split_artist`,
-  `hide_artist`, `get_artist_watch`, `preview_playlist`, `export_playlist`, `get_saved_playlists`,
-  `set_playlist_sync`, `forget_playlist`, `sync_playlists`; event `playlists_synced`
-  (`docs/bridge-api.md`).
-- Texts in all languages; wiki page *DJ pages and playlists*, *Settings reference* updated.
-- Database migration 14: triggers keep one cache version for the DJ index, so festival
-  assignments, collector credits, retags, deletes and artist edits show up at once (also from a
-  scheduled run).
+- DJ list with search, sorting and a page per DJ
+- Edit, merge, split or hide DJs – kept across updates
+- Most played tracks per DJ from the tracklists
+- Playlist export with relative paths, so playlists survive a moved music folder
+- Saved playlists can update themselves after downloads
+- Texts in all languages; wiki page for DJ pages and playlists
 
 ### Fixed
-- Known artists (built-in list and your own entries) are recognised before a credit is split:
-  "Mark With a K" is no longer cut to "Mark"; "with" only cuts before an MC or between two known
-  names; "presents" and "feat." never cut into a known name.
-- "Will Sparks & MC Stretch" no longer makes the MC a b2b partner (an MC alone still counts).
-- Hidden artists no longer appear as b2b partners on DJ pages.
-- The DJ index is updated incrementally after downloads (only new or changed sets are parsed) and
-  builds about three times faster on large libraries.
-- Merging artists no longer drops aliases silently beyond the limit; it refuses with a message.
-- Playlists: a relative entry starting with "#" (or a space) is written as "`.\…`" so players do not
-  read it as a comment; line breaks of every kind are removed from entries; "foo.m3u8" is not
-  saved as "foo.m3u8.m3u8"; a unique temporary file is used and counted against the path limit.
-- A playlist deleted in Explorer is no longer recreated by the automatic sync – it stops being
-  kept up to date ("Write now" still writes it on request).
-- A sync request that arrived while the previous sync was finishing is no longer lost.
+- Names like "Mark With a K" are no longer cut apart
+- An MC is no longer counted as a b2b partner
+- Hidden artists no longer appear as b2b partners
+- The DJ index builds about three times faster on large libraries
+- Playlist entries are written so every player reads them correctly
+- A playlist deleted in Explorer is no longer recreated
 
 ## [0.7.0] - 2026-11-18
 
 ### Highlights
-- **Loudness normalisation**: every set plays at the same perceived loudness in the built-in player – never clipping
-- Offline **loudness analysis** with ffmpeg writes **ReplayGain tags** into your files (MP3, M4A, Opus) – the audio is never re-encoded
-- **Waveform seek bar** with tracklist marks: hover for the track name, click or drag to jump
-- The player **remembers where you stopped** in every set and offers to resume
-- **Continue listening**: your last five unfinished sets at the top of the library
-- **Sleep timer**: 15/30/45/60 minutes or end of the set, with a gentle fade-out
+- **Loudness normalisation**: every set plays equally loud in the built-in player
+- **ReplayGain tags** written into your files – the audio itself is never changed
+- **Waveform seek bar** with tracklist marks: hover for the track, click to jump
+- The player **remembers where you stopped** in every set
+- **Continue listening**: your last unfinished sets at the top of the library
+- **Sleep timer** with a gentle fade-out
 
 ### Added
-- Offline audio analysis (`app/core/analysis.py`): EBU R128 integrated loudness, loudness range and
-  true peak via ffmpeg's `ebur128` filter, plus a compact waveform (1600 points) – both from a single
-  decode, one file at a time, `-threads 1` and lowered process priority, cancellable at any moment.
-  Runs after every download (setting), the first time a set without waveform is played, and as a
-  one-off or incremental pass over the library (Settings › Playback › *Analyse N new* / *Analyse all
-  again*, with progress and cancel). Never touches the network.
-- ReplayGain 2.0 tags (`REPLAYGAIN_TRACK_GAIN`/`_PEAK`, −18 LUFS reference): ID3 TXXX for MP3, iTunes
-  freeform atoms for M4A, `R128_TRACK_GAIN` for Opus (RFC 7845). Only the tag block is written; files
-  locked by another program are re-tagged by the next pass without measuring again. ReplayGain tags of
-  other programs are read as well.
-- Built-in player: loudness normalisation through Web Audio with a configurable target (default
-  −18 LUFS) and a true-peak limit; a small badge shows the gain in use. If the audio engine stays
-  silent (local file treated as cross-origin), the player switches to plain playback at the same
-  position within ~1.5 s – volume can then only be lowered, not boosted.
-- ReplayGain tags are never written into the set that is loaded in the player; they follow once it
-  is closed or another set plays. Tag writes go to a copy that atomically replaces the file.
-- Built-in player: waveform seek bar with chapter lines, tooltips, click and drag; falls back to the
-  plain bar without ffmpeg or with the setting off; respects *Reduce effects*.
-- Player memory: the position of every set is remembered (not in the first/last 30 s); *Ask*,
-  *Automatic* or *Off*. *Continue listening* row in the library with progress, resume and remove.
-- Sleep timer in the player: 15/30/45/60 minutes or end of the set; the last 10 seconds fade out.
-- New settings tab **Playback** (`player.mode` moved here from General) with `player.normalize`,
-  `player.target_lufs`, `player.resume`, `player.waveform` and the new section `loudness`
-  (`analyse_after_download`, `write_tags`, `waveforms`).
-- Database migration 12 (automatic backup first): tables `audio_analysis` and `playback`.
-- Bridge methods `get_waveform`, `save_position`, `forget_position`, `get_continue_listening`,
-  `get_analysis_status`, `analyse_library`, `cancel_analyse_library`, `set_now_playing`; `get_media` now also returns
-  `loudness`, `resume` and `peaks`; events `audio_analysis`, `media_analysed`, `waveform`
-  (`docs/bridge-api.md`).
-- Texts in all languages; wiki pages *Library and player* and *Settings reference* updated.
+- Offline loudness and waveform analysis after each download and for the whole library
+- Loudness badge in the player and a configurable target loudness
+- Player memory with *Ask*, *Automatic* or *Off*
+- Sleep timer: 15, 30, 45, 60 minutes or end of the set
+- New settings tab **Playback**
+- Texts in all languages; wiki pages updated
+
+### Fixed
+- Tags are never written into the set that is currently playing
+- The player falls back to normal playback if the audio engine stays silent
 
 ## [0.6.0] - 2026-11-18
 
 ### Highlights
-- New **Tracks** search in the library: type an artist or title and see every set that plays it, with the timestamp
-- Click a timestamp to play the set from exactly that point in the built-in player
-- **Tracklist** panel for every set with clickable timestamps; unreleased "ID – ID" tracks shown discreetly
-- **Most played tracks**: the top 20 tracks across your sets
-- Tracklists come from chapters, descriptions, ID3 chapters and CUE files – offline, no extra requests to YouTube
+- New **Tracks** search: find every set that plays an artist or track
+- Click a timestamp to play the set from exactly that point
+- **Tracklist** panel for every set with clickable timestamps
+- **Most played tracks** across all your sets
+- Tracklists come from chapters, descriptions and CUE files – offline, no extra requests
 
 ### Added
-- Tracklist extraction (`app/core/tracklist.py`): chapters and description from the metadata
-  sidecar, ID3 CHAP frames and `.cue` files. Understands timestamped lines (`00:00`, `[12:34]`,
-  `(1:02:03)`, timestamp at the end), numbered lists (`1.`, `01)`, `#3`, `Track 01 –`, `Track 1:`) and plain
-  "Tracklist:" blocks; skips timetables, links and promo lines. Artists and titles are normalised (`feat.`, `x`,
-  `vs.`, `&`, remix/edit/VIP as version, trailing `[Label]`, unicode quotes and dashes).
-- Database migration 10 (automatic backup first): tables `tracklists` and `tracks` with an SQLite
-  FTS5 index for fast search over thousands of sets; falls back to a plain search with the same
-  results if FTS5 is missing (checked at every start; the index is repaired or rebuilt when needed).
-  Migration 11 adds an index that makes "Most played" about four times faster on large libraries.
-- Deleting a set also removes its tracklist, so it no longer shows up in search or "Most played".
-- Tracklists are read after every download; the existing library is read once when the Tracks view
-  is opened for the first time (progress, cancel). Later, "Read new" only reads sets that are new or
-  changed since, and "Re-read all" reads everything again.
-- Bridge methods `search_tracks`, `get_tracklist`, `get_top_tracks`, `get_tracklist_status`,
-  `build_tracklists`, `cancel_build_tracklists` and event `tracklist_index` (`docs/bridge-api.md`).
-- External player mode: clicking a timestamp opens the file and tells you where to jump.
-- Texts in all languages; wiki page "Tracklist search".
+- Tracklists are read after every download and once for the existing library
+- Fast search over thousands of sets
+- Deleting a set also removes its tracklist
+- External player mode tells you where to jump
+- Texts in all languages; wiki page for tracklist search
 
 ### Changed
-- The metadata sidecar keeps the whole description (up to 5000 characters instead of 2000), so
-  tracklists at the end of long descriptions are found for new downloads.
+- Long descriptions are kept in full, so late tracklists are found
 
 ### Fixed
-- Chapters read from a description no longer lose a closing bracket at the end of the title
-  ("Title (X Remix" in CUE files and ID3 chapters).
-- A damaged audio file no longer breaks the Tracklist panel; it shows a clear message instead.
-- A download that fails on a local file error (missing program, locked file) now names the
-  error type, the file and where it happened, instead of a bare "[WinError 2]".
+- Chapter titles no longer lose a closing bracket
+- A damaged audio file no longer breaks the tracklist panel
+- Local download errors now name the file and the cause
 
 ## [0.5.1] - 2026-11-18
 
 ### Highlights
-- The installer installs the Microsoft Edge WebView2 Runtime if it is missing (nothing happens if it is already there)
-- Portable build: a clear message with the download link when WebView2 is missing, instead of a broken window
+- The installer installs the Microsoft WebView2 Runtime if it is missing
+- Portable build: a clear message with a download link when WebView2 is missing
+- Nothing changes on PCs that already have WebView2
 
 ### Added
-- Installer: detects the WebView2 Runtime through the registry keys Microsoft documents (`pv` per
-  machine or per user, not empty and not 0.0.0.0). If it is missing, Microsoft's Evergreen
-  Bootstrapper (packed, signed by Microsoft) runs silently after the files are installed, with a
-  status text; it installs per user without admin rights. Without internet the installation still
-  completes and a message shows the download page; the setup log records every step. Texts in all
-  installer languages.
-- App start (all builds): if no WebView2 Runtime is registered, HCLoader stops before opening the
-  window and explains it, with the option to open Microsoft's download page (all languages).
-  `HCLOADER_SKIP_WEBVIEW2_CHECK=1` skips the check for setups it cannot see (Fixed Version runtime).
+- WebView2 check and silent install in the installer, also without admin rights
+- Start check with a link to Microsoft's download page
 
 ### Changed
-- Release build: the bootstrapper is downloaded from Microsoft at build time and must carry a valid
-  Microsoft Authenticode signature, otherwise the build fails; it is never committed and not
-  re-signed. The installer smoke test checks the "already installed" path and a dry run of the
-  "missing" path (`/WEBVIEW2DRYRUN=1`).
-- Docs: README and wiki (Installation, Troubleshooting), third-party notes and code signing policy
-  mention the bootstrapper.
+- The WebView2 installer is checked for Microsoft's signature at build time
+- README and wiki mention the WebView2 step
 
 ## [0.5.0] - 2026-11-18
 
 ### Highlights
-- Festival collector: a checklist of the expected sets of one festival edition, in the library (button «Collector», or «Collect this edition» in the festival view)
-- Fill it from the organiser's playlist, a pasted timetable (text or CSV, **beta** – check the preview before importing), a shared timetable file or by hand
-- Missing sets are found in your library first (free), then searched one by one – gently spread over the hour
-- Only ticked and confirmed sets are queued; downloads are tagged with edition, stage and set type from the checklist
+- **Festival collector**: a checklist of the expected sets of one festival edition
+- Fill it from the organiser's playlist, a pasted timetable or by hand
+- Missing sets are found in your library first, then searched gently one by one
+- Only ticked and confirmed sets are downloaded, tagged with stage and set type
 
 ### Added
-- Festival collector UI (`ui/js/views/collector.js`, sub-view of the library, `#library/collector`):
-  overview of all checklists with «New checklist» (series + year + variant); per edition the status
-  tiles (found / queued / downloaded / missing / ignored, click = filter), filters by stage, day and
-  DJ, the table with checkbox, DJ, stage, day/time, set type, status and matched video (duration,
-  confidence), confirm / reject / «other hits» for uncertain matches, ignore, inline edit, «Add row»,
-  and a fixed action bar with «Select all / None», «Find missing sets» and «Download checked (n)».
-- Collector dialogs: organiser playlist (link, progress while it is read), «Paste timetable» with a
-  live preview of the parsed sets and the lines that were not understood, «Shipped timetables» (empty
-  state explains the format and how to contribute), estimate before the search (searches, duration,
-  free searches this hour) with progress, stop and resume.
-- Entry «Collect this edition» / «Checklist n / total» at the selected year of the festival view.
-- Timetable paste: the preview rows can be corrected or removed before importing; headerless
-  CSV, combined `Saturday – RED` headings, emoji/markdown decoration and `Sat 18.00–19.00 Name @ STAGE`
-  are understood, and lines that cannot be read are listed instead of becoming a stage.
-- Settings tab «Festivals & series»: section «Festival collector» (searches per hour, results per
-  search, automatic confirmation threshold). UI texts in all languages.
-- Wiki page «Festival collector».
-- Festival collector backend (`app/core/collector.py`, `app/core/timetable.py`): per
-  edition a checklist of sets (DJ/artist, stage, day, start/end, set type, source playlist / timetable /
-  file / manual, status missing / found / queued / downloaded / ignored, match + confidence +
-  candidates, confirmed and ticked flags).
-- Organiser playlist import: one flat listing, page by page through the throttle with the «Read
-  everything» pacing; every entry becomes a confirmed row, trailers/aftermovies/short clips stay
-  unticked. Entries are stored like search hits, never in the inbox or queue.
-- Timetable parser for pasted text: `18:00 - 19:00 Artist`, `Artist | 18:00–19:00 | RED`, dotted/`h`/
-  four-digit/am-pm times, day headings (English, German, Dutch, French, Spanish, Nordic; `Day 2`),
-  stage headings, CSV/TSV/semicolon/Markdown tables with a header row; preview before import.
-- Shared timetable files `app/data/timetables/<series>/<year>.json` (format documented in
-  `app/data/timetables/README.md`; none shipped yet – only verified data will be added).
-- Matching: against the stored videos first (library, inbox, earlier hits; free, offline), then a
-  resumable search job – one flat search `<artist> <festival> <year>` per row, counted against
-  `max_searches_per_hour` and spread evenly by `festivals.collector_searches_per_hour` (default 10/h).
-  Estimate of searches and time before it starts; continues after restart, stops on backoff. Only hits
-  with artist, festival and year in the title are confirmed automatically; all others need a click.
-- Queueing ticked + confirmed rows through the normal sequential queue; the row's edition, stage and
-  set type are stored on the video as manual festival values (tags, album, path follow), already
-  downloaded matches are re-tagged.
-- Bridge: 19 methods (`get_collector_editions`, `open_collector_edition`, `get_checklist`,
-  `import_checklist_playlist`, `parse_timetable`, `import_timetable`, `get_timetable_files`,
-  `import_timetable_file`, row editing, `confirm_checklist_match`, `estimate/start/cancel_checklist_matching`,
-  `queue_checklist`, …) and events `collector_rows`, `collector_job`, `collector_import`
-  (docs/bridge-api.md «Festival collector»).
-- Settings `festivals.collector_searches_per_hour`, `festivals.collector_results_per_search`,
-  `festivals.collector_auto_confirm`; backend texts in all languages.
-
-### Changed
-- Database migration 9 (`checklists`, `checklist_rows`) with the automatic pre-migration backup.
+- Collector view in the library with status tiles, filters and a set table
+- Import from the organiser's playlist, a pasted timetable or a shared file
+- Timetable preview before import, with lines that could not be read
+- Estimate of searches and time before the search starts
+- Search pauses on a block and continues after a restart
+- *Collect this edition* button in the festival view
+- Settings for searches per hour and automatic confirmation
+- Texts in all languages; wiki page for the festival collector
 
 ## [0.4.0] - 2026-11-18
 

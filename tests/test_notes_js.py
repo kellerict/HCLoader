@@ -372,3 +372,118 @@ def test_settings_release_notes_browse_versions(page):
     assert out["oldest"]["ver"] == "v0.1.0" and out["oldest"]["older"] is True
     assert out["expanded"] is True
     assert page.problems == []
+
+
+# =========================================================================== v0.10.1
+
+
+def test_markdown_emphasis_never_leaves_literal_asterisks(page):
+    assert render(page, "*Keep both*, *Link as the same mix* or _Undo_") == (
+        "<p><em>Keep both</em>, <em>Link as the same mix</em> or <em>Undo</em></p>"
+    )
+    assert render(page, "*a **b** c* and ***both***") == (
+        "<p><em>a <strong>b</strong> c</em> and <strong><em>both</em></strong></p>"
+    )
+    assert render(page, "**a *b* c** (*x*)") == (
+        "<p><strong>a <em>b</em> c</strong> (<em>x</em>)</p>"
+    )
+    assert render(page, "2*3*4 and *.mp3 stay") == "<p>2*3*4 and *.mp3 stay</p>"
+
+
+def test_changelog_renders_without_literal_markers(page):
+    """Every version of the shipped CHANGELOG: no literal * or _ emphasis markers left outside
+    code, and versions from 0.5.0 on have a Highlights list as their short view."""
+    text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    out = page.evaluate(
+        """md => {
+          const host = document.createElement('div');
+          host.innerHTML = HC.md.render(md);
+          host.querySelectorAll('code, pre').forEach((e) => e.remove());
+          return host.textContent;
+        }""",
+        text,
+    )
+    import re
+
+    assert not re.search(r"(?<![\w*])\*(?=\S)[^*\n]+(?<=\S)\*(?!\w)", out)
+    assert "**" not in out
+    from app.core import selfupdate
+
+    rels = selfupdate.local_release_notes(ROOT)
+    assert rels[0]["version"] == "0.10.1"
+    for r in rels:
+        major, minor, _patch = (int(x) for x in r["version"].split("."))
+        if (major, minor) < (0, 5):
+            continue
+        assert r["notes"].lstrip().startswith("### Highlights"), r["version"]
+        sum_ = page.evaluate("md => HC.md.summary(md, 8)", r["notes"])
+        n = sum_["html"].count("<li>")
+        assert 3 <= n <= 6, (r["version"], n)
+        for line in r["notes"].splitlines():
+            if line.startswith("- "):
+                assert len(line.split()) <= 22, (r["version"], line)
+
+
+def test_summary_without_highlights_shows_six_bullets(page):
+    md = "### Added\n" + "\n".join(f"- a{i}" for i in range(1, 11)) + "\n\n### Fixed\n- f"
+    out = page.evaluate("md => HC.md.summary(md, 8)", md)
+    assert out["partial"] is True
+    assert out["html"] == "<ul>" + "".join(f"<li>a{i}</li>" for i in range(1, 7)) + "</ul>"
+
+
+LONG = "word " * 400
+
+
+def test_long_bullets_are_clamped_and_expand(page):
+    page.evaluate("document.querySelector('#overlays').replaceChildren()")
+    page.evaluate(
+        """long => HC.bridge.emit('update', {state: 'idle', available: true, current: '0.10.0',
+          latest: '0.10.1', url: '', releases: null, published: null,
+          notes: '### Highlights\\n- short one\\n- ' + long + '\\n\\n### Added\\n- ' + long})""",
+        LONG,
+    )
+    page.click(".upd-banner [data-upd=notes]")
+    page.wait_for_selector(".upd-notes .md-clamped")
+    clamped = page.locator(".upd-sum li.md-clamped")
+    assert clamped.count() == 1
+    assert page.locator(".upd-sum li").first.get_attribute("class") in (None, "")
+    h0 = clamped.evaluate("e => e.clientHeight")
+    assert clamped.get_attribute("data-more") == "more"
+    assert clamped.get_attribute("aria-expanded") == "false"
+    clamped.focus()
+    page.keyboard.press("Enter")  # expands the bullet, does not confirm «Download»
+    assert page.is_visible(".upd-notes")
+    assert clamped.get_attribute("aria-expanded") == "true"
+    assert clamped.evaluate("e => e.clientHeight") > h0 * 3
+    # «Show all changes»: the long bullets of the full notes are clamped as well
+    page.click("[data-upd-toggle]")
+    page.wait_for_selector(".upd-full li.md-clamped")
+    page.keyboard.press("Escape")
+    page.evaluate("HC.mock.demo.update('idle')")
+    assert page.problems == []
+
+
+def test_status_bar_shows_automatic_catchup_discreetly(page):
+    toasts = "document.querySelectorAll('#toasts .toast').length"
+    before = page.evaluate(toasts)
+    page.evaluate("HC.bridge.emit('auto_pass', {phase: 'step', step: 'festivals'})")
+    page.evaluate(
+        "HC.bridge.emit('festival_assign', {phase: 'progress', scope: 'auto', auto: true,"
+        " done: 25, total: 140})"
+    )
+    page.wait_for_function("!document.getElementById('sb-auto-it').hidden")
+    assert page.inner_text("#sb-auto") == "Assigning festivals 25 / 140"
+    assert page.get_attribute("#sb-auto-x", "aria-label") == "Stop the background catch-up"
+    page.evaluate(
+        "HC.bridge.emit('festival_assign', {phase: 'done', scope: 'auto', auto: true, ok: true,"
+        " done: 140, total: 140, assigned: 12, suggested: 3, cancelled: false})"
+    )
+    page.evaluate("HC.bridge.emit('auto_pass', {phase: 'end', cancelled: false})")
+    page.wait_for_function("document.getElementById('sb-auto-it').hidden")
+    assert page.evaluate(toasts) == before  # no toast for the automatic pass
+    # «×» stops it
+    page.evaluate("HC.bridge.emit('auto_pass', {phase: 'step', step: 'analysis'})")
+    page.wait_for_function("!document.getElementById('sb-auto-it').hidden")
+    page.click("#sb-auto-x")
+    page.wait_for_function("document.getElementById('sb-auto-it').hidden")
+    assert page.problems == []

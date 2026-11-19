@@ -96,6 +96,7 @@
       li.classList.toggle('md-clamped', cut);
       if (cut) {
         li.dataset.more = t('upd.notes_more');
+        li.dataset.ownEnter = '1'; // Enter expands the bullet, the dialog must not confirm
         li.tabIndex = 0;
         li.setAttribute('aria-expanded', 'false');
       }

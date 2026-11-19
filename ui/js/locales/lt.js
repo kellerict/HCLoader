@@ -36,7 +36,8 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "loading": "įkeliama …",
     "add_chip": "+ pridėti",
     "empty": "„tuščia“",
-    "empty_list": "„nėra“"
+    "empty_list": "„nėra“",
+    "undo": "Atšaukti"
   },
   "fmt": {
     "today": "šiandien",
@@ -102,7 +103,8 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "sc_off": "„SoundCloud“ išjungta – įjunkite skiltyje Nustatymai › SoundCloud.",
     "mixcloud": "Mixcloud",
     "hearthis": "hearthis.at",
-    "p_off": "{p} išjungta – įjunkite skiltyje Nustatymai › Daugiau šaltinių."
+    "p_off": "{p} išjungta – įjunkite skiltyje Nustatymai › Daugiau šaltinių.",
+    "all": "Visos"
   },
   "genre": {
     "change": "Keisti žanrą",
@@ -250,7 +252,26 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "searching_p": "Ieškoma – paprastas užklausimas, švelnus „{p}“ atžvilgiu …",
     "ready_text_p": "Įveskite paieškos frazę ir paspauskite Enter, kad ieškotumėte „{p}“.",
     "previews_mc": "tik prenumeratoriams (Select): {n}",
-    "previews_mc_title": "Mixcloud Select įkėlimai skirti tik mokantiems prenumeratoriams ir niekada negali būti atsisiųsti. Matomi, kai „Slėpti atsisiųstus ir ignoruojamus“ išjungta."
+    "previews_mc_title": "Mixcloud Select įkėlimai skirti tik mokantiems prenumeratoriams ir niekada negali būti atsisiųsti. Matomi, kai „Slėpti atsisiųstus ir ignoruojamus“ išjungta.",
+    "placeholder_all": "Ieškoti visose platformose: miksas, gyvas setas, DJ, renginys …",
+    "searching_all": "Ieškoma „{p}“ ({i} iš {n}) – viena platforma po kitos …",
+    "ready_text_all": "Įveskite paieškos žodį ir spauskite Enter – visos įjungtos platformos peržiūrimos viena po kitos.",
+    "quota_all": "Paieškos šią valandą: {list}",
+    "platform_current": "Platforma: {p}",
+    "platform_all_title": "Ieško visose įjungtose platformose, vienoje po kitos. Kiekviena platforma išlaiko savo pauzes ir savo „paieškų per valandą“ ribą.",
+    "platform_backoff": "{p}: pauzė iki {t} – režime „Visos“ praleidžiama",
+    "platform_backoff_short": "pauzė",
+    "skipped": "Praleista: {list}",
+    "skipped_title": "Šiose platformose šį kartą neieškota.",
+    "skip_backoff": "pauzė iki {t}",
+    "skip_error": "nėra atsakymo",
+    "all_none": "Nepavyko ieškoti nė vienoje platformoje.",
+    "kw_clear": "Pašalinti visus",
+    "kw_cleared_inc": "Įtraukti raktažodžiai pašalinti",
+    "kw_cleared_exc": "Neįtraukti raktažodžiai pašalinti",
+    "kw_sugg_title": "Pridėti vėl (iš išsaugotų nustatymų)",
+    "kw_sugg_label": "Pasiūlymai iš išsaugotų nustatymų",
+    "kw_session_hint": "Galioja tik šiam seansui – čia niekas neišsaugoma. Pradinės reikšmės: Nustatymai › Filtrai ir raktažodžiai."
   },
   "inbox": {
     "title": "Gauti",

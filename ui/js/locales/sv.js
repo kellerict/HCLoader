@@ -36,7 +36,8 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "loading": "laddar …",
     "add_chip": "+ lägg till",
     "empty": "”tom”",
-    "empty_list": "”ingen”"
+    "empty_list": "”ingen”",
+    "undo": "Ångra"
   },
   "fmt": {
     "today": "idag",
@@ -100,7 +101,8 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "sc_off": "SoundCloud är avstängt – slå på det under Inställningar › SoundCloud.",
     "mixcloud": "Mixcloud",
     "hearthis": "hearthis.at",
-    "p_off": "{p} är avstängt – slå på under Inställningar › Fler källor."
+    "p_off": "{p} är avstängt – slå på under Inställningar › Fler källor.",
+    "all": "Alla"
   },
   "genre": {
     "change": "Ändra genre",
@@ -246,7 +248,26 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "searching_p": "Söker – enkel förfrågan, skonsam mot {p} …",
     "ready_text_p": "Skriv en sökterm och tryck på Enter för att söka på {p}.",
     "previews_mc": "{n} bara för prenumeranter (Select)",
-    "previews_mc_title": "Mixcloud Select-uppladdningar är bara för betalande prenumeranter och kan aldrig laddas ned. Syns när ”Dölj nedladdade och ignorerade” är av."
+    "previews_mc_title": "Mixcloud Select-uppladdningar är bara för betalande prenumeranter och kan aldrig laddas ned. Syns när ”Dölj nedladdade och ignorerade” är av.",
+    "placeholder_all": "Sök på alla plattformar: mix, liveset, DJ, event …",
+    "searching_all": "Söker på {p} ({i} av {n}) – en plattform i taget …",
+    "ready_text_all": "Skriv ett sökord och tryck Enter – alla aktiverade plattformar genomsöks en i taget.",
+    "quota_all": "Sökningar den här timmen: {list}",
+    "platform_current": "Plattform: {p}",
+    "platform_all_title": "Söker på alla aktiverade plattformar, en i taget. Varje plattform behåller sina egna pauser och sin egen gräns för ”sökningar per timme”.",
+    "platform_backoff": "{p}: backoff till {t} – hoppas över av ”Alla”",
+    "platform_backoff_short": "backoff",
+    "skipped": "Överhoppade: {list}",
+    "skipped_title": "De här plattformarna genomsöktes inte den här gången.",
+    "skip_backoff": "backoff till {t}",
+    "skip_error": "inget svar",
+    "all_none": "Ingen plattform kunde genomsökas.",
+    "kw_clear": "Ta bort alla",
+    "kw_cleared_inc": "Obligatoriska nyckelord borttagna",
+    "kw_cleared_exc": "Uteslutna nyckelord borttagna",
+    "kw_sugg_title": "Lägg till igen (från de sparade inställningarna)",
+    "kw_sugg_label": "Förslag från de sparade inställningarna",
+    "kw_session_hint": "Gäller bara den här sessionen – inget sparas här. Startvärden: Inställningar › Filter och nyckelord."
   },
   "inbox": {
     "title": "Inkorg",

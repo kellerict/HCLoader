@@ -36,7 +36,8 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "loading": "laden …",
     "add_chip": "+ toevoegen",
     "empty": "“leeg”",
-    "empty_list": "“geen”"
+    "empty_list": "“geen”",
+    "undo": "Ongedaan maken"
   },
   "fmt": {
     "today": "vandaag",
@@ -100,7 +101,8 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "sc_off": "SoundCloud staat uit – zet het aan onder Instellingen › SoundCloud.",
     "mixcloud": "Mixcloud",
     "hearthis": "hearthis.at",
-    "p_off": "{p} staat uit – zet het aan onder Instellingen › Meer bronnen."
+    "p_off": "{p} staat uit – zet het aan onder Instellingen › Meer bronnen.",
+    "all": "Alle"
   },
   "genre": {
     "change": "Genre wijzigen",
@@ -246,7 +248,26 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "searching_p": "Zoeken – lichte zoekopdracht, spaarzaam voor {p} …",
     "ready_text_p": "Voer een zoekterm in en druk op Enter om op {p} te zoeken.",
     "previews_mc": "{n} alleen voor abonnees (Select)",
-    "previews_mc_title": "Mixcloud Select-uploads zijn alleen voor betalende abonnees en kunnen nooit worden gedownload. Zichtbaar als ‘Gedownloade & genegeerde verbergen’ uit staat."
+    "previews_mc_title": "Mixcloud Select-uploads zijn alleen voor betalende abonnees en kunnen nooit worden gedownload. Zichtbaar als ‘Gedownloade & genegeerde verbergen’ uit staat.",
+    "placeholder_all": "Alle platforms doorzoeken: mix, liveset, dj, event …",
+    "searching_all": "Zoeken op {p} ({i} van {n}) – het ene platform na het andere …",
+    "ready_text_all": "Typ een zoekterm en druk op Enter – alle ingeschakelde platforms worden na elkaar doorzocht.",
+    "quota_all": "Zoekopdrachten dit uur: {list}",
+    "platform_current": "Platform: {p}",
+    "platform_all_title": "Doorzoekt alle ingeschakelde platforms na elkaar. Elk platform houdt zijn eigen pauzes en zijn eigen limiet ‘zoekopdrachten per uur’.",
+    "platform_backoff": "{p}: backoff tot {t} – wordt bij ‘Alle’ overgeslagen",
+    "platform_backoff_short": "backoff",
+    "skipped": "Overgeslagen: {list}",
+    "skipped_title": "Deze platforms zijn dit keer niet doorzocht.",
+    "skip_backoff": "backoff tot {t}",
+    "skip_error": "geen antwoord",
+    "all_none": "Geen enkel platform kon worden doorzocht.",
+    "kw_clear": "Alles verwijderen",
+    "kw_cleared_inc": "Verplichte trefwoorden verwijderd",
+    "kw_cleared_exc": "Uitgesloten trefwoorden verwijderd",
+    "kw_sugg_title": "Opnieuw toevoegen (uit de opgeslagen instellingen)",
+    "kw_sugg_label": "Suggesties uit de opgeslagen instellingen",
+    "kw_session_hint": "Geldt alleen voor deze sessie – hier wordt niets opgeslagen. Startwaarden: Instellingen › Filters en trefwoorden."
   },
   "inbox": {
     "title": "Inbox",

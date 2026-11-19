@@ -36,7 +36,8 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "loading": "laster …",
     "add_chip": "+ legg til",
     "empty": "«tom»",
-    "empty_list": "«ingen»"
+    "empty_list": "«ingen»",
+    "undo": "Angre"
   },
   "fmt": {
     "today": "i dag",
@@ -100,7 +101,8 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "sc_off": "SoundCloud er slått av – slå det på under Innstillinger › SoundCloud.",
     "mixcloud": "Mixcloud",
     "hearthis": "hearthis.at",
-    "p_off": "{p} er slått av – slå på under Innstillinger › Flere kilder."
+    "p_off": "{p} er slått av – slå på under Innstillinger › Flere kilder.",
+    "all": "Alle"
   },
   "genre": {
     "change": "Endre sjanger",
@@ -246,7 +248,26 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "searching_p": "Søker – enkel spørring, skånsom mot {p} …",
     "ready_text_p": "Skriv inn et søkeord og trykk Enter for å søke på {p}.",
     "previews_mc": "{n} bare for abonnenter (Select)",
-    "previews_mc_title": "Mixcloud Select-opplastinger er bare for betalende abonnenter og kan aldri lastes ned. Synlige når «Skjul nedlastede og ignorerte» er av."
+    "previews_mc_title": "Mixcloud Select-opplastinger er bare for betalende abonnenter og kan aldri lastes ned. Synlige når «Skjul nedlastede og ignorerte» er av.",
+    "placeholder_all": "Søk på alle plattformer: miks, liveset, DJ, event …",
+    "searching_all": "Søker på {p} ({i} av {n}) – én plattform om gangen …",
+    "ready_text_all": "Skriv et søkeord og trykk Enter – alle aktiverte plattformer gjennomsøkes én om gangen.",
+    "quota_all": "Søk denne timen: {list}",
+    "platform_current": "Plattform: {p}",
+    "platform_all_title": "Søker på alle aktiverte plattformer, én om gangen. Hver plattform beholder sine egne pauser og sin egen grense for «søk per time».",
+    "platform_backoff": "{p}: backoff til {t} – hoppes over av «Alle»",
+    "platform_backoff_short": "backoff",
+    "skipped": "Hoppet over: {list}",
+    "skipped_title": "Disse plattformene ble ikke gjennomsøkt denne gangen.",
+    "skip_backoff": "backoff til {t}",
+    "skip_error": "ikke noe svar",
+    "all_none": "Ingen plattform kunne gjennomsøkes.",
+    "kw_clear": "Fjern alle",
+    "kw_cleared_inc": "Påkrevde nøkkelord fjernet",
+    "kw_cleared_exc": "Utelukkede nøkkelord fjernet",
+    "kw_sugg_title": "Legg til igjen (fra de lagrede innstillingene)",
+    "kw_sugg_label": "Forslag fra de lagrede innstillingene",
+    "kw_session_hint": "Gjelder bare denne økten – ingenting lagres her. Startverdier: Innstillinger › Filtre og nøkkelord."
   },
   "inbox": {
     "title": "Innboks",

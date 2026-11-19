@@ -36,7 +36,8 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "loading": "ielādē …",
     "add_chip": "+ pievienot",
     "empty": "„tukšs“",
-    "empty_list": "„nav“"
+    "empty_list": "„nav“",
+    "undo": "Atsaukt"
   },
   "fmt": {
     "today": "šodien",
@@ -101,7 +102,8 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "sc_off": "SoundCloud ir izslēgts – ieslēdziet sadaļā Iestatījumi › SoundCloud.",
     "mixcloud": "Mixcloud",
     "hearthis": "hearthis.at",
-    "p_off": "{p} ir izslēgta – ieslēdziet sadaļā Iestatījumi › Citi avoti."
+    "p_off": "{p} ir izslēgta – ieslēdziet sadaļā Iestatījumi › Citi avoti.",
+    "all": "Visas"
   },
   "genre": {
     "change": "Mainīt žanru",
@@ -248,7 +250,26 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "searching_p": "Meklē – vienkāršs vaicājums, saudzīgs pret {p} …",
     "ready_text_p": "Ievadiet meklēšanas frāzi un nospiediet Enter, lai meklētu {p}.",
     "previews_mc": "tikai abonentiem (Select): {n}",
-    "previews_mc_title": "Mixcloud Select augšupielādes ir tikai maksājošiem abonentiem, un tās nekad nevar lejupielādēt. Redzamas, kad “Slēpt lejupielādētos un ignorētos” ir izslēgts."
+    "previews_mc_title": "Mixcloud Select augšupielādes ir tikai maksājošiem abonentiem, un tās nekad nevar lejupielādēt. Redzamas, kad “Slēpt lejupielādētos un ignorētos” ir izslēgts.",
+    "placeholder_all": "Meklēt visās platformās: mikss, dzīvais sets, DJ, pasākums …",
+    "searching_all": "Meklē platformā {p} ({i} no {n}) – viena platforma pēc otras …",
+    "ready_text_all": "Ievadiet meklēšanas vārdu un nospiediet Enter – visas ieslēgtās platformas tiek pārmeklētas viena pēc otras.",
+    "quota_all": "Meklējumi šajā stundā: {list}",
+    "platform_current": "Platforma: {p}",
+    "platform_all_title": "Meklē visās ieslēgtajās platformās, vienā pēc otras. Katrai platformai paliek savas pauzes un savs “meklējumu stundā” limits.",
+    "platform_backoff": "{p}: pauze līdz {t} – režīmā “Visas” tiek izlaista",
+    "platform_backoff_short": "pauze",
+    "skipped": "Izlaists: {list}",
+    "skipped_title": "Šajās platformās šoreiz netika meklēts.",
+    "skip_backoff": "pauze līdz {t}",
+    "skip_error": "nav atbildes",
+    "all_none": "Nevienā platformā neizdevās meklēt.",
+    "kw_clear": "Noņemt visus",
+    "kw_cleared_inc": "Iekļaujamie atslēgvārdi noņemti",
+    "kw_cleared_exc": "Izslēdzamie atslēgvārdi noņemti",
+    "kw_sugg_title": "Pievienot atkal (no saglabātajiem iestatījumiem)",
+    "kw_sugg_label": "Ieteikumi no saglabātajiem iestatījumiem",
+    "kw_session_hint": "Attiecas tikai uz šo sesiju – šeit nekas netiek saglabāts. Sākuma vērtības: Iestatījumi › Filtri un atslēgvārdi."
   },
   "inbox": {
     "title": "Ienākošie",

@@ -1742,3 +1742,34 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
   Die Unterstützung ist damit nicht «solide» im Sinne der Roadmap (7c optional). Wieder aufnehmen, wenn yt-dlp
   Sammlungen flach listen kann oder ein konkreter Bedarf besteht.
 
+## 2026-11-19 – Automatischer Nachlauf für bestehende Bibliotheken (v0.10.1)
+
+- **Entscheid:** Einmalige Durchläufe, die ältere Bibliotheken brauchen (Festivals zuordnen v0.3.0, Tracklisten
+  v0.6.0, Lautheit/Wellenform v0.7.0, Fingerabdrücke v0.10.0), laufen nach dem GUI-Start automatisch
+  (`worker.CatchUp`, 20 s Verzögerung, einer nach dem anderen in ihren bisherigen Threads, offline, abbrechbar,
+  dezent in der Statusleiste). Jeder Schritt prüft billig, ob es etwas zu tun gibt, und respektiert seine
+  Einstellungen (`festivals.detect`, `loudness.analyse_after_download`, `reupload.enabled` +
+  `fingerprint_after_download`); die Datei-Durchläufe nur mit ffmpeg und erreichbarem Zielordner. Kein neuer
+  Schalter: die bestehenden Einstellungen steuern es bereits.
+- Festivals: inkrementell über die neue Tabelle `festival_checks` (Migration 17) mit einer Katalog-Signatur –
+  ein Set ohne Zuordnung wird nur geprüft, wenn es neu ist oder sich Serienliste/Serien/Einstellungen geändert
+  haben. Eigene Tabelle statt Spalte auf `videos`, damit die DJ-Index-Trigger nicht feuern. Manuelle Werte nie
+  überschreiben, Vorschläge nie abschwächen (`keep_stronger`).
+- Ein vom User gestarteter Wartungsauftrag hat Vorrang: der automatische Schritt stoppt und macht beim nächsten
+  Start weiter, statt dass der User «Wartung läuft» sieht.
+- Der Headless-Lauf macht keinen Nachlauf (geplante Aufgabe soll kurz bleiben); der DJ-Index braucht keinen, er
+  wird bei Bedarf abgeleitet.
+- **Grund:** User-Feedback zu v0.10.0: Sets von vor v0.3.0 blieben in «Andere / nicht zugeordnet», weil die
+  Zuordnung nur über den Knopf in den Einstellungen lief. Billig vor teuer: die Prüfungen sind einzelne
+  SQL-Abfragen; die teuren Datei-Durchläufe laufen mit niedriger Priorität, eine Datei nach der anderen.
+
+## 2026-11-19 – Release-Notes kurz und lesbar (v0.10.1)
+
+- **Entscheid:** CHANGELOG-Abschnitte ab 0.5.0 neu geschrieben: `### Highlights` (3–6 Zeilen für User), danach
+  `### Added` / `### Changed` / `### Fixed` mit kurzen Einzeilern (max. ca. 15 Wörter), ohne
+  Implementierungsdetails (Regel: `docs/RELEASING.md` «Writing release notes», geprüft in
+  `tests/test_notes_js.py`). Die App zeigt standardmässig nur die Highlights; ohne Highlights die ersten 6 Punkte
+  der ersten Liste. Sicherheitsnetz: Punkte über drei Zeilen werden abgeschnitten und per Klick/Enter
+  aufgeklappt; der Renderer versteht auch `*kursiv mit **fett***` und `***fett kursiv***`.
+- **Grund:** User-Feedback: der Dialog «Changes in version 0.10.0» war mit langer Prosa schwer lesbar.
+

@@ -36,7 +36,8 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "loading": "loading …",
     "add_chip": "+ add",
     "empty": "“empty”",
-    "empty_list": "“none”"
+    "empty_list": "“none”",
+    "undo": "Undo"
   },
   "fmt": {
     "today": "today",
@@ -100,7 +101,8 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "sc_off": "SoundCloud is turned off – turn it on under Settings › SoundCloud.",
     "mixcloud": "Mixcloud",
     "hearthis": "hearthis.at",
-    "p_off": "{p} is turned off – turn it on under Settings › More sources."
+    "p_off": "{p} is turned off – turn it on under Settings › More sources.",
+    "all": "All"
   },
   "genre": {
     "change": "Change genre",
@@ -246,7 +248,26 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "searching_p": "Searching – flat query, easy on {p} …",
     "ready_text_p": "Enter a search term and press Enter to search {p}.",
     "previews_mc": "{n} subscribers only (Select)",
-    "previews_mc_title": "Mixcloud Select uploads are only for paying subscribers and can never be downloaded. Visible when “Hide downloaded & ignored” is off."
+    "previews_mc_title": "Mixcloud Select uploads are only for paying subscribers and can never be downloaded. Visible when “Hide downloaded & ignored” is off.",
+    "placeholder_all": "Search all platforms: mix, live set, DJ, event …",
+    "searching_all": "Searching {p} ({i} of {n}) – one platform after another …",
+    "ready_text_all": "Enter a search term and press Enter – every enabled platform is searched, one after another.",
+    "quota_all": "Searches this hour: {list}",
+    "platform_current": "Platform: {p}",
+    "platform_all_title": "Searches every enabled platform, one after another. Each platform keeps its own pauses and its own “searches per hour” limit.",
+    "platform_backoff": "{p}: backoff until {t} – skipped by “All”",
+    "platform_backoff_short": "backoff",
+    "skipped": "Skipped: {list}",
+    "skipped_title": "These platforms were not searched this time.",
+    "skip_backoff": "backoff until {t}",
+    "skip_error": "no answer",
+    "all_none": "No platform could be searched.",
+    "kw_clear": "Remove all",
+    "kw_cleared_inc": "Include keywords removed",
+    "kw_cleared_exc": "Exclude keywords removed",
+    "kw_sugg_title": "Add again (from your saved settings)",
+    "kw_sugg_label": "Suggestions from the saved settings",
+    "kw_session_hint": "Applies to this session only – nothing is saved here. Starting values: Settings › Filters & keywords."
   },
   "inbox": {
     "title": "Inbox",
