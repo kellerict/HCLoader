@@ -231,6 +231,8 @@ def _combined_heading(text: str, names: dict[str, str]) -> tuple[str, str] | Non
     """«Saturday – RED» / «SAT | RED STAGE» / «RED - Sunday» -> (day, stage); else None."""
     if len(text) > MAX_DAY + MAX_STAGE or not re.search(r"[^\W\d_]", text):
         return None
+    if _TITLE_RE.search(text) or _TITLE_EXTRA.search(text):
+        return None  # «SATURDAY TIMETABLE»: a title (reported), no stage «TIMETABLE»
     seps = list(_HEAD_SEP.finditer(text))[:16]
     for m in reversed(seps):  # the last separator first: «Saturday 28.06. – RED»
         a, b = text[: m.start()].strip(), text[m.end() :].strip()
@@ -788,13 +790,82 @@ def _split_sets(line: str) -> list[str]:
     return pieces
 
 
+# a stage (or day + stage) in front of the sets of a line: «RED: 18:00 A, 19:00 B»,
+# «Bühne RED – 18:00 A · 19:00 B», «[BLUE] 20:00 Angerfist», «THE GATHERING | 14:00 Warface»,
+# «Mainstage 19:00 Gridkiller». Label <= 80 characters, no nested quantifiers (linear).
+_BRACKET_PREFIX = re.compile(r"^\[(?P<label>[^\[\]]{1,40})\] ?(?P<rest>.+)$")
+_PREFIX_SEP = re.compile(r" ?(?::|\||–|—| - ) ?")
+_SPACE_PREFIX = re.compile(r"^(?P<label>[^\W\d_][^\d:|]{0,39}?) (?P<rest>\d.+)$")
+_STAGE_WORD_LEAD = re.compile(r"^(?:stage|bühne|buhne|podium|area)\s+(?P<name>.+)$", re.I)
+
+
+def _prefix_stage(label: str, names: dict[str, str], *, caps: bool) -> str | None:
+    """`label` in front of timed sets as a stage: known, colour, stage word, «Bühne RED» ->
+    «RED»; with `caps` also a short all-caps label («THE GATHERING»)."""
+    label = label.strip()
+    if not _has_letter(label) or len(label) > MAX_STAGE:
+        return None
+    known = _known_stage(label, names)
+    if known:
+        return known
+    m = _STAGE_WORD_LEAD.match(label)
+    if m and (_known_stage(m.group("name"), names) or _colour_label(m.group("name"))):
+        return _known_stage(m.group("name"), names) or _clean_stage(m.group("name"))
+    if _colour_label(label) or (_has_stage_word(label) and len(label.split()) <= 4):
+        return _clean_stage(label)
+    if caps and _caps_label(label) and not _day_heading(label):
+        return _clean_stage(label)
+    return None
+
+
+def _timed_rest(rest: str) -> bool:
+    """`rest` starts with a time and has a name after it («18:00 Sefa, 19:00 Rooler»)."""
+    start, _end, after = _find_times(rest.strip())
+    if start is None:
+        return False
+    first = _RANGE_RE.match(rest.strip()) or _SINGLE_START_RE.match(rest.strip())
+    return first is not None and _has_letter(after)
+
+
+def _line_prefix(text: str, names: dict[str, str]) -> tuple[str | None, str | None, str] | None:
+    """(day, stage, sets) when `text` starts with a stage/day label followed by timed sets;
+    None otherwise (also for table rows like «Sat | 18:00 | Name | RED»)."""
+    m = _BRACKET_PREFIX.match(text)
+    if m and _timed_rest(m.group("rest")):
+        stage = _known_stage(m.group("label"), names) or _clean_stage(m.group("label"))
+        return (None, stage, m.group("rest")) if stage else None
+    if not re.match(r"[\d\[]", text):
+        for m in list(_PREFIX_SEP.finditer(text, 0, 81))[:4]:
+            label, rest = text[: m.start()].strip(), text[m.end() :].strip()
+            if not label or not _timed_rest(rest):
+                continue
+            if m.group(0).strip() == "|" and "|" in rest:
+                return None  # a table row: the cells decide
+            day = _day_heading(label)
+            if day:
+                return day, None, rest
+            both = _combined_heading(label, names)
+            if both:
+                return both[0], both[1], rest
+            stage = _prefix_stage(label, names, caps=True)
+            return (None, stage, rest) if stage else None
+    m = _SPACE_PREFIX.match(text)
+    if m and _timed_rest(m.group("rest")):
+        stage = _prefix_stage(m.group("label"), names, caps=False)
+        if stage:
+            return None, stage, m.group("rest")
+    return None
+
+
 def _line(raw: str) -> str:
     """One input line, made safe for the regexes: runs of spaces (not tabs: they are column
     separators) collapsed to one, cut to MAX_LINE characters (review v0.5.0 m1)."""
     return _SPACES.sub(" ", raw)[:MAX_LINE]
 
 
-def _heading_before_times(raw: str, body: str, following: list[str], bullet: bool) -> bool:
+def _heading_before_times(
+    raw: str, body: str, following: list[str], bullet: bool, names: dict[str, str]
+) -> bool:
     """A short time-less line (no list bullet) directly above a line with a time is a stage
     heading of an unknown stage («RED», «Black», «THE GATHERING»), not a set without time."""
     if not following or bullet or _BULLET.match(raw) or len(body) > MAX_STAGE:
@@ -807,6 +878,8 @@ def _heading_before_times(raw: str, body: str, following: list[str], bullet: boo
     if _day_heading(nxt) or _cells(nxt) is not None and not _RANGE_RE.search(nxt):
         return False
     start, _end, rest = _find_times(_BULLET.sub("", nxt) if not _RANGE_RE.match(nxt) else nxt)
+    if start is not None and _prefix_stage(_clean_artist(rest.strip(" ·•")), names, caps=False):
+        return False  # «Headhunterz» above «MAINSTAGE · 22:00 - 23:00»: an app card
     # «Headhunterz» above «18:00 - 19:00» (only a time): a festival-app card, no heading
     return start is not None and (_has_letter(rest) or _cells(nxt) is not None)
 
@@ -824,9 +897,27 @@ _PROSE_KEYS = re.compile(
     r"\b(?:tickets?|doors?|einlass|deuren|subject to change|änderungen|vorbehalten|wijzigingen"
     r"|voorbehouden|follow|instagram|facebook|tiktok|link in bio|sold ?out|uitverkocht"
     r"|ausverkauft|more info|meer info|mehr info|announced|angekündigt|aangekondigd"
-    r"|stay tuned|giveaway|presale|vorverkauf|voorverkoop|kaarten|karten)\b",
+    r"|stay tuned|giveaway|presale|vorverkauf|voorverkoop|kaarten|karten"
+    # UI and marketing phrases of posts and festival apps (v0.10.2)
+    r"|swipe|save the date|coming soon|out now|now playing|up next|live now|read more"
+    r"|show more|see more|load more|favou?rites?|add to (?:my |calendar|schedule)"
+    r"|ohne gewähr|alle angaben|onder voorbehoud|nu bezig|straks)\b",
     re.I,
 )
+# an imperative at the start of a line («Swipe for more», «Tag your crew», «Teilt den Beitrag»,
+# «Deel dit bericht»): free text when the next word is no capitalised name word
+_IMPERATIVE = frozenset(
+    "swipe save add tag share check click tap buy grab get join follow bring download listen "
+    "watch comment like scroll read show book order register subscribe turn don't dont visit "
+    "teilt teile markiert markiere sichert sichere holt hol kauft kauf schaut schau klickt klick "
+    "folgt folge verpasst bestellt deel koop bestel bekijk kijk volg lees mis tagt".split()
+)
+_TITLE_EXTRA = re.compile(
+    r"\b(?:set\s?times|running\s?order|speeltijden|spielzeiten|announcement|aankondiging)\b"
+    r"|^(?:phase|fase|welle)\s*\d{1,2}$",
+    re.I,
+)
+_YEAR = re.compile(r"(?<![\d.:/-])(?:19|20)\d{2}(?![\d.:/-])")
 _PROSE_LEAD = re.compile(
     r"^(?:edit|update|ps|p\.s\.|note|nb|hinweis|achtung|let op|info)\s*:", re.I
 )
@@ -834,7 +925,7 @@ _STOPWORDS = frozenset(
     "the a an you your we our us is are was be will can can't cant don't see via in on at for "
     "to of with all there here this that it its my me i und ist sind wir ihr euch unser unsere "
     "für die der das den dem ein eine mit auf bei im zu von bitte wie es zijn wij jullie het een "
-    "voor op met van tot naar hier daar ons onze jij je".split()
+    "voor op met van tot naar hier daar ons onze jij je de dit deze die".split()
 )
 _NAME_JOIN = re.compile(r"\b(?:b2b|b3b|vs\.?|versus|feat\.?|ft\.?|x|meets)\b|&", re.I)
 _MORE_TAIL = re.compile(
@@ -843,6 +934,7 @@ _MORE_TAIL = re.compile(
     re.I,
 )
 _LIST_SPLIT = re.compile(r"\s*[,•·]\s*")
+_CLOCK_WORD = re.compile(r"^(?:uhr|uur|hrs|h|u)\b[.:]? ?", re.I)
 _LABEL_LIST = re.compile(r"^(?P<label>[^:,]{1,40}?)\s*:\s*(?P<items>\S.*)$")
 _LINEUP_LABEL = re.compile(r"^(?:line[\s-]?up|artists?|acts?|djs?|künstler|artiesten)$", re.I)
 
@@ -858,6 +950,8 @@ def _prose(line: str, rest: str) -> bool:
     words = [w for w in re.split(r"[\s,]+", text) if re.search(r"[^\W\d_]", w)]
     if not words:
         return False
+    if len(words) >= 2 and _imperative(words):
+        return True
     if text.endswith(("!", "?")) and len(words) >= 2:
         return True
     if text.endswith((".", "…")) and len(words) >= 3:
@@ -868,6 +962,31 @@ def _prose(line: str, rest: str) -> bool:
     if len(words) >= 4 and stop >= 2 and stop * 5 >= len(words) * 2:
         return True
     return len(words) >= 8 and not _NAME_JOIN.search(text)
+
+
+def _imperative(words: list[str]) -> bool:
+    """«Swipe for more», «Add to favourites», «Tag your crew», «SAVE THE DATE», «Deel dit
+    bericht»: an imperative first word followed by a lower-case or function word (an artist
+    name continues with a capital: «Kill The Noise»)."""
+    first = words[0].casefold().strip(".,!?:;'\"").replace("’", "'")
+    if first not in _IMPERATIVE:
+        return False
+    second = words[1].strip(".,!?:;'\"")
+    if not second:
+        return False
+    return (
+        second[0].islower()
+        or second.casefold() in _STOPWORDS
+        or second.casefold() in ("more", "mehr", "meer", "left", "right", "up", "now")
+    )
+
+
+def _title(body: str) -> bool:
+    """A title line without a time: «Defqon.1 2025 timetable», «TONIGHT'S SET TIMES», «Phase 1»,
+    «QLIMAX 2025», «Defqon.1 Weekend Festival 2025» (a year next to a name)."""
+    if _TITLE_RE.search(body) or _TITLE_EXTRA.search(body):
+        return True
+    return _YEAR.search(body) is not None and len(body.split()) >= 2
 
 
 def _list_items(text: str) -> list[str] | None:
@@ -928,16 +1047,20 @@ def _parse_lines(
     skipped: list[str] = []
     day: str | None = None
     stage: str | None = None
-    # (original line, cleaned piece, framed, bullet, blank line before) - one entry per set
-    expanded: list[tuple[str, str, bool, bool, bool]] = []
+    # (original line, cleaned piece, framed, bullet, blank line before, (day, stage) of a line
+    # prefix) - one entry per set
+    expanded: list[tuple[str, str, bool, bool, bool, tuple[str | None, str | None] | None]] = []
     for n, ln in enumerate(lines):
         clean, framed, bullet = _undecorate(ln)
         blank = bool(blank_before[n]) if n < len(blank_before) else False
-        for piece in _split_sets(clean):
-            expanded.append((ln.strip(), piece, framed, bullet, blank))
+        prefix = _line_prefix(_BULLET.sub("", clean).strip(), names)
+        over = (prefix[0], prefix[1]) if prefix else None
+        for piece in _split_sets(prefix[2] if prefix else clean):
+            expanded.append((ln.strip(), piece, framed, bullet, blank, over))
     prev_row: dict[str, Any] | None = None  # the row made from the previous entry
     prev_heading = True  # start of the paste or a heading line just above
     pending: tuple[str, str | None, int, str] | None = None  # time-only line waiting for a name
+    block = 0  # index of the first row below the last heading
 
     def add(artist: str, st: str | None, d: str | None, s: str | None, e: str | None, t):
         nonlocal pending
@@ -948,11 +1071,12 @@ def _parse_lines(
         rows.append(row)
         return row
 
-    for i, (orig, raw, framed, bullet, blank) in enumerate(expanded):
+    for i, (orig, raw, framed, bullet, blank, over) in enumerate(expanded):
         if pending is not None and pending[2] < i - 1:
             skipped.insert(pending[3], expanded[pending[2]][0])
             pending = None
         made: dict[str, Any] | None = None
+        o_day, o_stage = over or (None, None)
         line = raw.strip()
         if line.startswith("//"):
             continue
@@ -991,6 +1115,7 @@ def _parse_lines(
         if label or both:
             day, stage = (label, None) if label else both  # type: ignore[misc]
             prev_row, prev_heading = None, True
+            block = len(rows)
             continue
         # --- time-ness
         lead_day, timed = _day_lead(body) if _cells(body) is None else (None, body)
@@ -999,12 +1124,14 @@ def _parse_lines(
         else:
             lead_day = None
         start, end, rest = _find_times(body)
+        if start is not None:
+            rest = _CLOCK_WORD.sub("", rest, count=1)  # «18:00 Uhr: Frontliner», «20.00 uur»
         # --- free text
         if _prose(line, rest):
             skipped.append(orig)
             prev_row, prev_heading = None, False
             continue
-        if start is None and _TITLE_RE.search(body):
+        if start is None and _title(body):
             skipped.append(orig)  # «Defqon.1 2024 – Timetable»: a title line, reported
             prev_row, prev_heading = None, True
             continue
@@ -1012,21 +1139,24 @@ def _parse_lines(
         if cells is not None:
             a, st, d, s, e, t = _parse_cells(cells, names, set_types)
             if a:
-                made = add(a, st or stage, d or lead_day or day, s, e, t)
+                made = add(a, st or o_stage or stage, d or lead_day or o_day or day, s, e, t)
             else:
                 skipped.append(orig)
             prev_row, prev_heading = made, False
             continue
         if start is None:
-            following = [p for _o, p, _f, _b, _bl in expanded[i + 1 : i + 2]]
+            following = [e[1] for e in expanded[i + 1 : i + 3]]
             head = _stage_heading(raw, body, names, wrapped=framed)
-            if head is None and _heading_before_times(raw, body, following, bullet):
+            if head is None and _heading_before_times(raw, body, following, bullet, names):
                 head = _clean_stage(body)  # «RED» / «Black» above timed sets
-            if head is None and _caps_heading(body, following, bullet, blank, prev_heading, stage):
+            if head is None and _caps_heading(
+                body, following, bullet, blank, prev_heading, stage, len(rows) - block
+            ):
                 head = _clean_stage(body)  # «THE GATHERING» above a line-up without times
             if head:
                 stage = head
                 prev_row, prev_heading = None, True
+                block = len(rows)
                 continue
             items = _list_items(rest)
             if items is not None:
@@ -1046,12 +1176,19 @@ def _parse_lines(
                     skipped.insert(pending[3], expanded[pending[2]][0])
                 pending = (start, end, i, len(skipped))
             continue
+        card_stage = _prefix_stage(_clean_artist(rest.strip(" ·•")), names, caps=False)
+        if card_stage and prev_row is not None and prev_row["start"] is None:
+            # an app card: «Headhunterz» / «MAINSTAGE · 22:00 - 23:00»
+            prev_row["start"], prev_row["end"] = start, end
+            prev_row["stage"] = card_stage[:MAX_STAGE]
+            prev_row = None
+            continue
         artist, st, t = _split_artist(rest, names, set_types)
         if not artist or not re.search(r"[^\W_]", artist):
             skipped.append(orig)
             prev_row, prev_heading = None, False
             continue
-        made = add(artist, st or stage, lead_day or day, start, end, t)
+        made = add(artist, st or o_stage or stage, lead_day or o_day or day, start, end, t)
         prev_row, prev_heading = made, False
     if pending is not None:
         skipped.insert(pending[3], expanded[pending[2]][0])
@@ -1065,11 +1202,13 @@ def _caps_heading(
     blank: bool,
     prev_heading: bool,
     stage: str | None,
+    block_rows: int = 0,
 ) -> bool:
-    """«THE GATHERING» in a line-up without times: a short line in capitals that starts a
-    block (after a heading or a blank line inside a paste with stages) or stands out among
-    mixed-case names above it and below it. A single capital word between names («TNT») stays
-    an artist."""
+    """«THE GATHERING» / «UNDERGROUND» in a line-up without times: a short line in capitals that
+    starts a block (after a heading or a blank line inside a paste with stages) or stands out
+    among mixed-case names: inside a paste with stages, followed by at least two mixed-case
+    names; a single word also needs >= 5 letters only and >= 2 names above it in its block. So
+    «TNT» or «B-FRONT» between names and «MC SYCO» above a single name stay artists."""
     if bullet or not following or not _caps_label(body) or len(body) > MAX_STAGE:
         return False
     nxt = _BULLET.sub("", following[0]).strip()
@@ -1080,7 +1219,22 @@ def _caps_heading(
         return blank and stage is not None
     if blank and stage is not None:
         return True
-    return len(body.split()) >= 2 and (prev_heading or stage is not None)
+    words = body.split()
+    if len(words) >= 2 and prev_heading:
+        return True
+    if stage is None or len(following) < 2:
+        return False
+    second = _BULLET.sub("", following[1]).strip()
+    if (
+        not _has_letter(second)
+        or _caps_label(second)
+        or _find_times(second)[0] is not None
+        or _day_heading(second)
+    ):
+        return False
+    if len(words) >= 2:
+        return True
+    return body.isalpha() and len(body) >= 5 and block_rows >= 2
 
 
 def parse(

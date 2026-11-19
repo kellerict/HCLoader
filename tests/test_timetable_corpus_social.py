@@ -13,7 +13,7 @@ from __future__ import annotations
 import pytest
 
 from app.core import timetable as tt
-from tests.test_timetable_corpus import R, STAGES, SET_TYPES, N, _key, _tuples
+from tests.test_timetable_corpus import SET_TYPES, STAGES, N, R, _key, _tuples
 
 SOCIAL = [
     # ------------------------------------------------------------------ marketing lines (family 1)
@@ -187,7 +187,8 @@ SOCIAL = [
         ["Show more"],
     ),
     (
-        "| Time | Artist | Stage |\n|---|---|---|\n| 18:00 | Sefa | RED |\n| 19:00 | Rooler | RED |",
+        "| Time | Artist | Stage |\n|---|---|---|\n| 18:00 | Sefa | RED |\n"
+        "| 19:00 | Rooler | RED |",
         [R("Sefa", "RED", N, "18:00"), R("Rooler", "RED", N, "19:00")],
         [],
     ),
@@ -206,8 +207,8 @@ SOCIAL = [
         ["Programm Samstag", "Alle Angaben ohne Gewähr"],
     ),
     (
-        "Vrijdag 27 juni\nMainstage\n20.00 - 21.00 uur Da Tweekaz\n21.00 - 22.00 uur Brennan Heart\n"
-        "Bekijk het volledige programma in de app",
+        "Vrijdag 27 juni\nMainstage\n20.00 - 21.00 uur Da Tweekaz\n"
+        "21.00 - 22.00 uur Brennan Heart\nBekijk het volledige programma in de app",
         [
             R("Da Tweekaz", "Mainstage", "Vrijdag 27 juni", "20:00", "21:00"),
             R("Brennan Heart", "Mainstage", "Vrijdag 27 juni", "21:00", "22:00"),
