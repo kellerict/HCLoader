@@ -62,7 +62,7 @@
     [...sel].forEach((id) => { if (!list.some((v) => v.id === id)) sel.delete(id); });
     const grid = $('#grid-inbox', el);
     grid.innerHTML = list.length
-      ? list.map((v) => ui.card(v, { selected: sel.has(v.id), source: srcKey(v) === 'none' ? '' : srcName(v.source_id) })).join('')
+      ? list.map((v) => ui.card(v, { selected: sel.has(v.id), quiet: 'inbox', source: srcKey(v) === 'none' ? '' : srcName(v.source_id) })).join('')
       : emptyHtml();
     if (fresh.size && HC.app.current() === 'inbox') {
       $$('.card[data-id]', grid).forEach((c) => { if (fresh.has(c.dataset.id)) c.classList.add('flash'); });

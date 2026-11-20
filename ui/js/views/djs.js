@@ -175,7 +175,7 @@
         <button type="button" class="btn primary" data-dj="playall"${playable ? '' : ' disabled'}>${I.play}${esc(t('djs.play_all'))}</button>
         <button type="button" class="btn ghost" data-dj="export">${I.playlist}${esc(t('djs.export'))}</button>
         <button type="button" class="btn ghost" data-dj="watch">${I.eye}${esc(t('djs.watch'))}</button>
-        <button type="button" class="iconbtn" data-dj="more" title="${esc(t('library.more'))}" aria-label="${esc(t('library.more'))}" aria-haspopup="menu">${I.more}</button>
+        <button type="button" class="iconbtn" data-dj="more" title="${esc(t('card.more'))}" aria-label="${esc(t('card.more'))}" aria-haspopup="menu">${I.more}</button>
       </div>`;
     $('#dj-bar', el).innerHTML = `<div class="lib-stats dj-stats">
         ${stat(t('djs.stat_sets'), util.fmtNum(a.sets))}${stat(t('djs.stat_hours'), hours(a.seconds), t('library.unit_h'))}

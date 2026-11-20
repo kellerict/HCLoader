@@ -18,10 +18,6 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
     "settings": "Paramètres",
     "stats": "Statistiques"
   },
-  "navfoot": {
-    "today": "AUJOURD’HUI",
-    "next": "PROCH. VÉRIF."
-  },
   "common": {
     "ok": "OK",
     "cancel": "Annuler",
@@ -155,7 +151,9 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
     "yt_tip": "YouTube · téléchargés aujourd’hui {day}/{day_max} · {s}/{s_max} recherches cette heure",
     "sc_tip": "SoundCloud · téléchargés aujourd’hui {day}/{day_max} · {s}/{s_max} recherches cette heure",
     "backoff_tip": "{p} : blocage temporaire jusqu’à {t} (encore {rest})",
-    "p_tip": "{p} · téléchargés aujourd’hui {day}/{day_max} · {s}/{s_max} recherches cette heure"
+    "p_tip": "{p} · téléchargés aujourd’hui {day}/{day_max} · {s}/{s_max} recherches cette heure",
+    "system": "Système",
+    "system_title": "État du système"
   },
   "schedule": {
     "due": "dû",
@@ -267,7 +265,9 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
     "kw_cleared_exc": "Mots-clés à exclure retirés",
     "kw_sugg_title": "Rajouter (depuis les réglages enregistrés)",
     "kw_sugg_label": "Suggestions issues des réglages enregistrés",
-    "kw_session_hint": "Valable pour cette session seulement – rien n’est enregistré ici. Valeurs de départ : Paramètres › Filtres et mots-clés."
+    "kw_session_hint": "Valable pour cette session seulement – rien n’est enregistré ici. Valeurs de départ : Paramètres › Filtres et mots-clés.",
+    "kw_group": "Mots-clés",
+    "kw_count": "{inc} à inclure · {exc} à exclure"
   },
   "inbox": {
     "title": "Boîte de réception",
@@ -546,7 +546,8 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
     "continue_forget": "Retirer de « Reprendre l’écoute »",
     "export": "M3U",
     "export_title": "Exporter ce qui est affiché en playlist M3U8",
-    "export_continue": "Exporter « Reprendre l’écoute » en playlist"
+    "export_continue": "Exporter « Reprendre l’écoute » en playlist",
+    "sections": "Sections de la bibliothèque"
   },
   "player": {
     "label": "Mini-lecteur",
@@ -670,6 +671,13 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
     "mediaserver": "Serveur multimédia",
     "sources": "Autres sources",
     "reupload": "Re-uploads"
+  },
+  "tab_groups": {
+    "app": "App",
+    "find": "Trouver et trier",
+    "download": "Téléchargement",
+    "sources": "Sources et serveurs",
+    "system": "Système"
   },
   "tabs_hint": {
     "general": "Comportement de base de l’app.",

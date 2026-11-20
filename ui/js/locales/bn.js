@@ -18,10 +18,6 @@ HC.i18n.register({"code": "bn", "name": "বাংলা", "dir": "ltr", "intl":
     "settings": "সেটিংস",
     "stats": "পরিসংখ্যান"
   },
-  "navfoot": {
-    "today": "আজ",
-    "next": "পরবর্তী যাচাই"
-  },
   "common": {
     "ok": "ঠিক আছে",
     "cancel": "বাতিল",
@@ -155,7 +151,9 @@ HC.i18n.register({"code": "bn", "name": "বাংলা", "dir": "ltr", "intl":
     "yt_tip": "YouTube · আজ ডাউনলোড {day}/{day_max} · এই ঘণ্টায় অনুসন্ধান {s}/{s_max}",
     "sc_tip": "SoundCloud · আজ ডাউনলোড {day}/{day_max} · এই ঘণ্টায় অনুসন্ধান {s}/{s_max}",
     "backoff_tip": "{p}: {t} পর্যন্ত ব্যাকঅফ ({rest} বাকি)",
-    "p_tip": "{p} · আজ ডাউনলোড {day}/{day_max} · এই ঘণ্টায় অনুসন্ধান {s}/{s_max}"
+    "p_tip": "{p} · আজ ডাউনলোড {day}/{day_max} · এই ঘণ্টায় অনুসন্ধান {s}/{s_max}",
+    "system": "সিস্টেম",
+    "system_title": "সিস্টেমের অবস্থা"
   },
   "schedule": {
     "due": "বাকি",
@@ -267,7 +265,9 @@ HC.i18n.register({"code": "bn", "name": "বাংলা", "dir": "ltr", "intl":
     "kw_cleared_exc": "বর্জিত কীওয়ার্ড সরানো হয়েছে",
     "kw_sugg_title": "আবার যোগ করুন (সংরক্ষিত সেটিংস থেকে)",
     "kw_sugg_label": "সংরক্ষিত সেটিংস থেকে প্রস্তাব",
-    "kw_session_hint": "শুধু এই সেশনের জন্য – এখানে কিছু সংরক্ষিত হয় না। প্রাথমিক মান: সেটিংস › ফিল্টার ও কিওয়ার্ড।"
+    "kw_session_hint": "শুধু এই সেশনের জন্য – এখানে কিছু সংরক্ষিত হয় না। প্রাথমিক মান: সেটিংস › ফিল্টার ও কিওয়ার্ড।",
+    "kw_group": "কিওয়ার্ড",
+    "kw_count": "{inc} অন্তর্ভুক্ত · {exc} বাদ"
   },
   "inbox": {
     "title": "ইনবক্স",
@@ -546,7 +546,8 @@ HC.i18n.register({"code": "bn", "name": "বাংলা", "dir": "ltr", "intl":
     "continue_forget": "“শোনা চালিয়ে যান” থেকে সরান",
     "export": "M3U",
     "export_title": "যা দেখানো হচ্ছে তা M3U8 প্লেলিস্ট হিসেবে এক্সপোর্ট করুন",
-    "export_continue": "“শোনা চালিয়ে যান” প্লেলিস্ট হিসেবে এক্সপোর্ট করুন"
+    "export_continue": "“শোনা চালিয়ে যান” প্লেলিস্ট হিসেবে এক্সপোর্ট করুন",
+    "sections": "লাইব্রেরির বিভাগ"
   },
   "player": {
     "label": "মিনি প্লেয়ার",
@@ -670,6 +671,13 @@ HC.i18n.register({"code": "bn", "name": "বাংলা", "dir": "ltr", "intl":
     "mediaserver": "মিডিয়া সার্ভার",
     "sources": "আরও উৎস",
     "reupload": "রি-আপলোড"
+  },
+  "tab_groups": {
+    "app": "অ্যাপ",
+    "find": "খোঁজা ও সাজানো",
+    "download": "ডাউনলোড",
+    "sources": "উৎস ও সার্ভার",
+    "system": "সিস্টেম"
   },
   "tabs_hint": {
     "general": "অ্যাপের মৌলিক আচরণ।",

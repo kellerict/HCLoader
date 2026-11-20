@@ -145,6 +145,9 @@
     document.addEventListener('keydown', (e) => {
       if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key >= '1' && e.key <= '8') { e.preventDefault(); go(VIEWS[+e.key - 1]); }
     });
+    $('#sb-sys').addEventListener('click', toggleSysPop);
+    /* window/capture läuft vor dem «Klick daneben» der Overlays: merken, ob der Knopf sein eigenes Popover schliesst */
+    window.addEventListener('mousedown', (e) => { sysWasOpen = !!sysPop && $('#sb-sys').contains(e.target); }, true);
     window.addEventListener('resize', moveIndicator);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(moveIndicator);
   }
@@ -161,6 +164,33 @@
 
   /* ---------- Statusleiste ---------- */
   const led = (el, cls) => { if (el) el.className = `led ${cls || ''}`; };
+  /* «System»-Popover der Statusleiste: dieselben Einzelwerte wie früher in der Leiste. */
+  let sysPop = null, sysWasOpen = false;
+  function sysRows() {
+    const s = HC.status || {}, po = s.po_token || {}, bo = s.backoff || {};
+    const okTxt = (ok) => t(ok ? 'statusbar.ok' : 'statusbar.missing');
+    return [
+      ['yt-dlp', s.ytdlp_version || t('statusbar.missing'), s.ytdlp_version ? '' : 'err'],
+      ['Deno', okTxt(s.deno_ok), s.deno_ok ? '' : 'err'],
+      ['ffmpeg', okTxt(s.ffmpeg_ok), s.ffmpeg_ok ? '' : 'err'],
+      [t('statusbar.po'), po.state === 'active' ? t('statusbar.po_active', { mode: t(`po_mode.${po.mode}`) }) : t(`statusbar.po_${po.state || 'inactive'}`), po.state === 'active' ? '' : po.state === 'error' ? 'err' : 'off'],
+      [t('statusbar.backoff'), bo.active ? t('statusbar.backoff_until', { t: util.fmtWhen(bo.until), rest: util.fmtSpan(bo.remaining_s) }) : t('statusbar.backoff_none'), bo.active ? 'warn' : 'off'],
+    ];
+  }
+  function paintSysPop() {
+    if (!sysPop) return;
+    const html = `<div class="mhead">${util.esc(t('statusbar.system'))}</div>` + sysRows().map((r) => `<div class="sb-row"><span class="led ${r[2]}"></span><span class="k">${util.esc(r[0])}</span><b>${util.esc(r[1])}</b></div>`).join('');
+    if (sysPop._html !== html) { sysPop.innerHTML = sysPop._html = html; if (sysPop._place) sysPop._place(); }
+  }
+  function toggleSysPop() {
+    const btn = $('#sb-sys');
+    if (sysWasOpen) { sysWasOpen = false; return; } // der Klick, der das offene Popover gerade geschlossen hat
+    if (sysPop) { HC.ui.closeMenu(); return; }
+    sysPop = HC.ui.popover(btn, '', { align: 'left', cls: 'sb-pop', label: t('statusbar.system_title') });
+    sysPop._onClose = () => { sysPop = null; btn.setAttribute('aria-expanded', 'false'); };
+    btn.setAttribute('aria-expanded', 'true');
+    paintSysPop();
+  }
   function renderStatus() {
     const s = HC.status, th = HC.settings.values.throttle;
     if (!s) return;
@@ -180,11 +210,24 @@
     $('#sb-backoff').textContent = bo.active ? t('statusbar.backoff_until', { t: util.fmtWhen(bo.until), rest: util.fmtSpan(bo.remaining_s) }) : t('statusbar.backoff_none');
     led($('#sb-backoff-led'), bo.active ? 'warn blink' : 'off');
     $('#sb-backoff-it').classList.toggle('alert', !!bo.active);
+    $('#sb-backoff-it').hidden = !bo.active; // «Backoff none» sagt nichts – der Eintrag erscheint nur, wenn einer läuft
+
+    /* Werkzeuge: solange nichts fehlt, ein Eintrag «System OK» (Einzelwerte per Klick/Tooltip); sonst alle einzeln. */
+    const sysOk = !!s.ytdlp_version && !!s.deno_ok && !!s.ffmpeg_ok && po.state !== 'error';
+    $$('footer .sb-tool').forEach((it) => { it.hidden = sysOk; });
+    $('#sb-sys').hidden = !sysOk;
+    $('#sb-sys-state').textContent = t('statusbar.ok');
+    led($('#sb-sys-led'), '');
+    $('#sb-sys').title = sysRows().map((r) => `${r[0]} ${r[1]}`).join(' · ');
+    if (!sysOk && sysPop) HC.ui.closeMenu();
+    paintSysPop();
 
     /* Pro Plattform (Phase 7a, v0.10.0): «Backoff» oben = YouTube; SoundCloud, Mixcloud und hearthis.at bekommen je
        einen eigenen, kompakten Punkt – nur wenn eingeschaltet. */
     const tip = (p, key) => { const x = HC.platform.state(p); return t(key, { p: HC.platform.label(p), day: x.counters.downloads_day || 0, day_max: x.limits.downloads_day, s: x.counters.searches_hour || 0, s_max: x.limits.searches_hour }); };
-    $('#sb-backoff-it').title = HC.platform.anyOther() ? tip('youtube', 'statusbar.yt_tip') : '';
+    const ytTip = HC.platform.anyOther() ? tip('youtube', 'statusbar.yt_tip') : '';
+    $('#sb-backoff-it').title = ytTip;
+    $('#sb-day-it').title = ytTip;
     HC.platform.others.forEach((p) => {
       const cls = { soundcloud: 'sc', mixcloud: 'mc', hearthis: 'ht' }[p];
       const it = $(`#sb-${cls}-it`);
@@ -213,10 +256,6 @@
     $('#sb-next').innerHTML = util.esc(HC.schedule.label(nx, true)) + (nx.at && nx.kind ? `<span class="sb-kind"> · ${util.esc(t('schedule.kind_' + nx.kind))}</span>` : '');
     $('#sb-next').classList.toggle('held', !!nx.at && nx.blocked);
     $('#sb-next').parentElement.title = HC.schedule.title(nx);
-
-    fx.count($('#nf-today'), s.counters.downloads_day);
-    $('#nf-today-max').textContent = th.max_downloads_per_day;
-    $('#nf-next').textContent = nx.at ? (nx.due ? t('schedule.due') : util.parseDate(nx.at).toDateString() === new Date().toDateString() ? util.fmtTime(nx.at) : util.fmtWhen(nx.at)) : '–';
 
     setBadge($('#b-inbox'), s.inbox_count || 0);
     setBadge($('#b-queue'), qn);

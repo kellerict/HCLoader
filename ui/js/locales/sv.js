@@ -18,10 +18,6 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "settings": "Inställningar",
     "stats": "Statistik"
   },
-  "navfoot": {
-    "today": "IDAG",
-    "next": "NÄSTA KONTROLL"
-  },
   "common": {
     "ok": "OK",
     "cancel": "Avbryt",
@@ -155,7 +151,9 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "yt_tip": "YouTube · nedladdat idag {day}/{day_max} · {s}/{s_max} sökningar denna timme",
     "sc_tip": "SoundCloud · nedladdat idag {day}/{day_max} · {s}/{s_max} sökningar denna timme",
     "backoff_tip": "{p}: backoff till {t} ({rest} kvar)",
-    "p_tip": "{p} · nedladdat idag {day}/{day_max} · {s}/{s_max} sökningar denna timme"
+    "p_tip": "{p} · nedladdat idag {day}/{day_max} · {s}/{s_max} sökningar denna timme",
+    "system": "System",
+    "system_title": "Systemstatus"
   },
   "schedule": {
     "due": "aktuell",
@@ -267,7 +265,9 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "kw_cleared_exc": "Uteslutna nyckelord borttagna",
     "kw_sugg_title": "Lägg till igen (från de sparade inställningarna)",
     "kw_sugg_label": "Förslag från de sparade inställningarna",
-    "kw_session_hint": "Gäller bara den här sessionen – inget sparas här. Startvärden: Inställningar › Filter och nyckelord."
+    "kw_session_hint": "Gäller bara den här sessionen – inget sparas här. Startvärden: Inställningar › Filter och nyckelord.",
+    "kw_group": "Nyckelord",
+    "kw_count": "{inc} inkluderade · {exc} exkluderade"
   },
   "inbox": {
     "title": "Inkorg",
@@ -546,7 +546,8 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "continue_forget": "Ta bort från ”Fortsätt lyssna”",
     "export": "M3U",
     "export_title": "Exportera det som visas som M3U8-spellista",
-    "export_continue": "Exportera ”Fortsätt lyssna” som spellista"
+    "export_continue": "Exportera ”Fortsätt lyssna” som spellista",
+    "sections": "Bibliotekets delar"
   },
   "player": {
     "label": "Minispelare",
@@ -670,6 +671,13 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "mediaserver": "Mediaserver",
     "sources": "Fler källor",
     "reupload": "Omuppladdningar"
+  },
+  "tab_groups": {
+    "app": "App",
+    "find": "Hitta och sortera",
+    "download": "Nedladdning",
+    "sources": "Källor och servrar",
+    "system": "System"
   },
   "tabs_hint": {
     "general": "Appens grundläggande beteende.",

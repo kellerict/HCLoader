@@ -18,10 +18,6 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "settings": "Asetukset",
     "stats": "Tilastot"
   },
-  "navfoot": {
-    "today": "TÄNÄÄN",
-    "next": "SEURAAVA TARKISTUS"
-  },
   "common": {
     "ok": "OK",
     "cancel": "Peruuta",
@@ -155,7 +151,9 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "yt_tip": "YouTube · ladattu tänään {day}/{day_max} · {s}/{s_max} hakua tällä tunnilla",
     "sc_tip": "SoundCloud · ladattu tänään {day}/{day_max} · {s}/{s_max} hakua tällä tunnilla",
     "backoff_tip": "{p}: backoff asti {t} ({rest} jäljellä)",
-    "p_tip": "{p} · ladattu tänään {day}/{day_max} · {s}/{s_max} hakua tällä tunnilla"
+    "p_tip": "{p} · ladattu tänään {day}/{day_max} · {s}/{s_max} hakua tällä tunnilla",
+    "system": "Järjestelmä",
+    "system_title": "Järjestelmän tila"
   },
   "schedule": {
     "due": "erääntynyt",
@@ -267,7 +265,9 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "kw_cleared_exc": "Pois suljettavat avainsanat poistettu",
     "kw_sugg_title": "Lisää takaisin (tallennetuista asetuksista)",
     "kw_sugg_label": "Ehdotuksia tallennetuista asetuksista",
-    "kw_session_hint": "Koskee vain tätä istuntoa – tässä ei tallenneta mitään. Lähtöarvot: Asetukset › Suodattimet ja avainsanat."
+    "kw_session_hint": "Koskee vain tätä istuntoa – tässä ei tallenneta mitään. Lähtöarvot: Asetukset › Suodattimet ja avainsanat.",
+    "kw_group": "Avainsanat",
+    "kw_count": "{inc} sisällytettävää · {exc} pois suljettavaa"
   },
   "inbox": {
     "title": "Saapuneet",
@@ -546,7 +546,8 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "continue_forget": "Poista listalta ”Jatka kuuntelua”",
     "export": "M3U",
     "export_title": "Vie näkyvät M3U8-soittolistaksi",
-    "export_continue": "Vie ”Jatka kuuntelua” soittolistaksi"
+    "export_continue": "Vie ”Jatka kuuntelua” soittolistaksi",
+    "sections": "Kirjaston osiot"
   },
   "player": {
     "label": "Minisoitin",
@@ -670,6 +671,13 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "mediaserver": "Mediapalvelin",
     "sources": "Lisää lähteitä",
     "reupload": "Uudelleenlataukset"
+  },
+  "tab_groups": {
+    "app": "Sovellus",
+    "find": "Haku ja järjestely",
+    "download": "Lataus",
+    "sources": "Lähteet ja palvelimet",
+    "system": "Järjestelmä"
   },
   "tabs_hint": {
     "general": "Sovelluksen perustoiminta.",

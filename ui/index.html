@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="css/theme.css">
 <link rel="stylesheet" href="css/components.css">
 <link rel="stylesheet" href="css/effects.css">
+<link rel="stylesheet" href="css/clean.css">
 </head>
 <body>
 
@@ -36,8 +37,6 @@
     <li class="nav-item" tabindex="0" data-view="settings" data-icon="gear"><span data-i18n="nav.settings"></span></li>
   </ul>
   <div class="nav-foot">
-    <span data-i18n="navfoot.today"></span> <b><span id="nf-today">0</span> / <span id="nf-today-max">–</span></b><br>
-    <span data-i18n="navfoot.next"></span> <b id="nf-next">–</b><br>
     <span class="mock-flag" id="mock-flag" data-i18n="app.mock" hidden></span>
   </div>
 </nav>
@@ -59,11 +58,14 @@
 
 <!-- Statusleiste -->
 <footer>
-  <span class="it"><span class="led off" id="sb-ytdlp-led"></span>yt-dlp <b id="sb-ytdlp">–</b></span>
-  <span class="it"><span class="led off" id="sb-deno-led"></span>Deno <b id="sb-deno">–</b></span>
-  <span class="it"><span class="led off" id="sb-ffmpeg-led"></span>ffmpeg <b id="sb-ffmpeg">–</b></span>
-  <span class="it" id="sb-pot-it"><span class="led off" id="sb-pot-led"></span><span data-i18n="statusbar.po"></span> <b id="sb-pot">–</b></span>
-  <span class="it" id="sb-backoff-it"><span class="led off" id="sb-backoff-led"></span><span data-i18n="statusbar.backoff"></span> <b id="sb-backoff">–</b></span>
+  <!-- Werkzeuge: ein Eintrag «System OK», solange alles in Ordnung ist (Klick: Einzelwerte als Popover);
+       bei einem Problem stehen die Einzelwerte (.sb-tool) wieder direkt in der Leiste (js/app.js renderStatus). -->
+  <button type="button" class="it sb-sys" id="sb-sys" aria-haspopup="dialog" aria-expanded="false"><span class="led off" id="sb-sys-led"></span><span data-i18n="statusbar.system"></span> <b id="sb-sys-state">–</b></button>
+  <span class="it" id="sb-ytdlp-it"><span class="led off" id="sb-ytdlp-led"></span>yt-dlp <b id="sb-ytdlp">–</b></span>
+  <span class="it sb-tool" id="sb-deno-it" hidden><span class="led off" id="sb-deno-led"></span>Deno <b id="sb-deno">–</b></span>
+  <span class="it sb-tool" id="sb-ffmpeg-it" hidden><span class="led off" id="sb-ffmpeg-led"></span>ffmpeg <b id="sb-ffmpeg">–</b></span>
+  <span class="it sb-tool" id="sb-pot-it" hidden><span class="led off" id="sb-pot-led"></span><span data-i18n="statusbar.po"></span> <b id="sb-pot">–</b></span>
+  <span class="it" id="sb-backoff-it" hidden><span class="led off" id="sb-backoff-led"></span><span data-i18n="statusbar.backoff"></span> <b id="sb-backoff">–</b></span>
   <span class="it sc" id="sb-sc-it" hidden><span class="led off" id="sb-sc-led"></span><span>SC</span> <b id="sb-sc">–</b></span>
   <span class="it mc" id="sb-mc-it" hidden><span class="led off" id="sb-mc-led"></span><span>MC</span> <b id="sb-mc">–</b></span>
   <span class="it ht" id="sb-ht-it" hidden><span class="led off" id="sb-ht-led"></span><span>HT</span> <b id="sb-ht">–</b></span>

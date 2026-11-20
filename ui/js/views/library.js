@@ -114,12 +114,12 @@
     const cur = isNow(l), on = cur && now.playing;
     return `<button class="iconbtn play${cur ? ' on' : ''}" data-act="play" title="${esc(t(l.missing ? 'library.play_missing' : on ? 'library.pause' : 'library.play'))}" ${l.missing ? 'disabled' : ''}>${on ? I.pause : I.play}</button>
       <button class="iconbtn" data-act="folder" title="${esc(t('library.open_folder'))}">${I.folder}</button>
-      <button class="iconbtn" data-act="more" title="${esc(t('library.more'))}" aria-haspopup="menu">${I.more}</button>`;
+      <button class="iconbtn" data-act="more" title="${esc(t('card.more'))}" aria-label="${esc(t('card.more'))}" aria-haspopup="menu">${I.more}</button>`;
   }
   const cueTag = () => `<span class="cue-tag" title="${esc(t('library.cue_title'))}">CUE</span>`;
   const missTag = () => `<span class="miss-tag" title="${esc(t('library.missing_title'))}">${I.warn}${t('library.missing')}</span>`;
   const cls = (l) => `${l.missing ? ' missing' : ''}${busy.has(l.id) ? ' working' : ''}${isNow(l) ? ` now${now.playing ? '' : ' paused'}` : ''}`;
-  const genreTag = (l) => ui.gtag(l.genre, { edit: true, manual: !!l.genre_manual, busy: busy.has(l.id) });
+  const genreTag = (l, dot) => ui.gtag(l.genre, { edit: true, manual: !!l.genre_manual, busy: busy.has(l.id), dot });
   const festTag = (l, add) => HC.fest.badge(l, { add, busy: busy.has(l.id) });
   const nowMark = (l) => (isNow(l) ? `<span class="nowplay" title="${esc(t('library.now_playing'))}">${ui.eq()}</span>` : '');
   /* v0.10.0 Re-Upload: offen -> klickbares Kennzeichen, verknüpft -> «Gleicher Mix», behalten -> nichts */
@@ -135,9 +135,9 @@
   function row(l) {
     return `<tr data-id="${esc(l.id)}" class="${cls(l).trim()}">
       <td class="clip"><div class="cell-title">${ui.thumb(l, 'mini')}${nowMark(l)}</div>
-        <div><b title="${esc(l.title)}">${esc(l.title)}</b><small title="${esc(l.file_path)}">${ui.pbadge(l)}${l.missing ? missTag() : ''}${ruTag(l)}${l.has_cue && !l.missing ? cueTag() : ''}${festTag(l, true)}<span>${esc(shortDir(l.file_path))}</span></small></div></div></td>
+        <div><b title="${esc(l.title)}">${esc(l.title)}</b><small title="${esc(l.file_path)}">${ui.pbadge(l)}${l.missing ? missTag() : ''}${ruTag(l)}${l.has_cue && !l.missing ? cueTag() : ''}${festTag(l, true)}</small></div></div></td>
       <td class="clip" title="${esc(l.artist)}">${esc(l.artist)}</td>
-      <td>${genreTag(l)}</td>
+      <td>${genreTag(l, true)}</td>
       <td class="mono">${esc(year(l) || '–')}</td>
       <td class="mono num">${util.fmtDur(l.duration)}</td>
       <td class="mono num">${l.missing ? '–' : fmtSize(l.size_mb)}</td>
@@ -731,10 +731,12 @@
     const sel = (id, label, w) => `<select class="select" id="${id}" aria-label="${esc(t(label))}" title="${esc(t(label))}" style="width:${w}px"></select>`;
     el.innerHTML = `
       <div class="view-head"><h2 class="glitch" data-text="${t('library.title')}">${t('library.title')}</h2><span class="sub" id="lib-sub"></span>
-        <div class="actions">
+        <div class="lib-tabs" role="group" aria-label="${esc(t('library.sections'))}">
           <button type="button" class="btn ghost lib-tracks" id="lib-tracks-btn" title="${esc(t('tracks.open_title'))}">${I.list}${esc(t('tracks.nav'))}</button>
           <button type="button" class="btn ghost lib-djs" id="lib-djs-btn" title="${esc(t('djs.open_title'))}">${I.dj}${esc(t('djs.nav'))}</button>
           <button type="button" class="btn ghost lib-collector" id="lib-collector-btn" title="${esc(t('collector.open_title'))}">${I.flag}${esc(t('collector.nav'))}</button>
+        </div>
+        <div class="actions">
           <div class="lib-tools" id="lib-tools">
             <div class="search-wrap lib-search">${I.search}<input class="input" id="lib-q" placeholder="${esc(t('library.search'))}" spellcheck="false" autocomplete="off"></div>
             <div class="seg icon" id="lib-view">
@@ -749,12 +751,11 @@
           <div class="stat"><div class="k">${t('library.stat_count')}</div><div class="v"><span id="ls-count">0</span></div></div>
           <div class="stat"><div class="k">${t('library.stat_duration')}</div><div class="v"><span id="ls-dur">0</span> <small>${t('library.unit_h')}</small></div></div>
           <div class="stat"><div class="k">${t('library.stat_size')}</div><div class="v"><span id="ls-size">0</span> <small id="ls-size-unit">${t('library.unit_gb')}</small></div></div>
-          <div class="stat genres"><div class="k">${t('library.stat_genres')}</div><div class="gbar" id="ls-bar"></div><div class="glist" id="ls-genres"></div></div>
+          <div class="stat genres" role="group" aria-label="${esc(t('library.stat_genres'))}"><div class="gbar" id="ls-bar"></div><div class="glist" id="ls-genres"></div></div>
         </div>
         <div class="lib-bar">
           ${sel('lib-genre', 'library.f_genre', 138)}${sel('lib-channel', 'library.f_channel', 168)}${sel('lib-year', 'library.f_year', 112)}
           <select class="select" id="lib-sort" aria-label="${esc(t('library.f_sort'))}" title="${esc(t('library.f_sort'))}" style="width:160px">${SORTS.map((s) => `<option value="${s}">${t('library.sort_' + s)}</option>`).join('')}</select>
-          <span class="bar-sep"></span>
           <div class="bar-group"><span class="bar-lbl" id="lib-groupby-l">${t('library.group_by')}</span>
             <div class="seg" id="lib-groupby" role="radiogroup" aria-labelledby="lib-groupby-l">${GROUPS.map((g) => `<button type="button" role="radio" data-g="${g}">${t('library.group_' + g)}</button>`).join('')}</div></div>
           <span class="spacer"></span>

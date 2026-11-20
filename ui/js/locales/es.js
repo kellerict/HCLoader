@@ -18,10 +18,6 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
     "settings": "Ajustes",
     "stats": "Estadísticas"
   },
-  "navfoot": {
-    "today": "HOY",
-    "next": "PRÓX. REVISIÓN"
-  },
   "common": {
     "ok": "OK",
     "cancel": "Cancelar",
@@ -155,7 +151,9 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
     "yt_tip": "YouTube · descargado hoy {day}/{day_max} · {s}/{s_max} búsquedas esta hora",
     "sc_tip": "SoundCloud · descargado hoy {day}/{day_max} · {s}/{s_max} búsquedas esta hora",
     "backoff_tip": "{p}: bloqueo temporal hasta las {t} (quedan {rest})",
-    "p_tip": "{p} · descargado hoy {day}/{day_max} · {s}/{s_max} búsquedas esta hora"
+    "p_tip": "{p} · descargado hoy {day}/{day_max} · {s}/{s_max} búsquedas esta hora",
+    "system": "Sistema",
+    "system_title": "Estado del sistema"
   },
   "schedule": {
     "due": "pendiente",
@@ -267,7 +265,9 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
     "kw_cleared_exc": "Palabras clave de exclusión quitadas",
     "kw_sugg_title": "Volver a añadir (de los ajustes guardados)",
     "kw_sugg_label": "Sugerencias de los ajustes guardados",
-    "kw_session_hint": "Solo vale para esta sesión – aquí no se guarda nada. Valores iniciales: Ajustes › Filtros y palabras clave."
+    "kw_session_hint": "Solo vale para esta sesión – aquí no se guarda nada. Valores iniciales: Ajustes › Filtros y palabras clave.",
+    "kw_group": "Palabras clave",
+    "kw_count": "{inc} a incluir · {exc} a excluir"
   },
   "inbox": {
     "title": "Bandeja de entrada",
@@ -546,7 +546,8 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
     "continue_forget": "Quitar de «Seguir escuchando»",
     "export": "M3U",
     "export_title": "Exportar lo que se muestra como playlist M3U8",
-    "export_continue": "Exportar «Seguir escuchando» como playlist"
+    "export_continue": "Exportar «Seguir escuchando» como playlist",
+    "sections": "Secciones de la biblioteca"
   },
   "player": {
     "label": "Minirreproductor",
@@ -670,6 +671,13 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
     "mediaserver": "Servidor multimedia",
     "sources": "Más fuentes",
     "reupload": "Resubidas"
+  },
+  "tab_groups": {
+    "app": "App",
+    "find": "Buscar y ordenar",
+    "download": "Descarga",
+    "sources": "Fuentes y servidores",
+    "system": "Sistema"
   },
   "tabs_hint": {
     "general": "Comportamiento básico de la app.",

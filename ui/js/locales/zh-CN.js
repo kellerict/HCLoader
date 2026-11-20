@@ -18,10 +18,6 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "settings": "设置",
     "stats": "统计"
   },
-  "navfoot": {
-    "today": "今日",
-    "next": "下次检查"
-  },
   "common": {
     "ok": "确定",
     "cancel": "取消",
@@ -154,7 +150,9 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "yt_tip": "YouTube · 今日已下载 {day}/{day_max} · 本小时已搜索 {s}/{s_max} 次",
     "sc_tip": "SoundCloud · 今日已下载 {day}/{day_max} · 本小时已搜索 {s}/{s_max} 次",
     "backoff_tip": "{p}：退避至 {t}（剩余 {rest}）",
-    "p_tip": "{p} · 今日已下载 {day}/{day_max} · 本小时已搜索 {s}/{s_max} 次"
+    "p_tip": "{p} · 今日已下载 {day}/{day_max} · 本小时已搜索 {s}/{s_max} 次",
+    "system": "系统",
+    "system_title": "系统状态"
   },
   "schedule": {
     "due": "已到期",
@@ -265,7 +263,9 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "kw_cleared_exc": "已移除排除关键词",
     "kw_sugg_title": "重新添加（来自已保存的设置）",
     "kw_sugg_label": "来自已保存设置的建议",
-    "kw_session_hint": "仅对本次会话有效 – 此处不会保存。初始值：设置 › 筛选与关键词。"
+    "kw_session_hint": "仅对本次会话有效 – 此处不会保存。初始值：设置 › 筛选与关键词。",
+    "kw_group": "关键词",
+    "kw_count": "包含 {inc} · 排除 {exc}"
   },
   "inbox": {
     "title": "收件箱",
@@ -532,7 +532,8 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "continue_forget": "从「继续收听」中移除",
     "export": "M3U",
     "export_title": "将当前显示内容导出为 M3U8 播放列表",
-    "export_continue": "将“继续收听”导出为播放列表"
+    "export_continue": "将“继续收听”导出为播放列表",
+    "sections": "媒体库分区"
   },
   "player": {
     "label": "迷你播放器",
@@ -652,6 +653,13 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "mediaserver": "媒体服务器",
     "sources": "更多来源",
     "reupload": "重复上传"
+  },
+  "tab_groups": {
+    "app": "应用",
+    "find": "查找与整理",
+    "download": "下载",
+    "sources": "来源与服务器",
+    "system": "系统"
   },
   "tabs_hint": {
     "general": "应用的基本行为。",

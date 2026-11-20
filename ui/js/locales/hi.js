@@ -18,10 +18,6 @@ HC.i18n.register({"code": "hi", "name": "हिन्दी", "dir": "ltr", "int
     "settings": "सेटिंग्स",
     "stats": "आँकड़े"
   },
-  "navfoot": {
-    "today": "आज",
-    "next": "अगली जाँच"
-  },
   "common": {
     "ok": "ठीक है",
     "cancel": "रद्द करें",
@@ -155,7 +151,9 @@ HC.i18n.register({"code": "hi", "name": "हिन्दी", "dir": "ltr", "int
     "yt_tip": "YouTube · आज डाउनलोड {day}/{day_max} · इस घंटे खोजें {s}/{s_max}",
     "sc_tip": "SoundCloud · आज डाउनलोड {day}/{day_max} · इस घंटे खोजें {s}/{s_max}",
     "backoff_tip": "{p}: {t} तक बैकऑफ़ ({rest} शेष)",
-    "p_tip": "{p} · आज डाउनलोड {day}/{day_max} · इस घंटे खोजें {s}/{s_max}"
+    "p_tip": "{p} · आज डाउनलोड {day}/{day_max} · इस घंटे खोजें {s}/{s_max}",
+    "system": "सिस्टम",
+    "system_title": "सिस्टम स्थिति"
   },
   "schedule": {
     "due": "देय",
@@ -267,7 +265,9 @@ HC.i18n.register({"code": "hi", "name": "हिन्दी", "dir": "ltr", "int
     "kw_cleared_exc": "बहिष्कृत कीवर्ड हटाए गए",
     "kw_sugg_title": "फिर से जोड़ें (सहेजी गई सेटिंग्स से)",
     "kw_sugg_label": "सहेजी गई सेटिंग्स से सुझाव",
-    "kw_session_hint": "केवल इस सत्र पर लागू – यहाँ कुछ सहेजा नहीं जाता। आरंभिक मान: सेटिंग्स › फ़िल्टर और कीवर्ड।"
+    "kw_session_hint": "केवल इस सत्र पर लागू – यहाँ कुछ सहेजा नहीं जाता। आरंभिक मान: सेटिंग्स › फ़िल्टर और कीवर्ड।",
+    "kw_group": "कीवर्ड",
+    "kw_count": "{inc} शामिल · {exc} बाहर"
   },
   "inbox": {
     "title": "इनबॉक्स",
@@ -546,7 +546,8 @@ HC.i18n.register({"code": "hi", "name": "हिन्दी", "dir": "ltr", "int
     "continue_forget": "“सुनना जारी रखें” से हटाएँ",
     "export": "M3U",
     "export_title": "जो दिख रहा है उसे M3U8 प्लेलिस्ट के रूप में एक्सपोर्ट करें",
-    "export_continue": "“सुनना जारी रखें” को प्लेलिस्ट के रूप में एक्सपोर्ट करें"
+    "export_continue": "“सुनना जारी रखें” को प्लेलिस्ट के रूप में एक्सपोर्ट करें",
+    "sections": "लाइब्रेरी के भाग"
   },
   "player": {
     "label": "मिनी प्लेयर",
@@ -670,6 +671,13 @@ HC.i18n.register({"code": "hi", "name": "हिन्दी", "dir": "ltr", "int
     "mediaserver": "मीडिया सर्वर",
     "sources": "और स्रोत",
     "reupload": "री-अपलोड"
+  },
+  "tab_groups": {
+    "app": "ऐप",
+    "find": "खोज और क्रम",
+    "download": "डाउनलोड",
+    "sources": "स्रोत और सर्वर",
+    "system": "सिस्टम"
   },
   "tabs_hint": {
     "general": "ऐप का बुनियादी व्यवहार।",

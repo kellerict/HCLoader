@@ -18,10 +18,6 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "settings": "Instellingen",
     "stats": "Statistieken"
   },
-  "navfoot": {
-    "today": "VANDAAG",
-    "next": "VOLGENDE CONTROLE"
-  },
   "common": {
     "ok": "OK",
     "cancel": "Annuleren",
@@ -155,7 +151,9 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "yt_tip": "YouTube · vandaag gedownload {day}/{day_max} · {s}/{s_max} zoekopdrachten dit uur",
     "sc_tip": "SoundCloud · vandaag gedownload {day}/{day_max} · {s}/{s_max} zoekopdrachten dit uur",
     "backoff_tip": "{p}: backoff tot {t} (nog {rest})",
-    "p_tip": "{p} · vandaag gedownload {day}/{day_max} · {s}/{s_max} zoekopdrachten dit uur"
+    "p_tip": "{p} · vandaag gedownload {day}/{day_max} · {s}/{s_max} zoekopdrachten dit uur",
+    "system": "Systeem",
+    "system_title": "Systeemstatus"
   },
   "schedule": {
     "due": "aan de beurt",
@@ -267,7 +265,9 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "kw_cleared_exc": "Uitgesloten trefwoorden verwijderd",
     "kw_sugg_title": "Opnieuw toevoegen (uit de opgeslagen instellingen)",
     "kw_sugg_label": "Suggesties uit de opgeslagen instellingen",
-    "kw_session_hint": "Geldt alleen voor deze sessie – hier wordt niets opgeslagen. Startwaarden: Instellingen › Filters en trefwoorden."
+    "kw_session_hint": "Geldt alleen voor deze sessie – hier wordt niets opgeslagen. Startwaarden: Instellingen › Filters en trefwoorden.",
+    "kw_group": "Trefwoorden",
+    "kw_count": "{inc} verplicht · {exc} uitgesloten"
   },
   "inbox": {
     "title": "Inbox",
@@ -546,7 +546,8 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "continue_forget": "Verwijderen uit „Verder luisteren”",
     "export": "M3U",
     "export_title": "Wat je ziet als M3U8-playlist exporteren",
-    "export_continue": "“Verder luisteren” als playlist exporteren"
+    "export_continue": "“Verder luisteren” als playlist exporteren",
+    "sections": "Onderdelen van de bibliotheek"
   },
   "player": {
     "label": "Miniplayer",
@@ -670,6 +671,13 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "mediaserver": "Mediaserver",
     "sources": "Meer bronnen",
     "reupload": "Heruploads"
+  },
+  "tab_groups": {
+    "app": "App",
+    "find": "Vinden en sorteren",
+    "download": "Download",
+    "sources": "Bronnen en servers",
+    "system": "Systeem"
   },
   "tabs_hint": {
     "general": "Basisgedrag van de app.",

@@ -18,10 +18,6 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "settings": "Seaded",
     "stats": "Statistika"
   },
-  "navfoot": {
-    "today": "TÄNA",
-    "next": "JÄRGMINE KONTROLL"
-  },
   "common": {
     "ok": "OK",
     "cancel": "Tühista",
@@ -155,7 +151,9 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "yt_tip": "YouTube · täna allalaaditud {day}/{day_max} · selle tunni otsinguid {s}/{s_max}",
     "sc_tip": "SoundCloud · täna allalaaditud {day}/{day_max} · selle tunni otsinguid {s}/{s_max}",
     "backoff_tip": "{p}: paus kuni {t} (jäänud {rest})",
-    "p_tip": "{p} · täna allalaaditud {day}/{day_max} · selle tunni otsinguid {s}/{s_max}"
+    "p_tip": "{p} · täna allalaaditud {day}/{day_max} · selle tunni otsinguid {s}/{s_max}",
+    "system": "Süsteem",
+    "system_title": "Süsteemi olek"
   },
   "schedule": {
     "due": "on aeg",
@@ -267,7 +265,9 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "kw_cleared_exc": "Välistatud märksõnad eemaldatud",
     "kw_sugg_title": "Lisa uuesti (salvestatud seadetest)",
     "kw_sugg_label": "Soovitused salvestatud seadetest",
-    "kw_session_hint": "Kehtib ainult selles seansis – siin ei salvestata midagi. Algväärtused: Seaded › Filtrid ja märksõnad."
+    "kw_session_hint": "Kehtib ainult selles seansis – siin ei salvestata midagi. Algväärtused: Seaded › Filtrid ja märksõnad.",
+    "kw_group": "Märksõnad",
+    "kw_count": "kaasatavaid: {inc} · välistatavaid: {exc}"
   },
   "inbox": {
     "title": "Saabunud",
@@ -546,7 +546,8 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "continue_forget": "Eemalda loendist „Jätka kuulamist“",
     "export": "M3U",
     "export_title": "Ekspordi kuvatu M3U8-esitusloendina",
-    "export_continue": "Ekspordi „Jätka kuulamist“ esitusloendina"
+    "export_continue": "Ekspordi „Jätka kuulamist“ esitusloendina",
+    "sections": "Kogu jaotised"
   },
   "player": {
     "label": "Minipleier",
@@ -670,6 +671,13 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "mediaserver": "Meediaserver",
     "sources": "Rohkem allikaid",
     "reupload": "Uuesti üleslaadimised"
+  },
+  "tab_groups": {
+    "app": "Rakendus",
+    "find": "Otsimine ja sortimine",
+    "download": "Allalaadimine",
+    "sources": "Allikad ja serverid",
+    "system": "Süsteem"
   },
   "tabs_hint": {
     "general": "Rakenduse põhikäitumine.",

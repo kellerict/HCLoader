@@ -18,10 +18,6 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "settings": "Nustatymai",
     "stats": "Statistika"
   },
-  "navfoot": {
-    "today": "ŠIANDIEN",
-    "next": "KITA PATIKRA"
-  },
   "common": {
     "ok": "Gerai",
     "cancel": "Atšaukti",
@@ -157,7 +153,9 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "yt_tip": "YouTube · šiandien atsisiųsta {day}/{day_max} · šią valandą paieškų {s}/{s_max}",
     "sc_tip": "SoundCloud · šiandien atsisiųsta {day}/{day_max} · šią valandą paieškų {s}/{s_max}",
     "backoff_tip": "{p}: pauzė iki {t} (liko {rest})",
-    "p_tip": "{p} · šiandien atsisiųsta {day}/{day_max} · šią valandą paieškų {s}/{s_max}"
+    "p_tip": "{p} · šiandien atsisiųsta {day}/{day_max} · šią valandą paieškų {s}/{s_max}",
+    "system": "Sistema",
+    "system_title": "Sistemos būsena"
   },
   "schedule": {
     "due": "laikas",
@@ -271,7 +269,9 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "kw_cleared_exc": "Neįtraukti raktažodžiai pašalinti",
     "kw_sugg_title": "Pridėti vėl (iš išsaugotų nustatymų)",
     "kw_sugg_label": "Pasiūlymai iš išsaugotų nustatymų",
-    "kw_session_hint": "Galioja tik šiam seansui – čia niekas neišsaugoma. Pradinės reikšmės: Nustatymai › Filtrai ir raktažodžiai."
+    "kw_session_hint": "Galioja tik šiam seansui – čia niekas neišsaugoma. Pradinės reikšmės: Nustatymai › Filtrai ir raktažodžiai.",
+    "kw_group": "Raktažodžiai",
+    "kw_count": "įtraukti: {inc} · neįtraukti: {exc}"
   },
   "inbox": {
     "title": "Gauti",
@@ -574,7 +574,8 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "continue_forget": "Pašalinti iš „Klausyti toliau“",
     "export": "M3U",
     "export_title": "Eksportuoti rodomą turinį kaip M3U8 grojaraštį",
-    "export_continue": "Eksportuoti „Klausyti toliau“ kaip grojaraštį"
+    "export_continue": "Eksportuoti „Klausyti toliau“ kaip grojaraštį",
+    "sections": "Bibliotekos skyriai"
   },
   "player": {
     "label": "Mini grotuvas",
@@ -706,6 +707,13 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "mediaserver": "Medijos serveris",
     "sources": "Daugiau šaltinių",
     "reupload": "Pakartotiniai įkėlimai"
+  },
+  "tab_groups": {
+    "app": "Programa",
+    "find": "Paieška ir rikiavimas",
+    "download": "Atsisiuntimas",
+    "sources": "Šaltiniai ir serveriai",
+    "system": "Sistema"
   },
   "tabs_hint": {
     "general": "Pagrindinis programos elgesys.",

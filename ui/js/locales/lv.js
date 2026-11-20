@@ -18,10 +18,6 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "settings": "Iestatījumi",
     "stats": "Statistika"
   },
-  "navfoot": {
-    "today": "ŠODIEN",
-    "next": "NĀKAMĀ PĀRBAUDE"
-  },
   "common": {
     "ok": "Labi",
     "cancel": "Atcelt",
@@ -156,7 +152,9 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "yt_tip": "YouTube · šodien lejupielādēts {day}/{day_max} · šajā stundā meklējumu {s}/{s_max}",
     "sc_tip": "SoundCloud · šodien lejupielādēts {day}/{day_max} · šajā stundā meklējumu {s}/{s_max}",
     "backoff_tip": "{p}: pauze līdz {t} (atlicis {rest})",
-    "p_tip": "{p} · šodien lejupielādēts {day}/{day_max} · šajā stundā meklējumu {s}/{s_max}"
+    "p_tip": "{p} · šodien lejupielādēts {day}/{day_max} · šajā stundā meklējumu {s}/{s_max}",
+    "system": "Sistēma",
+    "system_title": "Sistēmas stāvoklis"
   },
   "schedule": {
     "due": "jāpārbauda",
@@ -269,7 +267,9 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "kw_cleared_exc": "Izslēdzamie atslēgvārdi noņemti",
     "kw_sugg_title": "Pievienot atkal (no saglabātajiem iestatījumiem)",
     "kw_sugg_label": "Ieteikumi no saglabātajiem iestatījumiem",
-    "kw_session_hint": "Attiecas tikai uz šo sesiju – šeit nekas netiek saglabāts. Sākuma vērtības: Iestatījumi › Filtri un atslēgvārdi."
+    "kw_session_hint": "Attiecas tikai uz šo sesiju – šeit nekas netiek saglabāts. Sākuma vērtības: Iestatījumi › Filtri un atslēgvārdi.",
+    "kw_group": "Atslēgvārdi",
+    "kw_count": "iekļaujamie: {inc} · izslēdzamie: {exc}"
   },
   "inbox": {
     "title": "Ienākošie",
@@ -560,7 +560,8 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "continue_forget": "Noņemt no “Turpināt klausīties”",
     "export": "M3U",
     "export_title": "Eksportēt redzamo kā M3U8 sarakstu",
-    "export_continue": "Eksportēt “Turpināt klausīties” kā sarakstu"
+    "export_continue": "Eksportēt “Turpināt klausīties” kā sarakstu",
+    "sections": "Bibliotēkas sadaļas"
   },
   "player": {
     "label": "Mini atskaņotājs",
@@ -688,6 +689,13 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "mediaserver": "Multivides serveris",
     "sources": "Citi avoti",
     "reupload": "Atkārtotas augšupielādes"
+  },
+  "tab_groups": {
+    "app": "Lietotne",
+    "find": "Meklēšana un kārtošana",
+    "download": "Lejupielāde",
+    "sources": "Avoti un serveri",
+    "system": "Sistēma"
   },
   "tabs_hint": {
     "general": "Lietotnes pamatuzvedība.",

@@ -18,10 +18,6 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "settings": "Pengaturan",
     "stats": "Statistik"
   },
-  "navfoot": {
-    "today": "HARI INI",
-    "next": "PEMERIKSAAN BERIKUTNYA"
-  },
   "common": {
     "ok": "OK",
     "cancel": "Batal",
@@ -154,7 +150,9 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "yt_tip": "YouTube · terunduh hari ini {day}/{day_max} · {s}/{s_max} pencarian jam ini",
     "sc_tip": "SoundCloud · terunduh hari ini {day}/{day_max} · {s}/{s_max} pencarian jam ini",
     "backoff_tip": "{p}: backoff hingga {t} (sisa {rest})",
-    "p_tip": "{p} · terunduh hari ini {day}/{day_max} · {s}/{s_max} pencarian jam ini"
+    "p_tip": "{p} · terunduh hari ini {day}/{day_max} · {s}/{s_max} pencarian jam ini",
+    "system": "Sistem",
+    "system_title": "Status sistem"
   },
   "schedule": {
     "due": "jatuh tempo",
@@ -265,7 +263,9 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "kw_cleared_exc": "Kata kunci pengecualian dihapus",
     "kw_sugg_title": "Tambahkan lagi (dari pengaturan tersimpan)",
     "kw_sugg_label": "Saran dari pengaturan tersimpan",
-    "kw_session_hint": "Hanya berlaku untuk sesi ini – tidak ada yang disimpan di sini. Nilai awal: Pengaturan › Filter & kata kunci."
+    "kw_session_hint": "Hanya berlaku untuk sesi ini – tidak ada yang disimpan di sini. Nilai awal: Pengaturan › Filter & kata kunci.",
+    "kw_group": "Kata kunci",
+    "kw_count": "{inc} wajib · {exc} pengecualian"
   },
   "inbox": {
     "title": "Kotak masuk",
@@ -532,7 +532,8 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "continue_forget": "Hapus dari “Lanjutkan mendengarkan”",
     "export": "M3U",
     "export_title": "Ekspor yang ditampilkan sebagai playlist M3U8",
-    "export_continue": "Ekspor “Lanjutkan mendengarkan” sebagai playlist"
+    "export_continue": "Ekspor “Lanjutkan mendengarkan” sebagai playlist",
+    "sections": "Bagian pustaka"
   },
   "player": {
     "label": "Pemutar mini",
@@ -652,6 +653,13 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "mediaserver": "Server media",
     "sources": "Sumber lain",
     "reupload": "Unggahan ulang"
+  },
+  "tab_groups": {
+    "app": "Aplikasi",
+    "find": "Cari & urutkan",
+    "download": "Unduhan",
+    "sources": "Sumber & server",
+    "system": "Sistem"
   },
   "tabs_hint": {
     "general": "Perilaku dasar aplikasi.",

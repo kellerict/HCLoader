@@ -84,13 +84,30 @@
       <span class="bf-add">${esc(t('backfill.added', { n: util.fmtNum(b.added) }))}</span>${note}
       <span class="bf-btns">${btns}<button type="button" class="linkbtn danger" data-bf="cancel">${I.x}${t('backfill.cancel')}</button></span></div></td></tr>`;
   }
-  function bfButton(s) {
-    if (!canBackfill(s)) return `<button class="iconbtn" data-act="bf" title="${esc(t('backfill.search_title'))}" disabled>${I.layers}</button>`;
+  /** «Alles einlesen» im Zeilenmenü: {open: läuft/pausiert, why: Grund, warum es gerade nicht geht, title}. */
+  function bfState(s) {
+    if (!canBackfill(s)) return { open: false, why: t('backfill.search_title'), title: t('backfill.search_title') };
     const b = bfOf(s);
-    const open = b && (BF_OPEN.includes(b.state) || b.state === 'paused');
+    const open = !!b && (BF_OPEN.includes(b.state) || b.state === 'paused');
     const why = open ? t('backfill.why_open') : HC.platform.enabled(HC.platform.of(s)) ? '' : offWhy(s);
-    const title = why || t(b && b.state === 'done' ? 'backfill.again_title' : 'backfill.action_title');
-    return `<button class="iconbtn${open ? ' on' : ''}" data-act="bf" title="${esc(title)}" aria-label="${esc(t('backfill.action'))}"${why ? ' disabled' : ''}>${I.layers}</button>`;
+    return { open, why, title: why || t(b && b.state === 'done' ? 'backfill.again_title' : 'backfill.action_title') };
+  }
+  async function del(s) {
+    const yes = await ui.confirm(t('dlg.del_source.title'), t('dlg.del_source.text', { name: s.name }), { okLabel: t('common.delete'), danger: true });
+    if (!yes) return;
+    const r = await HC.bridge.safe('delete_source', s.id);
+    if (r && r.ok) { ui.toast(t('toast.source_deleted', { name: s.name }), 'info'); refresh(); }
+    else if (r) ui.toast(r.error || t('err.generic'), 'err');
+  }
+  /** Zeilenmenü «⋯»: Alles einlesen · Bearbeiten · Löschen (Tastatur: Pfeile, Enter, Escape – ui.menu). */
+  function rowMenu(s, anchor) {
+    const bf = bfState(s);
+    ui.menu(anchor, [
+      { label: t('backfill.action'), icon: I.layers, key: 'bf', disabled: !!bf.why, title: bf.title, onClick: () => backfillAsk(s) },
+      { label: t('common.edit'), icon: I.edit, key: 'edit', onClick: () => edit(s) },
+      'sep',
+      { label: t('common.delete'), icon: I.trash, key: 'del', danger: true, onClick: () => del(s) },
+    ]);
   }
   /** Warum «Prüfen» gerade nicht geht (Text für den Tooltip) oder ''. s = null: «Alle prüfen». */
   function lockReason(s) {
@@ -123,9 +140,7 @@
       <td class="num">${s.new_count ? `<button type="button" class="badge" data-act="inbox" title="${esc(t('watchlist.new_title'))}">${esc(s.new_count)}</button>` : '<span class="mono muted">–</span>'}</td>
       <td class="act">
         <button class="btn sm ghost" data-act="check" title="${esc(lock || t('watchlist.check_title'))}" ${lock ? 'disabled' : ''}>${t('watchlist.check')}</button>
-        ${bfButton(s)}
-        <button class="iconbtn" data-act="edit" title="${esc(t('common.edit'))}">${I.edit}</button>
-        <button class="iconbtn danger" data-act="del" title="${esc(t('common.delete'))}">${I.trash}</button>
+        <button type="button" class="iconbtn" data-act="more" title="${esc(t('card.more'))}" aria-label="${esc(t('card.more'))}" aria-haspopup="menu">${I.more}</button>
       </td></tr>${bfRow(s)}`;
   }
 
@@ -470,18 +485,10 @@
         setTimeout(() => render(), HC.fx.reduced() ? 0 : 180);
       } else if (act === 'check') {
         check([s.id]);
-      } else if (act === 'bf') {
-        backfillAsk(s);
+      } else if (act === 'more') {
+        rowMenu(s, b);
       } else if (act === 'inbox') {
         HC.app.go('inbox', `src-${s.id}`);
-      } else if (act === 'edit') {
-        edit(s);
-      } else if (act === 'del') {
-        const yes = await ui.confirm(t('dlg.del_source.title'), t('dlg.del_source.text', { name: s.name }), { okLabel: t('common.delete'), danger: true });
-        if (!yes) return;
-        const r = await HC.bridge.safe('delete_source', s.id);
-        if (r && r.ok) { ui.toast(t('toast.source_deleted', { name: s.name }), 'info'); refresh(); }
-        else if (r) ui.toast(r.error || t('err.generic'), 'err');
       }
     });
 

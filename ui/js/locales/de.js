@@ -18,10 +18,6 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "settings": "Einstellungen",
     "stats": "Statistik"
   },
-  "navfoot": {
-    "today": "HEUTE",
-    "next": "NÄCHSTE PRÜFUNG"
-  },
   "common": {
     "ok": "OK",
     "cancel": "Abbrechen",
@@ -155,7 +151,9 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "yt_tip": "YouTube · heute {day}/{day_max} geladen · {s}/{s_max} Suchen diese Stunde",
     "sc_tip": "SoundCloud · heute {day}/{day_max} geladen · {s}/{s_max} Suchen diese Stunde",
     "backoff_tip": "{p}: Backoff bis {t} (noch {rest})",
-    "p_tip": "{p} · heute geladen {day}/{day_max} · {s}/{s_max} Suchen in dieser Stunde"
+    "p_tip": "{p} · heute geladen {day}/{day_max} · {s}/{s_max} Suchen in dieser Stunde",
+    "system": "System",
+    "system_title": "Systemstatus"
   },
   "schedule": {
     "due": "fällig",
@@ -267,7 +265,9 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "kw_cleared_exc": "Ausschluss-Stichwörter entfernt",
     "kw_sugg_title": "Wieder hinzufügen (aus den gespeicherten Einstellungen)",
     "kw_sugg_label": "Vorschläge aus den gespeicherten Einstellungen",
-    "kw_session_hint": "Gilt nur für diese Sitzung – hier wird nichts gespeichert. Startwerte: Einstellungen › Filter & Keywords."
+    "kw_session_hint": "Gilt nur für diese Sitzung – hier wird nichts gespeichert. Startwerte: Einstellungen › Filter & Keywords.",
+    "kw_group": "Keywords",
+    "kw_count": "{inc} Include · {exc} Exclude"
   },
   "inbox": {
     "title": "Eingang",
@@ -546,7 +546,8 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "continue_forget": "Aus «Weiterhören» entfernen",
     "export": "M3U",
     "export_title": "Das Angezeigte als M3U8-Playlist exportieren",
-    "export_continue": "«Weiterhören» als Playlist exportieren"
+    "export_continue": "«Weiterhören» als Playlist exportieren",
+    "sections": "Bereiche der Bibliothek"
   },
   "player": {
     "label": "Mini-Player",
@@ -670,6 +671,13 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "mediaserver": "Medienserver",
     "sources": "Weitere Quellen",
     "reupload": "Re-Uploads"
+  },
+  "tab_groups": {
+    "app": "App",
+    "find": "Finden & sortieren",
+    "download": "Download",
+    "sources": "Quellen & Server",
+    "system": "System"
   },
   "tabs_hint": {
     "general": "Grundlegendes Verhalten der App.",

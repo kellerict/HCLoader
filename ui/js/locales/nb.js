@@ -18,10 +18,6 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "settings": "Innstillinger",
     "stats": "Statistikk"
   },
-  "navfoot": {
-    "today": "I DAG",
-    "next": "NESTE SJEKK"
-  },
   "common": {
     "ok": "OK",
     "cancel": "Avbryt",
@@ -155,7 +151,9 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "yt_tip": "YouTube · lastet ned i dag {day}/{day_max} · {s}/{s_max} søk denne timen",
     "sc_tip": "SoundCloud · lastet ned i dag {day}/{day_max} · {s}/{s_max} søk denne timen",
     "backoff_tip": "{p}: backoff til {t} ({rest} igjen)",
-    "p_tip": "{p} · lastet ned i dag {day}/{day_max} · {s}/{s_max} søk denne timen"
+    "p_tip": "{p} · lastet ned i dag {day}/{day_max} · {s}/{s_max} søk denne timen",
+    "system": "System",
+    "system_title": "Systemstatus"
   },
   "schedule": {
     "due": "forfalt",
@@ -267,7 +265,9 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "kw_cleared_exc": "Utelukkede nøkkelord fjernet",
     "kw_sugg_title": "Legg til igjen (fra de lagrede innstillingene)",
     "kw_sugg_label": "Forslag fra de lagrede innstillingene",
-    "kw_session_hint": "Gjelder bare denne økten – ingenting lagres her. Startverdier: Innstillinger › Filtre og nøkkelord."
+    "kw_session_hint": "Gjelder bare denne økten – ingenting lagres her. Startverdier: Innstillinger › Filtre og nøkkelord.",
+    "kw_group": "Nøkkelord",
+    "kw_count": "{inc} inkludert · {exc} ekskludert"
   },
   "inbox": {
     "title": "Innboks",
@@ -546,7 +546,8 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "continue_forget": "Fjern fra «Fortsett å lytte»",
     "export": "M3U",
     "export_title": "Eksporter det som vises som M3U8-spilleliste",
-    "export_continue": "Eksporter «Fortsett å lytte» som spilleliste"
+    "export_continue": "Eksporter «Fortsett å lytte» som spilleliste",
+    "sections": "Deler av biblioteket"
   },
   "player": {
     "label": "Minispiller",
@@ -670,6 +671,13 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "mediaserver": "Medieserver",
     "sources": "Flere kilder",
     "reupload": "Omopplastinger"
+  },
+  "tab_groups": {
+    "app": "App",
+    "find": "Finn og sorter",
+    "download": "Nedlasting",
+    "sources": "Kilder og servere",
+    "system": "System"
   },
   "tabs_hint": {
     "general": "Appens grunnleggende oppførsel.",

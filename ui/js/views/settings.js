@@ -1369,10 +1369,23 @@
     $$('[data-custom]', el).forEach((h) => h._update && h._update());
     paintChrome();
   }
+  /* Tab-Liste in fünf Gruppen (Titel: tab_groups.*); ein Tab ohne Gruppe steht am Schluss. */
+  const TAB_GROUPS = [
+    ['app', ['general', 'appearance', 'playback', 'notifications']],
+    ['find', ['filters', 'genres', 'festivals', 'reupload']],
+    ['download', ['download', 'storage', 'throttle', 'network', 'schedule']],
+    ['sources', ['soundcloud', 'sources', 'mediaserver']],
+    ['system', ['maintenance']],
+  ];
+  const tabGroup = (id) => (TAB_GROUPS.find((g) => g[1].includes(id)) || [null])[0];
+  const tabPos = (id) => { const i = TAB_GROUPS.findIndex((g) => g[1].includes(id)); return i < 0 ? 999 : i * 100 + TAB_GROUPS[i][1].indexOf(id); };
   function paintChrome() {
-    $('#stabs', el).innerHTML = TABS.filter((tab) => !tab.hidden).map((tab) => {
+    let lastG = null;
+    $('#stabs', el).innerHTML = TABS.filter((tab) => !tab.hidden).slice().sort((x, y) => tabPos(x.id) - tabPos(y.id)).map((tab) => {
+      const g = tabGroup(tab.id), head = g && g !== lastG ? `<div class="stab-group" role="presentation">${esc(t('tab_groups.' + g))}</div>` : '';
+      lastG = g;
       const nErr = errorsOf(tab).length, dirty = tabKeys(tab).some(isDirtyKey);
-      return `<div class="stab${tab.id === cur ? ' active' : ''}" data-tab="${tab.id}" tabindex="0" role="tab" aria-selected="${tab.id === cur}">${t('tabs.' + tab.id)}${nErr ? `<span class="mark err">${nErr}</span>` : dirty ? '<span class="mark dirty"></span>' : ''}</div>`;
+      return head + `<div class="stab${tab.id === cur ? ' active' : ''}" data-tab="${tab.id}" tabindex="0" role="tab" aria-selected="${tab.id === cur}">${t('tabs.' + tab.id)}${nErr ? `<span class="mark err">${nErr}</span>` : dirty ? '<span class="mark dirty"></span>' : ''}</div>`;
     }).join('');
     const n = dirtyKeys().length, nErr = Object.keys(errors).length;
     const bar = $('#savebar', el);

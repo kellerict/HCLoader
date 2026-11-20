@@ -18,10 +18,6 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "settings": "Settings",
     "stats": "Statistics"
   },
-  "navfoot": {
-    "today": "TODAY",
-    "next": "NEXT CHECK"
-  },
   "common": {
     "ok": "OK",
     "cancel": "Cancel",
@@ -155,7 +151,9 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "yt_tip": "YouTube · downloaded today {day}/{day_max} · {s}/{s_max} searches this hour",
     "sc_tip": "SoundCloud · downloaded today {day}/{day_max} · {s}/{s_max} searches this hour",
     "backoff_tip": "{p}: backoff until {t} ({rest} left)",
-    "p_tip": "{p} · downloaded today {day}/{day_max} · {s}/{s_max} searches this hour"
+    "p_tip": "{p} · downloaded today {day}/{day_max} · {s}/{s_max} searches this hour",
+    "system": "System",
+    "system_title": "System status"
   },
   "schedule": {
     "due": "due",
@@ -267,7 +265,9 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "kw_cleared_exc": "Exclude keywords removed",
     "kw_sugg_title": "Add again (from your saved settings)",
     "kw_sugg_label": "Suggestions from the saved settings",
-    "kw_session_hint": "Applies to this session only – nothing is saved here. Starting values: Settings › Filters & keywords."
+    "kw_session_hint": "Applies to this session only – nothing is saved here. Starting values: Settings › Filters & keywords.",
+    "kw_group": "Keywords",
+    "kw_count": "{inc} include · {exc} exclude"
   },
   "inbox": {
     "title": "Inbox",
@@ -546,7 +546,8 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "continue_forget": "Remove from “Continue listening”",
     "export": "M3U",
     "export_title": "Export what is shown as an M3U8 playlist",
-    "export_continue": "Export “Continue listening” as a playlist"
+    "export_continue": "Export “Continue listening” as a playlist",
+    "sections": "Library sections"
   },
   "player": {
     "label": "Mini player",
@@ -670,6 +671,13 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "mediaserver": "Media server",
     "sources": "More sources",
     "reupload": "Re-uploads"
+  },
+  "tab_groups": {
+    "app": "App",
+    "find": "Find & sort",
+    "download": "Download",
+    "sources": "Sources & servers",
+    "system": "System"
   },
   "tabs_hint": {
     "general": "Basic app behaviour.",

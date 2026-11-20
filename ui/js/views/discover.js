@@ -362,6 +362,7 @@
     box.hidden = !miss.length;
     box.innerHTML = miss.map((k) => `<button type="button" class="kw-sugg" data-k="${util.esc(k)}" title="${util.esc(t('discover.kw_sugg_title'))}"><i>+</i><span>${util.esc(k)}</span></button>`).join('');
     $(`#c-${key}`, el).hidden = !f[key].length;
+    $('#f-kw-n', el).textContent = t('discover.kw_count', { inc: util.fmtNum(f.inc.length), exc: util.fmtNum(f.exc.length) });
   }
   function setKw(key, list) {
     f[key] = list.slice();
@@ -427,10 +428,12 @@
               <label><span>${t('discover.f_to')}</span><input class="input mono" id="f-to" type="date" min="${MIN_YEAR}-01-01"></label>
             </div>
             <p class="fhint" id="f-date-hint" hidden></p></div>
+          <details class="fdisc" id="f-kw"><summary><span>${t('discover.kw_group')}</span><small id="f-kw-n"></small></summary>
           ${['inc', 'exc'].map((k) => `<div class="fgroup"><label class="lbl">${t('discover.f_' + k)}</label>
             <div class="kwbox"><div id="t-${k}"></div><button type="button" class="kw-clear" id="c-${k}" data-kwclear="${k}" title="${util.esc(t('discover.kw_clear'))}" aria-label="${util.esc(t('discover.kw_clear'))}" hidden>${I.trash}</button></div>
             <div class="kw-suggs" id="s-${k}" data-key="${k}" aria-label="${util.esc(t('discover.kw_sugg_label'))}" hidden></div></div>`).join('')}
           <p class="fhint kw-hint">${t('discover.kw_session_hint')}</p>
+          </details>
           <div class="fgroup"><label class="lbl">${t('discover.f_show')}</label>
             <label class="check"><input type="checkbox" id="f-hide">${t('discover.f_hide')}</label>
             <label class="check"><input type="checkbox" id="f-blacklist">${t('discover.f_blacklist')}</label></div>

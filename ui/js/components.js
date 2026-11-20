@@ -98,20 +98,34 @@
     ui.closeMenu();
     const el = document.createElement('div');
     el.className = 'menu';
+    el.setAttribute('role', 'menu');
     el.innerHTML = items.map((it, i) => {
       if (it === 'sep') return '<hr>';
       if (it.head) return `<div class="mhead">${esc(it.head)}</div>`;
-      return `<button data-i="${i}"${it.key ? ` data-k="${esc(it.key)}"` : ''} class="${it.danger ? 'danger' : ''}"${it.disabled ? ' disabled' : ''}>${it.icon || ''}${it.dot ? `<span class="dot" style="background:${esc(it.dot)}"></span>` : ''}<span>${esc(it.label)}</span>${it.current ? `<span class="cur">${t('common.current')}</span>` : ''}</button>`;
+      return `<button type="button" role="menuitem" data-i="${i}"${it.key ? ` data-k="${esc(it.key)}"` : ''} class="${it.danger ? 'danger' : ''}"${it.title ? ` title="${esc(it.title)}"` : ''}${it.disabled ? ' disabled' : ''}>${it.icon || ''}${it.dot ? `<span class="dot" style="background:${esc(it.dot)}"></span>` : ''}<span>${esc(it.label)}</span>${it.current ? `<span class="cur">${t('common.current')}</span>` : ''}</button>`;
     }).join('');
+    /* Tastatur: per Tastatur geöffnet -> Fokus auf den ersten Punkt; Pfeile/Pos1/Ende wandern, Tab und Escape
+       schliessen und geben den Fokus an den Anker zurück. */
+    const byKeys = !!anchor && anchor.matches && anchor.matches(':focus-visible');
+    const back = () => { if (el.contains(document.activeElement) && anchor && anchor.isConnected && anchor.focus) anchor.focus(); };
     place(el, anchor, o);
     el.addEventListener('click', (e) => {
       const b = e.target.closest('button');
       if (!b) return;
       const it = items[+b.dataset.i];
+      back();
       ui.closeMenu();
       if (it && it.onClick) it.onClick();
     });
+    el.addEventListener('keydown', (e) => {
+      const btns = [...el.querySelectorAll('button:not(:disabled)')];
+      const i = btns.indexOf(document.activeElement);
+      const to = { ArrowDown: i + 1, ArrowUp: i - 1, Home: 0, End: btns.length - 1 }[e.key];
+      if (to != null && btns.length) { e.preventDefault(); btns[(to + btns.length) % btns.length].focus(); }
+      else if (e.key === 'Tab' || e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); back(); ui.closeMenu(); }
+    });
     arm(el, true);
+    if (byKeys) { const first = el.querySelector('button:not(:disabled)'); if (first) first.focus(); }
   };
   /** Overlay an den Anker setzen (unter ihm, sonst darüber; bleibt im Fenster). */
   function place(el, anchor, o) {
@@ -157,9 +171,11 @@
     return el;
   };
   ui.closeMenu = function () {
-    if (ui._menu) ui._menu.remove();
+    const m = ui._menu;
+    if (m) m.remove();
     if (ui._menuOff) ui._menuOff();
     ui._menu = ui._menuOff = null;
+    if (m && m._onClose) m._onClose();
   };
 
   /* ---------- Schalter ---------- */
@@ -250,14 +266,15 @@
     const n = e.target;
     if (n && n.tagName === 'IMG' && n.parentElement && n.parentElement.classList.contains('thumb')) n.remove();
   }, true);
-  /** Genre-Badge. o: {edit: klickbar (data-act="genre"), manual: von Hand gesetzt, busy: wird gerade neu getaggt} */
+  /** Genre-Badge. o: {edit: klickbar (data-act="genre"), manual: von Hand gesetzt, busy: wird gerade neu getaggt,
+      dot: ruhige Form für Tabellen – Farbpunkt + Text statt farbiger Plakette} */
   ui.gtag = (genre, o) => {
-    const opt = o || {}, style = `background:${HC.genres.color(genre)};color:${HC.genres.ink(genre)}`;
-    const mark = opt.manual ? `<i class="gm" title="${esc(t('genre.manual'))}"></i>` : '';
-    if (!opt.edit) return `<span class="gtag" style="${style}">${esc(genre)}${mark}</span>`;
-    return `<button type="button" class="gtag edit${opt.busy ? ' busy' : ''}" data-act="genre" style="${style}" title="${esc(t(opt.manual ? 'genre.change_manual' : 'genre.change'))}" aria-haspopup="menu"${opt.busy ? ' disabled' : ''}>${opt.busy ? '<span class="spinner"></span>' : ''}${esc(genre)}${opt.manual && !opt.busy ? '<i class="gm"></i>' : ''}</button>`;
+    const opt = o || {}, cls = opt.dot ? 'gtag plain' : 'gtag';
+    const style = opt.dot ? `--g:${HC.genres.color(genre)}` : `background:${HC.genres.color(genre)};color:${HC.genres.ink(genre)}`;
+    const mark = opt.manual && !opt.dot ? `<i class="gm" title="${esc(t('genre.manual'))}"></i>` : '';
+    if (!opt.edit) return `<span class="${cls}" style="${style}">${esc(genre)}${mark}</span>`;
+    return `<button type="button" class="${cls} edit${opt.busy ? ' busy' : ''}" data-act="genre" style="${style}" title="${esc(t(opt.manual ? 'genre.change_manual' : 'genre.change'))}" aria-haspopup="menu"${opt.busy ? ' disabled' : ''}>${opt.busy ? '<span class="spinner"></span>' : ''}${esc(genre)}${opt.manual && !opt.busy && !opt.dot ? '<i class="gm"></i>' : ''}</button>`;
   };
-  /** Auswahl aller Genres aus den Einstellungen (Farbpunkt + Name, aktuelles markiert). */
   ui.genreMenu = (anchor, current, onPick) => ui.menu(anchor, [{ head: t('card.set_genre') }]
     .concat(HC.genres.list().map((g) => ({ label: g.name, dot: g.color, current: g.name === current, key: `genre-${g.name}`, onClick: () => { if (g.name !== current) onPick(g.name); } }))), { align: 'left' });
   /** Kleines Plattform-Badge. YouTube nur, solange eine weitere Plattform eingeschaltet ist (sonst wäre es überall dasselbe). */
@@ -283,7 +300,8 @@
     if (d) return `<div class="cnote dup" title="${esc(t('card.duplicate_title', { title: d.title || '', p: HC.platform.label(d.platform) }))}">${I.copy}<span>${esc(t('card.duplicate', { p: HC.platform.label(d.platform) }))}</span></div>`;
     return '';
   }
-  /** o: {selected, source: Name der Watchlist-Quelle (Badge im Eingang)} */
+  /** o: {selected, source: Name der Watchlist-Quelle (Badge im Eingang),
+      quiet: Status, der in dieser Ansicht für jede Karte gilt und darum nicht angeschrieben wird (Eingang: 'inbox')} */
   ui.card = function (v, o) {
     const opt = o || {};
     const can = ui.canLoad(v);
@@ -301,7 +319,7 @@
         <div class="cmeta"><span class="ch" title="${esc(v.channel_name)}">${esc(v.channel_name)}</span><span>·</span><span class="${up.approx ? 'approx' : up.known ? '' : 'nodate'}" title="${esc(upTitle)}">${esc(up.text)}</span><span>·</span><span>${HC.util.fmtViews(v.view_count)}</span></div>
         ${cardNote(v)}
         <div class="cfoot">
-          <span class="status st-${esc(v.status)}">${esc(t('status.' + v.status))}</span><span class="spacer"></span>
+          ${opt.quiet === v.status ? '' : `<span class="status st-${esc(v.status)}">${esc(t('status.' + v.status))}</span>`}<span class="spacer"></span>
           <button class="iconbtn" data-act="yt" title="${esc(t('card.open', { p: HC.platform.label(plat) }))}">${I.external}</button>
           <button class="iconbtn" data-act="ign" title="${esc(t(v.status === 'ignored' ? 'card.unignore' : 'card.ignore'))}" ${(can || v.status === 'ignored') && !v.preview ? '' : 'disabled'}>${v.status === 'ignored' ? I.retry : I.ban}</button>
           <button class="iconbtn" data-act="more" title="${esc(t('card.more'))}">${I.more}</button>

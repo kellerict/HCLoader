@@ -17,10 +17,6 @@ HC.i18n.register({"code": "de-x-frk", "name": "Fränggisch", "dir": "ltr", "intl
     "log": "Brodokoll",
     "settings": "Einstellungen"
   },
-  "navfoot": {
-    "today": "HEID",
-    "next": "NÄCHSDE PRÜFUNG"
-  },
   "common": {
     "ok": "Basst",
     "cancel": "Abbrechn",
