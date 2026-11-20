@@ -80,10 +80,18 @@ def _watchlist(page):
     page.wait_for_selector("#wl-body tr[data-id]")
 
 
+def _menu(page, source_id, key=None):
+    """Open the row menu (⋯) of a source; with a key also pick that entry."""
+    page.click(f'#wl-body tr[data-id="{source_id}"] [data-act="more"]')
+    page.wait_for_selector(".menu[role=menu]")
+    if key:
+        page.click(f'.menu [data-k="{key}"]')
+
+
 def test_dialog_estimate_start_progress_and_done(page):
     _watchlist(page)
     # Gabber Vault (id 2): size known from the last check (486 entries)
-    page.click('#wl-body tr[data-id="2"] [data-act="bf"]')
+    _menu(page, 2, "bf")
     page.wait_for_selector(".modal.bf-dlg")
     text = page.inner_text(".modal.bf-dlg")
     assert "Read everything from “Gabber Vault”?" in text
@@ -105,7 +113,7 @@ def test_dialog_estimate_start_progress_and_done(page):
 
 def test_unknown_size_is_conservative(page):
     _watchlist(page)
-    page.click('#wl-body tr[data-id="1"] [data-act="bf"]')
+    _menu(page, 1, "bf")
     page.wait_for_selector(".modal.bf-dlg")
     text = page.inner_text(".modal.bf-dlg")
     assert "size is unknown" in text and "≤ 2,000" in text
@@ -122,7 +130,10 @@ def test_pause_resume_cancel(page):
     page.wait_for_selector(f"{sub} .wl-bf.bf-running")
     text = page.inner_text(f"{sub} .wl-bf")
     assert "Reading" in text and "240 / ~500" in text and "+37 in the inbox" in text
-    assert page.get_attribute('#wl-body tr[data-id="3"] [data-act="bf"]', "disabled") is not None
+    _menu(page, 3)
+    assert page.is_disabled('.menu [data-k="bf"]')  # already running
+    page.keyboard.press("Escape")
+    page.wait_for_selector(".menu", state="detached")
     page.click(f'{sub} [data-bf="pause"]')
     page.wait_for_selector(f"{sub} .wl-bf.bf-paused")
     assert _calls(page, "pause_backfill") == [[3]]
@@ -141,9 +152,65 @@ def test_pause_resume_cancel(page):
 
 def test_search_sources_have_no_backfill(page):
     _watchlist(page)
-    btn = '#wl-body tr[data-id="5"] [data-act="bf"]'
-    assert page.get_attribute(btn, "disabled") is not None
-    assert "100 results" in page.get_attribute(btn, "title")
+    _menu(page, 5)
+    item = '.menu [data-k="bf"]'
+    assert page.is_disabled(item)
+    assert "100 results" in page.get_attribute(item, "title")
+
+
+def test_row_menu_holds_the_moved_actions(page):
+    """Clean UI: a row shows «Check» and «⋯»; read everything, edit and delete live in the menu."""
+    _watchlist(page)
+    row = '#wl-body tr[data-id="2"]'
+    assert page.locator(f"{row} td.act > *").count() == 2
+    assert page.locator(f'{row} [data-act="check"]').count() == 1
+    more = page.locator(f'{row} [data-act="more"]')
+    assert more.get_attribute("aria-haspopup") == "menu"
+    assert more.get_attribute("aria-label") == "More actions"
+    _menu(page, 2)
+    assert page.eval_on_selector_all(".menu [role=menuitem]", "els => els.map(e => e.dataset.k)") == [
+        "bf",
+        "edit",
+        "del",
+    ]
+    assert "Read everything (once)" in page.inner_text(".menu")
+    page.click('.menu [data-k="edit"]')
+    page.wait_for_selector(".modal")
+    assert page.input_value(".modal [data-f=name]") == "Gabber Vault"
+    page.keyboard.press("Escape")
+    page.wait_for_selector(".modal", state="detached")
+    _menu(page, 2, "del")
+    page.wait_for_selector(".modal")
+    assert "Gabber Vault" in page.inner_text(".modal")
+    page.click(".modal [data-act=ok]")
+    page.wait_for_selector(row, state="detached")
+
+
+def test_row_menu_by_keyboard(page):
+    """Enter opens the menu with the first entry focused; arrows move, Escape returns to «⋯»."""
+    _watchlist(page)
+    more = '#wl-body tr[data-id="2"] [data-act="more"]'
+    page.focus('#wl-body tr[data-id="2"] [data-act="check"]')
+    page.keyboard.press("Tab")
+    assert page.evaluate("document.activeElement.dataset.act") == "more"
+    page.keyboard.press("Enter")
+    page.wait_for_selector(".menu")
+    assert page.evaluate("document.activeElement.dataset.k") == "bf"
+    page.keyboard.press("ArrowDown")
+    assert page.evaluate("document.activeElement.dataset.k") == "edit"
+    page.keyboard.press("End")
+    assert page.evaluate("document.activeElement.dataset.k") == "del"
+    page.keyboard.press("ArrowDown")  # wraps around
+    assert page.evaluate("document.activeElement.dataset.k") == "bf"
+    page.keyboard.press("Escape")
+    page.wait_for_selector(".menu", state="detached")
+    assert page.evaluate("document.activeElement.dataset.act") == "more"
+    page.keyboard.press("Enter")
+    page.wait_for_selector(".menu")
+    page.keyboard.press("ArrowDown")
+    page.keyboard.press("Enter")
+    page.wait_for_selector(".modal")
+    assert page.input_value(".modal [data-f=name]") == "Gabber Vault"
 
 
 def test_settings_fields(page):

@@ -215,6 +215,8 @@
     /* Werkzeuge: solange nichts fehlt, ein Eintrag «System OK» (Einzelwerte per Klick/Tooltip); sonst alle einzeln. */
     const sysOk = !!s.ytdlp_version && !!s.deno_ok && !!s.ffmpeg_ok && po.state !== 'error';
     $$('footer .sb-tool').forEach((it) => { it.hidden = sysOk; });
+    [['ytdlp', !!s.ytdlp_version], ['deno', !!s.deno_ok], ['ffmpeg', !!s.ffmpeg_ok], ['pot', po.state !== 'error']]
+      .forEach((x) => document.getElementById(`sb-${x[0]}-it`).classList.toggle('bad', !x[1]));
     $('#sb-sys').hidden = !sysOk;
     $('#sb-sys-state').textContent = t('statusbar.ok');
     led($('#sb-sys-led'), '');

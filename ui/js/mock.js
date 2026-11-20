@@ -1267,7 +1267,7 @@
     const mode = settings.network.po_token_mode;
     return {
       app_version: '0.2.0', ytdlp_version: state.versions.ytdlp, plugin_version: state.versions.plugin,
-      deno_ok: true, deno_version: '2.5.4', ffmpeg_ok: true, ffmpeg_version: '7.1',
+      deno_ok: !(state.tools && state.tools.deno_ok === false), deno_version: '2.5.4', ffmpeg_ok: !(state.tools && state.tools.ffmpeg_ok === false), ffmpeg_version: '7.1',
       po_token: mode === 'off' ? { state: 'inactive', mode, detail: 'Provider turned off' } : { state: state.po.state, mode, detail: state.po.detail },
       backoff: {
         active: state.backoff.active, until: state.backoff.until, level: state.backoff.level,
@@ -3132,6 +3132,11 @@
       reuploadOriginal(id, present) {
         const l = LIBRARY.find((x) => x.id === id);
         if (l && l.reupload) l.reupload.of.present = present;
+      },
+      /** Fehlende Werkzeuge simulieren – die Statusleiste zeigt dann wieder die Einzelwerte: tools({deno_ok: false}); tools() setzt zurück. */
+      tools(o) {
+        state.tools = o || null;
+        pushStatus();
       },
       /** Backoff einer Plattform auslösen (platform: "youtube" (Standard) | "soundcloud" | "mixcloud" | "hearthis"). */
       backoff(hours, platform) {

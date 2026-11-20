@@ -212,3 +212,4 @@ body .tr-top-row:hover,body .tr-top-row:focus-visible{border-color:transparent;b
 body .tr-top{border-bottom-color:var(--hair)}
 body .dj-tracks li{border-color:transparent}
 body .mock-flag{font-size:11px;line-height:1.7}
+body footer .it.bad,body footer .it.bad b{color:var(--error)}

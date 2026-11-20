@@ -176,6 +176,18 @@ class Shooter:
         self.page.click(f'{row} [data-act="more"]')
         self.page.click(f'.menu [data-k="{key}"]')
 
+    def wl_menu(self, source_id: int, key: str | None = None) -> None:
+        """Watchlist: open the row menu (⋯) of a source and optionally pick an entry
+        ("bf" read everything, "edit", "del")."""
+        self.page.click(f'#wl-body tr[data-id="{source_id}"] [data-act="more"]')
+        self.page.wait_for_selector(".menu")
+        if key:
+            self.page.click(f'.menu [data-k="{key}"]')
+
+    def keywords(self, open_: bool) -> None:
+        """Discover: open/close the collapsible «Keywords» block of the filter panel."""
+        self.page.evaluate("(o) => { document.querySelector('#f-kw').open = o; }", open_)
+
     def pick_platform(self, plat: str) -> None:
         """Discover: open the platform selector and choose an entry ("all" or a platform)."""
         self.page.click("#plat-btn")
@@ -210,6 +222,7 @@ class Shooter:
         page.wait_for_selector("#grid .card:not(.skeleton)")
         self.settle()
         # keyword boxes: one removed keyword comes back as a suggestion chip
+        self.keywords(True)
         page.click("#t-inc .tag:nth-child(2) button")
         page.click("#t-exc .tag:nth-child(1) button")
         page.evaluate("document.activeElement.blur()")
@@ -225,6 +238,7 @@ class Shooter:
         self.settle()
         self.shot("discover-keywords-cleared")
         page.click(".toast .toast-act")
+        self.keywords(False)
         page.evaluate("HC.mock.api.clear_backoff()")
         page.click("#f-reset")
         self.pick_platform("youtube")
@@ -392,12 +406,15 @@ class Shooter:
         page = self.page
         page.evaluate("HC.mock.api.clear_backoff(); HC.mock.api.clear_backoff('soundcloud')")
         self.go("watchlist")
-        page.click('#wl-body tr[data-id="2"] [data-act="bf"]')
+        self.wl_menu(2)
+        self.settle()
+        self.shot("watchlist-row-menu")
+        page.click('.menu [data-k="bf"]')
         page.wait_for_selector(".modal.bf-dlg")
         self.settle()
         self.shot("watchlist-backfill-dialog")
         page.keyboard.press("Escape")
-        page.click('#wl-body tr[data-id="1"] [data-act="bf"]')
+        self.wl_menu(1, "bf")
         page.wait_for_selector(".modal.bf-dlg")
         self.settle()
         self.shot("watchlist-backfill-dialog-unknown")
@@ -994,6 +1011,23 @@ class Shooter:
         # Entdecken: Ergebnisse, Skeleton während der Suche, Auswahl + Menü
         self.go("discover")
         self.shot("discover")
+        # Clean UI: keyword boxes behind «Keywords · n include · n exclude»
+        self.keywords(True)
+        self.settle()
+        self.shot("discover-keywords")
+        self.keywords(False)
+        # status bar: «System OK» with the single values in a popover; a missing tool shows them inline
+        page.click("#sb-sys")
+        page.wait_for_selector(".sb-pop")
+        self.settle()
+        self.shot("statusbar-system")
+        page.keyboard.press("Escape")
+        page.evaluate("HC.mock.demo.tools({deno_ok: false})")
+        page.wait_for_selector("#sb-deno-it:not([hidden])")
+        self.settle()
+        self.shot("statusbar-problem")
+        page.evaluate("HC.mock.demo.tools()")
+        page.wait_for_selector("#sb-sys:not([hidden])")
         page.click("#btn-search")
         page.wait_for_selector("#grid .card.skeleton")
         page.wait_for_timeout(250)

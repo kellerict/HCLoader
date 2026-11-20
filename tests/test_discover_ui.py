@@ -43,6 +43,12 @@ def _tags(pg, key):
     )
 
 
+def _open_keywords(pg):
+    """Clean UI: the keyword boxes sit behind the collapsible «Keywords» row."""
+    pg.click("#f-kw > summary")
+    pg.wait_for_selector("#f-kw[open] #t-inc")
+
+
 def _suggestions(pg, key):
     return pg.evaluate(
         f"[...document.querySelectorAll('#s-{key} .kw-sugg span')].map((x) => x.textContent)"
@@ -173,6 +179,7 @@ def test_keyword_boxes_clear_undo_and_suggestions(page):  # noqa: F811
     _discover(page)
     saved = page.evaluate("HC.settings.values.filters.include_keywords")
     assert len(saved) >= 2 and _tags(page, "inc") == saved
+    _open_keywords(page)
     assert page.is_hidden("#s-inc")  # nothing missing -> no suggestions
 
     # clear all: no modal, the undo toast brings everything back
@@ -206,12 +213,41 @@ def test_keyword_boxes_clear_undo_and_suggestions(page):  # noqa: F811
     assert page.evaluate("window.__saved") == 0
 
 
+def test_keywords_are_collapsed_behind_a_counter(page):  # noqa: F811
+    """Clean UI: closed by default with «n include · n exclude»; the counter follows the boxes;
+    the row opens by mouse and by keyboard and the boxes stay fully usable."""
+    _discover(page)
+    inc = len(page.evaluate("HC.settings.values.filters.include_keywords"))
+    exc = len(page.evaluate("HC.settings.values.filters.exclude_keywords"))
+    assert page.get_attribute("#f-kw", "open") is None
+    assert page.is_hidden("#t-inc") and page.is_hidden("#t-exc")
+    assert page.inner_text("#f-kw > summary span") == "Keywords"
+    assert page.text_content("#f-kw-n") == f"{inc} include · {exc} exclude"
+    # the display filters below stay reachable without scrolling the panel
+    assert page.is_visible("#f-hide") and page.is_visible("#f-blacklist")
+    page.focus("#f-kw > summary")
+    page.keyboard.press("Enter")
+    page.wait_for_selector("#f-kw[open] #t-inc")
+    assert page.is_visible("#t-exc") and page.is_visible(".kw-hint")
+    page.click("#t-inc .tag:first-child button")
+    page.wait_for_function(
+        "n => document.querySelector('#f-kw-n').textContent.startsWith(n + ' include')", arg=inc - 1
+    )
+    page.click("#f-reset")
+    page.wait_for_function(
+        "n => document.querySelector('#f-kw-n').textContent.startsWith(n + ' include')", arg=inc
+    )
+    page.click("#f-kw > summary")
+    page.wait_for_selector("#t-inc", state="hidden")
+
+
 def test_keyword_suggestions_ignore_case_and_undo_by_keyboard(page):  # noqa: F811
     """Review v0.10.1 m6/m7: «Defqon» (hand-edited config) is no missing «defqon»; clearing
     by keyboard puts the focus on «Undo», so Enter brings the keywords back."""
     page.evaluate("HC.settings.values.filters.include_keywords.push('Defqon')")
     _discover(page)
     page.wait_for_function("document.querySelectorAll('#t-inc .tag').length > 0")
+    _open_keywords(page)
     assert page.is_hidden("#s-inc")
     before = _tags(page, "inc")
     page.focus("#c-inc")
