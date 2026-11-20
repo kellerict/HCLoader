@@ -1,6 +1,7 @@
 ![](images/divider.svg)
 
-First look at the **status bar** (yt-dlp version, Deno, ffmpeg, PO token, backoff) and at the
+First look at the **status bar** («System OK», yt-dlp version; a click on *System* shows Deno,
+ffmpeg, PO token and backoff – with a problem they appear in the bar by themselves) and at the
 **Protokoll** (Log) view. The log file is:
 
 - portable build: `HCLoader\data\logs\hcloader.log`

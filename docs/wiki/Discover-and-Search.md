@@ -39,7 +39,8 @@ can override them temporarily here.
 | Apply channel blacklist | On by default. |
 | Sorting | Relevance, newest first, longest first, most views. |
 
-The keyword boxes are a **session filter**: they start with the keywords saved under Settings,
+The keyword boxes sit behind the row **Keywords** in the filter panel; closed, it shows how many
+include and exclude keywords are active. They are a **session filter**: they start with the keywords saved under Settings,
 Filters & keywords, and nothing you change here is saved. The small bin icon at the bottom right of
 a box removes all its keywords at once (the toast offers **Undo**). Saved keywords that are missing
 from a box are offered below it as faint "+ keyword" chips; a click adds them again.

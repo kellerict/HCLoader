@@ -39,7 +39,7 @@ description, without any extra request.
   mark accepts them.
 
 To gather **all sets of one edition** with a checklist (timetable, missing sets, download), use the
-[Festival collector](Festival-Collector): button **Collector** in the header, or **Collect this
+[Festival collector](Festival-Collector): **Collector** next to the title, or **Collect this
 edition** next to the selected year.
 
 The list of series, the threshold and the one-off pass over an existing library («Assign festivals
@@ -132,7 +132,7 @@ ffmpeg**, one file at a time at low priority – no network, and the audio is **
 
 ## Tracks and tracklists (v0.6.0)
 
-**Tracks** (button next to *Collector*) searches the tracklists of all your sets: type an artist or
+**Tracks** (next to the library title) searches the tracklists of all your sets: type an artist or
 title, click a timestamp and the set plays from that point. The menu (**⋯**) of every entry has
 **Tracklist** with clickable timestamps. Details: [Tracklist search](Tracklist-Search).
 

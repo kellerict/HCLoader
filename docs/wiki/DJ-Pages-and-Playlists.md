@@ -8,7 +8,7 @@ stereo or a phone.
 
 ## Opening the DJ list
 
-Library → **DJs** (button next to *Tracks*). Search by name or alias, sort by number of sets,
+Library → **DJs** (next to the title, between *Tracks* and *Collector*). Search by name or alias, sort by number of sets,
 most recent set or name. Click a card to open the DJ page; the arrow at the top left goes back.
 
 ## Who played a set?

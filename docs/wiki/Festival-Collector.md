@@ -12,7 +12,7 @@ paste, a timetable file shipped with the app, or from you.
 
 ## Opening a checklist
 
-- **Library → Collector** (button in the header) opens the overview: all checklists with their
+- **Library → Collector** (next to the title) opens the overview: all checklists with their
   progress, and **New checklist** – pick a festival or series and a year (and a variant such as
   *Australia* where the series has one).
 - In the library, **Group by → Festival**, open a series and select a year: **Collect this edition**

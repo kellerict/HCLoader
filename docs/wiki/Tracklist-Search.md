@@ -7,7 +7,7 @@ tracklists of everything in your library and jumps straight to the right moment.
 
 ## Opening it
 
-Library → **Tracks** (button next to *Collector*). The view replaces the library list; the arrow
+Library → **Tracks** (next to the title). The view replaces the library list; the arrow
 at the top left takes you back.
 
 ## Where tracklists come from

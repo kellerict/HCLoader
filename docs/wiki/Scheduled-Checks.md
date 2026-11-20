@@ -6,7 +6,7 @@ HCLoader can check your watchlist automatically in two ways. You can use either 
 
 While the app is open it checks the watchlist every *watchlist_interval_hours* (default 24 h;
 Settings, Zeitplan). Without a previous run it checks about 60 seconds after start. It never checks
-while a backoff is active. The next check time is shown in the sidebar and status bar.
+while a backoff is active. The next check time is shown in the status bar and in the Watchlist header.
 
 ## Windows Task Scheduler (headless)
 

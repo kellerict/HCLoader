@@ -31,7 +31,7 @@ Everything is configurable in Settings, Schonung (throttle). See the
 | Backoff | 6 h, doubling up to 48 h |
 
 The counters (searches this hour, downloads today and this run) are kept centrally in the throttle
-and shown in the app (Downloads view, Discover header, sidebar footer).
+and shown in the app (Downloads view, Discover header, status bar).
 
 ## Backoff
 

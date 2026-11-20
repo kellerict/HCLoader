@@ -38,9 +38,9 @@ Buttons: **Prüfen** (check one source) and **Alle jetzt prüfen** (check all).
 ## Read everything (once)
 
 A normal check only looks at the newest entries of a source (at most 200). To pick up the **back
-catalogue** of a channel, playlist, SoundCloud profile or set, use the stacked-layers button
-**Read everything (once)** in the source's row. Saved searches do not have it (a search returns at
-most 100 results anyway).
+catalogue** of a channel, playlist, SoundCloud profile or set, open the **⋯** menu in the source's
+row and choose **Read everything (once)**; *Edit* and *Delete* are in the same menu. Saved searches
+do not offer it (a search returns at most 100 results anyway).
 
 ![Read everything – confirmation](images/screenshot-backfill-dialog.jpg)
 

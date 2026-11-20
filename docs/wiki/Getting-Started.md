@@ -4,15 +4,16 @@ A first session, from empty app to a tagged MP3. The screenshots in the reposito
 
 ## 1. Check the status bar
 
-The bar at the bottom of the window is always visible. Before you search, make sure it shows:
+The bar at the bottom of the window is always visible. Before you search, make sure it shows
+**System OK** and a **yt-dlp** version number. A click on *System* lists the single values:
 
-- **yt-dlp**: a version number
 - **Deno OK** and **ffmpeg OK** (both are required)
-- **PO-Token**: active (Script). The PO token helps requests look like a real browser and lowers
+- **PO token**: active (Script). The PO token helps requests look like a real browser and lowers
   the risk of bot checks.
 - **Backoff**: none
 
-If something is red or missing, see [Troubleshooting](Troubleshooting).
+As soon as a tool is missing, the bar shows the single values itself, the missing one in red – see
+[Troubleshooting](Troubleshooting). A *Backoff* entry only appears while a backoff is active.
 
 ## 2. Look at the settings once
 
