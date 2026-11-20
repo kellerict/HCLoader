@@ -11,13 +11,15 @@ changes». Full rule: `docs/RELEASING.md` › "Writing release notes".
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-20
+
 ### Highlights
 - **Calmer interface**: surfaces instead of frames, quieter labels, one main action per view
 - Watchlist rows show *Check* and a «⋯» menu with read everything, edit and delete
 - Library: *Tracks*, *DJs* and *Collector* sit next to the title, the numbers take one line
 - Status bar shows «System OK» – click it for yt-dlp, Deno, ffmpeg and PO token
 - Settings tabs come in five groups instead of one long list
-- Discover: the keywords fold into one row, the filter panel fits without scrolling
+- Discover: the keywords fold into one row that still lists the active ones
 
 ### Changed
 - Genre in the library table is a coloured dot with text; a click still changes it
@@ -29,6 +31,8 @@ changes». Full rule: `docs/RELEASING.md` › "Writing release notes".
 - Downloads: only the active and the failed entry keep a frame
 - The sidebar no longer repeats today's count and the next check
 - Menus work by keyboard: arrows move, Enter picks, Escape returns to the button
+- Settings tabs: arrow keys move between tabs
+- A second click on «⋯» closes its menu again
 
 ### Fixed
 - The «Run history» title in the log is no longer cut off

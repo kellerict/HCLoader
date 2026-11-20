@@ -18,6 +18,7 @@ Progress per version is tracked in the [milestones](https://github.com/kellerict
 | **v0.8.0** | ✅&nbsp;Released | **Playlist export** (M3U8 per festival, genre, DJ, search, checklist) · **DJ pages** with aliases, b2b sets and one-click watchlist – see [DJ pages and playlists](DJ-Pages-and-Playlists) |
 | **v0.9.0** | ✅&nbsp;Released | **Statistics** · Windows notifications for new sets · Plex/Jellyfin library scan after downloads |
 | **v0.10.0** | ✅&nbsp;Released | **Re-upload detection** via an offline audio fingerprint · more sources: Mixcloud and hearthis.at (archive.org postponed – see [Supported sources](Supported-Sources)) |
+| **v0.11.0** | ✅&nbsp;Released | **Calmer interface**: surfaces instead of frames, «⋯» row menus, library sections next to the title, «System OK» status, grouped settings tabs |
 
 ## Any time
 

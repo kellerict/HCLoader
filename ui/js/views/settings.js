@@ -1467,7 +1467,7 @@
     el.innerHTML = `
       <div class="view-head"><h2 class="glitch" data-text="${t('settings.title')}">${t('settings.title')}</h2><span class="sub">${t('settings.sub')}</span></div>
       <div class="settings">
-        <div class="stabs" id="stabs" role="tablist"></div>
+        <div class="stabs" id="stabs" role="tablist" aria-orientation="vertical"></div>
         <div class="spane">
           <div class="spane-scroll" id="spane-scroll"><div class="spane-body" id="spane-body"></div></div>
           <div class="savebar" id="savebar">
@@ -1486,7 +1486,17 @@
       try { history.replaceState(null, '', `#settings/${cur}`); } catch (err) { /* file:// */ }
     };
     $('#stabs', el).addEventListener('click', pick);
-    $('#stabs', el).addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(e); $(`.stab[data-tab="${cur}"]`, el).focus(); } });
+    $('#stabs', el).addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(e); $(`.stab[data-tab="${cur}"]`, el).focus(); return; }
+      // vertical tab list: arrows/Home/End move focus, Enter/Space activates (manual activation)
+      const tabs = [...el.querySelectorAll('#stabs .stab')];
+      const i = tabs.indexOf(document.activeElement);
+      if (i < 0) return;
+      const next = { ArrowDown: i + 1, ArrowRight: i + 1, ArrowUp: i - 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
+      if (next === undefined) return;
+      e.preventDefault();
+      tabs[(next + tabs.length) % tabs.length].focus();
+    });
     $('#btn-save', el).onclick = save;
     $('#btn-discard', el).onclick = () => { work = clone(saved); errors = {}; genreKeys = []; HC.app.applyAppearance(saved.appearance); render(false); };
     $('#btn-tab-reset', el).onclick = () => {

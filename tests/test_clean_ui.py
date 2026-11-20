@@ -318,6 +318,21 @@ def test_settings_tabs_are_grouped_and_complete(page):
     page.wait_for_selector('.stab.active[data-tab="download"]')
     assert page.evaluate("document.activeElement.dataset.tab") == "download"
     assert page.get_attribute('.stab[data-tab="download"]', "aria-selected") == "true"
+    # QA v0.11.0 m1: arrow keys walk the vertical tab list, Home/End jump, wrap around
+    order = [tab for _name, tabs in GROUPS for tab in tabs]
+    i = order.index("download")
+    page.keyboard.press("ArrowDown")
+    assert page.evaluate("document.activeElement.dataset.tab") == order[i + 1]
+    page.keyboard.press("ArrowUp")
+    page.keyboard.press("ArrowUp")
+    assert page.evaluate("document.activeElement.dataset.tab") == order[i - 1]
+    page.keyboard.press("End")
+    assert page.evaluate("document.activeElement.dataset.tab") == order[-1]
+    page.keyboard.press("ArrowDown")
+    assert page.evaluate("document.activeElement.dataset.tab") == order[0]
+    page.keyboard.press("Home")
+    assert page.evaluate("document.activeElement.dataset.tab") == order[0]
+    assert page.get_attribute("#stabs", "aria-orientation") == "vertical"
 
 
 def test_reset_only_shows_when_a_value_differs(page):
