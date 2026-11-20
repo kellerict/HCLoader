@@ -53,6 +53,15 @@
   /* Genres (Defaults; zur Laufzeit kommen die Farben aus den Einstellungen) */
   --g-hardstyle:#a43bff; --g-hardcore:#ff1f1f; --g-uptempo:#b6ff00; --g-unsorted:#6b6b78;
 
+  /* Flächenstufen und Haarlinien («ruhigere Oberfläche», docs/design/clean-ui.md): Kacheln, Karten und Sekundär-Buttons heben sich über die Fläche
+     ab statt über einen 1-px-Rahmen; Rahmen bleiben, wo sie etwas bedeuten (aktiv, Fehler, Auswahl, Fokus). */
+  --surface:rgba(255,255,255,.03); --surface-2:rgba(255,255,255,.055); --surface-3:rgba(255,255,255,.09);
+  --hair:rgba(255,255,255,.055); /* Trennlinie, wo eine Linie bleiben muss */
+  --field:rgba(0,0,0,.35); /* Grund von Eingabefeldern */
+
+  /* Abstandsraster 4/8/12/16/24/32 */
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px;
+
   /* Form */
   --radius:3px; --radius-sm:2px;
 
@@ -80,6 +89,9 @@
      --w-head Gewicht der Display-Schrift · --tt-head text-transform der Display-Schrift ·
      --ls Faktor für jede Laufweite (letter-spacing) */
   --w-head:400; --tt-head:none; --ls:1;
+  /* Ruhiges Etikett (Tabellenköpfe, Feld- und Kachel-Etiketten): Inter, normal geschrieben, nicht gesperrt.
+     Versalien bleiben der Display-Schrift vorbehalten. */
+  --lbl:500 12px/16px var(--f-body);
 
   /* Layout */
   --nav-w:232px; --status-h:30px; --player-h:72px;

@@ -316,7 +316,8 @@
       await loadTop();
       if (query) await runSearch();
       else paintBody(true);
-      if (fresh) $('#tr-q', el).focus();
+      const inp = fresh && open ? $('#tr-q', el) : null; // schon wieder geschlossen (schnelles «Zurück»): kein Feld mehr
+      if (inp) inp.focus();
     },
     close(silent) {
       if (!open) return;

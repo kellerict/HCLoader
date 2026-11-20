@@ -267,7 +267,7 @@ HC.i18n.register({"code": "et", "name": "Eesti", "dir": "ltr", "intl": "et-EE"},
     "kw_sugg_label": "Soovitused salvestatud seadetest",
     "kw_session_hint": "Kehtib ainult selles seansis – siin ei salvestata midagi. Algväärtused: Seaded › Filtrid ja märksõnad.",
     "kw_group": "Märksõnad",
-    "kw_count": "kaasatavaid: {inc} · välistatavaid: {exc}"
+    "kw_count": "kaasa: {inc} · välja: {exc}"
   },
   "inbox": {
     "title": "Saabunud",

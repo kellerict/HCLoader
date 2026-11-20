@@ -269,7 +269,7 @@ HC.i18n.register({"code": "lv", "name": "Latviešu", "dir": "ltr", "intl": "lv-L
     "kw_sugg_label": "Ieteikumi no saglabātajiem iestatījumiem",
     "kw_session_hint": "Attiecas tikai uz šo sesiju – šeit nekas netiek saglabāts. Sākuma vērtības: Iestatījumi › Filtri un atslēgvārdi.",
     "kw_group": "Atslēgvārdi",
-    "kw_count": "iekļaujamie: {inc} · izslēdzamie: {exc}"
+    "kw_count": "iekļ.: {inc} · izsl.: {exc}"
   },
   "inbox": {
     "title": "Ienākošie",

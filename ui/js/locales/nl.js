@@ -267,7 +267,7 @@ HC.i18n.register({"code": "nl", "name": "Nederlands", "dir": "ltr", "intl": "nl-
     "kw_sugg_label": "Suggesties uit de opgeslagen instellingen",
     "kw_session_hint": "Geldt alleen voor deze sessie – hier wordt niets opgeslagen. Startwaarden: Instellingen › Filters en trefwoorden.",
     "kw_group": "Trefwoorden",
-    "kw_count": "{inc} verplicht · {exc} uitgesloten"
+    "kw_count": "{inc} incl. · {exc} excl."
   },
   "inbox": {
     "title": "Inbox",

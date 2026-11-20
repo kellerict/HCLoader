@@ -105,15 +105,14 @@
       return `<button type="button" role="menuitem" data-i="${i}"${it.key ? ` data-k="${esc(it.key)}"` : ''} class="${it.danger ? 'danger' : ''}"${it.title ? ` title="${esc(it.title)}"` : ''}${it.disabled ? ' disabled' : ''}>${it.icon || ''}${it.dot ? `<span class="dot" style="background:${esc(it.dot)}"></span>` : ''}<span>${esc(it.label)}</span>${it.current ? `<span class="cur">${t('common.current')}</span>` : ''}</button>`;
     }).join('');
     /* Tastatur: per Tastatur geöffnet -> Fokus auf den ersten Punkt; Pfeile/Pos1/Ende wandern, Tab und Escape
-       schliessen und geben den Fokus an den Anker zurück. */
+       schliessen und geben den Fokus an den Anker zurück (ui.closeMenu). */
     const byKeys = !!anchor && anchor.matches && anchor.matches(':focus-visible');
-    const back = () => { if (el.contains(document.activeElement) && anchor && anchor.isConnected && anchor.focus) anchor.focus(); };
+    el._anchor = anchor;
     place(el, anchor, o);
     el.addEventListener('click', (e) => {
       const b = e.target.closest('button');
       if (!b) return;
       const it = items[+b.dataset.i];
-      back();
       ui.closeMenu();
       if (it && it.onClick) it.onClick();
     });
@@ -122,7 +121,7 @@
       const i = btns.indexOf(document.activeElement);
       const to = { ArrowDown: i + 1, ArrowUp: i - 1, Home: 0, End: btns.length - 1 }[e.key];
       if (to != null && btns.length) { e.preventDefault(); btns[(to + btns.length) % btns.length].focus(); }
-      else if (e.key === 'Tab' || e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); back(); ui.closeMenu(); }
+      else if (e.key === 'Tab') { e.preventDefault(); ui.closeMenu(); }
     });
     arm(el, true);
     if (byKeys) { const first = el.querySelector('button:not(:disabled)'); if (first) first.focus(); }
@@ -172,6 +171,8 @@
   };
   ui.closeMenu = function () {
     const m = ui._menu;
+    /* Fokus lag im Menü (Tastatur): zurück an den Anker, bevor das Menü verschwindet. */
+    if (m && m._anchor && m.contains(document.activeElement) && m._anchor.isConnected && m._anchor.focus) m._anchor.focus();
     if (m) m.remove();
     if (ui._menuOff) ui._menuOff();
     ui._menu = ui._menuOff = null;

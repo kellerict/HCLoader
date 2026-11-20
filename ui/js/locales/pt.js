@@ -267,7 +267,7 @@ HC.i18n.register({"code": "pt", "name": "Português (Brasil)", "dir": "ltr", "in
     "kw_sugg_label": "Sugestões das configurações salvas",
     "kw_session_hint": "Vale só para esta sessão – nada é salvo aqui. Valores iniciais: Configurações › Filtros e palavras-chave.",
     "kw_group": "Palavras-chave",
-    "kw_count": "{inc} a incluir · {exc} a excluir"
+    "kw_count": "{inc} incl. · {exc} excl."
   },
   "inbox": {
     "title": "Caixa de entrada",

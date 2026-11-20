@@ -267,7 +267,7 @@ HC.i18n.register({"code": "nb", "name": "Norsk bokmål", "dir": "ltr", "intl": "
     "kw_sugg_label": "Forslag fra de lagrede innstillingene",
     "kw_session_hint": "Gjelder bare denne økten – ingenting lagres her. Startverdier: Innstillinger › Filtre og nøkkelord.",
     "kw_group": "Nøkkelord",
-    "kw_count": "{inc} inkludert · {exc} ekskludert"
+    "kw_count": "{inc} inkl. · {exc} ekskl."
   },
   "inbox": {
     "title": "Innboks",

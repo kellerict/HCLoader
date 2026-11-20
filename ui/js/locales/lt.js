@@ -271,7 +271,7 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "kw_sugg_label": "Pasiūlymai iš išsaugotų nustatymų",
     "kw_session_hint": "Galioja tik šiam seansui – čia niekas neišsaugoma. Pradinės reikšmės: Nustatymai › Filtrai ir raktažodžiai.",
     "kw_group": "Raktažodžiai",
-    "kw_count": "įtraukti: {inc} · neįtraukti: {exc}"
+    "kw_count": "įtr.: {inc} · neįtr.: {exc}"
   },
   "inbox": {
     "title": "Gauti",

@@ -11,6 +11,30 @@ changes». Full rule: `docs/RELEASING.md` › "Writing release notes".
 
 ## [Unreleased]
 
+### Highlights
+- **Calmer interface**: surfaces instead of frames, quieter labels, one main action per view
+- Watchlist rows show *Check* and a «⋯» menu with read everything, edit and delete
+- Library: *Tracks*, *DJs* and *Collector* sit next to the title, the numbers take one line
+- Status bar shows «System OK» – click it for yt-dlp, Deno, ffmpeg and PO token
+- Settings tabs come in five groups instead of one long list
+- Discover: the keywords fold into one row, the filter panel fits without scrolling
+
+### Changed
+- Genre in the library table is a coloured dot with text; a click still changes it
+- Card status is a dot with text; the inbox no longer repeats «In inbox» on every card
+- *Reset* in the settings only shows when a value differs from its default
+- The backoff entry in the status bar only appears while a backoff is active
+- A missing tool brings the single values back into the status bar
+- The file path of a library row moved to its tooltip; the search still finds it
+- Downloads: only the active and the failed entry keep a frame
+- The sidebar no longer repeats today's count and the next check
+- Menus work by keyboard: arrows move, Enter picks, Escape returns to the button
+
+### Fixed
+- The «Run history» title in the log is no longer cut off
+- The «⋯» button of a library row showed the wrong tooltip
+- Leaving the track search right after opening it no longer raises an error
+
 ## [0.10.2] - 2026-11-19
 
 ### Highlights

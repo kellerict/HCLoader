@@ -267,7 +267,7 @@ HC.i18n.register({"code": "es", "name": "Español", "dir": "ltr", "intl": "es"},
     "kw_sugg_label": "Sugerencias de los ajustes guardados",
     "kw_session_hint": "Solo vale para esta sesión – aquí no se guarda nada. Valores iniciales: Ajustes › Filtros y palabras clave.",
     "kw_group": "Palabras clave",
-    "kw_count": "{inc} a incluir · {exc} a excluir"
+    "kw_count": "{inc} incl. · {exc} excl."
   },
   "inbox": {
     "title": "Bandeja de entrada",

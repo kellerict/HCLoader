@@ -113,7 +113,8 @@ def test_system_popover_by_mouse_and_keyboard(page):
     # the popover opens upwards and stays inside the window
     box = page.evaluate(
         "(() => { const r = document.querySelector('.sb-pop').getBoundingClientRect();"
-        " return [r.left, r.bottom, document.querySelector('footer').getBoundingClientRect().top]; })()"
+        " const f = document.querySelector('footer').getBoundingClientRect();"
+        " return [r.left, r.bottom, f.top]; })()"
     )
     assert box[0] >= 0 and box[1] <= box[2]
     page.click("#sb-sys")  # the same button closes it again
@@ -242,7 +243,7 @@ def test_settings_tabs_are_grouped_and_complete(page):
     page.wait_for_selector("#stabs .stab")
     seen = page.eval_on_selector_all(
         "#stabs > *",
-        "els => els.map(e => e.classList.contains('stab-group') ? '#' + e.textContent : e.dataset.tab)",
+        "els => els.map(e => e.matches('.stab-group') ? '#' + e.textContent : e.dataset.tab)",
     )
     want = [x for name, tabs in GROUPS for x in ("#" + name, *tabs)]
     assert seen == want
@@ -274,7 +275,7 @@ def test_reset_only_shows_when_a_value_differs(page):
 # --------------------------------------------------------------------------- languages / sizes
 
 
-@pytest.mark.parametrize("lang", ["de", "fr", "ru", "zh-CN", "nl-BE", "de-x-frk"])
+@pytest.mark.parametrize("lang", ["de", "fr", "ru", "fi", "zh-CN", "nl-BE", "de-x-frk"])
 def test_new_texts_are_translated_and_fit(browser, lang):
     """The new labels come from the catalogs (variants fall back to their parent) and the status
     bar still fits the minimum window."""
@@ -294,9 +295,10 @@ def test_new_texts_are_translated_and_fit(browser, lang):
             assert heads[1] != "Find & sort"
         _go(p, "discover")
         p.wait_for_selector("#f-kw-n")
-        assert not p.evaluate(
-            "(() => { const s = document.querySelector('#f-kw > summary');"
-            " return s.scrollWidth > s.clientWidth + 1; })()"
+        # the counter is never cut off («12 include · 13 exclude» in a 270 px panel)
+        assert p.evaluate(
+            "(() => { const m = document.querySelector('#f-kw-n');"
+            " return m.textContent.length > 0 && m.scrollWidth <= m.clientWidth; })()"
         )
         bad = [m for m in p.messages if m[0] in ("error", "pageerror") or "[i18n] missing" in m[1]]
         assert bad == []

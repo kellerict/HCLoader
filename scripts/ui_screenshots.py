@@ -1016,7 +1016,7 @@ class Shooter:
         self.settle()
         self.shot("discover-keywords")
         self.keywords(False)
-        # status bar: «System OK» with the single values in a popover; a missing tool shows them inline
+        # status bar: «System OK», single values in a popover; a missing tool shows them inline
         page.click("#sb-sys")
         page.wait_for_selector(".sb-pop")
         self.settle()

@@ -267,7 +267,7 @@ HC.i18n.register({"code": "sv", "name": "Svenska", "dir": "ltr", "intl": "sv-SE"
     "kw_sugg_label": "Förslag från de sparade inställningarna",
     "kw_session_hint": "Gäller bara den här sessionen – inget sparas här. Startvärden: Inställningar › Filter och nyckelord.",
     "kw_group": "Nyckelord",
-    "kw_count": "{inc} inkluderade · {exc} exkluderade"
+    "kw_count": "{inc} inkl. · {exc} exkl."
   },
   "inbox": {
     "title": "Inkorg",

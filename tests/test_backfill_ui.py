@@ -168,11 +168,8 @@ def test_row_menu_holds_the_moved_actions(page):
     assert more.get_attribute("aria-haspopup") == "menu"
     assert more.get_attribute("aria-label") == "More actions"
     _menu(page, 2)
-    assert page.eval_on_selector_all(".menu [role=menuitem]", "els => els.map(e => e.dataset.k)") == [
-        "bf",
-        "edit",
-        "del",
-    ]
+    keys = page.eval_on_selector_all(".menu [role=menuitem]", "els => els.map(e => e.dataset.k)")
+    assert keys == ["bf", "edit", "del"]
     assert "Read everything (once)" in page.inner_text(".menu")
     page.click('.menu [data-k="edit"]')
     page.wait_for_selector(".modal")
@@ -189,7 +186,6 @@ def test_row_menu_holds_the_moved_actions(page):
 def test_row_menu_by_keyboard(page):
     """Enter opens the menu with the first entry focused; arrows move, Escape returns to «⋯»."""
     _watchlist(page)
-    more = '#wl-body tr[data-id="2"] [data-act="more"]'
     page.focus('#wl-body tr[data-id="2"] [data-act="check"]')
     page.keyboard.press("Tab")
     assert page.evaluate("document.activeElement.dataset.act") == "more"
