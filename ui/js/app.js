@@ -184,7 +184,7 @@
   }
   function toggleSysPop() {
     const btn = $('#sb-sys');
-    if (sysWasOpen) { sysWasOpen = false; return; } // der Klick, der das offene Popover gerade geschlossen hat
+    if (sysWasOpen) { sysWasOpen = false; if (sysPop) HC.ui.closeMenu(); return; } // derselbe Klick hat das offene Popover schon geschlossen (sonst jetzt)
     if (sysPop) { HC.ui.closeMenu(); return; }
     sysPop = HC.ui.popover(btn, '', { align: 'left', cls: 'sb-pop', label: t('statusbar.system_title') });
     sysPop._onClose = () => { sysPop = null; btn.setAttribute('aria-expanded', 'false'); };

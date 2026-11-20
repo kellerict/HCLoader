@@ -149,6 +149,7 @@
       document.addEventListener('mousedown', off, true);
       document.addEventListener('keydown', off, true);
       if (blur) window.addEventListener('blur', off);
+      el.dataset.armed = '1'; // ab jetzt schliessen Escape und ein Klick daneben (Tests warten darauf)
     }, 0);
     ui._menu = el;
   }

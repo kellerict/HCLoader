@@ -122,7 +122,7 @@ def test_system_popover_by_mouse_and_keyboard(page):
     assert page.get_attribute("#sb-sys", "aria-expanded") == "false"
     page.focus("#sb-sys")
     page.keyboard.press("Enter")
-    page.wait_for_selector(".sb-pop")
+    page.wait_for_selector(".sb-pop[data-armed]")  # Escape is handled from here on
     page.keyboard.press("Escape")
     page.wait_for_selector(".sb-pop", state="detached")
     assert page.evaluate("document.activeElement.id") == "sb-sys"
@@ -153,7 +153,7 @@ def test_backoff_only_shows_while_one_is_active(page):
     assert "left" in page.inner_text("#sb-backoff-it")
     assert page.is_visible("#sb-sys")  # a backoff is no broken tool
     page.click("#sb-sys")
-    page.wait_for_selector(".sb-pop .sb-row .led.warn")
+    page.wait_for_selector(".sb-pop[data-armed] .sb-row .led.warn")
     page.keyboard.press("Escape")
     page.evaluate("HC.mock.api.clear_backoff()")
     page.wait_for_selector("#sb-backoff-it", state="hidden")
@@ -207,7 +207,7 @@ def test_library_stats_are_one_line_and_genre_is_dot_plus_text(page):
     )
     tag.focus()
     page.keyboard.press("Enter")
-    page.wait_for_selector(".menu [data-k^='genre-']")
+    page.wait_for_selector(".menu[data-armed] [data-k^='genre-']")
     page.keyboard.press("Escape")
     # the path left the row but stays in the tooltip and in the search
     small = page.locator("#lib-body tr[data-id] .cell-title small").first

@@ -132,6 +132,7 @@ def test_pause_resume_cancel(page):
     assert "Reading" in text and "240 / ~500" in text and "+37 in the inbox" in text
     _menu(page, 3)
     assert page.is_disabled('.menu [data-k="bf"]')  # already running
+    page.wait_for_selector(".menu[data-armed]")
     page.keyboard.press("Escape")
     page.wait_for_selector(".menu", state="detached")
     page.click(f'{sub} [data-bf="pause"]')
@@ -198,6 +199,7 @@ def test_row_menu_by_keyboard(page):
     assert page.evaluate("document.activeElement.dataset.k") == "del"
     page.keyboard.press("ArrowDown")  # wraps around
     assert page.evaluate("document.activeElement.dataset.k") == "bf"
+    page.wait_for_selector(".menu[data-armed]")
     page.keyboard.press("Escape")
     page.wait_for_selector(".menu", state="detached")
     assert page.evaluate("document.activeElement.dataset.act") == "more"

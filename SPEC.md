@@ -59,6 +59,7 @@ Nicht-Ziele: kein Streaming von YouTube/SoundCloud (abgespielt werden nur bereit
 
 ### 3.6 Statusleiste (immer sichtbar)
 - yt-dlp-Version, Deno OK, ffmpeg OK, PO-Token-Status, Backoff aktiv bis …, nächste geplante Prüfung, Queue-Länge.
+- Darstellung (`docs/design/clean-ui.md`): Deno, ffmpeg und PO-Token sind zu «System OK» zusammengefasst, solange nichts fehlt (Einzelwerte per Klick und im Tooltip); bei einem Problem stehen sie wieder einzeln in der Leiste. Der Backoff-Eintrag erscheint nur, solange ein Backoff läuft.
 
 ## 4. Filterlogik (core/filters.py)
 

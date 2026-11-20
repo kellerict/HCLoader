@@ -118,6 +118,43 @@ Stand: Vorschlag auf einer Kopie von `ui/` (v0.10.2). An der App selbst wurde ni
 
 Keine neue API-Methode nötig, keine Änderung auf der Python-Seite. Der Einbau lässt sich teilen: das reine CSS (Rahmen, Etiketten, Statusleiste) zuerst, die Markup-Punkte einzeln danach.
 
+## Umsetzung (Stand Einbau)
+
+Der Vorschlag ist vollständig eingebaut; `css/clean.css` gibt es nicht mehr. Die 16 Zustände der
+Vergleichsbilder sind bei 1440×900 pixelgleich mit den «Vorschlag»-Hälften.
+
+- **Styles:** Die Werte stehen direkt in den Grundregeln von `theme.css` (Tokens `--surface*`, `--hair`,
+  `--field`, `--s1…--s6`, `--lbl`) und `components.css`; neue Bausteine und übergreifende Regeln im
+  Abschnitt «Ruhigere Oberfläche» am Ende von `components.css`. Tote Regeln sind entfernt
+  (`.bar-sep`, `.nav-foot b`, Pfad-Spalte der Bibliothekszeile, `.limit.counting`, Rahmen-Hover).
+- **Statusleiste:** «System OK» ist ein Knopf (`#sb-sys`); Klick/Enter öffnet ein Popover mit yt-dlp,
+  Deno, ffmpeg, PO-Token und Backoff, der Tooltip nennt dieselben Werte. Fehlt ein Werkzeug oder meldet
+  der PO-Token einen Fehler, stehen die Einzelwerte wieder in der Leiste (der fehlende rot).
+  Entscheid in `js/app.js` (`renderStatus`), nicht mehr per CSS-`:has()`.
+- **Watchlist:** «⋯» ruft die bestehenden Handler direkt auf (`rowMenu`), keine versteckten Buttons.
+- **Menüs** (`ui.menu`): `role=menu`, per Tastatur geöffnet liegt der Fokus auf dem ersten Punkt;
+  Pfeile/Pos1/Ende wandern, Escape/Tab geben den Fokus an den Anker zurück.
+- **Bibliothek:** Tracks/DJs/Collector in `.lib-tabs` beim Titel; Genre über `ui.gtag(…, {dot: true})`
+  (`.gtag.plain`); der Pfad steht im Tooltip der Zeile und bleibt durchsuchbar.
+- **Einstellungen:** Gruppen in `TAB_GROUPS` (`views/settings.js`), Titel aus `tab_groups.*`.
+- **Texte:** neue Keys `statusbar.system`, `statusbar.system_title`, `discover.kw_group`,
+  `discover.kw_count`, `library.sections`, `tab_groups.*` in allen 17 vollen Katalogen (`nl-BE`,
+  `de-x-frk` über Fallback); `navfoot.*` entfällt.
+
+Bewusste Abweichungen vom Vorschlag:
+
+- **Fokus bleibt sichtbar:** DJ-Karten und Ranglisten-Zeilen behalten bei Tastaturfokus den roten
+  Rahmen (im Vorschlag fiel er zusammen mit dem Hover-Rahmen weg); Stichwort-Zeile, «System» und der
+  Genre-Knopf haben einen Fokusring.
+- **Nebenwirkungen der Kopie nicht übernommen:** Der Vorschlag überschrieb mit erhöhter Spezifität
+  auch Regeln, die er nicht meinte. Unverändert wie vor dem Vorschlag bleiben darum: Abstand über
+  Gruppenzeilen der Bibliothek, Schriftgrösse der Laufliste im Protokoll, Fehlerrahmen eines
+  fokussierten ungültigen Feldes, die Suchleiste des Collectors (`.co-strip.run`).
+- **Mindestfenster 1100×700:** die Watchlist kommt ohne Querscrollen aus (Aktionsspalte schmaler),
+  in der Bibliothek entfallen die Tab-Icons und der Untertitel, damit der Titel Platz behält; die
+  Genre-Legende blendet ganze Einträge aus statt mitten im Wort zu schneiden.
+- **Stichwort-Zähler** in langen Sprachen abgekürzt («12 incl. · 13 excl.»), damit die Zeile passt.
+
 ## Vergleichsbilder (nicht im Repo, nur Liste)
 
 Je Bild links «Heute», rechts «Vorschlag», 1440×900, en, Mock-Modus.
