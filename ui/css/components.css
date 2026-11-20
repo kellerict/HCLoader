@@ -509,6 +509,7 @@ body.no-backend nav,body.no-backend main,body.no-backend footer{filter:grayscale
 /* ---------- Phase 4: Watchlist, Eingang, Zeitplan ---------- */
 /* Watchlist-Tabelle: bei schmalem Fenster horizontal scrollen statt die Namensspalte zu erdrücken */
 .wl-table{min-width:1030px}
+.wl-table .c-act{width:200px} /* «Prüfen» + «⋯»-Menü (Alles einlesen, Bearbeiten, Löschen) */
 #wl-notice{margin-bottom:16px}
 .wl-table td .badge{margin:0;border:0;cursor:pointer;display:inline-block;transition:box-shadow var(--t-fast),filter var(--t-fast)}
 .wl-table td .badge:hover{filter:brightness(1.15);box-shadow:0 0 10px var(--accent-glow)}
@@ -604,7 +605,7 @@ td.act .iconbtn.on{color:var(--acid);border-color:transparent;background:var(--a
 /* Mindestfenster (1100 px): Statusleiste enger, Herkunft des Termins nur noch im Tooltip */
 @media (max-width:1240px){footer{gap:14px} #sb-next .sb-kind{display:none}}
 /* Schmales Fenster: Typ und Max. ausblenden (stehen im Bearbeiten-Dialog), Rest scrollt horizontal */
-@media (max-width:1300px){.wl-table{min-width:890px} .wl-table th:nth-child(3),.wl-table tr[data-id] td:nth-child(3),.wl-table th:nth-child(6),.wl-table tr[data-id] td:nth-child(6){display:none}}
+@media (max-width:1300px){.wl-table{min-width:800px} .wl-table .c-act{width:128px} .wl-table th:nth-child(3),.wl-table tr[data-id] td:nth-child(3),.wl-table th:nth-child(6),.wl-table tr[data-id] td:nth-child(6){display:none}}
 .statebox .st-kind{font:600 11px var(--f-mono);letter-spacing:calc(1.5px * var(--ls));text-transform:uppercase;color:var(--muted);border:1px solid var(--line-2);padding:2px 8px;border-radius:var(--radius-sm)}
 .statebox .st-kind:empty{display:none}
 [data-custom=nextCheck]{margin-bottom:22px}
@@ -1978,7 +1979,7 @@ td .pbadge,.cell-title .pbadge,.dj-set .pbadge,.qitem .pbadge{background:var(--s
 
 /* ---------- Entdecken: Stichwörter aufklappbar («Keywords · 12 include · 13 exclude») ---------- */
 .fdisc{margin:0 0 var(--s4);border-top:1px solid var(--hair);border-bottom:1px solid var(--hair)}
-.fdisc>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:var(--s2);padding:10px 0;font:500 13px/18px var(--f-body);color:var(--text);outline:none;
+.fdisc>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:var(--s2);padding:10px 6px;margin:0 -6px;font:500 13px/18px var(--f-body);color:var(--text);outline:none;
   border-radius:var(--radius-sm);transition:box-shadow var(--t-med)}
 .fdisc>summary::-webkit-details-marker{display:none}
 .fdisc>summary::after{content:"";margin-left:auto;width:6px;height:6px;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);
@@ -1994,13 +1995,14 @@ td .pbadge,.cell-title .pbadge,.dj-set .pbadge,.qitem .pbadge{background:var(--s
 /* ---------- Bibliothek: Unteransichten beim Titel, Kennzahlen als Zeile, Genre als Punkt + Text ---------- */
 .lib-tabs{display:flex;align-items:center;gap:2px;margin-left:var(--s5);flex:none;align-self:flex-end;padding-bottom:1px}
 .lib-tabs .btn{padding:6px 12px}
+@media (max-width:1180px){.lib-tabs .btn svg{display:none} .lib-tabs .btn{padding:6px 9px} .view-head .lib-search{width:168px} #lib-sub{display:none}} /* Mindestfenster: der Titel behält seinen Platz («83 Mixes» steht gleich darunter) */
 .lib-stats .stat{background:none;border:0;padding:0;display:flex;align-items:baseline;gap:var(--s2);flex:none}
 .lib-stats .stat .k{order:2}
 .lib-stats .stat .v{margin:0;font-size:22px;line-height:28px}
 .lib-stats .stat .v small{font-size:13px}
-.lib-stats .stat.genres{flex:1;min-width:0;display:grid;grid-template-columns:minmax(120px,1fr) auto;align-items:center;gap:var(--s4)}
+.lib-stats .stat.genres{flex:1;min-width:0;display:grid;grid-template-columns:minmax(120px,1fr) minmax(0,auto);align-items:center;gap:var(--s4)}
 .lib-stats .stat.genres .gbar{margin:0;height:4px}
-.lib-stats .stat.genres .glist{margin:0;flex-wrap:nowrap}
+.lib-stats .stat.genres .glist{margin:0;justify-content:flex-end} /* feste Höhe + Umbruch: was nicht passt, verschwindet ganz */
 /* ui.gtag(…, {dot: true}): Farbpunkt (--g) + Text statt farbiger Plakette, weiterhin der Knopf zum Ändern */
 .gtag.plain{display:inline-flex;align-items:center;gap:7px;background:none;color:var(--text);font:13px/18px var(--f-body);letter-spacing:0;text-transform:none;padding:2px 6px 2px 0}
 .gtag.plain::before{content:"";width:8px;height:8px;border-radius:1px;background:var(--g,var(--muted));flex:none}
@@ -2020,7 +2022,7 @@ td .pbadge,.cell-title .pbadge,.dj-set .pbadge,.qitem .pbadge{background:var(--s
 /* ---------- Statusleiste: «System OK» mit Einzelwerten im Popover (js/app.js) ---------- */
 footer .led,.sb-row .led{width:6px;height:6px;box-shadow:none}
 footer .it.bad,footer .it.bad b{color:var(--error)}
-footer .sb-sys{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;border-radius:var(--radius-sm)}
+footer .sb-sys{background:none;border:0;padding:3px 5px;margin:0 -5px;font:inherit;color:inherit;cursor:pointer;border-radius:var(--radius-sm)}
 footer .sb-sys:hover,footer .sb-sys:hover b,footer .sb-sys[aria-expanded=true],footer .sb-sys[aria-expanded=true] b{color:var(--text)}
 footer .sb-sys:focus-visible{outline:none;box-shadow:0 0 0 1px var(--accent),0 0 14px var(--accent-glow)}
 .popover.sb-pop{width:auto;min-width:230px;padding:5px 5px 7px}

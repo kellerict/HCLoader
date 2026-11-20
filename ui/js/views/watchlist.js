@@ -451,7 +451,7 @@
         <table class="wl-table">
           <thead><tr><th style="width:62px">${t('watchlist.col_active')}</th><th>${t('watchlist.col_name')}</th><th style="width:84px">${t('watchlist.col_type')}</th>
             <th style="width:124px">${t('watchlist.col_genre')}</th><th style="width:132px">${t('watchlist.col_auto')}</th><th class="num" style="width:62px">${t('watchlist.col_max')}</th>
-            <th style="width:148px">${t('watchlist.col_last')}</th><th class="num" style="width:58px">${t('watchlist.col_new')}</th><th style="width:200px"></th></tr></thead>
+            <th style="width:148px">${t('watchlist.col_last')}</th><th class="num" style="width:58px">${t('watchlist.col_new')}</th><th class="c-act"></th></tr></thead>
           <tbody id="wl-body"></tbody>
         </table>
       </div>`;
