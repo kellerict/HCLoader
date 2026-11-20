@@ -93,15 +93,17 @@
   ui.notice = (kind, html) => `<div class="notice ${kind}">${kind === 'ok' ? I.check : kind === 'info' ? I.info : I.warn}<div>${html}</div></div>`;
 
   /* ---------- Kontextmenü ---------- */
-  /** items: [{label, icon, onClick, danger, current, key (data-k), disabled}] | {head} | 'sep' */
+  /** items: [{label, icon, onClick, danger, current, key (data-k), disabled}] | {head} | 'sep'
+   *  Ein zweiter Aufruf mit demselben Anker, solange dessen Menü offen ist, schliesst es nur (Umschalten). */
   ui.menu = function (anchor, items, o) {
+    if (toggledOff(anchor)) return null;
     ui.closeMenu();
     const el = document.createElement('div');
     el.className = 'menu';
     el.setAttribute('role', 'menu');
     el.innerHTML = items.map((it, i) => {
       if (it === 'sep') return '<hr>';
-      if (it.head) return `<div class="mhead">${esc(it.head)}</div>`;
+      if (it.head) return `<div class="mhead" role="presentation">${esc(it.head)}</div>`;
       return `<button type="button" role="menuitem" data-i="${i}"${it.key ? ` data-k="${esc(it.key)}"` : ''} class="${it.danger ? 'danger' : ''}"${it.title ? ` title="${esc(it.title)}"` : ''}${it.disabled ? ' disabled' : ''}>${it.icon || ''}${it.dot ? `<span class="dot" style="background:${esc(it.dot)}"></span>` : ''}<span>${esc(it.label)}</span>${it.current ? `<span class="cur">${t('common.current')}</span>` : ''}</button>`;
     }).join('');
     /* Tastatur: per Tastatur geöffnet -> Fokus auf den ersten Punkt; Pfeile/Pos1/Ende wandern, Tab und Escape
@@ -125,10 +127,17 @@
     });
     arm(el, true);
     if (byKeys) { const first = el.querySelector('button:not(:disabled)'); if (first) first.focus(); }
+    return el;
   };
+  /** Ist das Overlay dieses Ankers offen? Dann schliessen und true (der Klick auf den Anker schaltet um). */
+  function toggledOff(anchor) {
+    if (!anchor || !ui._menu || ui._menu._anchor !== anchor) return false;
+    ui.closeMenu();
+    return true;
+  }
   /** Overlay an den Anker setzen (unter ihm, sonst darüber; bleibt im Fenster). */
   function place(el, anchor, o) {
-    HC.$('#overlays').appendChild(el);
+    if (!el.isConnected) HC.$('#overlays').appendChild(el); // erneut einhängen würde den Fokus verlieren (_place)
     const r = anchor.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight;
     const left = Math.max(8, Math.min(o && o.align === 'left' ? r.left : r.right - w, window.innerWidth - w - 8));
     if (o && o.align === 'left') el.classList.add('from-left');
@@ -136,13 +145,25 @@
     el.style.left = `${left}px`;
     el.style.top = `${top}px`;
   }
-  /** Schliessen bei Klick daneben und Escape (blur: auch wenn das Fenster den Fokus verliert). */
+  /** Schliessen bei Klick daneben und Escape (blur: auch wenn das Fenster den Fokus verliert).
+   *  Ein Mausklick auf den eigenen Anker schliesst hier nicht: dessen Klick-Handler ruft ui.menu/ui.popover
+   *  erneut auf und schaltet damit um (toggledOff) – kein Zustand, der zwischen mousedown und click hängen bleibt.
+   *  Pfeiltasten mit Fokus ausserhalb eines Menüs (z.B. per Maus geöffnet, Fokus am Anker) springen hinein. */
   function arm(el, blur) {
     setTimeout(() => {
       if (ui._menu !== el) return;
       const off = (e) => {
-        if (e.type === 'keydown' && e.key !== 'Escape') return;
-        if (e.type === 'mousedown' && el.contains(e.target)) return;
+        if (e.type === 'keydown') {
+          const a = document.activeElement;
+          if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && el.getAttribute('role') === 'menu' && !el.contains(a)
+              && (!a || a === document.body || a === el._anchor)) {
+            const btns = el.querySelectorAll('button:not(:disabled)');
+            if (btns.length) { e.preventDefault(); btns[e.key === 'ArrowDown' ? 0 : btns.length - 1].focus(); }
+            return;
+          }
+          if (e.key !== 'Escape') return;
+        }
+        if (e.type === 'mousedown' && (el.contains(e.target) || (el._anchor && el._anchor.contains(e.target)))) return;
         ui.closeMenu();
       };
       ui._menuOff = () => { document.removeEventListener('mousedown', off, true); document.removeEventListener('keydown', off, true); window.removeEventListener('blur', off); };
@@ -155,17 +176,25 @@
   }
   /**
    * Kleines Formular am Anker (z.B. Festival eines Eintrags). html = Inhalt, o: {align, cls, label}.
-   * Schliesst wie ein Menü (Klick daneben, Escape, ui.closeMenu()); liefert das Element.
+   * Schliesst wie ein Menü (Klick daneben, Escape, ui.closeMenu()); liefert das Element – oder null, wenn der
+   * Aufruf nur das offene Popover desselben Ankers geschlossen hat (Umschalten).
    */
   ui.popover = function (anchor, html, o) {
+    if (toggledOff(anchor)) return null;
     ui.closeMenu();
+    const byKeys = !!anchor && anchor.matches && anchor.matches(':focus-visible');
     const el = document.createElement('div');
     el.className = `popover ${(o && o.cls) || ''}`;
     el.setAttribute('role', 'dialog');
+    el.tabIndex = -1;
     if (o && o.label) el.setAttribute('aria-label', o.label);
     el.innerHTML = html;
+    /* Escape/Tab geben den Fokus an den Anker zurück (ui.closeMenu); per Tastatur geöffnet -> Fokus in den Dialog. */
+    el._anchor = anchor;
     place(el, anchor, o);
+    el.addEventListener('keydown', (e) => { if (e.key === 'Tab' && document.activeElement === el) { e.preventDefault(); ui.closeMenu(); } });
     arm(el, false);
+    if (byKeys) el.focus();
     /* Nach Änderungen am Inhalt (andere Höhe) neu ausrichten. */
     el._place = () => place(el, anchor, o);
     return el;

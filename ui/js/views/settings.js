@@ -1379,13 +1379,15 @@
   ];
   const tabGroup = (id) => (TAB_GROUPS.find((g) => g[1].includes(id)) || [null])[0];
   const tabPos = (id) => { const i = TAB_GROUPS.findIndex((g) => g[1].includes(id)); return i < 0 ? 999 : i * 100 + TAB_GROUPS[i][1].indexOf(id); };
+  /* Gruppentitel: in role=tablist sind nur Tabs erlaubt -> Titel aria-hidden, jeder Tab nennt seine Gruppe
+     per aria-describedby (Screenreader: «Darstellung, Tab, App»). Review v0.11.0 m6. */
   function paintChrome() {
     let lastG = null;
     $('#stabs', el).innerHTML = TABS.filter((tab) => !tab.hidden).slice().sort((x, y) => tabPos(x.id) - tabPos(y.id)).map((tab) => {
-      const g = tabGroup(tab.id), head = g && g !== lastG ? `<div class="stab-group" role="presentation">${esc(t('tab_groups.' + g))}</div>` : '';
+      const g = tabGroup(tab.id), head = g && g !== lastG ? `<div class="stab-group" id="stg-${g}" aria-hidden="true">${esc(t('tab_groups.' + g))}</div>` : '';
       lastG = g;
       const nErr = errorsOf(tab).length, dirty = tabKeys(tab).some(isDirtyKey);
-      return head + `<div class="stab${tab.id === cur ? ' active' : ''}" data-tab="${tab.id}" tabindex="0" role="tab" aria-selected="${tab.id === cur}">${t('tabs.' + tab.id)}${nErr ? `<span class="mark err">${nErr}</span>` : dirty ? '<span class="mark dirty"></span>' : ''}</div>`;
+      return head + `<div class="stab${tab.id === cur ? ' active' : ''}" data-tab="${tab.id}" tabindex="0" role="tab" aria-selected="${tab.id === cur}"${g ? ` aria-describedby="stg-${g}"` : ''}>${t('tabs.' + tab.id)}${nErr ? `<span class="mark err">${nErr}</span>` : dirty ? '<span class="mark dirty"></span>' : ''}</div>`;
     }).join('');
     const n = dirtyKeys().length, nErr = Object.keys(errors).length;
     const bar = $('#savebar', el);

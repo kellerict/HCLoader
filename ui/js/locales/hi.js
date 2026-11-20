@@ -267,7 +267,11 @@ HC.i18n.register({"code": "hi", "name": "हिन्दी", "dir": "ltr", "int
     "kw_sugg_label": "सहेजी गई सेटिंग्स से सुझाव",
     "kw_session_hint": "केवल इस सत्र पर लागू – यहाँ कुछ सहेजा नहीं जाता। आरंभिक मान: सेटिंग्स › फ़िल्टर और कीवर्ड।",
     "kw_group": "कीवर्ड",
-    "kw_count": "{inc} शामिल · {exc} बाहर"
+    "kw_count": "{inc} शामिल · {exc} बाहर",
+    "kw_sum_inc": "+ {list}",
+    "kw_sum_exc": "− {list}",
+    "kw_sum_more": "{list} …",
+    "kw_sum_line": "{label}: {list}"
   },
   "inbox": {
     "title": "इनबॉक्स",

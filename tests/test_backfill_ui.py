@@ -211,6 +211,68 @@ def test_row_menu_by_keyboard(page):
     assert page.input_value(".modal [data-f=name]") == "Gabber Vault"
 
 
+def test_row_menu_toggles_and_takes_arrows_after_a_mouse_click(page):
+    """Review v0.11.0 m2/m5: a second click on «⋯» closes its menu (shared ui.menu, no special
+    case); a mouse-opened menu still answers the arrow keys."""
+    _watchlist(page)
+    more = '#wl-body tr[data-id="2"] [data-act="more"]'
+    page.click(more)
+    page.wait_for_selector(".menu[data-armed]")
+    page.click(more)
+    page.wait_for_selector(".menu", state="detached")
+    page.click(more)
+    page.wait_for_selector(".menu[data-armed]")
+    assert page.evaluate("document.activeElement.dataset.act") == "more"
+    page.keyboard.press("ArrowDown")
+    assert page.evaluate("document.activeElement.dataset.k") == "bf"
+    page.keyboard.press("ArrowUp")
+    assert page.evaluate("document.activeElement.dataset.k") == "del"
+    page.keyboard.press("Escape")
+    page.wait_for_selector(".menu", state="detached")
+    assert page.evaluate("document.activeElement.dataset.act") == "more"
+    # another anchor replaces the menu instead of toggling it
+    page.click(more)
+    page.wait_for_selector(".menu[data-armed]")
+    page.click('#wl-body tr[data-id="1"] [data-act="more"]')
+    page.wait_for_function(
+        "() => { const m = document.querySelectorAll('.menu');"
+        " return m.length === 1 && m[0]._anchor.closest('tr').dataset.id === '1'; }"
+    )
+
+
+def test_row_menu_closes_when_its_row_rerenders(page):
+    """Review v0.11.0 m1: a re-render (check/backfill event) closes the open row menu – no menu on
+    a detached anchor acting on a stale source – and focus lands on the new row's «⋯», not body."""
+    _watchlist(page)
+    more = '#wl-body tr[data-id="2"] [data-act="more"]'
+    # mouse: menu goes away, nothing steals the focus
+    page.click(more)
+    page.wait_for_selector(".menu[data-armed]")
+    page.evaluate("window.mv.emit('source', {id: 2, checking: false})")
+    page.wait_for_selector(".menu", state="detached")
+    assert page.evaluate("HC.ui._menu") is None
+    # keyboard: focus inside the menu moves to «⋯» of the same source in the new table
+    page.focus(more)
+    page.keyboard.press("Enter")
+    page.wait_for_selector(".menu[data-armed]")
+    assert page.evaluate("document.activeElement.dataset.k") == "bf"
+    old = page.evaluate_handle(f"document.querySelector('{more}')")
+    page.evaluate("window.mv.emit('source', {id: 2, checking: false})")
+    page.wait_for_selector(".menu", state="detached")
+    assert page.evaluate("b => b.isConnected", old) is False
+    assert page.evaluate(
+        "[document.activeElement.dataset.act, document.activeElement.closest('tr').dataset.id]"
+    ) == ["more", "2"]
+    # single-row update of a backfill event: same rule
+    page.keyboard.press("Enter")
+    page.wait_for_selector(".menu[data-armed]")
+    page.evaluate("window.mv.emit('backfill', {source_id: 2, state: 'none'})")
+    page.wait_for_selector(".menu", state="detached")
+    assert page.evaluate(
+        "[document.activeElement.dataset.act, document.activeElement.closest('tr').dataset.id]"
+    ) == ["more", "2"]
+
+
 def test_settings_fields(page):
     page.evaluate("HC.app.go('settings', 'schedule')")
     page.wait_for_selector('.field[data-k="watchlist.backfill_max_entries"]')

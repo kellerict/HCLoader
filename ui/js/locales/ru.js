@@ -271,7 +271,11 @@ HC.i18n.register({"code": "ru", "name": "Русский", "dir": "ltr", "intl": 
     "kw_sugg_label": "Подсказки из сохранённых настроек",
     "kw_session_hint": "Действует только в этом сеансе – здесь ничего не сохраняется. Начальные значения: Настройки › Фильтры и ключевые слова.",
     "kw_group": "Ключевые слова",
-    "kw_count": "{inc} вкл. · {exc} искл."
+    "kw_count": "{inc} вкл. · {exc} искл.",
+    "kw_sum_inc": "+ {list}",
+    "kw_sum_exc": "− {list}",
+    "kw_sum_more": "{list} …",
+    "kw_sum_line": "{label}: {list}"
   },
   "inbox": {
     "title": "Входящие",

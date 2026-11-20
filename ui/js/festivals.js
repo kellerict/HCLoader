@@ -97,6 +97,7 @@
           <button type="button" class="btn sm ghost" data-f="cancel">${t('common.cancel')}</button>
           <button type="button" class="btn sm primary" data-f="ok">${I.check}${t('fest.p_apply')}</button>
         </div>`, { align: 'left', cls: 'fpop', label: t('fest.p_title') });
+      if (!el) return null; // zweiter Klick auf denselben Anker: nur geschlossen (Umschalten)
       const q = (k) => el.querySelector(`[data-f="${k}"]`);
       const box = el.querySelector('[data-list]');
       let sel = init.series_id != null ? init.series_id : null; // null = kein Festival

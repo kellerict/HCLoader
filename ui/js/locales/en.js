@@ -267,7 +267,11 @@ HC.i18n.register({"code": "en", "name": "English", "dir": "ltr", "intl": "en"}, 
     "kw_sugg_label": "Suggestions from the saved settings",
     "kw_session_hint": "Applies to this session only – nothing is saved here. Starting values: Settings › Filters & keywords.",
     "kw_group": "Keywords",
-    "kw_count": "{inc} include · {exc} exclude"
+    "kw_count": "{inc} include · {exc} exclude",
+    "kw_sum_inc": "+ {list}",
+    "kw_sum_exc": "− {list}",
+    "kw_sum_more": "{list} …",
+    "kw_sum_line": "{label}: {list}"
   },
   "inbox": {
     "title": "Inbox",

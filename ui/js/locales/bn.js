@@ -267,7 +267,11 @@ HC.i18n.register({"code": "bn", "name": "বাংলা", "dir": "ltr", "intl":
     "kw_sugg_label": "সংরক্ষিত সেটিংস থেকে প্রস্তাব",
     "kw_session_hint": "শুধু এই সেশনের জন্য – এখানে কিছু সংরক্ষিত হয় না। প্রাথমিক মান: সেটিংস › ফিল্টার ও কিওয়ার্ড।",
     "kw_group": "কিওয়ার্ড",
-    "kw_count": "{inc} অন্তর্ভুক্ত · {exc} বাদ"
+    "kw_count": "{inc} অন্তর্ভুক্ত · {exc} বাদ",
+    "kw_sum_inc": "+ {list}",
+    "kw_sum_exc": "− {list}",
+    "kw_sum_more": "{list} …",
+    "kw_sum_line": "{label}: {list}"
   },
   "inbox": {
     "title": "ইনবক্স",

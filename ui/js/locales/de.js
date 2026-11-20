@@ -267,7 +267,11 @@ HC.i18n.register({"code": "de", "name": "Deutsch", "dir": "ltr", "intl": "de-CH"
     "kw_sugg_label": "Vorschläge aus den gespeicherten Einstellungen",
     "kw_session_hint": "Gilt nur für diese Sitzung – hier wird nichts gespeichert. Startwerte: Einstellungen › Filter & Keywords.",
     "kw_group": "Keywords",
-    "kw_count": "{inc} Include · {exc} Exclude"
+    "kw_count": "{inc} Include · {exc} Exclude",
+    "kw_sum_inc": "+ {list}",
+    "kw_sum_exc": "− {list}",
+    "kw_sum_more": "{list} …",
+    "kw_sum_line": "{label}: {list}"
   },
   "inbox": {
     "title": "Eingang",

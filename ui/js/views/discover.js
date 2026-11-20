@@ -363,6 +363,20 @@
     box.innerHTML = miss.map((k) => `<button type="button" class="kw-sugg" data-k="${util.esc(k)}" title="${util.esc(t('discover.kw_sugg_title'))}"><i>+</i><span>${util.esc(k)}</span></button>`).join('');
     $(`#c-${key}`, el).hidden = !f[key].length;
     $('#f-kw-n', el).textContent = t('discover.kw_count', { inc: util.fmtNum(f.inc.length), exc: util.fmtNum(f.exc.length) });
+    renderKwSum();
+  }
+  /** Zugeklappt: die aktiven Stichwörter als eine Zeile unter dem Zähler (je die ersten drei, sonst «…»),
+      die vollständigen Listen im Tooltip – aktive Filter bleiben sichtbar (Review v0.11.0 m8). */
+  const KW_SUM_N = 3;
+  function renderKwSum() {
+    const sum = $('#f-kw-sum', el), list = (key) => {
+      const l = f[key].slice(0, KW_SUM_N).join(', ');
+      return f[key].length > KW_SUM_N ? t('discover.kw_sum_more', { list: l }) : l;
+    };
+    const parts = ['inc', 'exc'].filter((k) => f[k].length).map((k) => t(`discover.kw_sum_${k}`, { list: list(k) }));
+    sum.hidden = !parts.length;
+    sum.textContent = parts.join(' · ');
+    sum.title = ['inc', 'exc'].filter((k) => f[k].length).map((k) => t('discover.kw_sum_line', { label: t(`discover.f_${k}`), list: f[k].join(', ') })).join('\n');
   }
   function setKw(key, list) {
     f[key] = list.slice();
@@ -428,7 +442,7 @@
               <label><span>${t('discover.f_to')}</span><input class="input mono" id="f-to" type="date" min="${MIN_YEAR}-01-01"></label>
             </div>
             <p class="fhint" id="f-date-hint" hidden></p></div>
-          <details class="fdisc" id="f-kw"><summary><span>${t('discover.kw_group')}</span><small id="f-kw-n"></small></summary>
+          <details class="fdisc" id="f-kw"><summary><span>${t('discover.kw_group')}</span><small id="f-kw-n"></small><small class="kw-sum" id="f-kw-sum" hidden></small></summary>
           ${['inc', 'exc'].map((k) => `<div class="fgroup"><label class="lbl">${t('discover.f_' + k)}</label>
             <div class="kwbox"><div id="t-${k}"></div><button type="button" class="kw-clear" id="c-${k}" data-kwclear="${k}" title="${util.esc(t('discover.kw_clear'))}" aria-label="${util.esc(t('discover.kw_clear'))}" hidden>${I.trash}</button></div>
             <div class="kw-suggs" id="s-${k}" data-key="${k}" aria-label="${util.esc(t('discover.kw_sugg_label'))}" hidden></div></div>`).join('')}

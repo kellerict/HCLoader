@@ -267,7 +267,11 @@ HC.i18n.register({"code": "fr", "name": "Français", "dir": "ltr", "intl": "fr-F
     "kw_sugg_label": "Suggestions issues des réglages enregistrés",
     "kw_session_hint": "Valable pour cette session seulement – rien n’est enregistré ici. Valeurs de départ : Paramètres › Filtres et mots-clés.",
     "kw_group": "Mots-clés",
-    "kw_count": "{inc} à inclure · {exc} à exclure"
+    "kw_count": "{inc} à inclure · {exc} à exclure",
+    "kw_sum_inc": "+ {list}",
+    "kw_sum_exc": "− {list}",
+    "kw_sum_more": "{list} …",
+    "kw_sum_line": "{label} : {list}"
   },
   "inbox": {
     "title": "Boîte de réception",

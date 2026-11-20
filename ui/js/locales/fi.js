@@ -267,7 +267,11 @@ HC.i18n.register({"code": "fi", "name": "Suomi", "dir": "ltr", "intl": "fi-FI"},
     "kw_sugg_label": "Ehdotuksia tallennetuista asetuksista",
     "kw_session_hint": "Koskee vain tätä istuntoa – tässä ei tallenneta mitään. Lähtöarvot: Asetukset › Suodattimet ja avainsanat.",
     "kw_group": "Avainsanat",
-    "kw_count": "{inc} mukana · {exc} pois"
+    "kw_count": "{inc} mukana · {exc} pois",
+    "kw_sum_inc": "+ {list}",
+    "kw_sum_exc": "− {list}",
+    "kw_sum_more": "{list} …",
+    "kw_sum_line": "{label}: {list}"
   },
   "inbox": {
     "title": "Saapuneet",

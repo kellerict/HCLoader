@@ -128,6 +128,53 @@ def test_system_popover_by_mouse_and_keyboard(page):
     assert page.evaluate("document.activeElement.id") == "sb-sys"
 
 
+def test_system_popover_toggles_without_stale_state(page):
+    """Review v0.11.0 m2–m4: the toggle lives in ui.popover (no mousedown flag in app.js). A press
+    on the button dragged off (no click) changes nothing; the keyboard toggles it afterwards; opened
+    by keyboard the dialog takes the focus and Escape returns it to the button."""
+    page.wait_for_selector("#sb-sys:not([hidden])")
+    page.click("#sb-sys")
+    page.wait_for_selector(".sb-pop[data-armed]")
+    box = page.locator("#sb-sys").bounding_box()
+    page.mouse.move(box["x"] + 5, box["y"] + 5)
+    page.mouse.down()
+    page.mouse.move(box["x"] + 400, box["y"] - 300)
+    page.mouse.up()
+    assert page.locator(".sb-pop").count() == 1  # mousedown on its own anchor does not close
+    page.focus("#sb-sys")
+    page.keyboard.press("Enter")
+    page.wait_for_selector(".sb-pop", state="detached")
+    assert page.get_attribute("#sb-sys", "aria-expanded") == "false"
+    page.keyboard.press("Enter")
+    page.wait_for_selector(".sb-pop[data-armed]")
+    assert page.get_attribute("#sb-sys", "aria-expanded") == "true"
+    assert page.evaluate("document.activeElement.classList.contains('sb-pop')")
+    assert page.evaluate("document.querySelector('.sb-pop')._anchor.id") == "sb-sys"
+    page.keyboard.press("Escape")
+    page.wait_for_selector(".sb-pop", state="detached")
+    assert page.evaluate("document.activeElement.id") == "sb-sys"
+
+
+def test_menu_heads_are_presentational_and_arrows_enter_a_mouse_menu(page):
+    """Review v0.11.0 m5: .mhead inside role=menu is role=presentation; the arrows reach the items
+    while the focus still sits on the anchor."""
+    page.evaluate(
+        "HC.ui.menu(document.querySelector('#sb-sys'),"
+        " [{head: 'Head'}, {label: 'One', key: 'one'}, {label: 'Two', key: 'two', disabled: true},"
+        " {label: 'Three', key: 'three'}])"
+    )
+    page.wait_for_selector(".menu[data-armed]")
+    assert page.get_attribute(".menu .mhead", "role") == "presentation"
+    page.focus("#sb-sys")
+    page.keyboard.press("ArrowUp")
+    assert page.evaluate("document.activeElement.dataset.k") == "three"
+    page.keyboard.press("ArrowDown")
+    assert page.evaluate("document.activeElement.dataset.k") == "one"  # disabled «Two» is skipped
+    page.keyboard.press("Escape")
+    page.wait_for_selector(".menu", state="detached")
+    assert page.evaluate("document.activeElement.id") == "sb-sys"
+
+
 def test_status_bar_expands_when_a_tool_is_missing(page):
     page.wait_for_selector("#sb-sys:not([hidden])")
     page.click("#sb-sys")
@@ -250,6 +297,14 @@ def test_settings_tabs_are_grouped_and_complete(page):
     assert len([x for x in seen if not x.startswith("#")]) == 17
     # headings are no tabs: not focusable, not clickable targets
     assert page.locator("#stabs .stab-group[tabindex]").count() == 0
+    # Review v0.11.0 m6: only tabs are exposed in the tablist; each tab names its group
+    assert page.locator('#stabs .stab-group:not([aria-hidden="true"])').count() == 0
+    group_of = page.eval_on_selector_all(
+        "#stabs .stab",
+        "els => els.map(e => [e.dataset.tab,"
+        " document.getElementById(e.getAttribute('aria-describedby')).textContent])",
+    )
+    assert group_of == [[tab, name] for name, tabs in GROUPS for tab in tabs]
     page.focus('.stab[data-tab="download"]')
     page.keyboard.press("Enter")
     page.wait_for_selector('.stab.active[data-tab="download"]')

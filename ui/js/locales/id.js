@@ -265,7 +265,11 @@ HC.i18n.register({"code": "id", "name": "Bahasa Indonesia", "dir": "ltr", "intl"
     "kw_sugg_label": "Saran dari pengaturan tersimpan",
     "kw_session_hint": "Hanya berlaku untuk sesi ini – tidak ada yang disimpan di sini. Nilai awal: Pengaturan › Filter & kata kunci.",
     "kw_group": "Kata kunci",
-    "kw_count": "{inc} wajib · {exc} pengecualian"
+    "kw_count": "{inc} wajib · {exc} pengecualian",
+    "kw_sum_inc": "+ {list}",
+    "kw_sum_exc": "− {list}",
+    "kw_sum_more": "{list} …",
+    "kw_sum_line": "{label}: {list}"
   },
   "inbox": {
     "title": "Kotak masuk",

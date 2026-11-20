@@ -223,12 +223,28 @@ def test_keywords_are_collapsed_behind_a_counter(page):  # noqa: F811
     assert page.is_hidden("#t-inc") and page.is_hidden("#t-exc")
     assert page.inner_text("#f-kw > summary span") == "Keywords"
     assert page.text_content("#f-kw-n") == f"{inc} include · {exc} exclude"
+    # Review v0.11.0 m8: the active keywords stay visible as one line (first three each, ellipsis)
+    inc_l = page.evaluate("HC.settings.values.filters.include_keywords")
+    exc_l = page.evaluate("HC.settings.values.filters.exclude_keywords")
+    assert page.is_visible("#f-kw-sum")
+    assert page.text_content("#f-kw-sum") == (
+        f"+ {', '.join(inc_l[:3])} … · − {', '.join(exc_l[:3])} …"
+    )
+    assert page.get_attribute("#f-kw-sum", "title") == (
+        f"Include keywords: {', '.join(inc_l)}\nExclude keywords: {', '.join(exc_l)}"
+    )
+    assert page.evaluate(
+        "(() => { const s = document.querySelector('#f-kw-sum');"
+        " return s.scrollHeight <= s.clientHeight + 1"
+        " && getComputedStyle(s).whiteSpace === 'nowrap'; })()"
+    )
     # the display filters below stay reachable without scrolling the panel
     assert page.is_visible("#f-hide") and page.is_visible("#f-blacklist")
     page.focus("#f-kw > summary")
     page.keyboard.press("Enter")
     page.wait_for_selector("#f-kw[open] #t-inc")
     assert page.is_visible("#t-exc") and page.is_visible(".kw-hint")
+    assert page.is_hidden("#f-kw-sum")  # open: the boxes show everything
     page.click("#t-inc .tag:first-child button")
     page.wait_for_function(
         "n => document.querySelector('#f-kw-n').textContent.startsWith(n + ' include')", arg=inc - 1
@@ -239,6 +255,7 @@ def test_keywords_are_collapsed_behind_a_counter(page):  # noqa: F811
     )
     page.click("#f-kw > summary")
     page.wait_for_selector("#t-inc", state="hidden")
+    assert page.is_visible("#f-kw-sum")
 
 
 def test_keyword_suggestions_ignore_case_and_undo_by_keyboard(page):  # noqa: F811

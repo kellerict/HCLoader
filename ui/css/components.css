@@ -601,7 +601,6 @@ td.act .iconbtn.on{color:var(--acid);border-color:transparent;background:var(--a
 
 /* Zeitplan / Statusleiste */
 #sb-next.held{color:var(--warn)}
-#nf-next{white-space:nowrap}
 /* Mindestfenster (1100 px): Statusleiste enger, Herkunft des Termins nur noch im Tooltip */
 @media (max-width:1240px){footer{gap:14px} #sb-next .sb-kind{display:none}}
 /* Schmales Fenster: Typ und Max. ausblenden (stehen im Bearbeiten-Dialog), Rest scrollt horizontal */
@@ -1244,6 +1243,7 @@ tr:hover .ftag.add,.ftag.add:focus-visible{opacity:1}
 /* Formular am Badge */
 .popover{position:fixed;z-index:160;width:316px;background:var(--panel-2);border:1px solid var(--line-2);border-radius:var(--radius);padding:8px 10px 10px;
   box-shadow:0 14px 40px rgba(0,0,0,.7);animation:popIn 130ms var(--ease-out);transform-origin:top left}
+.popover:focus{outline:none} /* Fokus nur als Ziel für Tastatur/Screenreader (ui.popover) */
 .popover .mhead{font:600 10.5px var(--f-mono);letter-spacing:calc(1.5px * var(--ls));text-transform:uppercase;color:var(--dim);padding:3px 0 8px}
 .popover .search-wrap{position:relative}
 .popover .search-wrap>svg{position:absolute;left:10px;top:50%;width:14px;height:14px;transform:translateY(-50%);stroke:var(--muted);fill:none;stroke-width:2.2;pointer-events:none}
@@ -1991,6 +1991,10 @@ td .pbadge,.cell-title .pbadge,.dj-set .pbadge,.qitem .pbadge{background:var(--s
 .fdisc>summary:focus-visible{box-shadow:0 0 0 1px var(--accent),0 0 14px var(--accent-glow)}
 .fdisc[open]{padding-bottom:var(--s3)}
 .fdisc[open]>summary small{display:none}
+.fdisc>summary{flex-wrap:wrap;row-gap:0}
+/* Aktive Stichwörter (zugeklappt): eigene Zeile unter Titel und Zähler, der Pfeil bleibt oben (order) */
+.fdisc>summary .kw-sum{order:1;flex:1 0 100%;width:0;color:var(--dim)}
+.fdisc>summary .kw-sum[hidden]{display:none}
 
 /* ---------- Bibliothek: Unteransichten beim Titel, Kennzahlen als Zeile, Genre als Punkt + Text ---------- */
 .lib-tabs{display:flex;align-items:center;gap:2px;margin-left:var(--s5);flex:none;align-self:flex-end;padding-bottom:1px}

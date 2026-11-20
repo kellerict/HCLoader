@@ -174,13 +174,33 @@
       return ui.notice(mixed && !allBlocked() ? 'warn' : 'error', `${t(mixed ? 'watchlist.backoff_p' : 'watchlist.backoff', v)} ${link}`);
     }).join('');
   }
+  /**
+   * Zeilenmenü «⋯» vor dem Neuzeichnen schliessen: sein Anker verschwindet und die gemerkte Quelle wäre veraltet
+   * (Review v0.11.0 m1). scope: nur ein Menü, dessen Anker darin liegt (Default: ganze Tabelle).
+   * Liefert die Funktion für nach dem Neuzeichnen: lag der Fokus im Menü oder am Anker, kommt er auf das «⋯»
+   * derselben Quelle in der neuen Zeile (sonst «Alle prüfen» / «Hinzufügen») statt auf <body>.
+   */
+  function dropRowMenu(scope) {
+    const m = ui._menu, a = m && m._anchor, box = scope || $('#wl-body', el);
+    if (!a || !box || !box.contains(a)) return () => {};
+    const act = document.activeElement, refocus = m.contains(act) || act === a;
+    const tr = a.closest('tr[data-id]'), id = tr && tr.dataset.id;
+    ui.closeMenu();
+    return () => {
+      if (!refocus) return;
+      const to = [id && $(`#wl-body tr[data-id="${id}"] [data-act="more"]`, el), $('#wl-check', el), $('#wl-add', el)].find((b) => b && !b.disabled);
+      if (to) to.focus();
+    };
+  }
   function render(animate) {
+    const after = dropRowMenu();
     const body = $('#wl-body', el);
     body.innerHTML = sources.length ? sources.map(row).join('')
       : `<tr class="none"><td colspan="9"><div class="empty">${I.eye}<h4>${t('watchlist.empty_title')}</h4>${t('watchlist.empty_text')}</div></td></tr>`;
     flash.clear();
     renderHead();
     if (animate) fx.stagger(body);
+    after();
   }
   async function refresh(animate) {
     const list = await HC.bridge.safe('get_sources');
@@ -536,9 +556,11 @@
         return;
       }
       if (tr && !flash.has(s.id)) {
+        const after = dropRowMenu(tr);
         if (sub) sub.remove();
         tr.insertAdjacentHTML('afterend', row(s));
         tr.remove();
+        after();
       } else render();
     });
     HC.bridge.on('sources_changed', () => refresh());
@@ -549,7 +571,11 @@
       if (allBlocked() && pending.size && !checking.size) endRun(); // Lauf wegen Backoff abgebrochen
       const before = headKey;
       renderHead();
-      if (before !== headKey && sources.length) $('#wl-body', el).innerHTML = sources.map(row).join(''); // Sperre der Knöpfe
+      if (before !== headKey && sources.length) { // Sperre der Knöpfe
+        const after = dropRowMenu();
+        $('#wl-body', el).innerHTML = sources.map(row).join('');
+        after();
+      }
     });
     HC.bridge.on('settings_changed', () => { headKey = ''; render(); });
     /* Relative Zeiten («vor 12 Min.») frisch halten. */

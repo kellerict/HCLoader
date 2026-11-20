@@ -1815,3 +1815,14 @@ Quelle: `yt_dlp/extractor/soundcloud.py`.
   des Layouts als Bedingung hält die Fehlklassifikation einzelner Namen klein. Die 30 QA-Pastes und 20
   neue Pastes dieser Familien sind Regressionstests (`tests/test_timetable_corpus_qa.py`); «Beta» bleibt
   entfernt.
+
+## 2026-11-20 – Menüs und Popover schalten im gemeinsamen Baustein um (v0.11.0, Review-Nachtrag)
+
+- **Entscheid:** `ui.menu` und `ui.popover` schalten selbst um: ein Aufruf mit dem Anker des gerade
+  offenen Overlays schliesst es nur (Rückgabe `null`). Der «Klick daneben» ignoriert dafür einen
+  Mausdruck auf den eigenen Anker. Popover merken ihren Anker (`_anchor`) wie Menüs, nehmen bei
+  Tastatur-Öffnung den Fokus und geben ihn bei Escape/Tab zurück. Die Watchlist schliesst ein offenes
+  Zeilenmenü, bevor sie die Zeile neu zeichnet, und setzt den Fokus auf das «⋯» der neuen Zeile.
+- **Grund:** der Sonderfall mit Mousedown-Flag in `app.js` galt nur für das System-Popover und konnte
+  nach einem abgebrochenen Klick hängen bleiben; ohne Zustand zwischen mousedown und click verhalten
+  sich alle Anker gleich (Review v0.11.0 m1–m5).

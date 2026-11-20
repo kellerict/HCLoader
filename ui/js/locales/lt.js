@@ -271,7 +271,11 @@ HC.i18n.register({"code": "lt", "name": "Lietuvių", "dir": "ltr", "intl": "lt-L
     "kw_sugg_label": "Pasiūlymai iš išsaugotų nustatymų",
     "kw_session_hint": "Galioja tik šiam seansui – čia niekas neišsaugoma. Pradinės reikšmės: Nustatymai › Filtrai ir raktažodžiai.",
     "kw_group": "Raktažodžiai",
-    "kw_count": "įtr.: {inc} · neįtr.: {exc}"
+    "kw_count": "įtr.: {inc} · neįtr.: {exc}",
+    "kw_sum_inc": "+ {list}",
+    "kw_sum_exc": "− {list}",
+    "kw_sum_more": "{list} …",
+    "kw_sum_line": "{label}: {list}"
   },
   "inbox": {
     "title": "Gauti",

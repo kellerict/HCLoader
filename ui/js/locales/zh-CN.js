@@ -265,7 +265,11 @@ HC.i18n.register({"code": "zh-CN", "name": "简体中文", "dir": "ltr", "intl":
     "kw_sugg_label": "来自已保存设置的建议",
     "kw_session_hint": "仅对本次会话有效 – 此处不会保存。初始值：设置 › 筛选与关键词。",
     "kw_group": "关键词",
-    "kw_count": "包含 {inc} · 排除 {exc}"
+    "kw_count": "包含 {inc} · 排除 {exc}",
+    "kw_sum_inc": "+ {list}",
+    "kw_sum_exc": "− {list}",
+    "kw_sum_more": "{list}…",
+    "kw_sum_line": "{label}：{list}"
   },
   "inbox": {
     "title": "收件箱",

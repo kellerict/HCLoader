@@ -146,8 +146,6 @@
       if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key >= '1' && e.key <= '8') { e.preventDefault(); go(VIEWS[+e.key - 1]); }
     });
     $('#sb-sys').addEventListener('click', toggleSysPop);
-    /* window/capture läuft vor dem «Klick daneben» der Overlays: merken, ob der Knopf sein eigenes Popover schliesst */
-    window.addEventListener('mousedown', (e) => { sysWasOpen = !!sysPop && $('#sb-sys').contains(e.target); }, true);
     window.addEventListener('resize', moveIndicator);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(moveIndicator);
   }
@@ -165,7 +163,7 @@
   /* ---------- Statusleiste ---------- */
   const led = (el, cls) => { if (el) el.className = `led ${cls || ''}`; };
   /* «System»-Popover der Statusleiste: dieselben Einzelwerte wie früher in der Leiste. */
-  let sysPop = null, sysWasOpen = false;
+  let sysPop = null;
   function sysRows() {
     const s = HC.status || {}, po = s.po_token || {}, bo = s.backoff || {};
     const okTxt = (ok) => t(ok ? 'statusbar.ok' : 'statusbar.missing');
@@ -184,9 +182,10 @@
   }
   function toggleSysPop() {
     const btn = $('#sb-sys');
-    if (sysWasOpen) { sysWasOpen = false; if (sysPop) HC.ui.closeMenu(); return; } // derselbe Klick hat das offene Popover schon geschlossen (sonst jetzt)
-    if (sysPop) { HC.ui.closeMenu(); return; }
-    sysPop = HC.ui.popover(btn, '', { align: 'left', cls: 'sb-pop', label: t('statusbar.system_title') });
+    /* ui.popover schaltet um: ist das Popover dieses Knopfs offen, schliesst es nur und liefert null. */
+    const pop = HC.ui.popover(btn, '', { align: 'left', cls: 'sb-pop', label: t('statusbar.system_title') });
+    if (!pop) return;
+    sysPop = pop;
     sysPop._onClose = () => { sysPop = null; btn.setAttribute('aria-expanded', 'false'); };
     btn.setAttribute('aria-expanded', 'true');
     paintSysPop();
