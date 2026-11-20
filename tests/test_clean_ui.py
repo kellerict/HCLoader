@@ -238,6 +238,14 @@ def test_library_sections_sit_next_to_the_title(page):
 def test_library_stats_are_one_line_and_genre_is_dot_plus_text(page):
     _go(page, "library")
     page.wait_for_selector("#lib-body tr[data-id]")
+    # measure only once the stats strip is filled (async in the mock) and fonts are laid out
+    page.wait_for_function(
+        "/^\\d+$/.test(document.querySelector('#ls-count').textContent.trim())"
+        " && document.querySelectorAll('#ls-genres .gstat').length >= 3"
+        " && document.fonts.status === 'loaded'"
+        " && document.querySelector('.lib-stats').getAnimations({subtree: true})"
+        ".every((a) => a.playState !== 'running')"
+    )
     tops = page.eval_on_selector_all(
         ".lib-stats > .stat", "els => els.map(e => Math.round(e.getBoundingClientRect().bottom))"
     )
